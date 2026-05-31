@@ -3,15 +3,11 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>AURA · El sistema operativo de la clínica del 2026</title>
-<meta name="description" content="Pitch deck animado: cómo funciona el SaaS AURA. Stack IA + embudo + voz IA. Replicable a estética, dental, abogados, fitness, inmobiliaria y restauración." />
+<title>AURA · El SaaS escalable para clínicas estéticas</title>
+<meta name="description" content="Embudo Meta Ads que más convierte en estética 2026 + chat IA que reserva la cita + confirmaciones IA. SaaS escalable: banco de anuncios mensual, webinars diarios ilimitados, CRM integrado." />
 <meta name="theme-color" content="#0e0408" />
-<meta property="og:title" content="AURA · El sistema operativo de la clínica del 2026" />
-<meta property="og:description" content="Cómo funciona, animado paso a paso." />
-<meta property="og:type" content="website" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" as="style">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
 <style>
 :root{
@@ -33,7 +29,6 @@ em{font-style:italic;color:var(--berry2)}
 .muted{color:var(--muted)}
 button{font:inherit;border:0;cursor:pointer;color:inherit;background:transparent}
 
-/* DECK */
 #deck{position:fixed;inset:0;overflow:hidden}
 .slide{position:absolute;inset:0;padding:calc(var(--safe-top) + 64px) 22px calc(var(--safe-bot) + 92px);overflow-y:auto;-webkit-overflow-scrolling:touch;opacity:0;visibility:hidden;transform:translate3d(20px,0,0);transition:transform .55s var(--ease),opacity .45s var(--ease),visibility 0s .55s}
 .slide.active{opacity:1;visibility:visible;transform:none;transition:transform .55s var(--ease),opacity .45s var(--ease),visibility 0s}
@@ -44,7 +39,6 @@ button{font:inherit;border:0;cursor:pointer;color:inherit;background:transparent
 .slide.dark em{color:var(--rose)}
 .container{max-width:920px;margin:0 auto}
 
-/* TOP BAR */
 .topbar{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:calc(var(--safe-top) + 10px) 14px 10px;background:linear-gradient(180deg,rgba(251,247,242,.85),rgba(251,247,242,0));backdrop-filter:blur(10px);transition:background .3s}
 body.dark-bar .topbar{background:linear-gradient(180deg,rgba(14,4,8,.7),rgba(14,4,8,0))}
 .brand{display:flex;align-items:center;gap:.5rem;font-family:'Cormorant Garamond';font-size:1.1rem;letter-spacing:.06em;color:var(--ink);background:rgba(255,255,255,.55);backdrop-filter:blur(10px);padding:.32rem .7rem;border-radius:999px;border:1px solid var(--line)}
@@ -58,7 +52,6 @@ body.dark-bar .vsw{background:rgba(255,255,255,.08);border-color:rgba(212,165,11
 body.dark-bar .vsw button{color:#c9b8b3}
 body.dark-bar .vsw button.on{background:var(--rose);color:#1a0b10}
 
-/* BOTTOM CONTROLS */
 .ctrls{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;align-items:center;justify-content:center;gap:.5rem;padding:10px 12px calc(var(--safe-bot) + 12px);background:linear-gradient(0deg,rgba(251,247,242,.92),rgba(251,247,242,0))}
 body.dark-bar .ctrls{background:linear-gradient(0deg,rgba(14,4,8,.85),rgba(14,4,8,0))}
 .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem .9rem;border-radius:999px;background:rgba(255,255,255,.7);backdrop-filter:blur(10px);border:1px solid var(--line);font-size:.78rem;font-weight:600;color:var(--ink);transition:transform .15s var(--ease),background .2s}
@@ -71,7 +64,6 @@ body.dark-bar .progress{background:rgba(255,255,255,.08);border-color:rgba(212,1
 body.dark-bar .progress span{background:rgba(245,236,220,.25)}
 body.dark-bar .progress span.active{background:var(--rose)}
 
-/* COMMON BLOCKS */
 .pill{display:inline-flex;align-items:center;gap:.4rem;padding:.36rem .8rem;border-radius:999px;background:var(--accent);color:var(--berry2);font-size:.66rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
 .slide.dark .pill{background:rgba(212,165,116,.22);color:#fff;border:1px solid rgba(255,255,255,.12)}
 .pill .dot{width:6px;height:6px;background:var(--rose);border-radius:50%;box-shadow:0 0 0 4px rgba(212,165,116,.25);animation:pulse 2.4s infinite}
@@ -105,11 +97,10 @@ body.dark-bar .progress span.active{background:var(--rose)}
 .hero-bg::before{width:60vw;height:60vw;background:radial-gradient(circle,#D4A574,transparent 65%);top:-20%;left:-20%}
 .hero-bg::after{width:70vw;height:70vw;background:radial-gradient(circle,#8B2A3F,transparent 65%);bottom:-30%;right:-25%;animation-delay:-7s}
 @keyframes float{50%{transform:translate(20px,-30px) scale(1.05)}}
+.gold-orb{position:absolute;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,var(--gold) 50%,var(--berry) 90%);box-shadow:0 0 60px 10px rgba(212,165,116,.5);animation:orbBreath 4s ease-in-out infinite}
+@keyframes orbBreath{50%{transform:scale(1.06);box-shadow:0 0 80px 16px rgba(212,165,116,.65)}}
 
-.gold-orb{position:absolute;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,var(--gold) 50%,var(--berry) 90%);box-shadow:0 0 60px 10px rgba(212,165,116,.5);top:50%;left:50%;transform:translate(-50%,-50%);animation:orbBreath 4s ease-in-out infinite}
-@keyframes orbBreath{50%{transform:translate(-50%,-50%) scale(1.06);box-shadow:0 0 80px 16px rgba(212,165,116,.65)}}
-
-/* TYPING / CHAT */
+/* PHONE / CHAT / QUIZ / FORM */
 .phone{position:relative;margin:0 auto;width:min(280px,80vw);aspect-ratio:9/19.5;background:linear-gradient(180deg,#0e0408 0%,#1a0b10 100%);border-radius:36px;border:8px solid #1a0b10;box-shadow:0 25px 60px -25px rgba(0,0,0,.7),0 0 0 1px rgba(212,165,116,.25);overflow:hidden;color:#fff}
 .phone .notch{position:absolute;top:6px;left:50%;transform:translateX(-50%);width:90px;height:18px;background:#000;border-radius:14px;z-index:5}
 .phone .screen{position:absolute;inset:0;padding:34px 14px 14px;display:flex;flex-direction:column;gap:8px;font-size:.78rem}
@@ -123,28 +114,76 @@ body.dark-bar .progress span.active{background:var(--rose)}
 .bubble.me{background:linear-gradient(135deg,#8B2A3F,#5e1a2a);align-self:flex-end;color:#fff;border-bottom-right-radius:6px}
 .typing{display:inline-flex;gap:3px;padding:.45rem .6rem;background:rgba(255,255,255,.08);border:1px solid rgba(212,165,116,.2);border-radius:14px;border-bottom-left-radius:6px;align-self:flex-start}
 .typing i{width:5px;height:5px;border-radius:50%;background:#f5ecdc;animation:tDot 1s infinite}
-.typing i:nth-child(2){animation-delay:.18s}
-.typing i:nth-child(3){animation-delay:.36s}
+.typing i:nth-child(2){animation-delay:.18s}.typing i:nth-child(3){animation-delay:.36s}
 @keyframes tDot{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
 
-/* QUIZ */
-.quiz{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid rgba(212,165,116,.2);border-radius:14px;padding:.7rem .8rem;font-size:.78rem;color:#f5ecdc}
-.quiz .q-title{font-family:'Cormorant Garamond';font-size:.95rem;color:#fff;margin-bottom:.5rem}
-.quiz .opt{display:block;padding:.42rem .6rem;margin-bottom:5px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(212,165,116,.18);transition:background .25s,border-color .25s,transform .15s var(--ease)}
-.quiz .opt.sel{background:linear-gradient(135deg,rgba(212,165,116,.3),rgba(94,26,42,.3));border-color:var(--rose);color:#fff}
-.quiz .progress-bar{height:3px;border-radius:2px;background:rgba(212,165,116,.15);margin-top:.55rem;overflow:hidden}
-.quiz .progress-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--rose));width:0%;transition:width .55s var(--ease)}
+/* META INSTANT FORM */
+.metaform{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid rgba(212,165,116,.2);border-radius:14px;padding:.75rem .8rem;font-size:.78rem;color:#f5ecdc}
+.metaform .meta-head{display:flex;align-items:center;gap:.4rem;margin-bottom:.5rem;padding-bottom:.4rem;border-bottom:1px solid rgba(212,165,116,.15)}
+.metaform .meta-logo{width:18px;height:18px;border-radius:5px;background:linear-gradient(135deg,#0866ff,#6e3df5);display:grid;place-items:center;color:#fff;font-weight:700;font-size:.65rem}
+.metaform .meta-head span{font-family:'Cormorant Garamond';font-size:.85rem;color:#fff}
+.metaform .field{margin-bottom:.45rem}
+.metaform .field label{font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--rose);font-weight:600;display:block;margin-bottom:2px}
+.metaform .field .input{background:rgba(255,255,255,.06);border:1px solid rgba(212,165,116,.2);border-radius:8px;padding:.4rem .55rem;min-height:1.6rem;display:flex;align-items:center;color:#f5ecdc}
+.metaform .field .input .typed{display:inline-block;border-right:2px solid var(--rose);animation:caret 1s infinite}
+@keyframes caret{50%{border-color:transparent}}
+.metaform .btn-submit{background:linear-gradient(135deg,#0866ff,#6e3df5);color:#fff;width:100%;padding:.5rem;border-radius:8px;font-weight:600;text-align:center;font-size:.78rem;margin-top:.3rem;animation:btnPulse 2s ease-in-out infinite}
+@keyframes btnPulse{50%{box-shadow:0 0 0 6px rgba(110,61,245,.15)}}
 
-/* CALL */
-.call{display:flex;flex-direction:column;align-items:center;gap:.7rem;padding:.8rem;background:rgba(255,255,255,.04);border:1px solid rgba(212,165,116,.2);border-radius:14px}
-.call .label{font-family:'Cormorant Garamond';font-size:.95rem;color:#fff;text-align:center}
-.call .label small{display:block;font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--rose);font-family:'Inter';margin-top:2px}
-.ring{position:relative;width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#D4A574,#8B2A3F);display:grid;place-items:center;color:#fff;font-size:1.4rem;box-shadow:0 0 0 0 rgba(212,165,116,.5);animation:ringPulse 1.4s ease-out infinite}
-@keyframes ringPulse{0%{box-shadow:0 0 0 0 rgba(212,165,116,.55)}100%{box-shadow:0 0 0 22px rgba(212,165,116,0)}}
-.bars{display:flex;gap:3px;align-items:flex-end;height:18px}
-.bars i{width:3px;background:var(--rose);border-radius:2px;animation:bar 1s ease-in-out infinite}
-.bars i:nth-child(1){animation-delay:0s}.bars i:nth-child(2){animation-delay:.1s}.bars i:nth-child(3){animation-delay:.2s}.bars i:nth-child(4){animation-delay:.3s}.bars i:nth-child(5){animation-delay:.4s}
-@keyframes bar{0%,100%{height:4px}50%{height:18px}}
+/* CALENDAR */
+.cal{background:rgba(255,255,255,.04);border:1px solid rgba(212,165,116,.22);border-radius:12px;padding:.7rem;color:#f5ecdc}
+.cal .cal-head{font-family:'Cormorant Garamond';font-size:.85rem;color:#fff;margin-bottom:.4rem;display:flex;justify-content:space-between;align-items:center}
+.cal .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.cal .slot{padding:.35rem .2rem;text-align:center;font-size:.7rem;background:rgba(255,255,255,.04);border:1px solid rgba(212,165,116,.18);border-radius:6px;color:#f5ecdc;transition:background .25s}
+.cal .slot.taken{opacity:.35;text-decoration:line-through}
+.cal .slot.sel{background:linear-gradient(135deg,#D4A574,#8B2A3F);color:#fff;border-color:var(--rose);font-weight:700}
+.cal .confirm{margin-top:.5rem;padding:.5rem;background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.4);border-radius:8px;color:#a7f3d0;font-size:.72rem;text-align:center;display:flex;align-items:center;justify-content:center;gap:.3rem;animation:bIn .4s var(--ease) both}
+.cal .confirm.hidden{display:none}
+
+/* REMINDER TIMELINE */
+.timeline-rem{display:grid;gap:.55rem}
+.tline{display:flex;align-items:center;gap:.7rem;padding:.7rem .85rem;background:rgba(255,255,255,.04);border:1px solid rgba(212,165,116,.22);border-radius:12px;animation:bIn .5s var(--ease) both}
+.tline .when{font-family:'Cormorant Garamond';font-size:.95rem;color:var(--rose);min-width:80px}
+.tline .what{flex:1;font-size:.82rem;color:#f5ecdc}
+.tline .what small{display:block;font-size:.65rem;color:#c9b8b3;margin-top:2px;letter-spacing:.08em;text-transform:uppercase}
+.tline .ic{width:28px;height:28px;border-radius:50%;background:rgba(212,165,116,.2);display:grid;place-items:center;color:var(--rose);font-size:.85rem;flex:none}
+.tline.success{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.35)}
+.tline.success .ic{background:rgba(34,197,94,.25);color:#a7f3d0}
+
+/* WEBINAR */
+.webinar{background:linear-gradient(180deg,rgba(0,0,0,.4),rgba(0,0,0,.2));border:1px solid rgba(212,165,116,.25);border-radius:16px;padding:.9rem .95rem;color:#fff;position:relative;overflow:hidden}
+.webinar::before{content:"";position:absolute;top:8px;right:8px;width:8px;height:8px;background:#ef4444;border-radius:50%;animation:liveDot 1.5s infinite}
+@keyframes liveDot{50%{opacity:.4;box-shadow:0 0 0 8px rgba(239,68,68,0)}}
+.webinar .live-tag{position:absolute;top:6px;right:22px;font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;color:#ef4444;font-weight:700}
+.webinar h4{font-family:'Cormorant Garamond';font-size:1.1rem;color:#fff;margin-bottom:.2rem}
+.webinar .speaker{font-size:.7rem;color:#c9b8b3;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.5rem}
+.webinar .viewers{display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--rose);margin-top:.55rem}
+.webinar .views-num{font-family:'Cormorant Garamond';font-size:1.1rem;color:var(--rose);font-weight:700}
+.webinar .session{padding:.5rem .65rem;background:rgba(255,255,255,.05);border:1px solid rgba(212,165,116,.15);border-radius:10px;font-size:.78rem;margin-bottom:.5rem;display:flex;align-items:center;gap:.6rem}
+.webinar .session .hour{font-family:'Cormorant Garamond';color:var(--rose);min-width:60px;font-size:.95rem}
+.webinar .session .topic{flex:1;color:#f5ecdc}
+.webinar .session .topic small{display:block;font-size:.62rem;color:#c9b8b3;letter-spacing:.06em;text-transform:uppercase;margin-top:1px}
+
+/* AD BANK */
+.adbank{display:grid;gap:.45rem;grid-template-columns:repeat(5,1fr)}
+.adcard{aspect-ratio:9/16;border-radius:8px;background:linear-gradient(160deg,#3a141d,#8B2A3F);position:relative;overflow:hidden;border:1px solid rgba(212,165,116,.25);animation:reelIn .55s var(--ease) both}
+.adcard::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 30% 30%,rgba(212,165,116,.45),transparent 60%)}
+.adcard::after{content:"▶";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:rgba(255,255,255,.7);font-size:.85rem}
+.adcard .ad-tag{position:absolute;top:4px;left:4px;font-size:.5rem;letter-spacing:.1em;color:rgba(255,255,255,.7);background:rgba(0,0,0,.4);padding:1px 4px;border-radius:3px}
+@keyframes reelIn{from{opacity:0;transform:translateY(20px) scale(.9)}}
+
+/* META AD MOCK (anuncio en feed) */
+.metaad{background:rgba(255,255,255,.04);border:1px solid rgba(212,165,116,.22);border-radius:12px;padding:.55rem .65rem;color:#f5ecdc;font-size:.78rem}
+.metaad .head-ad{display:flex;align-items:center;gap:.45rem;margin-bottom:.4rem}
+.metaad .head-ad .ad-av{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#D4A574,#8B2A3F)}
+.metaad .head-ad strong{font-family:'Cormorant Garamond';font-size:.85rem;color:#fff}
+.metaad .head-ad small{display:block;font-size:.55rem;color:#9ca0a8;letter-spacing:.08em;text-transform:uppercase}
+.metaad .ad-img{aspect-ratio:4/5;border-radius:8px;background:radial-gradient(circle at 40% 35%,#D4A574 0%,#8B2A3F 60%,#0e0408 100%);position:relative;overflow:hidden;margin:.3rem 0}
+.metaad .ad-img::after{content:attr(data-text);position:absolute;left:8px;right:8px;bottom:8px;color:#fff;font-family:'Cormorant Garamond';font-size:1rem;line-height:1.15;text-shadow:0 2px 10px rgba(0,0,0,.6)}
+.metaad .cta-ad{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.06);border:1px solid rgba(212,165,116,.2);border-radius:6px;padding:.35rem .55rem;font-size:.72rem}
+.metaad .cta-ad strong{font-family:'Cormorant Garamond';color:#fff;font-size:.85rem;display:block}
+.metaad .cta-ad small{font-size:.55rem;color:#9ca0a8;letter-spacing:.06em;text-transform:uppercase}
+.metaad .cta-ad .cta-btn{background:linear-gradient(135deg,#D4A574,#8B2A3F);color:#fff;padding:.32rem .55rem;border-radius:6px;font-size:.7rem;font-weight:600}
 
 /* DASHBOARD MOCK */
 .dash{border-radius:16px;overflow:hidden;background:#fff;border:1px solid var(--line);box-shadow:0 25px 60px -25px rgba(94,26,42,.4)}
@@ -162,15 +201,7 @@ body.dark-bar .progress span.active{background:var(--rose)}
 .dash .lead .who small{display:block;font-family:'Inter';font-weight:400;font-size:.65rem;color:var(--muted);margin-top:1px}
 .dash .lead .tag{font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;padding:.18rem .42rem;border-radius:6px}
 .dash .lead .tag.hot{background:rgba(139,42,63,.15);color:var(--berry2)}
-.dash .lead .tag.warm{background:rgba(212,165,116,.25);color:#7a5d63}
-
-/* AGENTS NETWORK */
-.network{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:.55rem}
-.node{padding:.65rem .7rem;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(212,165,116,.2);font-size:.72rem;color:#f5ecdc;line-height:1.35;text-align:left;animation:nodeIn .5s var(--ease) both}
-.node b{display:block;font-family:'Cormorant Garamond';font-size:.85rem;color:#fff;font-weight:600;margin-bottom:2px}
-.node small{display:block;font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;color:var(--rose);font-weight:700;margin-bottom:5px}
-@keyframes nodeIn{from{opacity:0;transform:translateY(6px) scale(.96)}}
-@media(max-width:520px){.network{grid-template-columns:repeat(2,1fr)}.node small{font-size:.5rem}}
+.dash .lead .tag.book{background:rgba(34,197,94,.15);color:#16a34a}
 
 /* FUNNEL STEPS */
 .funnel{display:grid;gap:.55rem}
@@ -189,7 +220,6 @@ body.dark-bar .progress span.active{background:var(--rose)}
 .offer-table td:last-child{text-align:right;font-family:'Cormorant Garamond';color:var(--rose);font-size:1rem}
 .offer-table tr.total td{border-top:1px solid var(--rose);border-bottom:none;font-weight:700;padding-top:.85rem;color:#fff}
 .offer-table tr.total td:last-child{font-size:1.4rem;color:var(--gold)}
-
 .price-box{padding:1.2rem 1.4rem;border-radius:18px;background:linear-gradient(135deg,#0e0408,#3a141d);color:#f5ecdc;text-align:center;border:1px solid rgba(212,165,116,.3);box-shadow:0 25px 60px -25px rgba(0,0,0,.6)}
 .price-box .big{font-family:'Cormorant Garamond';font-size:2.7rem;color:var(--rose);line-height:1}
 
@@ -198,42 +228,14 @@ body.dark-bar .progress span.active{background:var(--rose)}
 @media(min-width:640px){.vlist{grid-template-columns:repeat(3,1fr)}}
 .vcard{padding:.85rem .9rem;border-radius:14px;background:rgba(255,255,255,.55);border:1px solid var(--line);transition:transform .25s var(--ease),background .25s}
 .vcard:active{transform:scale(.97)}
-.vcard:hover{background:#fff;transform:translateY(-3px);box-shadow:0 20px 35px -22px rgba(94,26,42,.4)}
 .vcard b{display:block;font-family:'Cormorant Garamond';font-size:1.05rem;color:var(--ink);margin-bottom:2px}
 .vcard span{font-size:.72rem;color:var(--muted);line-height:1.4}
 
-/* REELS CASCADE */
-.reels{display:grid;gap:.4rem;grid-template-columns:repeat(3,1fr)}
-.reel{aspect-ratio:9/16;border-radius:10px;background:linear-gradient(160deg,#3a141d,#8B2A3F);position:relative;overflow:hidden;border:1px solid rgba(212,165,116,.2);animation:reelIn .55s var(--ease) both}
-.reel::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 30% 30%,rgba(212,165,116,.4),transparent 60%)}
-.reel::after{content:"▶";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:rgba(255,255,255,.6);font-size:1rem}
-@keyframes reelIn{from{opacity:0;transform:translateY(20px) scale(.9)}}
-
-/* VOICE WAVE */
-.wave{display:flex;gap:3px;align-items:center;justify-content:center;padding:.6rem;background:rgba(255,255,255,.04);border-radius:12px;border:1px solid rgba(212,165,116,.2)}
-.wave i{width:3px;background:var(--rose);border-radius:2px;animation:wv 1.2s ease-in-out infinite}
-.wave i:nth-child(odd){animation-duration:.9s}
-@keyframes wv{0%,100%{height:6px}50%{height:24px}}
-
-/* TIME FLOW (visual del 60s) */
-.timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:.6rem 0}
-.timeline .tk{height:6px;border-radius:3px;background:rgba(212,165,116,.15);position:relative;overflow:hidden}
-.timeline .tk i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--rose));width:0;animation:tkFill 4s var(--ease) forwards}
-.timeline .tk:nth-child(2) i{animation-delay:1s}
-.timeline .tk:nth-child(3) i{animation-delay:2s}
-.timeline .tk:nth-child(4) i{animation-delay:3s}
-@keyframes tkFill{to{width:100%}}
-
-/* small util */
-.center{text-align:center}
 .btn-cta{display:inline-flex;align-items:center;gap:.5rem;background:linear-gradient(135deg,var(--rose),var(--berry2));color:#fff;padding:.85rem 1.4rem;border-radius:999px;font-weight:700;letter-spacing:.04em;box-shadow:0 18px 40px -18px rgba(139,42,63,.7)}
 .btn-cta:active{transform:scale(.97)}
 .hint{position:fixed;bottom:calc(var(--safe-bot) + 78px);left:50%;transform:translateX(-50%);font-size:.6rem;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;z-index:40;opacity:.6;pointer-events:none}
 body.dark-bar .hint{color:#c9b8b3}
-.bg-img{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity .8s ease}
-.bg-img.on{opacity:.16}
 
-/* reveal hooks */
 .r{opacity:0;transform:translateY(16px);transition:opacity .55s var(--ease),transform .55s var(--ease)}
 .slide.active .r{opacity:1;transform:none}
 .slide.active .r:nth-child(2){transition-delay:.05s}
@@ -256,7 +258,7 @@ body.dark-bar .hint{color:#c9b8b3}
 
 <div id="deck"></div>
 
-<div class="hint">desliza para avanzar</div>
+<div class="hint">desliza ↓ para avanzar</div>
 
 <footer class="ctrls">
   <button class="btn" id="prev">←</button>
@@ -270,155 +272,170 @@ const VERT={
   aesthetics:{
     label:"Estética",
     theme:{bg:"#FBF7F2",ink:"#1a0b10",berry:"#5e1a2a",berry2:"#8B2A3F",rose:"#D4A574",gold:"#caa05a",cream:"#f5ecdc",muted:"#7a5d63",line:"rgba(94,26,42,.15)",accent:"rgba(212,165,116,.18)"},
-    h1:`El sistema que <em>llena la agenda</em> de tu clínica estética.`,
-    sub:"Cómo funciona, animado paso a paso. Lo que ya factura + lo que tu competencia aún no tiene.",
+    h1:`El SaaS escalable que <em>llena la agenda</em> de tu clínica estética.`,
+    sub:"El embudo Meta Ads que más convierte en 2026, montado en 10 minutos. Sin Done-For-You, sin agencia, sin reels personalizados.",
     business:"Clínica Elvira",
-    callerName:"Asesora Elvira",
-    quizQ:[
-      "¿Qué te llevaría a dar el paso?",
-      ["Quiero sentirme bien","Tengo un evento próximo","Solo me informo","Llevo años pensándolo"]
-    ],
+    leadName:"Marta",
+    callerName:"Asistente Elvira",
+    offerName:"Valoración gratuita + 50€ en tu primer tratamiento",
+    metaAdHook:"Tu mejor versión empieza aquí.",
+    metaAdCta:"Reserva tu valoración gratis",
     chat:[
-      {who:"ai",t:"¡Hola Marta! Soy la asesora de Clínica Elvira. He visto tu cuestionario."},
-      {who:"me",t:"Hola, me preocupa que se note antinatural"},
-      {who:"ai",t:"Te entiendo. Trabajamos labios glow muy naturales, sin volumen excesivo. ¿Te reservo una valoración esta semana? Es gratuita."}
+      {who:"ai",t:"¡Hola Marta! Soy de Clínica Elvira. Vengo por tu solicitud de la valoración gratuita."},
+      {who:"me",t:"Hola, estoy entre labios y rinomodelación 🙂"},
+      {who:"ai",t:"Te entiendo, son dos tratamientos muy elegidos. Te paso la agenda para que reserves tu valoración 1:1 con la Dra. Elvira."}
     ],
     funnel:[
-      ["Reel UGC","Paciente real + The Reveal."],
-      ["Quiz 5 preguntas","Motivo · plazo · presupuesto · experiencia · objeción."],
-      ["Chat IA","Resuelve dudas y objeciones."],
-      ["Llamada IA 60 s","Voz humana en castellano."],
-      ["Reserva + 50€","Anti no-show."]
+      ["Meta Ads · Leads + Instant Form","Anuncio UGC del banco mensual + oferta 'valoración gratis + 50€'. 30 % presupuesto a frío, 70 % a retargeting."],
+      ["Lead capturado en 5 segundos","Nombre + teléfono pre-rellenados por Meta. Pixel + Conversion API server-side. Lead entra en el CRM."],
+      ["Chat IA en <5 min","Resuelve dudas y abre el calendario embebido. El lead reserva sin hablar con nadie."],
+      ["Recordatorios IA","SMS al instante + voz IA 24h antes + voz IA 2h antes. No-show baja del 22% a <9%."],
+      ["Cita + venta humana en clínica","Tu equipo cierra la venta en consulta. Post-visita: review request + membership upsell."]
     ],
-    market:[["42%","llamadas sin atender"],["7×","ROI 90 días"],["+13%","memberships YoY"]],
+    market:[["27€-55€","CPL Meta Ads estética inyectables"],["3-5×","leads contactados &lt;5 min convierten"],["40-60%","menos no-show con recordatorios voz IA"]],
     pricing:{a:"4.000 €",b:"+ 497 €/mes desde el mes 4"},
     valueTotal:"12.300 €",
-    closing:"Cargamos tu URL y en 10 minutos verás tu embudo funcionando."
+    closing:"Cargamos tu URL y en 10 minutos verás tu embudo Meta Ads listo."
   },
   dental:{
     label:"Dental",
     theme:{bg:"#F5F8FB",ink:"#0e1e2c",berry:"#0b2a4a",berry2:"#143a66",rose:"#5fa8d3",gold:"#c8a35a",cream:"#eef3f8",muted:"#5a6d7a",line:"rgba(20,58,102,.15)",accent:"rgba(95,168,211,.16)"},
-    h1:`El sistema que <em>llena la agenda</em> de tu clínica dental.`,
-    sub:"Recall higiene + recepcionista IA + quiz de diseño de sonrisa.",
+    h1:`El SaaS escalable que <em>llena la agenda</em> de tu clínica dental.`,
+    sub:"Quiz de diseño de sonrisa + chat IA que reserva la cita + recall higiene automatizado.",
     business:"Clínica Dental Lumière",
+    leadName:"Sara",
     callerName:"Asistente Lumière",
-    quizQ:["¿Qué te limita ahora?",["Estética dental","Dolor/función","Precio","Miedo"]],
+    offerName:"Estudio 3D gratis de tu sonrisa",
+    metaAdHook:"Diseña tu sonrisa en 30 minutos.",
+    metaAdCta:"Estudio 3D gratis",
     chat:[
-      {who:"ai",t:"Hola Sara, vengo de la clínica Lumière. Vi tu cuestionario."},
-      {who:"me",t:"¿Cuánto cuesta una ortodoncia invisible?"},
-      {who:"ai",t:"Depende del caso. Tenemos planes desde 89€/mes con financiación. ¿Te reservo una valoración 3D gratuita?"}
+      {who:"ai",t:"Hola Sara, vengo de Lumière. Vi tu cuestionario."},
+      {who:"me",t:"¿Cuánto cuesta la ortodoncia invisible?"},
+      {who:"ai",t:"Tenemos planes desde 89€/mes. ¿Te abro el calendario para una valoración 3D gratis?"}
     ],
     funnel:[
-      ["Reel doctor","Caso real: antes / 6 meses."],
-      ["Quiz 5 preguntas","Limite · plazo · presupuesto · seguro · miedo."],
-      ["Chat IA","Plan + ortodoncia invisible."],
-      ["Llamada IA 60 s","Reserva con higienista."],
-      ["Cita + 30€","Anti no-show + intake digital."]
+      ["Meta Ads · Leads + Instant Form","UGC paciente real + oferta 'estudio 3D gratis'. Hyper-local con Pin Drop."],
+      ["Lead en 5 segundos","Pre-relleno + CAPI server-side."],
+      ["Chat IA en <5 min","Resuelve dudas, abre calendario, reserva valoración 3D."],
+      ["Recordatorios IA","SMS + voz IA 24h y 2h antes. No-show dental baja del 30% a 6%."],
+      ["Cita + venta humana","Higienista cierra plan + financiación."]
     ],
-    market:[["42%","llamadas dentales sin atender"],["600%","ROI Holly Nimblr"],["30-39%","no-show medio"]],
+    market:[["18-42€","CPL Meta Ads tratamientos dentales"],["600%","ROI Holly Nimblr en dental"],["30-39%","no-show medio antes de IA"]],
     pricing:{a:"4.000 €",b:"+ 497 €/mes desde el mes 4"},
     valueTotal:"12.300 €",
-    closing:"Carga la web de la clínica y en 10 min ves tu embudo dental funcionando."
+    closing:"Carga la web dental y en 10 min ves tu embudo dental Meta Ads funcionando."
   },
   legal:{
     label:"Abogados",
     theme:{bg:"#F6F4EE",ink:"#1c180f",berry:"#3d2f17",berry2:"#5f4623",rose:"#b88a4a",gold:"#caa05a",cream:"#efe9da",muted:"#6e6555",line:"rgba(95,70,35,.15)",accent:"rgba(184,138,74,.18)"},
-    h1:`El despacho que <em>cualifica al cliente</em> a las 3am.`,
-    sub:"Recepcionista IA 24/7 + quiz '¿tu caso encaja?' + VSL del socio.",
+    h1:`El despacho que <em>cualifica y reserva</em> a las 3am.`,
+    sub:"Chat IA que reserva consulta de pago + IA confirma 24h antes. Filtra time-wasters.",
     business:"Despacho Vega",
+    leadName:"Carlos",
     callerName:"Asistente Vega",
-    quizQ:["¿Qué tipo de caso tienes?",["Herencia","Laboral","Civil","Otro"]],
+    offerName:"Primera consulta de evaluación 1h",
+    metaAdHook:"¿Tu caso merece un despacho boutique?",
+    metaAdCta:"Evaluación 1h",
     chat:[
       {who:"ai",t:"Buenas tardes Carlos, soy del Despacho Vega."},
-      {who:"me",t:"Tengo una herencia con problemas entre hermanos."},
-      {who:"ai",t:"Lo llevamos a menudo. ¿Le agendo una primera consulta de pago de 30 min con el socio?"}
+      {who:"me",t:"Tengo herencia con problemas entre hermanos."},
+      {who:"ai",t:"Es nuestra especialidad. ¿Le agendo la primera consulta de pago con el socio?"}
     ],
     funnel:[
-      ["Anuncio educativo","'Tres errores al elegir abogado…'"],
-      ["Quiz 5 preguntas","Tipo · plazo · expectativa · presupuesto · urgencia."],
-      ["VSL personalizado","Avatar del socio explicando ese caso."],
-      ["Llamada IA 60 s","Reserva consulta de pago."],
-      ["Consulta + depósito","Filtra time-wasters."]
+      ["Meta Ads · Leads + Instant Form","Anuncio educativo + filtro: tipo de caso · presupuesto · urgencia."],
+      ["Lead en 5 segundos","Pre-relleno + CAPI."],
+      ["Chat IA en <5 min","Reserva consulta de pago. Filtra time-wasters."],
+      ["Recordatorios IA","SMS + voz IA 24h y 2h antes."],
+      ["Consulta + propuesta","El socio cierra."]
     ],
-    market:[["42%","llamadas fuera de horario"],["3-12 m","decision window"],["180k$","gasto medio mkt legal"]],
+    market:[["35-120€","CPL Meta Ads servicios legales"],["3-12 m","decision window cliente premium"],["180k€","gasto medio marketing legal/año"]],
     pricing:{a:"4.000 €",b:"+ 497 €/mes desde el mes 4"},
     valueTotal:"12.300 €",
-    closing:"Carga la web del despacho y en 10 min ves el embudo legal funcionando."
+    closing:"Carga la web del despacho y en 10 min ves tu embudo legal funcionando."
   },
   fitness:{
     label:"Fitness",
     theme:{bg:"#F8F6F1",ink:"#181a14",berry:"#2a3320",berry2:"#3d5226",rose:"#c79e3b",gold:"#caa05a",cream:"#eee8d8",muted:"#5d6754",line:"rgba(61,82,38,.15)",accent:"rgba(199,158,59,.18)"},
-    h1:`El sistema que <em>llena clases</em> de tu estudio.`,
-    sub:"Quiz de transformación + caller IA + reactivación de ex alumnos.",
+    h1:`El SaaS que <em>llena clases</em> de tu estudio.`,
+    sub:"Meta Ads + chat IA que reserva clase prueba + onboarding automatizado.",
     business:"Estudio Hara",
+    leadName:"Lucía",
     callerName:"Asistente Hara",
-    quizQ:["¿Cuál es tu objetivo?",["Bajar peso","Tonificar","Rendimiento","Hábitos"]],
+    offerName:"Clase de prueba + plan de 4 semanas",
+    metaAdHook:"30 días para que vuelvas a sentirte tú.",
+    metaAdCta:"Clase de prueba gratis",
     chat:[
       {who:"ai",t:"Hola Lucía, soy del Estudio Hara."},
-      {who:"me",t:"Quiero perder 8kg, no sé por dónde empezar."},
-      {who:"ai",t:"Tenemos un plan inicial de 4 semanas con clase prueba gratis. ¿Te reservo el martes a las 18:30?"}
+      {who:"me",t:"Quiero perder peso, no sé por dónde empezar."},
+      {who:"ai",t:"Empezamos con clase prueba gratis. ¿Te reservo martes a las 18:30?"}
     ],
     funnel:[
-      ["Reel cliente real","Antes / ahora."],
-      ["Quiz 5 preguntas","Objetivo · plazo · experiencia · hábitos · presupuesto."],
-      ["Chat IA","Recomienda plan + clase prueba."],
-      ["Llamada IA 60 s","Reserva clase prueba."],
-      ["Pago / depósito","Anti drop. Compromiso."]
+      ["Meta Ads · Leads + Instant Form","Anuncio UGC cliente real + oferta clase prueba."],
+      ["Lead en 5 segundos","Pre-relleno + CAPI."],
+      ["Chat IA en <5 min","Recomienda plan + reserva clase prueba."],
+      ["Recordatorios IA","SMS + voz IA 24h y 2h antes. No-show de 25% a 8%."],
+      ["Clase + venta del plan","Coach cierra el pack."]
     ],
-    market:[["29%","new clients rebooks"],["18%","cancel. mes 1"],["3-12$","CPC fitness"]],
+    market:[["8-25€","CPL Meta Ads fitness"],["18%","cancelan en mes 1"],["29%","new clients rebooks"]],
     pricing:{a:"4.000 €",b:"+ 497 €/mes desde el mes 4"},
     valueTotal:"12.300 €",
-    closing:"Carga el IG del centro y en 10 min ves el embudo fitness funcionando."
+    closing:"Carga el IG del centro y en 10 min ves tu embudo fitness funcionando."
   },
   realestate:{
     label:"Inmobiliaria",
     theme:{bg:"#F4F4F0",ink:"#10141a",berry:"#1f2c3c",berry2:"#2e4263",rose:"#c5a36b",gold:"#caa05a",cream:"#e9eaee",muted:"#5a6470",line:"rgba(46,66,99,.15)",accent:"rgba(197,163,107,.18)"},
-    h1:`El sistema que <em>captura propietarios</em> antes que la competencia.`,
-    sub:"Quiz '¿cuánto vale tu casa?' + caller IA al propietario en 60s.",
+    h1:`Captura propietarios <em>antes que la competencia</em>.`,
+    sub:"Meta Ads '¿Cuánto vale tu casa?' + chat IA que reserva tasación + confirmación IA.",
     business:"Inmobiliaria Cordel",
+    leadName:"Javier",
     callerName:"Asistente Cordel",
-    quizQ:["¿Por qué quieres vender?",["Mudanza","Inversión","Reforma","Aún no lo sé"]],
+    offerName:"Tasación gratuita + informe de mercado",
+    metaAdHook:"¿Cuánto vale tu casa en 2026?",
+    metaAdCta:"Tasación gratuita",
     chat:[
       {who:"ai",t:"Hola Javier, soy de Inmobiliaria Cordel."},
-      {who:"me",t:"¿Cuánto se vende mi piso de 90m² en Eixample?"},
-      {who:"ai",t:"En la zona 6.000-7.200€/m². ¿Le agendo tasación gratuita el viernes?"}
+      {who:"me",t:"Mi piso de 90m² en Eixample, ¿cuánto?"},
+      {who:"ai",t:"En tu zona 6.000-7.200€/m². ¿Te abro el calendario para tasación gratis?"}
     ],
     funnel:[
-      ["Reel propiedad","60s recorrido + cliente real."],
-      ["Quiz '¿Cuánto vale?'","Tipo · m² · zona · plazo · motivo."],
-      ["Estimación IA","Rango con explicación."],
-      ["Llamada IA 60 s","Reserva tasación."],
-      ["Visita + exclusiva","Cierre del agente."]
+      ["Meta Ads · Leads + Instant Form","'¿Cuánto vale tu casa?' + estimación rápida."],
+      ["Lead en 5 segundos","Pre-relleno + CAPI."],
+      ["Chat IA en <5 min","Da estimación y reserva tasación."],
+      ["Recordatorios IA","SMS + voz IA 24h y 2h antes."],
+      ["Visita + exclusiva","Agente cierra."]
     ],
-    market:[["42%","llamadas fuera de horario"],["$15-50k","comisión venta media"],["3-9m","funnel comprador"]],
+    market:[["45-95€","CPL Meta Ads captación propietarios"],["3-9 m","funnel del comprador"],["$15-50k","comisión venta media"]],
     pricing:{a:"4.000 €",b:"+ 497 €/mes desde el mes 4"},
     valueTotal:"12.300 €",
-    closing:"Carga la web de la agencia y en 10 min ves el embudo inmobiliario funcionando."
+    closing:"Carga la web de la agencia y en 10 min ves tu embudo inmobiliario funcionando."
   },
   hospitality:{
     label:"Restauración",
     theme:{bg:"#F6F1EC",ink:"#1c1310",berry:"#3a1a14",berry2:"#5e2a20",rose:"#c98a5a",gold:"#caa05a",cream:"#efe2d3",muted:"#7a5d50",line:"rgba(94,42,32,.15)",accent:"rgba(201,138,90,.18)"},
-    h1:`El sistema que <em>llena mesas</em> incluso fuera de horario.`,
-    sub:"Recepcionista IA multilingüe + upsell post-reserva + reactivación.",
-    business:"Restaurante Mediterráneo",
+    h1:`<em>Llena mesas</em> incluso fuera de horario.`,
+    sub:"Meta Ads + chat IA que reserva mesa + IA confirma + upsell post-reserva.",
+    business:"Mediterráneo",
+    leadName:"Pablo",
     callerName:"Asistente Mediterráneo",
-    quizQ:["¿Qué experiencia buscas?",["Cena romántica","Negocios","Celebración","Tranquila"]],
+    offerName:"Menú degustación con maridaje incluido",
+    metaAdHook:"Tu cena de viernes empieza aquí.",
+    metaAdCta:"Reservar mesa",
     chat:[
-      {who:"ai",t:"Hola Pablo, soy de Restaurante Mediterráneo."},
-      {who:"me",t:"¿Tenéis menú degustación el sábado?"},
-      {who:"ai",t:"Sí, 8 pasos a 89€. ¿Le reservo mesa para 2 a las 21h con maridaje?"}
+      {who:"ai",t:"Hola Pablo, soy de Mediterráneo."},
+      {who:"me",t:"¿Menú degustación sábado?"},
+      {who:"ai",t:"Sí, 8 pasos a 89€. ¿Te reservo mesa para 2 a las 21h?"}
     ],
     funnel:[
-      ["Reel del plato","Slow-motion + voz del chef."],
-      ["Quiz experiencia","Ocasión · personas · alergias · presupuesto · fecha."],
-      ["Recomendación + reserva","Sugerencia de mesa y menú."],
-      ["Llamada IA confirma","Confirma alergias y hora."],
-      ["Reserva con depósito","Anti no-show 50€."]
+      ["Meta Ads · Leads + Instant Form","UGC del plato slow-motion + oferta degustación."],
+      ["Lead en 5 segundos","Pre-relleno + CAPI."],
+      ["Chat IA en <5 min","Recomienda mesa, alergias, maridaje, reserva."],
+      ["Recordatorios IA","SMS + voz IA 24h y 2h antes."],
+      ["Mesa + experiencia","Equipo de sala cierra."]
     ],
-    market:[["42%","llamadas fuera horario"],["15-25%","cancelaciones tardías"],["80-150€","ticket degustación"]],
+    market:[["3-12€","CPL Meta Ads restauración"],["15-25%","cancelaciones tardías"],["80-150€","ticket menú degustación"]],
     pricing:{a:"4.000 €",b:"+ 497 €/mes desde el mes 4"},
     valueTotal:"12.300 €",
-    closing:"Carga la web del restaurante y en 10 min ves el embudo de reservas funcionando."
+    closing:"Carga la web del restaurante y en 10 min ves tu embudo de reservas funcionando."
   }
 };
 
@@ -428,123 +445,178 @@ const SL=(V)=>([
   {dark:true,build:()=>`
     <div class="hero-bg"></div>
     <div class="container" style="position:relative;z-index:2;text-align:center;padding:2rem 0">
-      <span class="pill r"><span class="dot"></span> Pitch deck animado</span>
+      <span class="pill r"><span class="dot"></span> Pitch deck animado · v4</span>
       <h1 class="r" style="margin-top:1rem">${V.h1}</h1>
       <p class="r muted" style="margin-top:.9rem;font-size:1rem;max-width:520px;margin-left:auto;margin-right:auto">${V.sub}</p>
       <div class="r" style="margin-top:1.6rem;display:flex;flex-direction:column;align-items:center;gap:.7rem">
-        <div class="gold-orb" style="position:relative;width:80px;height:80px;margin:.5rem auto 0;left:auto;top:auto;transform:none"></div>
+        <div style="position:relative;width:80px;height:80px;margin:0 auto"><div class="gold-orb" style="position:relative;width:80px;height:80px;margin:0;top:0;left:0;transform:none"></div></div>
         <span class="kicker">desliza ↓ para ver cómo funciona</span>
       </div>
     </div>`},
 
-  // 2 EL PROBLEMA
+  // 2 EL EMBUDO META ADS GANADOR EN ESTÉTICA
   {dark:false,build:()=>`
     <div class="container">
-      <span class="pill r"><span class="dot"></span> El mercado en 2026</span>
-      <h2 class="r" style="margin-top:.7rem">${V.label} pierde el <em>35-40%</em> de las oportunidades.</h2>
-      <div class="gold-line r"></div>
-      <div class="row r" style="margin-top:1rem">
-        ${V.market.map(([k,t])=>`<div class="feat"><div class="ic">${k}</div><strong>${t}</strong></div>`).join('')}
-      </div>
-      <p class="muted r" style="margin-top:1rem;font-size:.78rem">Fuente: Tested.media, Zenoti Benchmark 2026, Glow Marketing.</p>
-    </div>`},
-
-  // 3 EL EMBUDO
-  {dark:false,build:()=>`
-    <div class="container">
-      <span class="pill r"><span class="dot"></span> El embudo en 5 pasos</span>
-      <h2 class="r" style="margin-top:.7rem">60 segundos entre el reel y la <em>llamada IA</em>.</h2>
+      <span class="pill r"><span class="dot"></span> El embudo Meta Ads que funciona</span>
+      <h2 class="r" style="margin-top:.7rem">5 pasos. <em>Sin agencia.</em> Sin Done-For-You.</h2>
+      <p class="r muted" style="margin-top:.5rem;font-size:.92rem">El que usan Med Spa Magic Marketing, Glow, Clinic Grower y todas las agencias top del sector en 2026.</p>
       <div class="gold-line r"></div>
       <div class="funnel r" style="margin-top:1rem">
         ${V.funnel.map((f,i)=>`<div class="fstep"><div class="fnum">${i+1}</div><div><strong>${f[0]}</strong><p>${f[1]}</p></div></div>`).join('')}
       </div>
+      <p class="muted r" style="margin-top:.8rem;font-size:.74rem">Fuentes: Consentz, Med Spa Magic Marketing, TooPixels, Scale30x, Ringlyn AI.</p>
     </div>`},
 
-  // 4 REELS UGC EN CASCADA
+  // 3 META AD MOCK (banco mensual de anuncios)
   {dark:true,build:()=>`
     <div class="container">
-      <span class="pill r"><span class="dot"></span> Paso 1 · Captación</span>
-      <h2 class="r" style="margin-top:.7rem">Reels IA: <em>30 al mes</em>, con tu propia voz.</h2>
-      <p class="r muted" style="margin-top:.4rem;font-size:.9rem">Avatar HeyGen + voz clonada + Opus Clip. Tú no grabas, ellos publican.</p>
-      <div class="reels r" style="margin-top:1rem" id="reelsGrid"></div>
-      <div class="r" style="margin-top:.8rem;display:flex;gap:.5rem;align-items:center;font-size:.78rem;color:#c9b8b3">
-        <span class="kicker" style="color:var(--rose)">Hooks 2026:</span> "I didn't expect this to work…" · "Ever notice…" · "Mistake #1…"
+      <span class="pill r"><span class="dot"></span> Paso 1 · Banco mensual de anuncios</span>
+      <h2 class="r" style="margin-top:.7rem">5 anuncios al mes con <em>actor real</em>. Sin grabar nada.</h2>
+      <p class="r muted" style="margin-top:.4rem;font-size:.88rem">Sin logos. Sin nombre de clínica. Sin personalizar. Cada clínica añade su ciudad y CTA al final. Escalable a 1.000 cuentas.</p>
+      <div class="adbank r" id="adbank" style="margin-top:.9rem"></div>
+      <div class="r" style="margin-top:1rem;display:flex;justify-content:center">
+        <div style="max-width:280px;width:100%" class="metaad">
+          <div class="head-ad">
+            <div class="ad-av"></div>
+            <div><strong>${V.business}</strong><small>Patrocinado · 7h</small></div>
+          </div>
+          <div class="ad-img" data-text='${V.metaAdHook}'></div>
+          <div class="cta-ad"><div><strong>Reserva</strong><small>${V.offerName}</small></div><div class="cta-btn">${V.metaAdCta}</div></div>
+        </div>
       </div>
     </div>`},
 
-  // 5 QUIZ ANIMADO
+  // 4 INSTANT FORM ANIMADO
   {dark:true,build:()=>`
     <div class="container">
-      <span class="pill r"><span class="dot"></span> Paso 2 · Quiz que cualifica</span>
-      <h2 class="r" style="margin-top:.7rem">5 preguntas. Cierra <em>3× más</em> que un formulario.</h2>
+      <span class="pill r"><span class="dot"></span> Paso 2 · Meta Instant Form</span>
+      <h2 class="r" style="margin-top:.7rem">Lead en <em>5 segundos</em>, sin landing.</h2>
+      <p class="r muted" style="margin-top:.4rem;font-size:.88rem">Objetivo Leads + Instant Form: hasta 50% más conversión que landing externa. Sin esperar carga. Pre-rellenado por Meta.</p>
       <div class="r" style="margin-top:1rem;display:flex;justify-content:center">
         <div class="phone">
           <div class="notch"></div>
           <div class="screen">
-            <div class="header"><span class="av"></span><span>${V.business}<small>quiz · paso <i id="qstep">1</i> de 5</small></span></div>
-            <div class="quiz" id="quizBox">
-              <div class="q-title" id="qTitle">${V.quizQ[0]}</div>
-              <div id="qOptions">${V.quizQ[1].map((o,i)=>`<span class="opt" data-i="${i}">${o}</span>`).join('')}</div>
-              <div class="progress-bar"><i id="qBar"></i></div>
+            <div class="header"><span class="av"></span><span>${V.business}<small>Formulario · ${V.offerName}</small></span></div>
+            <div class="metaform">
+              <div class="meta-head"><div class="meta-logo">M</div><span>Reserva tu plaza</span></div>
+              <div class="field"><label>Nombre</label><div class="input"><span id="if_name"></span><span class="typed">|</span></div></div>
+              <div class="field"><label>Teléfono</label><div class="input"><span id="if_phone"></span></div></div>
+              <div class="field"><label>¿Qué tratamiento te interesa?</label><div class="input"><span id="if_tt"></span></div></div>
+              <div class="btn-submit">Enviar</div>
             </div>
           </div>
         </div>
       </div>
     </div>`},
 
-  // 6 CHAT IA TIPEANDO
+  // 5 CHAT IA QUE RESERVA LA CITA
   {dark:true,build:()=>`
     <div class="container">
-      <span class="pill r"><span class="dot"></span> Paso 3 · Chat IA</span>
-      <h2 class="r" style="margin-top:.7rem">Una asesora <em>en directo</em>, 24/7.</h2>
-      <p class="r muted" style="margin-top:.4rem;font-size:.9rem">Resuelve objeciones, recomienda y pre-cierra. GPT-5.5 con el prompt de tu negocio.</p>
+      <span class="pill r"><span class="dot"></span> Paso 3 · Chat IA que reserva la cita</span>
+      <h2 class="r" style="margin-top:.7rem">En <em>menos de 5 min</em>. Tasa de conversión ×3-5.</h2>
+      <p class="r muted" style="margin-top:.4rem;font-size:.88rem">El chat IA toma el control: resuelve dudas, abre el calendario y reserva la cita en la agenda. Sin venta a presión. Sin esperar al recepcionista.</p>
       <div class="r" style="margin-top:1rem;display:flex;justify-content:center">
         <div class="phone">
           <div class="notch"></div>
           <div class="screen">
-            <div class="header"><span class="av"></span><span>${V.callerName}<small>en línea</small></span></div>
-            <div id="chatBox" style="display:flex;flex-direction:column;gap:6px;flex:1;overflow:hidden"></div>
-          </div>
-        </div>
-      </div>
-    </div>`},
-
-  // 7 LLAMADA IA SALIENTE
-  {dark:true,build:()=>`
-    <div class="container">
-      <span class="pill r"><span class="dot"></span> Paso 4 · Caller IA</span>
-      <h2 class="r" style="margin-top:.7rem">Su teléfono suena en <em>menos de 60 s</em>.</h2>
-      <p class="r muted" style="margin-top:.4rem;font-size:.9rem">Voz humana en castellano. Reserva consulta y deja nota grabada en tu dashboard.</p>
-      <div class="timeline r" aria-hidden="true"><div class="tk"><i></i></div><div class="tk"><i></i></div><div class="tk"><i></i></div><div class="tk"><i></i></div></div>
-      <div class="r" style="margin-top:.8rem;display:flex;justify-content:center">
-        <div class="phone">
-          <div class="notch"></div>
-          <div class="screen">
-            <div class="header"><span class="av"></span><span>${V.business}<small>llamada entrante</small></span></div>
-            <div class="call" style="margin-top:.5rem">
-              <div class="ring">📞</div>
-              <div class="label">${V.callerName}<small>en castellano · IA</small></div>
-              <div class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-              <div class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="header"><span class="av"></span><span>${V.callerName}<small>en línea · responde en 30 s</small></span></div>
+            <div id="chatBox" style="display:flex;flex-direction:column;gap:6px;flex:1;overflow:hidden;min-height:0"></div>
+            <div id="calBox" class="cal" style="display:none">
+              <div class="cal-head"><span>Esta semana</span><span style="font-size:.65rem;color:#c9b8b3">Mar 4 jun</span></div>
+              <div class="grid">
+                <div class="slot taken">10:00</div><div class="slot">11:30</div><div class="slot">13:00</div><div class="slot">17:00</div>
+                <div class="slot">17:30</div><div class="slot taken">18:00</div><div class="slot sel" id="calSel">19:00</div><div class="slot">20:00</div>
+              </div>
+              <div class="confirm hidden" id="calConfirm">✓ Cita confirmada · jue 6 jun · 19:00</div>
             </div>
           </div>
         </div>
       </div>
     </div>`},
 
-  // 8 DASHBOARD QUE SE LLENA
+  // 6 RECORDATORIOS IA (24h + 2h)
+  {dark:true,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Paso 4 · Recordatorios IA</span>
+      <h2 class="r" style="margin-top:.7rem">SMS + <em>voz IA</em> que confirma. No para vender.</h2>
+      <p class="r muted" style="margin-top:.4rem;font-size:.88rem">La IA solo llama para confirmar 24h y 2h antes. Baja el no-show de 22% a menos de 9%. Lo confirma Ringlyn AI.</p>
+      <div class="timeline-rem r" style="margin-top:1rem">
+        <div class="tline"><div class="ic">✓</div><div class="when">Al instante</div><div class="what">SMS de confirmación<small>+ enlace de Google Maps + WhatsApp</small></div></div>
+        <div class="tline"><div class="ic">✓</div><div class="when">24h antes</div><div class="what">Llamada IA "¿confirmas?"<small>Reagenda si dice que no puede</small></div></div>
+        <div class="tline success"><div class="ic">📞</div><div class="when">2h antes</div><div class="what">Llamada IA recordatorio<small>"Te esperamos a las 19:00"</small></div></div>
+      </div>
+      <div class="row r" style="margin-top:1rem">
+        <div class="feat"><div class="ic">-60%</div><strong>no-show</strong><p>Voz IA inbound vs SMS solo.</p></div>
+        <div class="feat"><div class="ic">+24%</div><strong>show rate</strong><p>Llamada IA 24h + 2h combinadas.</p></div>
+      </div>
+    </div>`},
+
+  // 7 LO QUE NO HACEMOS (sin DFY)
+  {dark:false,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Lo que <strong>NO</strong> hacemos</span>
+      <h2 class="r" style="margin-top:.7rem">Cero Done-For-You. <em>Margen del 80%</em>.</h2>
+      <div class="gold-line r"></div>
+      <div class="row r" style="margin-top:1rem">
+        <div class="feat"><div class="ic">✗</div><strong>Reels personalizados por clínica</strong><p>No grabamos avatares ni clonamos voces. Eso no escala. Usamos banco mensual genérico.</p></div>
+        <div class="feat"><div class="ic">✗</div><strong>Caller IA de venta</strong><p>Nadie pagaría una llamada IA para reserva inicial. La IA solo confirma 24h y 2h antes.</p></div>
+        <div class="feat"><div class="ic">✗</div><strong>Reactivación BBDD manual</strong><p>No hacemos llamadas a fuego. Reactivación = email + SMS + chatbot automático.</p></div>
+        <div class="feat"><div class="ic">✗</div><strong>12 sesiones 1:1 por cliente</strong><p>Hacemos webinars en directo ilimitados. Un consultor sirve a 1.000 clínicas.</p></div>
+        <div class="feat"><div class="ic">✗</div><strong>Lanzar campañas a mano</strong><p>El cliente lanza las suyas siguiendo plantillas. Nosotros formamos en webinar.</p></div>
+        <div class="feat"><div class="ic">✗</div><strong>Setup individual por sector</strong><p>Templates listos. Cambia 5 campos y está vivo.</p></div>
+      </div>
+    </div>`},
+
+  // 8 LO QUE SÍ ENTREGAMOS (todo escalable)
+  {dark:true,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Lo que <strong>SÍ</strong> entregamos</span>
+      <h2 class="r" style="margin-top:.7rem">Todo escalable a coste marginal <em>≈ 0</em>.</h2>
+      <div class="gold-line r"></div>
+      <div class="list r" style="margin-top:1rem">
+        <div class="item"><span class="num">①</span><div><strong>Banco mensual de 5 anuncios genéricos</strong><p>Grabados con actor/actriz. Sin logo. La clínica añade ciudad y CTA. Lo mismo para todas. Sale 60€/anuncio amortizado entre 200 clínicas.</p></div></div>
+        <div class="item"><span class="num">②</span><div><strong>Plantillas de Meta Ads listas</strong><p>Campaña Leads + Instant Form + audiencias + hooks copiables. La clínica clica "lanzar".</p></div></div>
+        <div class="item"><span class="num">③</span><div><strong>Constructor de embudo "pegar URL"</strong><p>Quiz, chat IA, calendario y CRM montados en 10 min con la URL del cliente. Coste marginal 0.</p></div></div>
+        <div class="item"><span class="num">④</span><div><strong>Chat IA con prompt configurable</strong><p>El cliente edita su prompt en 2 min. Reserva en el calendario. Servido con LLM compartido.</p></div></div>
+        <div class="item"><span class="num">⑤</span><div><strong>Recordatorios IA 24h + 2h</strong><p>SMS instantáneo + voz IA con cuota mensual incluida (350 min). Excedente a 0,15€/min.</p></div></div>
+        <div class="item"><span class="num">⑥</span><div><strong>Webinars diarios en directo · sin límite</strong><p>Mañana: lanzamiento Meta Ads. Mediodía: optimización. Tarde: CRM y embudo. Un consultor → 1.000 cuentas a la vez. Si satura, dobla franja.</p></div></div>
+        <div class="item"><span class="num">⑦</span><div><strong>Comunidad Skool</strong><p>Los clientes se ayudan entre sí. Caso de uso, plantillas, dudas. Más escalable imposible.</p></div></div>
+        <div class="item"><span class="num">⑧</span><div><strong>Dashboard CRM SDR-first</strong><p>Lee leads, agenda, score, reserva. Conexión nativa con Meta Conversion API.</p></div></div>
+      </div>
+    </div>`},
+
+  // 9 WEBINARS LIVE
+  {dark:true,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Webinars diarios sin límite</span>
+      <h2 class="r" style="margin-top:.7rem">Un consultor. <em>Mil clínicas</em>. Tres franjas al día.</h2>
+      <p class="r muted" style="margin-top:.4rem;font-size:.88rem">Asisten los nuevos clientes en su semana 1 y los veteranos cuando quieran refrescar. Quedan grabados para los que no puedan.</p>
+      <div class="r" style="margin-top:1rem">
+        <div class="webinar">
+          <div class="live-tag">EN DIRECTO</div>
+          <h4>Cómo lanzar tu primera campaña Meta Ads</h4>
+          <div class="speaker">Iván Cortés · consultor performance</div>
+          <div class="session"><div class="hour">10:00</div><div class="topic">Meta Ads desde 0<small>Lanzamiento de campaña paso a paso</small></div></div>
+          <div class="session"><div class="hour">13:30</div><div class="topic">Optimización<small>Cómo bajar el CPL y limpiar leads</small></div></div>
+          <div class="session"><div class="hour">17:30</div><div class="topic">CRM + embudo<small>Chat IA, agenda, recordatorios</small></div></div>
+          <div class="viewers"><span>👥</span><span class="views-num" id="viewerCount">0</span><span>clínicas viendo ahora</span></div>
+        </div>
+      </div>
+    </div>`},
+
+  // 10 DASHBOARD QUE SE LLENA
   {dark:false,build:()=>`
     <div class="container">
       <span class="pill r"><span class="dot"></span> Paso 5 · Dashboard SDR-first</span>
-      <h2 class="r" style="margin-top:.7rem">Ves el lead caliente <em>sin pensarlo</em>.</h2>
+      <h2 class="r" style="margin-top:.7rem">Ves el lead caliente y la cita <em>reservada</em>.</h2>
       <div class="r" style="margin-top:1rem">
         <div class="dash">
           <div class="head"><span class="av"></span> ${V.business} · panel</div>
           <div class="body">
             <div class="stats">
-              <div class="stat"><b id="kLeads">0</b><span>Leads</span></div>
-              <div class="stat"><b id="kHot">0</b><span>Hot leads</span></div>
-              <div class="stat"><b id="kRoi">0×</b><span>ROI 90 d</span></div>
+              <div class="stat"><b id="kLeads">0</b><span>Leads/mes</span></div>
+              <div class="stat"><b id="kBook">0</b><span>Citas reservadas</span></div>
+              <div class="stat"><b id="kShow">0%</b><span>Show rate</span></div>
             </div>
             <div id="leadList"></div>
           </div>
@@ -552,56 +624,33 @@ const SL=(V)=>([
       </div>
     </div>`},
 
-  // 9 STACK 12 AGENTES
-  {dark:true,build:()=>`
-    <div class="container">
-      <span class="pill r"><span class="dot"></span> Stack IA · 12 agentes</span>
-      <h2 class="r" style="margin-top:.7rem">Lo que <em>nadie tiene reunido</em>.</h2>
-      <div class="network r" style="margin-top:.9rem">
-        ${[
-          ["Captación","① Estratega de Contenidos","Opus 4.8 · 20 ideas/mes"],
-          ["Captación","② Editor Reels IA","HeyGen + ElevenLabs + Opus Clip"],
-          ["Captación","③ Buyer de Anuncios","GPT-5.5 + Meta Marketing API"],
-          ["Embudo","④ Asesor Conversacional","GPT-5.5 con tu prompt"],
-          ["Voz","⑤ Recepcionista 24/7","Retell + ElevenLabs ES"],
-          ["Voz","⑥ Caller Saliente 60s","Vapi/Bland speed-to-lead"],
-          ["Voz","⑦ Reactivador BBDD","Outbound IA &gt;90 días"],
-          ["IA","⑧ Analista de Lead","Opus 4.8 score 0-100"],
-          ["IA","⑨ Coach del Equipo","Coaching 2 min auto"],
-          ["Retención","⑩ Review Engine","FTC compliant"],
-          ["Retención","⑪ Membership Bot","Upsell +13% YoY"],
-          ["Compliance","⑫ Compliance Guardian","FTC · GDPR · off-label"]
-        ].map((a,i)=>`<div class="node" style="animation-delay:${i*40}ms"><small>${a[0]}</small><b>${a[1]}</b>${a[2]}</div>`).join('')}
-      </div>
-    </div>`},
-
-  // 10 REPLICABILIDAD
+  // 11 REPLICABILIDAD
   {dark:false,build:()=>`
     <div class="container">
       <span class="pill r"><span class="dot"></span> Una infra, 6 verticales</span>
       <h2 class="r" style="margin-top:.7rem">Cambia el <em>playbook</em>, no la arquitectura.</h2>
       <div class="vlist r" style="margin-top:1rem">
-        ${Object.entries(VERT).map(([k,v])=>`<div class="vcard" data-go="${k}"><b>${v.label}</b><span>${v.sub.split('.')[0]}</span></div>`).join('')}
+        ${Object.entries(VERT).map(([k,v])=>`<div class="vcard" data-go="${k}"><b>${v.label}</b><span>${(v.sub||'').split('.')[0]}</span></div>`).join('')}
       </div>
       <p class="muted r" style="margin-top:.8rem;font-size:.78rem">Toca cualquier vertical para ver su pitch entero adaptado.</p>
     </div>`},
 
-  // 11 OFERTA
+  // 12 OFERTA
   {dark:true,build:()=>`
     <div class="container">
       <span class="pill r"><span class="dot"></span> La oferta</span>
-      <h2 class="r" style="margin-top:.7rem">90 días <em>para llenar tu agenda</em>. O el siguiente trimestre lo regalamos.</h2>
+      <h2 class="r" style="margin-top:.7rem">90 días <em>para llenar tu agenda</em>. O regalamos el siguiente trimestre.</h2>
       <div class="r" style="margin-top:1rem">
         <table class="offer-table">
-          <tr><td>① Auditoría + diagnóstico IA</td><td>500 €</td></tr>
-          <tr><td>② Embudo Funnel AI 2.0</td><td>2.000 €</td></tr>
-          <tr><td>③ Recepcionista IA 24/7</td><td>1.500 €</td></tr>
-          <tr><td>④ Caller saliente &lt;60s</td><td>1.500 €</td></tr>
-          <tr><td>⑤ Reactivación BBDD (1.500)</td><td>1.000 €</td></tr>
-          <tr><td>⑥ 30 reels con avatar</td><td>1.500 €</td></tr>
-          <tr><td>⑦ Lanzamiento Meta/TikTok 90d</td><td>2.500 €</td></tr>
-          <tr><td>⑧ Formación + 12 sesiones 1:1</td><td>1.800 €</td></tr>
-          <tr><td>⑨ Garantía 90 días</td><td>—</td></tr>
+          <tr><td>① Embudo Meta Ads + Instant Form + plantillas</td><td>1.500 €</td></tr>
+          <tr><td>② Chat IA que reserva la cita</td><td>2.000 €</td></tr>
+          <tr><td>③ Recordatorios IA (350 min/mes)</td><td>1.500 €</td></tr>
+          <tr><td>④ Banco mensual de 5 anuncios + plantillas</td><td>2.500 €</td></tr>
+          <tr><td>⑤ CRM + dashboard SDR-first</td><td>1.500 €</td></tr>
+          <tr><td>⑥ Webinars diarios ilimitados (90 días)</td><td>1.800 €</td></tr>
+          <tr><td>⑦ Comunidad Skool privada</td><td>500 €</td></tr>
+          <tr><td>⑧ Onboarding express en 1 sesión grupal</td><td>500 €</td></tr>
+          <tr><td>⑨ Garantía 90 días o trimestre extra gratis</td><td>—</td></tr>
           <tr class="total"><td>Valor declarado</td><td>${V.valueTotal}</td></tr>
         </table>
       </div>
@@ -612,14 +661,14 @@ const SL=(V)=>([
       </div>
     </div>`},
 
-  // 12 CIERRE
+  // 13 CIERRE
   {dark:true,build:()=>`
     <div class="container" style="text-align:center">
       <span class="pill r"><span class="dot"></span> Próximo paso</span>
       <h2 class="r" style="margin-top:.7rem">${V.closing.replace(/10 minutos|10 min/,m=>`<em>${m}</em>`)}</h2>
       <div class="gold-line r" style="margin:1rem auto"></div>
-      <p class="r" style="font-size:1rem;color:#f5ecdc;max-width:520px;margin:.5rem auto 0">Demo 30 min. Tu propio teléfono suena con la asesora IA hablando como tu recepcionista. <strong style="color:var(--rose)">Cierra el 60 % de los que iban a cerrar.</strong></p>
-      <a class="btn-cta r" href="#" style="margin-top:1.4rem" id="cta">Reservar demo</a>
+      <p class="r" style="font-size:1rem;color:#f5ecdc;max-width:520px;margin:.5rem auto 0">Demo grupal 30 min. Te dejo el embudo listo. <strong style="color:var(--rose)">Tú lanzas las campañas, tú recibes los pacientes, tú cobras.</strong></p>
+      <a class="btn-cta r" href="#" id="cta" style="margin-top:1.4rem">Reservar demo</a>
       <p class="r" style="margin-top:1.4rem;font-family:'Cormorant Garamond';font-size:1.4rem;color:var(--rose)">"Si esto lo enchufas, alucinas."</p>
     </div>`}
 ]);
@@ -640,7 +689,6 @@ Object.entries(VERT).forEach(([k,v])=>{
 function setVertical(key){
   V=VERT[key];
   document.body.dataset.vertical=key;
-  // Theme tokens
   const t=V.theme,r=document.documentElement.style;
   r.setProperty('--bg',t.bg);r.setProperty('--ink',t.ink);
   r.setProperty('--berry',t.berry);r.setProperty('--berry2',t.berry2);
@@ -665,7 +713,6 @@ function setVertical(key){
 
 function go(n){
   n=Math.max(0,Math.min(slides.length-1,n));
-  // clear timers from previous slide animations
   timers.forEach(t=>clearTimeout(t));timers=[];
   [...deck.children].forEach((el,k)=>{
     el.classList.remove('exit-left');
@@ -679,58 +726,57 @@ function go(n){
 }
 
 function animateContent(idx,slide){
-  // slide-specific animations
-  const reels=slide.querySelector('#reelsGrid');
-  if(reels){
-    reels.innerHTML='';
-    for(let k=0;k<9;k++){
-      const r=document.createElement('div');
-      r.className='reel';r.style.animationDelay=(k*60)+'ms';
-      reels.appendChild(r);
-    }
-  }
-  const qBox=slide.querySelector('#quizBox');
-  if(qBox)playQuiz(slide);
-  const chatBox=slide.querySelector('#chatBox');
-  if(chatBox)playChat(slide);
-  const dash=slide.querySelector('#leadList');
-  if(dash)playDash(slide);
+  if(slide.querySelector('#adbank'))playAdBank(slide);
+  if(slide.querySelector('.metaform'))playInstantForm(slide);
+  if(slide.querySelector('#chatBox'))playChat(slide);
+  if(slide.querySelector('#viewerCount'))playViewers(slide);
+  if(slide.querySelector('#leadList'))playDash(slide);
 }
 
-/* ANIM: QUIZ */
-function playQuiz(slide){
-  const opts=[...slide.querySelectorAll('#qOptions .opt')];
-  const bar=slide.querySelector('#qBar');
-  const step=slide.querySelector('#qstep');
-  let s=0;
-  bar.style.width='20%';
-  const cycle=()=>{
-    opts.forEach(o=>o.classList.remove('sel'));
-    const target=opts[Math.floor(Math.random()*opts.length)];
-    timers.push(setTimeout(()=>{
-      target.classList.add('sel');
-    },550));
-    s=(s+1)%5;
-    timers.push(setTimeout(()=>{
-      bar.style.width=((s+1)*20)+'%';
-      if(step)step.textContent=s+1;
-    },800));
-    timers.push(setTimeout(cycle,2200));
-  };
-  cycle();
+/* ANIM: AD BANK */
+function playAdBank(slide){
+  const bank=slide.querySelector('#adbank');bank.innerHTML='';
+  ['Hook 01','Hook 02','Hook 03','Hook 04','Hook 05'].forEach((h,k)=>{
+    const c=document.createElement('div');c.className='adcard';c.style.animationDelay=(k*80)+'ms';
+    c.innerHTML=`<span class="ad-tag">${h}</span>`;
+    bank.appendChild(c);
+  });
 }
 
-/* ANIM: CHAT */
+/* ANIM: INSTANT FORM */
+function playInstantForm(slide){
+  const name=slide.querySelector('#if_name');
+  const phone=slide.querySelector('#if_phone');
+  const tt=slide.querySelector('#if_tt');
+  const caret=slide.querySelector('.typed');
+  if(!name)return;
+  const type=(el,str,done)=>{let k=0;const tick=()=>{el.textContent=str.slice(0,k);k++;if(k<=str.length)timers.push(setTimeout(tick,55));else if(done)timers.push(setTimeout(done,400))};tick();};
+  type(name,V.leadName,()=>type(phone,'+34 612 045 219',()=>type(tt,V.business.includes('Cl')||V.business.includes('Lum')||V.business.includes('Mediterr')?'Información':'Información',()=>{
+    if(caret)caret.style.display='none';
+  })));
+}
+
+/* ANIM: CHAT + CALENDAR */
 function playChat(slide){
   const box=slide.querySelector('#chatBox');
+  const calBox=slide.querySelector('#calBox');
+  const calConfirm=slide.querySelector('#calConfirm');
   if(!box)return;
   box.innerHTML='';
   const msgs=V.chat;
   let k=0;
   const next=()=>{
     if(k>=msgs.length){
-      // restart loop
-      timers.push(setTimeout(()=>{box.innerHTML='';k=0;next()},1800));
+      // Después del chat, abre el calendario y confirma la cita
+      timers.push(setTimeout(()=>{if(calBox)calBox.style.display='block'},700));
+      timers.push(setTimeout(()=>{if(calConfirm)calConfirm.classList.remove('hidden')},2200));
+      timers.push(setTimeout(()=>{
+        // restart loop
+        box.innerHTML='';
+        if(calBox)calBox.style.display='none';
+        if(calConfirm)calConfirm.classList.add('hidden');
+        k=0;next();
+      },5800));
       return;
     }
     const m=msgs[k];
@@ -750,34 +796,42 @@ function playChat(slide){
   next();
 }
 
+/* ANIM: VIEWERS COUNTER */
+function playViewers(slide){
+  const el=slide.querySelector('#viewerCount');
+  if(!el)return;
+  let n=183;el.textContent=n;
+  const tick=()=>{n+=Math.floor(Math.random()*5)-1;if(n<170)n=183;el.textContent=n;timers.push(setTimeout(tick,1100))};
+  tick();
+}
+
 /* ANIM: DASHBOARD */
 function playDash(slide){
   const list=slide.querySelector('#leadList');
   const kL=slide.querySelector('#kLeads');
-  const kH=slide.querySelector('#kHot');
-  const kR=slide.querySelector('#kRoi');
+  const kB=slide.querySelector('#kBook');
+  const kS=slide.querySelector('#kShow');
   const sample=[
-    ['Camila R.','Instagram · Full Face','hot'],
-    ['María F.','Reels IA · Skin Boost','hot'],
-    ['Andrea S.','Facebook · Rinomodel.','warm'],
-    ['Valentina K.','WhatsApp · Lips Glow','hot'],
-    ['Daniela P.','Instagram · Full Face','warm'],
-    ['Sofía M.','Reels IA · Hilos','hot'],
+    ['Camila R.','Instagram · Lips Glow','book'],
+    ['María F.','Reels · Skin Boost','book'],
+    ['Andrea S.','Facebook · Rinomod.','hot'],
+    ['Valentina K.','WhatsApp · Botox','book'],
+    ['Daniela P.','Instagram · Full Face','hot'],
+    ['Sofía M.','Reels · Hilos','book'],
   ];
-  // animate counters
   const animCount=(el,end,suf="")=>{
     let n=0;const dur=1100;const t0=performance.now();
     const step=(t)=>{const p=Math.min(1,(t-t0)/dur);n=end*(1-Math.pow(1-p,3));el.textContent=Math.round(n)+suf;if(p<1)requestAnimationFrame(step)};
     requestAnimationFrame(step);
   };
   list.innerHTML='';
-  timers.push(setTimeout(()=>animCount(kL,47),200));
-  timers.push(setTimeout(()=>animCount(kH,12),400));
-  timers.push(setTimeout(()=>animCount(kR,7,'×'),600));
+  timers.push(setTimeout(()=>animCount(kL,142),200));
+  timers.push(setTimeout(()=>animCount(kB,89),400));
+  timers.push(setTimeout(()=>animCount(kS,91,'%'),600));
   sample.forEach((s,k)=>{
     timers.push(setTimeout(()=>{
-      const row=document.createElement('div');row.className='lead';row.style.animationDelay='0s';
-      row.innerHTML=`<div class="pic"></div><div class="who">${s[0]}<small>${s[1]}</small></div><span class="tag ${s[2]}">${s[2]==='hot'?'caliente':'tibia'}</span>`;
+      const row=document.createElement('div');row.className='lead';
+      row.innerHTML=`<div class="pic"></div><div class="who">${s[0]}<small>${s[1]}</small></div><span class="tag ${s[2]}">${s[2]==='book'?'reservada':'caliente'}</span>`;
       list.appendChild(row);
     },800+k*220));
   });
