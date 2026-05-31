@@ -449,7 +449,7 @@ const SL=(V)=>([
   {dark:true,build:()=>`
     <div class="hero-bg"></div>
     <div class="container" style="position:relative;z-index:2;text-align:center;padding:2rem 0">
-      <span class="pill r"><span class="dot"></span> Pitch deck animado · v6</span>
+      <span class="pill r"><span class="dot"></span> Pitch deck animado · v7</span>
       <h1 class="r" style="margin-top:1rem">${V.h1}</h1>
       <p class="r muted" style="margin-top:.9rem;font-size:1rem;max-width:520px;margin-left:auto;margin-right:auto">${V.sub}</p>
       <div class="r" style="margin-top:1.6rem;display:flex;flex-direction:column;align-items:center;gap:.7rem">
@@ -583,6 +583,79 @@ const SL=(V)=>([
         <div class="item"><span class="num">🇪🇸</span><div><strong>ClinicGrowth (Madrid)</strong><p>Setup + 3 meses + ad spend 900-2000€/mes. <em>Servicio, no SaaS. Cap humano de clínicas.</em></p></div></div>
       </div>
       <p class="r muted" style="margin-top:1rem;font-size:.78rem">El hueco: <strong>nadie ofrece SaaS escalable con quiz + chat IA + calendario + recordatorios voz + banco de anuncios + webinars diarios</strong>, todo en un solo producto, replicable a 6 verticales. Ahí entra AURA.</p>
+    </div>`},
+
+  // 4e CADENCIA INFALIBLE DE FOLLOW-UP
+  {dark:false,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Cadencia infalible · 21 días · 10 toques</span>
+      <h2 class="r" style="margin-top:.7rem">El lead <em>nunca</em> se pierde. Solo cambia de canal.</h2>
+      <p class="r muted" style="margin-top:.4rem;font-size:.88rem">Basado en HBR (×21 conversión si contactas en &lt;5 min), ScaleHaven 2026 (cosmetic clinic) y LeadHaste 2026 (8-12 toques 14-21 días es óptimo).</p>
+      <div class="gold-line r"></div>
+      <div class="funnel r" style="margin-top:1rem">
+        <div class="fstep"><div class="fnum">1</div><div><strong>0-60 s · Chat IA web</strong><p>El lead reserva sin salir del chat. Si reserva, fin. Si se va, salta el resto.</p></div></div>
+        <div class="fstep"><div class="fnum">2</div><div><strong>+1 min · SMS con link mágico</strong><p>"Te he guardado el sitio. Sigue aquí: aura.link/m/9xK3" — abre la sesión exacta donde la dejó.</p></div></div>
+        <div class="fstep"><div class="fnum">3</div><div><strong>+2 min · Email con resumen del quiz</strong><p>Recomendación personalizada + 2 fotos before/after + botón "continuar".</p></div></div>
+        <div class="fstep"><div class="fnum">4</div><div><strong>+1 h · SMS recordatorio suave</strong><p>"Marta, teníamos hueco esta semana — mira aquí".</p></div></div>
+        <div class="fstep"><div class="fnum">5</div><div><strong>+24 h · Voz IA breve (sólo si abrió el SMS)</strong><p>"Hola Marta, soy de Clínica Elvira, ¿quieres que cerremos la cita en 2 min?"</p></div></div>
+        <div class="fstep"><div class="fnum">6</div><div><strong>+3 días · Email valor puro</strong><p>Guía PDF del tratamiento + caso real + link de cita.</p></div></div>
+        <div class="fstep"><div class="fnum">7</div><div><strong>+7 días · SMS testimonio</strong><p>Audio de 20 s del dueño "esto es lo que decimos a Marta" — humaniza.</p></div></div>
+        <div class="fstep"><div class="fnum">8</div><div><strong>+14 días · Email break-up</strong><p>"Voy a cerrar tu ficha. Si aún te interesa, dime cuándo". 10-15% de respuestas extra (LeadHaste 2026).</p></div></div>
+        <div class="fstep"><div class="fnum">9</div><div><strong>+30 días · Reactivación estacional</strong><p>"Hidratación tras verano", "rejuvenecer antes de Navidad".</p></div></div>
+      </div>
+    </div>`},
+
+  // 4f DIAGRAMA DE DECISIÓN: SI EL LEAD SE VA
+  {dark:true,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Si el lead se va · árbol de decisión</span>
+      <h2 class="r" style="margin-top:.7rem">La lógica que <em>nunca pierde</em> trazabilidad.</h2>
+      <div class="gold-line r"></div>
+      <div class="list r" style="margin-top:1rem">
+        <div class="item"><span class="num">→</span><div><strong>Si abandona el chat</strong> (90 s sin teclear, cierre de pestaña, exit-intent)<p>→ SMS "link mágico" + página con 3 botones: 1) Seguir aquí 2) WhatsApp 3) Te llamo yo en 2 min.</p></div></div>
+        <div class="item"><span class="num">→</span><div><strong>Si abre el SMS pero no clica</strong> (medible con shortlink)<p>→ Email con resumen del quiz + recomendación IA personalizada + Calendly embebido.</p></div></div>
+        <div class="item"><span class="num">→</span><div><strong>Si pulsa "WhatsApp"</strong><p>→ Se abre wa.me con el token 9xK3 — <em>el lead escribe el primer mensaje</em>. Cero baneo. Meta abre la ventana de 24 h.</p></div></div>
+        <div class="item"><span class="num">→</span><div><strong>Si no abre el SMS en 1 h</strong><p>→ Segundo SMS desde otro short-link diferente para esquivar filtros. Mismo deeplink.</p></div></div>
+        <div class="item"><span class="num">→</span><div><strong>Si no responde en 24 h</strong><p>→ Voz IA breve (3 frases). Si descuelga, ofrece cerrar cita. Si no descuelga, deja audio de 15 s.</p></div></div>
+        <div class="item"><span class="num">→</span><div><strong>Si rebota el email</strong><p>→ Se quema esa dirección para esa lista, se reintenta solo via SMS y voz IA. Protege la reputación del dominio.</p></div></div>
+        <div class="item"><span class="num">→</span><div><strong>Si responde "STOP" / "BAJA"</strong><p>→ Sale automáticamente de TODOS los canales. Cumplimiento LSSI + GDPR + Meta.</p></div></div>
+        <div class="item"><span class="num">→</span><div><strong>Si llega a día 14 sin reaccionar</strong><p>→ Break-up email ("voy a cerrar tu ficha") + cambio de cohorte a re-engagement estacional.</p></div></div>
+      </div>
+      <p class="r muted" style="margin-top:1rem;font-size:.74rem">Cada paso queda en el thread único con token persistente. Cuando el equipo humano abre la ficha, ve TODA la historia cronológica en un solo timeline.</p>
+    </div>`},
+
+  // 4g CHAT WEB vs WHATSAPP · POR FASE
+  {dark:false,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Chat web vs WhatsApp · por fase</span>
+      <h2 class="r" style="margin-top:.7rem">No es uno u otro. <em>Es secuencia</em>.</h2>
+      <div class="gold-line r"></div>
+      <div class="row r" style="margin-top:1rem">
+        <div class="feat"><div class="ic">1</div><strong>Captación inicial → Chat web</strong><p>El chat hereda el contexto exacto del quiz, abre calendario embebido y reserva. Sin opt-in WhatsApp todavía. Cumple GDPR sin esfuerzo.</p></div>
+        <div class="feat"><div class="ic">2</div><strong>Si abandona → SMS link mágico</strong><p>El SMS no necesita opt-in marketing si va dentro de la "continuación de servicio iniciada por el lead". Trustworthy y rápido.</p></div>
+        <div class="feat"><div class="ic">3</div><strong>Continuación premium → WhatsApp</strong><p>Sólo si <strong>el lead</strong> pulsa el botón y inicia. Meta abre ventana de 24 h y todo es session conversation. Free-form.</p></div>
+        <div class="feat"><div class="ic">4</div><strong>Pre-cita → SMS + voz IA</strong><p>SMS + recordatorio voz IA 24 h y 2 h antes. Sin tocar WhatsApp para no quemar la ventana.</p></div>
+        <div class="feat"><div class="ic">5</div><strong>Post-visita → WhatsApp (template aprobado)</strong><p>Review request + upsell de membership con template marketing pre-aprobado por Meta. Permitido y con consentimiento ya documentado.</p></div>
+        <div class="feat"><div class="ic">6</div><strong>Reactivación &gt;60 días → Email + SMS</strong><p>WhatsApp solo si hay opt-in explícito y template aprobado. Si no, email + SMS.</p></div>
+      </div>
+      <p class="r muted" style="margin-top:1rem;font-size:.78rem">Regla de oro: <strong>WhatsApp solo cuando el lead lo elige</strong>. Email para contenido extenso. SMS para acción inmediata. Voz IA para confirmar y romper objeción.</p>
+    </div>`},
+
+  // 4h ANTI-BANEO POR CANAL
+  {dark:true,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Anti-baneo por canal</span>
+      <h2 class="r" style="margin-top:.7rem">Reglas que evitan <em>quemar la cuenta</em>.</h2>
+      <div class="gold-line r"></div>
+      <div class="row r" style="margin-top:1rem">
+        <div class="feat"><div class="ic">SMS</div><strong>SMS · LSSI/TCPA compliant</strong><p>Opt-in registrado al rellenar el quiz. "STOP" funcional. Sender ID estable. Máx 3 SMS/día. Doble short-link para esquivar filtros. Mensaje breve sin emojis spam.</p></div>
+        <div class="feat"><div class="ic">WA</div><strong>WhatsApp · Meta API 2026</strong><p>NUNCA iniciar nosotros. Siempre el lead pulsa wa.me. Ventana 24 h activa. Templates marketing pre-aprobados. Quality rating verde. Privacy policy URL pública. Verificación de negocio.</p></div>
+        <div class="feat"><div class="ic">@</div><strong>Email · reputación SPF/DKIM/DMARC</strong><p>Calentado del dominio 30 días antes. SPF + DKIM + DMARC. List-Unsubscribe header. Asunto sin spam-words. Texto/HTML ratio sano. Bounce rate &lt;3%. Reply rate medible.</p></div>
+        <div class="feat"><div class="ic">📞</div><strong>Voz IA · STIR/SHAKEN</strong><p>Número local con verificación. Máx 2 intentos por lead. NO marcar fuera de 9-21h. Identificarse en los primeros 5 s. Audio del dueño opcional pero no clonado sin permiso.</p></div>
+        <div class="feat"><div class="ic">META</div><strong>Meta Ads · Conversion API</strong><p>Pixel + CAPI server-side. Sin claims médicos. Evitar split-screen before/after. Privacy policy URL accesible. Audiencias broad + lookalike, no targeting de salud sensible.</p></div>
+        <div class="feat"><div class="ic">CRM</div><strong>Trazabilidad · thread único</strong><p>Cada lead = un thread con token. Si responde STOP en cualquier canal, sale de TODOS. Log de consentimiento auditable. Cumplimiento LSSI + GDPR + Meta + CAN-SPAM en una sola capa.</p></div>
+      </div>
+      <p class="r muted" style="margin-top:1rem;font-size:.74rem">Fuentes: AuditSocials WhatsApp API 2026, Meta WhatsApp Policy Feb-2026 (opt-in activo + verificación + privacy URL), LSSI-CE España, TCPA US, CAN-SPAM, ScaleHaven 2026.</p>
     </div>`},
 
   // 5 CHAT IA QUE RESERVA LA CITA
