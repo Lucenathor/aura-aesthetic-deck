@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+<title>AURA · El SaaS que reventaría el mercado de la estética</title>
+<meta name="description" content="Informe estratégico y demo visual del SaaS de adquisición y cualificación con IA para clínicas estéticas. Análisis de mercado + Meta Ads + stack de agentes IA." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<style>
+  :root{
+    --bg:#FBF7F2; --ink:#1a0b10; --berry:#5e1a2a; --berry-2:#8B2A3F;
+    --rose:#D4A574; --gold:#caa05a; --cream:#f5ecdc; --muted:#7a5d63;
+    --line:rgba(94,26,42,.18);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+  body.show-scroll{overflow:auto}
+  h1,h2,h3,.serif{font-family:'Cormorant Garamond',serif;letter-spacing:-.01em;font-weight:500}
+  h1{font-size:clamp(2.6rem,6.5vw,6.5rem);line-height:1.02}
+  h2{font-size:clamp(2rem,4.4vw,4rem);line-height:1.05}
+  h3{font-size:clamp(1.4rem,2.3vw,2rem);line-height:1.15}
+  em{font-style:italic;color:var(--berry)}
+  .muted{color:var(--muted)}
+  .gold{color:var(--gold)}
+  /* deck */
+  #deck{position:relative;width:100vw;height:100vh;overflow:hidden}
+  .slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:5vh 6vw;opacity:0;pointer-events:none;transition:opacity .55s cubic-bezier(.23,1,.32,1)}
+  .slide.active{opacity:1;pointer-events:auto;z-index:2}
+  .slide.prev{opacity:0;z-index:1}
+  .container{max-width:1280px;width:100%;margin:0 auto}
+  .grid{display:grid;gap:3rem}
+  .grid-2{grid-template-columns:1.05fr .95fr;align-items:center}
+  @media(max-width:900px){.grid-2{grid-template-columns:1fr}}
+  /* badges */
+  .pill{display:inline-flex;align-items:center;gap:.55rem;padding:.45rem .9rem;border-radius:999px;background:rgba(202,160,90,.15);color:var(--berry);font-size:.72rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+  .pill .dot{width:6px;height:6px;background:var(--rose);border-radius:50%;box-shadow:0 0 0 4px rgba(212,165,116,.25)}
+  .gold-line{height:1px;width:80px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:1.4rem 0}
+  /* navigation */
+  .nav{position:fixed;left:0;right:0;bottom:24px;display:flex;justify-content:center;gap:14px;z-index:50}
+  .nav button{background:rgba(255,255,255,.6);backdrop-filter:blur(14px);border:1px solid var(--line);color:var(--ink);padding:.6rem 1.1rem;border-radius:999px;font:600 .82rem 'Inter';cursor:pointer;transition:transform .15s ease,background .2s ease}
+  .nav button:hover{background:#fff}
+  .nav .progress{display:flex;align-items:center;gap:6px;padding:.6rem .9rem;background:rgba(255,255,255,.6);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:999px}
+  .progress span{width:8px;height:8px;border-radius:50%;background:rgba(94,26,42,.2);transition:transform .25s ease,background .25s ease}
+  .progress span.active{background:var(--berry-2);transform:scale(1.4)}
+  /* slide types */
+  .slide-img{position:absolute;inset:0;background-size:cover;background-position:center;will-change:transform}
+  .slide-img::after{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(251,247,242,.2),rgba(251,247,242,.85));}
+  .slide-img.dark::after{background:linear-gradient(135deg,rgba(20,5,10,.05),rgba(20,5,10,.55))}
+  .image-card{border-radius:24px;overflow:hidden;box-shadow:0 30px 80px -30px rgba(94,26,42,.45),0 0 0 1px rgba(94,26,42,.06);will-change:transform}
+  .image-card img{display:block;width:100%;height:100%;object-fit:cover}
+  .stat{font-family:'Cormorant Garamond';font-size:clamp(2.4rem,4vw,3.8rem);color:var(--berry-2)}
+  .stat-label{font-size:.78rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+  /* table */
+  .ctable{width:100%;border-collapse:separate;border-spacing:0;font-size:.92rem}
+  .ctable th,.ctable td{padding:.85rem 1rem;text-align:left;border-bottom:1px solid var(--line)}
+  .ctable th{font:600 .72rem 'Inter';letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+  .ctable .ok{color:var(--berry-2);font-weight:600}
+  .ctable .no{color:rgba(94,26,42,.25)}
+  .ctable tr.us td{background:linear-gradient(90deg,rgba(212,165,116,.18),rgba(212,165,116,.04));font-weight:600}
+  /* feature cards */
+  .feat{background:rgba(255,255,255,.65);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:18px;padding:1.4rem 1.5rem;transition:transform .25s cubic-bezier(.23,1,.32,1),box-shadow .25s ease}
+  .feat:hover{transform:translateY(-4px);box-shadow:0 20px 40px -25px rgba(94,26,42,.3)}
+  .feat .ic{width:36px;height:36px;border-radius:10px;background:rgba(212,165,116,.25);display:flex;align-items:center;justify-content:center;color:var(--berry-2);font-weight:700;margin-bottom:.8rem;font-family:'Cormorant Garamond';font-size:1.1rem}
+  /* funnel steps */
+  .steps{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;align-items:stretch}
+  .step{position:relative;padding:1.2rem 1rem 1.4rem;border-radius:16px;background:rgba(255,255,255,.7);border:1px solid var(--line);text-align:center}
+  .step .num{font-family:'Cormorant Garamond';font-size:2.2rem;color:var(--gold);line-height:1}
+  .step h4{font-family:'Cormorant Garamond';font-size:1.15rem;margin:.2rem 0 .4rem}
+  .step p{font-size:.78rem;color:var(--muted);line-height:1.4}
+  .step::after{content:"";position:absolute;right:-12px;top:50%;width:18px;height:1px;background:var(--gold);opacity:.6}
+  .step:last-child::after{display:none}
+  @media(max-width:900px){.steps{grid-template-columns:1fr}.step::after{display:none}}
+  /* agents grid */
+  .agents{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+  @media(max-width:900px){.agents{grid-template-columns:1fr}}
+  .agent{padding:1.2rem;border-radius:14px;background:rgba(255,255,255,.65);border:1px solid var(--line);font-size:.92rem;line-height:1.45}
+  .agent strong{font-family:'Cormorant Garamond';font-size:1.05rem;color:var(--berry-2);font-weight:600;display:block;margin-bottom:.2rem}
+  .agent .who{font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:.5rem}
+  /* offer */
+  .offer-table{width:100%;border-collapse:collapse;font-size:.95rem}
+  .offer-table tr{border-bottom:1px dashed var(--line)}
+  .offer-table td{padding:.85rem .4rem}
+  .offer-table td:last-child{text-align:right;font-family:'Cormorant Garamond';color:var(--berry-2);font-size:1.1rem}
+  .offer-table tr.total td{border-top:1px solid var(--berry);border-bottom:none;font-weight:700;font-size:1.05rem;padding-top:1.2rem}
+  .offer-table tr.total td:last-child{font-size:1.5rem;color:var(--gold)}
+  .price-box{padding:1.6rem 1.8rem;border-radius:16px;background:linear-gradient(135deg,#1a0b10,#3a141d);color:#f5ecdc;text-align:center;margin-top:1.2rem}
+  .price-box .big{font-family:'Cormorant Garamond';font-size:3rem;color:var(--rose);line-height:1}
+  /* dark slide */
+  .slide.dark{color:var(--cream)}
+  .slide.dark .pill{background:rgba(212,165,116,.2);color:var(--rose)}
+  .slide.dark .muted{color:#c9b8b3}
+  .slide.dark .feat{background:rgba(255,255,255,.04);border-color:rgba(212,165,116,.25);color:var(--cream)}
+  .slide.dark .feat .ic{background:rgba(212,165,116,.18);color:var(--rose)}
+  .slide.dark .agent{background:rgba(255,255,255,.04);border-color:rgba(212,165,116,.18);color:var(--cream)}
+  .slide.dark .agent strong{color:var(--rose)}
+  .slide.dark .stat{color:var(--rose)}
+  .slide.dark .ctable th,.slide.dark .ctable td{border-color:rgba(212,165,116,.18)}
+  .slide.dark .ctable tr.us td{background:linear-gradient(90deg,rgba(212,165,116,.14),rgba(212,165,116,.03))}
+  /* utility */
+  .row{display:flex;gap:1rem;flex-wrap:wrap}
+  .row > *{flex:1;min-width:230px}
+  .kicker{font:700 .68rem 'Inter';letter-spacing:.22em;text-transform:uppercase;color:var(--gold)}
+  .quote{font-family:'Cormorant Garamond';font-size:1.4rem;line-height:1.45;color:var(--berry-2);max-width:680px}
+  .keyhint{position:fixed;top:18px;right:20px;font-size:.7rem;color:var(--muted);letter-spacing:.16em;text-transform:uppercase;z-index:50}
+  /* slide reveal animation hooks */
+  .reveal-up{opacity:0;transform:translateY(28px)}
+  .reveal-fade{opacity:0}
+  .reveal-scale{opacity:0;transform:scale(.96)}
+</style>
+</head>
+<body>
+<div id="deck">
+
+<!-- Slide 1: Hero -->
+<section class="slide active" data-bg="dark">
+  <div class="slide-img dark" style="background-image:url('https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/01-hero-aesthetic-RAsnn3ywK94Q5aZYu3dqom.webp')"></div>
+  <div class="container" style="position:relative;z-index:3;color:#fff;text-align:left">
+    <span class="pill reveal-up" style="background:rgba(212,165,116,.2);color:#fff;border:1px solid rgba(255,255,255,.2)"><span class="dot"></span> El SaaS que tú venderías sin pestañear</span>
+    <h1 class="reveal-up" style="margin-top:1.5rem;color:#fff">El sistema que <em style="color:#D4A574">llena la agenda</em><br/>de cualquier clínica estética.</h1>
+    <p class="reveal-up muted" style="margin-top:1.4rem;color:#f5ecdc;font-size:1.15rem;max-width:720px">Investigación 2026 + stack de IA + embudo wow + anuncios Meta ganadores. Replicable a dental, abogados, fitness e inmobiliaria.</p>
+    <div class="reveal-up" style="margin-top:2rem;display:flex;gap:1rem;flex-wrap:wrap">
+      <span class="kicker" style="color:#D4A574">10 slides · 7 min de lectura · pulsa → para avanzar</span>
+    </div>
+  </div>
+</section>
+
+<!-- Slide 2: el problema y la oportunidad -->
+<section class="slide">
+  <div class="container">
+    <span class="pill reveal-up"><span class="dot"></span> El mercado: 17 B$ y creciendo al 15 %</span>
+    <h2 class="reveal-up" style="margin-top:1rem;max-width:900px">Las clínicas pierden <em>el 35-40 %</em> de sus oportunidades por no atender llamadas y no perseguir leads en 60 segundos.</h2>
+    <div class="gold-line reveal-up"></div>
+    <div class="row reveal-up" style="margin-top:1rem">
+      <div class="feat"><div class="ic">42%</div><strong style="font-family:'Cormorant Garamond';font-size:1.2rem">de llamadas sin atender en horas hábiles</strong><p class="muted" style="margin-top:.4rem;font-size:.88rem">Tested.media 2026 · y casi 0 % por la noche o en fin de semana.</p></div>
+      <div class="feat"><div class="ic">7×</div><strong style="font-family:'Cormorant Garamond';font-size:1.2rem">ROI medio en 90 días</strong><p class="muted" style="margin-top:.4rem;font-size:.88rem">Glow Marketing — máx 30 clínicas/mes para garantizar calidad.</p></div>
+      <div class="feat"><div class="ic">15-40$</div><strong style="font-family:'Cormorant Garamond';font-size:1.2rem">CPC en Botox/filler</strong><p class="muted" style="margin-top:.4rem;font-size:.88rem">Cada lead que se pierde son 1.800-4.500 $ de LTV evaporados.</p></div>
+      <div class="feat"><div class="ic">+13%</div><strong style="font-family:'Cormorant Garamond';font-size:1.2rem">membresías medspa YoY</strong><p class="muted" style="margin-top:.4rem;font-size:.88rem">Zenoti Benchmark Report 2026 — único stream que crece.</p></div>
+    </div>
+    <p class="muted reveal-up" style="margin-top:1.4rem;font-size:.85rem">Fuentes: Tested.media, Zenoti Benchmark Report 2026, Glow Marketing, Pabau, Inbound Medic.</p>
+  </div>
+</section>
+
+<!-- Slide 3: SaaS que ya facturan -->
+<section class="slide">
+  <div class="container">
+    <span class="pill reveal-up"><span class="dot"></span> Lo que ya factura globalmente</span>
+    <h2 class="reveal-up" style="margin-top:1rem;max-width:1000px">Los <em>SaaS estética</em> ganadores en 2026 comparten exactamente <em>10 piezas</em>.</h2>
+    <div class="gold-line reveal-up"></div>
+    <div class="grid grid-2 reveal-fade" style="margin-top:1.4rem">
+      <div>
+        <table class="ctable">
+          <thead><tr><th>SaaS</th><th>País</th><th>Ticket</th><th>Diferencial</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Pabau</strong></td><td>UK · EU · ES · US</td><td>desde €99/mo</td><td>All-in-one + GDPR</td></tr>
+            <tr><td><strong>Boulevard</strong></td><td>US · UK</td><td>176-410 $/mo</td><td>UI premium boutique</td></tr>
+            <tr><td><strong>Mangomint</strong></td><td>US</td><td>desde 165 $/mo</td><td>Automatizaciones</td></tr>
+            <tr><td><strong>Zenoti</strong></td><td>Global · 50+</td><td>Custom</td><td>AI Concierge enterprise</td></tr>
+            <tr><td><strong>AestheticsPro</strong></td><td>US</td><td>desde 99 $/mo</td><td>EMR + HIPAA</td></tr>
+            <tr><td><strong>Prosper AI</strong></td><td>US</td><td>Usage-based</td><td>Voz IA + 80 EHRs</td></tr>
+            <tr><td><strong>Holly Nimblr</strong></td><td>US · UK</td><td>~3% op cost</td><td>Garantía 600% ROI</td></tr>
+            <tr><td><strong>Glow Marketing</strong></td><td>SE · EU</td><td>Custom</td><td>Done-for-you + 7× ROI 90d</td></tr>
+            <tr><td><strong>ClinicGrowth</strong></td><td>España</td><td>3 m + ad spend</td><td>Grabación in-situ</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3 class="reveal-up" style="margin-bottom:1rem">Las 10 piezas comunes</h3>
+        <div class="agents reveal-up" style="grid-template-columns:1fr">
+          <div class="agent"><span class="who">1</span><strong>Agenda online + recordatorios</strong>SMS y email con confirmación tap-to-confirm.</div>
+          <div class="agent"><span class="who">2</span><strong>Fichas clínicas + consentimiento digital + before/after seguros</strong></div>
+          <div class="agent"><span class="who">3</span><strong>CRM con historial, alergias, comunicación</strong></div>
+          <div class="agent"><span class="who">4</span><strong>Stock de inyectables (lote, caducidad)</strong></div>
+          <div class="agent"><span class="who">5</span><strong>HIPAA/GDPR + permisos + audit log</strong></div>
+          <div class="agent"><span class="who">6</span><strong>Reporting financiero, retención, mix</strong></div>
+          <div class="agent"><span class="who">7</span><strong>AI Concierge / Voice Agent 24/7</strong>El nuevo gran diferencial.</div>
+          <div class="agent"><span class="who">8</span><strong>Memberships / fidelización</strong>Único revenue stream creciendo (+13% YoY).</div>
+          <div class="agent"><span class="who">9</span><strong>Reactivación de pacientes (recall, win-back)</strong></div>
+          <div class="agent"><span class="who">10</span><strong>Conversion API + Pixel server-side + Reviews FTC compliant</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Slide 4: comparativa AURA -->
+<section class="slide">
+  <div class="container">
+    <span class="pill reveal-up"><span class="dot"></span> El hueco real del mercado</span>
+    <h2 class="reveal-up" style="margin-top:1rem;max-width:1100px">Ningún SaaS reúne <em>las 10 piezas</em> + IA viralización + Done-For-You.<br/>Ahí está el <em>bombazo</em>.</h2>
+    <div class="gold-line reveal-up"></div>
+    <div class="reveal-scale image-card" style="aspect-ratio:16/9;margin-top:1.5rem;max-height:62vh">
+      <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/07-saas-comparison-4wFbeHNkppNWWZgTwtVZPp.webp" alt="Comparativa AURA vs Pabau Boulevard Zenoti Prosper AI" />
+    </div>
+  </div>
+</section>
+
+<!-- Slide 5: meta ads ganadores -->
+<section class="slide">
+  <div class="container">
+    <div class="grid grid-2">
+      <div>
+        <span class="pill reveal-up"><span class="dot"></span> Meta Ad Library 2026</span>
+        <h2 class="reveal-up" style="margin-top:1rem">Los anuncios que <em>siempre ganan</em> en estética.</h2>
+        <div class="gold-line reveal-up"></div>
+        <p class="muted reveal-up" style="margin-top:.6rem;max-width:560px">BrandMov hand-tageó 4.994 anuncios DTC activos en 2026: <strong>9 hooks copan el 70 %</strong> del feed. En estética, 3 dominan claro y 1 es prohibido por Meta.</p>
+
+        <div class="row reveal-up" style="margin-top:1.4rem">
+          <div class="feat"><div class="ic">UGC</div><strong style="font-family:'Cormorant Garamond';font-size:1.15rem">"I didn't expect this to work…"</strong><p class="muted" style="margin-top:.3rem;font-size:.85rem">Sorpresa + escepticismo. Reveal post-tratamiento. La paciente real es la actriz. <strong>Longest-running winner</strong>.</p></div>
+          <div class="feat"><div class="ic">?</div><strong style="font-family:'Cormorant Garamond';font-size:1.15rem">"Ever notice your skin looks dull by 3pm?"</strong><p class="muted" style="margin-top:.3rem;font-size:.85rem">Problem-aware question. 13 % del feed DTC. Brutal en mid-funnel.</p></div>
+          <div class="feat"><div class="ic">$</div><strong style="font-family:'Cormorant Garamond';font-size:1.15rem">"Mistake #1: pagar Botox sin probar X primero"</strong><p class="muted" style="margin-top:.3rem;font-size:.85rem">Category-attack hook. La estética premium funciona con escepticismo educado.</p></div>
+        </div>
+
+        <p class="muted reveal-up" style="margin-top:1.4rem;font-size:.85rem">Formato ganador: <strong>UGC video 36,8 %</strong> (longest-running) + <strong>demonstration 38,8 %</strong>. Lifestyle 17 % refuerza marca. <strong>Evitar split-screen Before/After</strong> (Meta lo veta) → usar "The Reveal".</p>
+      </div>
+      <div class="reveal-scale image-card" style="aspect-ratio:16/9">
+        <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/06-meta-ad-grid-SnCS5epifmoGmgaAwgkiuk.webp" alt="Anuncios Meta ganadores para clínica estética" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Slide 6: el embudo wow -->
+<section class="slide">
+  <div class="container">
+    <span class="pill reveal-up"><span class="dot"></span> El embudo definitivo</span>
+    <h2 class="reveal-up" style="margin-top:1rem;max-width:1100px">5 pasos. <em>60 segundos</em> entre que vio el reel y le suena el teléfono.</h2>
+    <div class="gold-line reveal-up"></div>
+    <div class="reveal-scale image-card" style="aspect-ratio:16/9;margin-top:1rem;max-height:46vh">
+      <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/03-funnel-isometric-NmuQvLdjuhXvfDmAtecGDv.webp" alt="Embudo isométrico AURA" />
+    </div>
+    <div class="steps reveal-up" style="margin-top:1.4rem">
+      <div class="step"><div class="num">1</div><h4>Reel UGC</h4><p>Paciente real + The Reveal. Hooks 2026.</p></div>
+      <div class="step"><div class="num">2</div><h4>Quiz 5 preguntas</h4><p>Motivo · plazo · presupuesto · experiencia · objeción.</p></div>
+      <div class="step"><div class="num">3</div><h4>Chat IA</h4><p>Resuelve dudas, levanta objeciones, pre-cierra.</p></div>
+      <div class="step"><div class="num">4</div><h4>Llamada IA</h4><p>Voz humana en español. 60 s tras el quiz.</p></div>
+      <div class="step"><div class="num">5</div><h4>Reserva + depósito</h4><p>Calendario + 50€ depósito anti no-show.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Slide 7: stack de IAs -->
+<section class="slide dark" data-bg="dark">
+  <div class="slide-img dark" style="background-image:url('https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/02-agents-constellation-HQ76Ps3zCbpsn6gV276xVE.webp');filter:brightness(.55)"></div>
+  <div class="container" style="position:relative;z-index:3">
+    <span class="pill reveal-up"><span class="dot"></span> Stack IA · 12 agentes</span>
+    <h2 class="reveal-up" style="margin-top:1rem;color:#fff">El stack que ningún competidor tiene <em style="color:#D4A574">empaquetado</em>.</h2>
+    <div class="gold-line reveal-up"></div>
+    <div class="agents reveal-up" style="margin-top:1.4rem">
+      <div class="agent"><span class="who">Captación</span><strong>① Estratega de Contenidos</strong>Opus 4.8 — 20 ideas virales/mes basadas en el nicho.</div>
+      <div class="agent"><span class="who">Captación</span><strong>② Editor Reels IA</strong>HeyGen + ElevenLabs voz clonada de la doctora + Opus Clip.</div>
+      <div class="agent"><span class="who">Captación</span><strong>③ Buyer de Anuncios</strong>GPT-5.5 + Meta Marketing API. A/B continuo con los 9 hooks.</div>
+      <div class="agent"><span class="who">Embudo</span><strong>④ Asesor Conversacional</strong>GPT-5.5 con prompt del negocio + contexto del quiz.</div>
+      <div class="agent"><span class="who">Voz</span><strong>⑤ Recepcionista 24/7</strong>Retell + ElevenLabs castellano + Twilio. Reserva en agenda.</div>
+      <div class="agent"><span class="who">Voz</span><strong>⑥ Caller Saliente 60s</strong>Vapi/Bland — speed-to-lead automático tras el quiz.</div>
+      <div class="agent"><span class="who">Voz</span><strong>⑦ Reactivador BBDD</strong>Outbound IA sobre pacientes inactivos &gt;90 días.</div>
+      <div class="agent"><span class="who">Inteligencia</span><strong>⑧ Analista de Lead</strong>Opus 4.8 — score 0-100, objeciones, próxima acción.</div>
+      <div class="agent"><span class="who">Inteligencia</span><strong>⑨ Coach del Equipo</strong>Graba la llamada humana y devuelve coaching.</div>
+      <div class="agent"><span class="who">Retención</span><strong>⑩ Review Engine FTC-compliant</strong>SMS post-visita, route 5★ Google, intercept ≤4★.</div>
+      <div class="agent"><span class="who">Retención</span><strong>⑪ Membership Bot</strong>Upsell personalizado (+13% YoY).</div>
+      <div class="agent"><span class="who">Compliance</span><strong>⑫ Compliance Guardian</strong>Revisa todos los outputs (claims FTC, GDPR, off-label).</div>
+    </div>
+  </div>
+</section>
+
+<!-- Slide 8: la llamada IA -->
+<section class="slide" data-bg="dark">
+  <div class="slide-img dark" style="background-image:url('https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/04-call-moment-RnNLFoxe8m2GkGeJ9DS3Wy.webp');filter:brightness(.62)"></div>
+  <div class="container" style="position:relative;z-index:3;color:#fff">
+    <span class="pill reveal-up" style="background:rgba(212,165,116,.22);color:#fff;border:1px solid rgba(255,255,255,.22)"><span class="dot"></span> El momento wow</span>
+    <h2 class="reveal-up" style="margin-top:1rem;color:#fff;max-width:780px">Su teléfono suena. <em style="color:#D4A574">"Hola Marta, soy de Clínica Elvira"</em>.</h2>
+    <p class="reveal-up muted" style="color:#f5ecdc;margin-top:1rem;max-width:680px;font-size:1.1rem">No bot. Voz natural en castellano, clonada del propio dueño si lo desea. Reserva consulta, contesta a la objeción del precio y deja nota grabada en el dashboard.</p>
+    <div class="reveal-up row" style="margin-top:1.6rem;max-width:880px">
+      <div class="feat" style="background:rgba(255,255,255,.06);border-color:rgba(212,165,116,.3);color:#fff"><div class="ic" style="background:rgba(212,165,116,.25);color:#D4A574">+30-50%</div><strong style="color:#fff">consultas reservadas</strong><p style="color:#c9b8b3;margin-top:.3rem;font-size:.85rem">Lift en 30 días con voz IA inbound (Tested.media, 12+ deployments).</p></div>
+      <div class="feat" style="background:rgba(255,255,255,.06);border-color:rgba(212,165,116,.3);color:#fff"><div class="ic" style="background:rgba(212,165,116,.25);color:#D4A574">22 → 48 %</div><strong style="color:#fff">form fill → consulta</strong><p style="color:#c9b8b3;margin-top:.3rem;font-size:.85rem">Speed-to-lead saliente &lt;60 segundos. Más del doble que esperar.</p></div>
+      <div class="feat" style="background:rgba(255,255,255,.06);border-color:rgba(212,165,116,.3);color:#fff"><div class="ic" style="background:rgba(212,165,116,.25);color:#D4A574">25-60k €</div><strong style="color:#fff">facturación añadida/mes</strong><p style="color:#c9b8b3;margin-top:.3rem;font-size:.85rem">Single-location promedio con stack IA 700-1.500 $/mes.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Slide 9: dashboard SDR-first -->
+<section class="slide">
+  <div class="container">
+    <div class="grid grid-2">
+      <div>
+        <span class="pill reveal-up"><span class="dot"></span> Panel del propietario</span>
+        <h2 class="reveal-up" style="margin-top:1rem">Dashboard <em>SDR-first</em>: ve el lead caliente sin pensar.</h2>
+        <div class="gold-line reveal-up"></div>
+        <p class="muted reveal-up" style="margin-top:.6rem;max-width:560px">Score 0-100, temperatura, objeción detectada por IA, próxima acción. Todo conectado a la agenda y al recepcionista. Replicable a dental, abogados, fitness e inmobiliaria con un cambio de "playbook".</p>
+        <div class="row reveal-up" style="margin-top:1.6rem">
+          <div><div class="stat-label">Leads totales</div><div class="stat">47</div></div>
+          <div><div class="stat-label">Hot leads</div><div class="stat">12</div></div>
+          <div><div class="stat-label">ROI 90 días</div><div class="stat">7×</div></div>
+        </div>
+      </div>
+      <div class="reveal-scale image-card" style="aspect-ratio:16/9">
+        <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/05-dashboard-XMQ8xzeDGujDr9up38K6Jb.webp" alt="Dashboard AURA" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Slide 10: replicabilidad por verticales -->
+<section class="slide">
+  <div class="container">
+    <span class="pill reveal-up"><span class="dot"></span> Una infraestructura, 6 verticales</span>
+    <h2 class="reveal-up" style="margin-top:1rem;max-width:1100px">El mismo SaaS, <em>seis playbooks</em>. Cambia el prompt, no la arquitectura.</h2>
+    <div class="gold-line reveal-up"></div>
+    <div class="row reveal-up" style="margin-top:1.4rem">
+      <div class="feat"><div class="ic">E</div><strong style="font-family:'Cormorant Garamond';font-size:1.15rem">Estética</strong><p class="muted" style="margin-top:.4rem;font-size:.85rem">Aumento labios, hilos, HIFU, hydrafacial, láser. Ticket 80-1.500€. <strong>Mercado más caliente.</strong></p></div>
+      <div class="feat"><div class="ic">D</div><strong style="font-family:'Cormorant Garamond';font-size:1.15rem">Dental</strong><p class="muted" style="margin-top:.4rem;font-size:.85rem">Diseño de sonrisa, ortodoncia invisible, implantes. Recall higiene automatizado.</p></div>
+      <div class="feat"><div class="ic">A</div><strong style="font-family:'Cormorant Garamond';font-size:1.15rem">Abogados</strong><p class="muted" style="margin-top:.4rem;font-size:.85rem">Quiz "¿tu caso encaja?". VSL del socio. Recepcionista IA 24/7 con tono formal.</p></div>
+      <div class="feat"><div class="ic">F</div><strong style="font-family:'Cormorant Garamond';font-size:1.15rem">Fitness · Coaches</strong><p class="muted" style="margin-top:.4rem;font-size:.85rem">Quiz transformación, reels coach real, caller para reactivar bajas.</p></div>
+      <div class="feat"><div class="ic">I</div><strong style="font-family:'Cormorant Garamond';font-size:1.15rem">Inmobiliaria</strong><p class="muted" style="margin-top:.4rem;font-size:.85rem">"¿Cuánto vale tu casa?" → caller saliente al propietario en 60s.</p></div>
+      <div class="feat"><div class="ic">R</div><strong style="font-family:'Cormorant Garamond';font-size:1.15rem">Restauración</strong><p class="muted" style="margin-top:.4rem;font-size:.85rem">Reservas IA, upsell menú degustación, win-back de inactivos.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Slide 11: oferta -->
+<section class="slide" data-bg="dark">
+  <div class="slide-img dark" style="background-image:url('https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/08-offer-guarantee-5CKBDc5qTThikqVYiygqS2.webp');filter:brightness(.7)"></div>
+  <div class="container" style="position:relative;z-index:3;color:#fff">
+    <div class="grid grid-2">
+      <div>
+        <span class="pill reveal-up" style="background:rgba(212,165,116,.22);color:#fff;border:1px solid rgba(255,255,255,.22)"><span class="dot"></span> La oferta que cierra sin pensar</span>
+        <h2 class="reveal-up" style="margin-top:1rem;color:#fff">90 días <em style="color:#D4A574">para llenar tu agenda</em>. O el siguiente trimestre lo regalamos.</h2>
+        <div class="gold-line reveal-up"></div>
+        <p class="reveal-up" style="color:#f5ecdc;margin-top:.8rem;font-size:1.05rem">Setup + Done-For-You + IA + acompañamiento humano semanal.</p>
+        <div class="reveal-up price-box">
+          <div class="kicker" style="color:#D4A574">Inversión 90 días</div>
+          <div class="big">4.000 €</div>
+          <div style="font-size:.9rem;margin-top:.4rem;color:#D4A574">+ 497 €/mes a partir del mes 4</div>
+        </div>
+        <p class="reveal-up" style="margin-top:1rem;color:#c9b8b3;font-size:.82rem">Limitado a 10-15 clínicas/mes. Garantía 90 días por escrito.</p>
+      </div>
+      <div class="reveal-up">
+        <table class="offer-table" style="color:#fff">
+          <tr><td>① Auditoría + diagnóstico IA</td><td>500 €</td></tr>
+          <tr><td>② Embudo Funnel AI 2.0 (web + quiz + chat)</td><td>2.000 €</td></tr>
+          <tr><td>③ Recepcionista IA 24/7 en su número</td><td>1.500 €</td></tr>
+          <tr><td>④ Caller saliente &lt;60s</td><td>1.500 €</td></tr>
+          <tr><td>⑤ Reactivación IA sobre 1.500 contactos</td><td>1.000 €</td></tr>
+          <tr><td>⑥ 30 reels con avatar de la doctora</td><td>1.500 €</td></tr>
+          <tr><td>⑦ Lanzamiento Meta/TikTok 90 días</td><td>2.500 €</td></tr>
+          <tr><td>⑧ Formación equipo + 12 sesiones 1:1</td><td>1.800 €</td></tr>
+          <tr><td>⑨ Garantía 90 días</td><td>—</td></tr>
+          <tr class="total"><td>Valor declarado</td><td>12.300 €</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Slide 12: cierre -->
+<section class="slide">
+  <div class="container" style="text-align:center">
+    <span class="pill reveal-up" style="margin-bottom:1rem"><span class="dot"></span> Próximo paso</span>
+    <h2 class="reveal-up" style="max-width:920px;margin:0 auto">Cargamos tu URL en directo. <em>En 10 minutos verás tu embudo funcionando</em>.</h2>
+    <div class="gold-line reveal-up" style="margin:1.5rem auto 1.6rem"></div>
+    <p class="reveal-up muted" style="max-width:680px;margin:0 auto;font-size:1.05rem">Demo 30 min sobre Zoom. Tu propio teléfono suena con la asesora IA hablando como si fuera tu recepcionista. Cierra el 60 % de los que iban a cerrar.</p>
+    <p class="reveal-up quote" style="margin:2.4rem auto 0;text-align:center">"Si esto lo enchufas, alucinas".</p>
+    <p class="reveal-up muted" style="margin-top:.8rem;font-size:.78rem;letter-spacing:.18em;text-transform:uppercase">AURA · El sistema operativo de la clínica del 2026</p>
+  </div>
+</section>
+
+</div>
+
+<div class="keyhint">← → · espacio · scroll</div>
+<div class="nav">
+  <button id="prev">← Anterior</button>
+  <div class="progress" id="progress"></div>
+  <button id="next">Siguiente →</button>
+</div>
+
+<script>
+const slides=[...document.querySelectorAll('.slide')];
+const progressEl=document.getElementById('progress');
+slides.forEach(()=>{const s=document.createElement('span');progressEl.appendChild(s)});
+const dots=[...progressEl.children];
+let i=0;
+function go(n){
+  n=Math.max(0,Math.min(slides.length-1,n));
+  if(n===i&&document.querySelector('.slide.active')){animate(slides[i]);return}
+  slides[i].classList.remove('active');
+  slides[i].classList.add('prev');
+  i=n;
+  dots.forEach((d,k)=>d.classList.toggle('active',k===i));
+  setTimeout(()=>{
+    slides.forEach(s=>s.classList.remove('prev'));
+    slides[i].classList.add('active');
+    animate(slides[i]);
+  },30);
+  document.body.style.background = slides[i].dataset.bg==='dark' ? '#0e0408' : 'var(--bg)';
+}
+function animate(slide){
+  const ups=slide.querySelectorAll('.reveal-up');
+  const fades=slide.querySelectorAll('.reveal-fade');
+  const scales=slide.querySelectorAll('.reveal-scale');
+  gsap.fromTo(ups,{opacity:0,y:28},{opacity:1,y:0,duration:.7,stagger:.07,ease:'power3.out'});
+  gsap.fromTo(fades,{opacity:0},{opacity:1,duration:.7,delay:.1,stagger:.08,ease:'power2.out'});
+  gsap.fromTo(scales,{opacity:0,scale:.96},{opacity:1,scale:1,duration:.85,delay:.05,ease:'power3.out'});
+  // image card parallax on the image-card backgrounds
+  const heroBg=slide.querySelector('.slide-img');
+  if(heroBg){gsap.fromTo(heroBg,{scale:1.08},{scale:1,duration:1.6,ease:'power2.out'})}
+}
+animate(slides[0]);
+dots[0].classList.add('active');
+document.getElementById('next').onclick=()=>go(i+1);
+document.getElementById('prev').onclick=()=>go(i-1);
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown')go(i+1);
+  if(e.key==='ArrowLeft'||e.key==='PageUp')go(i-1);
+  if(e.key==='Home')go(0);
+  if(e.key==='End')go(slides.length-1);
+});
+let touchY=0;
+document.addEventListener('touchstart',e=>touchY=e.touches[0].clientY);
+document.addEventListener('touchend',e=>{
+  const d=touchY-e.changedTouches[0].clientY;
+  if(Math.abs(d)>40){go(i+(d>0?1:-1))}
+});
+let wheelLock=false;
+document.addEventListener('wheel',e=>{
+  if(wheelLock)return;
+  if(Math.abs(e.deltaY)<35)return;
+  wheelLock=true;
+  go(i+(e.deltaY>0?1:-1));
+  setTimeout(()=>wheelLock=false,800);
+},{passive:true});
+</script>
+</body>
+</html>
