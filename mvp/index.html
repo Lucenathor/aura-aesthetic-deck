@@ -261,7 +261,7 @@ button{font:inherit;border:0;cursor:pointer;color:inherit;background:transparent
       </div>
     </div>
     <button class="btn-cta" style="margin-top:1.4rem" onclick="goView('chat')">Hablar con tu asesora ahora →</button>
-    <p style="text-align:center;color:#c9b8b3;font-size:.78rem;margin-top:.8rem">Te conecta directamente con <strong style="color:var(--rose)">Sofía</strong> en chat. Responde en menos de 30 segundos.</p>
+    <p style="text-align:center;color:#c9b8b3;font-size:.78rem;margin-top:.8rem">        Te conecta directamente con <strong style="color:var(--rose)">Adrián</strong> en chat. Responde en menos de 30 segundos.</p>
   </div>
 </section>
 
@@ -272,7 +272,7 @@ button{font:inherit;border:0;cursor:pointer;color:inherit;background:transparent
       <button class="chat-back" onclick="goView('result')">←</button>
       <div class="chat-avatar"></div>
       <div class="chat-meta">
-        <strong>Sofía · Clínica Elvira</strong>
+        <strong>Adrián · Clínica Elvira</strong>
         <small id="onlineStatus">en línea · escribiendo…</small>
       </div>
       <div class="chat-icons">
@@ -494,7 +494,7 @@ function setSuggested(arr){
 }
 
 /* === AUDIO WAVE === */
-function buildAudioMsg(durationSec=14){
+function buildAudioMsg(durationSec=44){
   const bars=Array.from({length:28},(_,i)=>`<i style="height:${4+(Math.sin(i*0.6)*8+8)}px"></i>`).join('');
   return `
     <div class="msg audio" style="background:var(--wa-bubble-them)">
@@ -600,19 +600,19 @@ async function startChat(){
 
   await delay(500);
   await typing(1100);
-  addMsg('them',`¡Hola ${state.name||'Marta'}! Soy Sofía, asesora de Clínica Elvira ✨`);
+  addMsg('them',`¡Hola ${state.name||'Marta'}! Soy Adrián, asesor de Clínica Elvira ✨`);
   await delay(900);
   await typing(1200);
-  addMsg('them','Te he visto en el cuestionario, gracias por completarlo. Te dejo un audio rapidito explicándote todo, ¿vale?');
+  addMsg('them','He visto que has terminado el cuestionario. Te dejo un audio rápido para presentarme, ¿vale?');
   await delay(900);
-  addRaw(buildAudioMsg(14));
+  addRaw(buildAudioMsg(44));
   await delay(400);
   // Auto-play attempt
   playWelcomeAudio();
-  await delay(15000);
+  await delay(45000);
 
   await typing(1200);
-  addMsg('them',`Antes de nada, te enseño nuestra sala (es donde te atendería la Dra. Elvira):`);
+  addMsg('them',`Mientras te lo piensas, te enseño nuestra sala (es donde te atendería la doctora):`);
   await delay(700);
   addRaw(`<div class="media-card"><img src="./assets/sala-tratamiento.png" alt="Sala de tratamiento"><div class="cap">📸 Nuestra sala principal · luz natural y privacidad total</div><span class="msg-time" style="display:block;text-align:right;font-size:.62rem;color:rgba(255,255,255,.5);padding:0 .35rem .15rem">${nowTime()}</span></div>`);
   await delay(1100);
@@ -620,16 +620,16 @@ async function startChat(){
 
   // Adapt to objection
   const objMap={
-    'Que se note natural':'La preocupación de que se note artificial es la más habitual. La Dra. Elvira trabaja con técnica glow muy sutil, nadie nota qué te has hecho, solo te ven mejor. Te enseño antes/después reales en la cita 🤍',
-    'El precio':'El precio depende del plan. Lo que sí te puedo adelantar: tu cuponcito de 50€ se aplica automáticamente y la valoración es totalmente gratuita. Sin compromiso.',
-    'La recuperación':'En tu tratamiento la recuperación es mínima (0-24 h). La Dra. Elvira te explica todo en la valoración y te da pautas claras para que retomes tu día sin problemas.',
-    'Que dure el resultado':'Buena pregunta. La duración depende del tratamiento (entre 6 y 18 meses según el caso). Te lo explicamos a fondo en la valoración con la doctora.'
+    'Que se note natural':'Lo de que se note artificial es lo que más preguntan. La Dra. Elvira trabaja con técnica glow muy sutil, nadie nota qué te has hecho, solo te ven mejor. En la cita te enseño casos reales 🤍',
+    'El precio':'El precio depende del plan exacto. Lo que sí te adelanto: el cuponcito de 50€ se aplica automático y la valoración es gratis. Sin compromiso ninguno.',
+    'La recuperación':'En tu tratamiento la recuperación es mínima (0-24 h). La doctora te da pautas claras en la valoración para que retomes tu día sin problemas.',
+    'Que dure el resultado':'Buena. La duración depende del tratamiento (entre 6 y 18 meses según el caso). Te lo explico a fondo en la valoración con la doctora.'
   };
-  const obj=objMap[state.objecion]||'Te entiendo. Esa duda la tienen casi todas las pacientes la primera vez. En la valoración la Dra. Elvira te lo explica todo en detalle.';
+  const obj=objMap[state.objecion]||'Esa duda la tienen casi todas las pacientes la primera vez. En la valoración la doctora te lo deja todo claro.';
   addMsg('them',obj);
   await delay(1400);
   await typing(1100);
-  addMsg('them','Para que veas hueco real, te paso mi agenda 👇');
+  addMsg('them','¡Bien! Para que veas hueco real, te paso mi agenda 👇');
   await delay(700);
   addRaw(buildCalendar());
   wireCalendar();
