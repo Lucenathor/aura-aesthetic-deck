@@ -18,7 +18,7 @@ El lead transita por un máximo de **once estados** desde que ve el anuncio hast
 | 3 | **En el quiz** | Responder 5 preguntas | Landing AURA |
 | 4 | **Quiz completado** | Recibir resultado personalizado | Pantalla de resultado |
 | 5 | **En el chat IA** | Resolver objeciones y reservar | Chat web embebido |
-| 6 | **Reserva confirmada** | Pagar depósito y recibir confirmación | Stripe + email + SMS |
+| 6 | **Reserva confirmada** | Calendario reservado + confirmación | Email + SMS |
 | 7 | **Pre-cita (24 h y 2 h antes)** | Confirmar asistencia | SMS + voz IA |
 | 8 | **Día de la cita** | Presentarse | Recepción humana |
 | 9 | **Post-tratamiento (24 h)** | Aftercare + review | Email + WhatsApp template |
@@ -60,7 +60,7 @@ Al finalizar, el lead recibe una **pantalla de resultado personalizada** con su 
 
 El chat IA carga con el contexto completo del quiz inyectado en su prompt: nombre, tratamiento, plazo, objeción. La primera frase usa su nombre y reconoce su preocupación específica ("Marta, te entiendo, casi todas las pacientes nuevas dudan de quedar antinaturales"). Resuelve dudas en menos de 2 s por mensaje con el modelo más rápido disponible.
 
-Tras 2-3 intercambios, el chat **abre el calendario embebido** (Google Calendar / Cal.com) y propone tres huecos. El lead elige uno. El sistema valida con un **Stripe Checkout en línea** un depósito de 30-50 €, mostrado como "se descuenta del primer tratamiento". El lead paga con Apple Pay / Google Pay en un clic y recibe inmediatamente:
+Tras 2-3 intercambios, el chat **abre el calendario embebido** (Google Calendar / Cal.com) y propone tres huecos. El lead elige uno y queda reservado al instante. Sin depósito. El lead recibe inmediatamente:
 
 - **Email** de confirmación con el .ics adjunto, foto de la doctora y dirección con Google Maps.
 - **SMS** breve con la fecha y el botón "añadir a calendario".
@@ -165,8 +165,8 @@ El sistema lo detecta cuando la recepción humana lo marca en la agenda como "no
 1. **+30 min · WhatsApp template "utility"** (no marketing) preguntando si ha tenido un imprevisto y ofreciendo reprogramar en el próximo hueco disponible.
 2. **+2 h · Voz IA breve** con tono empático ("a veces pasa, vamos a buscarte otra hora").
 3. **+24 h · Email** con tres huecos sugeridos para los próximos siete días.
-4. Si reprograma, **se exige depósito mayor** (de 30 € a 50 €) y se marca el contacto como "no-show 1".
-5. Si tiene **dos no-shows acumulados**, el sistema bloquea futuras reservas sin depósito completo y el equipo humano interviene.
+4. Si reprograma, se marca el contacto como "no-show 1" en la ficha del CRM para que el equipo presencial lo tenga visible la próxima vez.
+5. Si acumula **dos no-shows**, el sistema sugiere al equipo humano llamarle personalmente antes de la siguiente reserva para confirmar interés real.
 6. Si tras 14 días no reprograma, entra en la cadencia de reactivación estacional.
 
 > **Indicador de éxito**: 40 % de no-shows se reprograman y acuden en los siguientes 14 días.
@@ -194,7 +194,7 @@ El sistema lo detecta cuando la recepción humana lo marca en la agenda como "no
 | Landing | Click → Quiz start | > 65 % |
 | Quiz | Quiz start → Quiz complete | > 55 % |
 | Chat IA | Quiz complete → Reserva | > 45 % |
-| Reserva | Reserva → Depósito pagado | > 90 % |
+| Reserva | Reserva → Confirmación SMS abierta | > 90 % |
 | Pre-cita | Reserva → Show rate | > 91 % |
 | Cita | Show → Tratamiento contratado | > 60 % |
 | Post-tratamiento | Tratamiento → Reseña 5★ | > 35 % |
@@ -211,7 +211,6 @@ El sistema lo detecta cuando la recepción humana lo marca en la agenda como "no
 | Abandona el quiz antes de la pregunta 2 | Retargeting Meta | — | — |
 | Abandona el chat IA | SMS link mágico | Email transcripción | Voz IA 24 h |
 | Termina chat sin reservar | SMS caso real | Email VSL objeción | Voz IA día 3 |
-| Reserva pero no paga depósito | WhatsApp template utility | Email recordatorio | SMS hora límite |
 | No se presenta a la cita | WhatsApp template utility | Voz IA empática | Email reprogramación |
 | Post-tratamiento | Email aftercare | WhatsApp template check-in | Google Review request |
 | Reactivación 90 d | Email estacional | SMS oferta | WhatsApp (solo con opt-in) |
