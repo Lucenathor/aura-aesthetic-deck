@@ -449,7 +449,7 @@ const SL=(V)=>([
   {dark:true,build:()=>`
     <div class="hero-bg"></div>
     <div class="container" style="position:relative;z-index:2;text-align:center;padding:2rem 0">
-      <span class="pill r"><span class="dot"></span> Pitch deck animado · v7</span>
+      <span class="pill r"><span class="dot"></span> Pitch deck animado · v8</span>
       <h1 class="r" style="margin-top:1rem">${V.h1}</h1>
       <p class="r muted" style="margin-top:.9rem;font-size:1rem;max-width:520px;margin-left:auto;margin-right:auto">${V.sub}</p>
       <div class="r" style="margin-top:1.6rem;display:flex;flex-direction:column;align-items:center;gap:.7rem">
@@ -583,6 +583,45 @@ const SL=(V)=>([
         <div class="item"><span class="num">🇪🇸</span><div><strong>ClinicGrowth (Madrid)</strong><p>Setup + 3 meses + ad spend 900-2000€/mes. <em>Servicio, no SaaS. Cap humano de clínicas.</em></p></div></div>
       </div>
       <p class="r muted" style="margin-top:1rem;font-size:.78rem">El hueco: <strong>nadie ofrece SaaS escalable con quiz + chat IA + calendario + recordatorios voz + banco de anuncios + webinars diarios</strong>, todo en un solo producto, replicable a 6 verticales. Ahí entra AURA.</p>
+    </div>`},
+
+  // 4d2 MAPA DE ESTADOS DEL LEAD
+  {dark:true,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Mapa de estados del lead</span>
+      <h2 class="r" style="margin-top:.7rem">11 estados. 5 puntos de fuga. <em>0 leads perdidos</em>.</h2>
+      <p class="r muted" style="margin-top:.4rem;font-size:.88rem">Cada estado tiene su flow, su KPI y su disparador de recuperación. Documentado entero en el Playbook.</p>
+      <div class="gold-line r"></div>
+      <div class="funnel r" style="margin-top:1rem">
+        <div class="fstep"><div class="fnum">0</div><div><strong>Impresión del anuncio</strong><p>Meta Ads. CTR &gt;1,5% · CPM &lt;12€.</p></div></div>
+        <div class="fstep"><div class="fnum">1</div><div><strong>Clic → Landing</strong><p>Landing &lt;1,2s en Android. Click → Quiz start &gt;65%.</p></div></div>
+        <div class="fstep"><div class="fnum">2</div><div><strong>Quiz cualificador 5 preguntas</strong><p>Móvil en pregunta 2. Quiz complete &gt;55%.</p></div></div>
+        <div class="fstep"><div class="fnum">3</div><div><strong>Pantalla de resultado</strong><p>Recomendación IA personalizada + casos before/after.</p></div></div>
+        <div class="fstep"><div class="fnum">4</div><div><strong>Chat IA con contexto</strong><p>Conoce su nombre, plazo y objeción. Reserva en &lt;5 min.</p></div></div>
+        <div class="fstep"><div class="fnum">5</div><div><strong>Calendario + depósito Stripe</strong><p>Apple Pay 1 clic. 30-50€ descontable. &gt;90% pagan.</p></div></div>
+        <div class="fstep"><div class="fnum">6</div><div><strong>Pre-cita 24h + 4h + 1h</strong><p>Voz IA + SMS + WhatsApp utility. No-show de 22% a &lt;9%.</p></div></div>
+        <div class="fstep"><div class="fnum">7</div><div><strong>Día de la cita</strong><p>Recepción humana con ficha cualificada. Cierre &gt;60%.</p></div></div>
+        <div class="fstep"><div class="fnum">8</div><div><strong>Aftercare 24h</strong><p>Email + WhatsApp template + NPS.</p></div></div>
+        <div class="fstep"><div class="fnum">9</div><div><strong>Reseña 72h</strong><p>FTC compliant. NPS≥9 → Google. ≤6 → gerente.</p></div></div>
+        <div class="fstep"><div class="fnum">10</div><div><strong>Membership / reactivación</strong><p>14d upsell. 90d nurture estacional.</p></div></div>
+      </div>
+    </div>`},
+
+  // 4d3 LOS 5 PUNTOS DE FUGA
+  {dark:false,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> 5 puntos de fuga · 5 protocolos de rescate</span>
+      <h2 class="r" style="margin-top:.7rem">Cada lugar donde un lead se va, una <em>red de seguridad</em>.</h2>
+      <div class="gold-line r"></div>
+      <div class="row r" style="margin-top:1rem">
+        <div class="feat"><div class="ic">A</div><strong>Abandona el anuncio</strong><p>Retargeting Meta con hook distinto durante 14 d. Si sigue sin clic, sale para no quemar audiencia.</p></div>
+        <div class="feat"><div class="ic">B</div><strong>Abandona el quiz a mitad</strong><p>Tras pregunta 2 ya tenemos móvil. SMS link mágico +1 min, email +30 min, voz IA +24 h. Vuelve a la pregunta exacta donde se fue. Recovery &gt;35%.</p></div>
+        <div class="feat"><div class="ic">C</div><strong>Abandona el chat IA</strong><p>4 disparadores: inactividad 90 s, pérdida de foco, exit-intent, mensaje sin respuesta. Cross-device memory. Recovery 30-40%.</p></div>
+        <div class="feat"><div class="ic">D</div><strong>Termina chat pero no agenda</strong><p>Objeción detectada por IA. VSL personalizado por objeción (precio/miedo/plazo). 18-25% reservan en 21 d.</p></div>
+        <div class="feat"><div class="ic">E</div><strong>Reserva pero no se presenta</strong><p>WhatsApp utility +30 min, voz IA empatíca +2 h, email reprogramación +24 h. 2 no-shows = depósito ampliado. 40% reprograman.</p></div>
+        <div class="feat"><div class="ic">✓</div><strong>Trazabilidad cross-canal</strong><p>Thread único con token persistente. Equipo humano ve TODO en un timeline. STOP en un canal = STOP en todos.</p></div>
+      </div>
+      <p class="r muted" style="margin-top:1rem;font-size:.78rem">Detalle completo + flow + KPIs + reglas anti-baneo en el Playbook: <a href="./PLAYBOOK.md" target="_blank" style="color:var(--berry2);text-decoration:underline">aura-aesthetic-deck/PLAYBOOK.md</a></p>
     </div>`},
 
   // 4e CADENCIA INFALIBLE DE FOLLOW-UP
