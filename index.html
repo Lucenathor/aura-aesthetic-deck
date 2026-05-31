@@ -449,7 +449,7 @@ const SL=(V)=>([
   {dark:true,build:()=>`
     <div class="hero-bg"></div>
     <div class="container" style="position:relative;z-index:2;text-align:center;padding:2rem 0">
-      <span class="pill r"><span class="dot"></span> Pitch deck animado · v5</span>
+      <span class="pill r"><span class="dot"></span> Pitch deck animado · v6</span>
       <h1 class="r" style="margin-top:1rem">${V.h1}</h1>
       <p class="r muted" style="margin-top:.9rem;font-size:1rem;max-width:520px;margin-left:auto;margin-right:auto">${V.sub}</p>
       <div class="r" style="margin-top:1.6rem;display:flex;flex-direction:column;align-items:center;gap:.7rem">
@@ -517,6 +517,20 @@ const SL=(V)=>([
       <p class="r muted" style="margin-top:.7rem;font-size:.72rem;text-align:center">Fuentes: Interact Quiz Report 2026 (40,1% vs 6,6%) · Dashform 2026 · Adfirm Meta Lead Gen 2026.</p>
     </div>`},
 
+  // 4a ANUNCIOS REALES QUE ESTÁN CORRIENDO
+  {dark:true,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Anuncios reales que están corriendo</span>
+      <h2 class="r" style="margin-top:.7rem">Lo que el sector lanza <em>hoy</em> en Meta.</h2>
+      <p class="r muted" style="margin-top:.4rem;font-size:.88rem">Sacados de Meta Ad Library, BrandMov, Evolut Agency y We Run Ads. Patrón claro: hook íntimo + objeto del deseo + CTA suave.</p>
+      <div class="r" style="margin-top:.9rem;display:grid;gap:.7rem;grid-template-columns:1fr">
+        <div class="metaad"><div class="head-ad"><div class="ad-av"></div><div><strong>Winter Garden Aesthetics</strong><small>Patrocinado · Florida · Hydrafacial</small></div></div><div class="ad-img" data-text='"The results are in!" — Best Hydrating Facial 2026'></div><div class="cta-ad"><div><strong>Reserva</strong><small>HydroGlow Facial · oferta de lanzamiento</small></div><div class="cta-btn">Más información</div></div></div>
+        <div class="metaad"><div class="head-ad"><div class="ad-av"></div><div><strong>Glow Aesthetics London</strong><small>Patrocinado · Reels · Lip Filler</small></div></div><div class="ad-img" data-text="I didn't expect this to work…"></div><div class="cta-ad"><div><strong>UGC reveal</strong><small>Cliente real · 36s sin cortes</small></div><div class="cta-btn">Reserva valoración</div></div></div>
+        <div class="metaad"><div class="head-ad"><div class="ad-av"></div><div><strong>Symmetry Aesthetics</strong><small>Patrocinado · Gift Card 100€</small></div></div><div class="ad-img" data-text='Tu mejor versión empieza con 100€ de regalo'></div><div class="cta-ad"><div><strong>Lead magnet</strong><small>100€ en tu primer tratamiento</small></div><div class="cta-btn">Quiero el cheque</div></div></div>
+      </div>
+      <p class="r muted" style="margin-top:.9rem;font-size:.72rem">Patrón: hooks UGC en primera persona + premio tangible + texto que evita afirmaciones médicas. Sin antes/después split-screen (Meta lo veta). Fuentes: Meta Ad Library, BrandMov 2026 (9 hooks dominantes), Evolut 500 top beauty ads, DigitalMedSpa 2026.</p>
+    </div>`},
+
   // 4b POR QUÉ EL QUIZ BATE AL INSTANT FORM
   {dark:false,build:()=>`
     <div class="container">
@@ -532,6 +546,43 @@ const SL=(V)=>([
         <div class="feat"><div class="ic">⚙</div><strong>tu dato, no Meta</strong><p>El quiz vive en tu dominio, en tu CRM, con tu pixel + CAPI server-side. Si Meta sube precios o cierra tu cuenta, conservas todo.</p></div>
       </div>
       <p class="r muted" style="margin-top:1rem;font-size:.78rem">El Instant Form gana solo si el equipo de ventas absorbe leads pobres y los limpia por teléfono. En estética no aplica: la doctora cobra por consulta, no quiere atender 30 curiosos para sacar 3 clientes. AURA monta el embudo correcto.</p>
+    </div>`},
+
+  // 4c CHAT IA POST-QUIZ: PROS Y CONTRAS
+  {dark:false,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Chat IA justo después del quiz</span>
+      <h2 class="r" style="margin-top:.7rem">No es magia. Tiene <em>pros y contras</em> reales.</h2>
+      <div class="gold-line r"></div>
+      <div class="row r" style="margin-top:1rem">
+        <div class="feat"><div class="ic">+</div><strong>Speed-to-lead &lt;30 s</strong><p>Hyperleap data: el chat responde 4× más rápido que humano. Llegas al hot lead antes que tu competencia.</p></div>
+        <div class="feat"><div class="ic">+</div><strong>Educa sobre tratamientos</strong><p>Explica Botox vs filler, tiempos, dudas comunes. El lead llega a la consulta ya pre-vendido.</p></div>
+        <div class="feat"><div class="ic">+</div><strong>Reserva con calendario embebido</strong><p>Calendly / Cal.com en el propio chat. Sin teléfonos, sin ida y vuelta.</p></div>
+        <div class="feat"><div class="ic">+</div><strong>Captura datos extra</strong><p>Alergias, presupuesto, plazo. El equipo presencial llega cualificado y eficiente.</p></div>
+        <div class="feat"><div class="ic">−</div><strong>Riesgo médico-legal</strong><p>NUNCA debe dar consejo médico ni claims FDA/FTC. Mitigación: prompt con guardrails + handoff humano.</p></div>
+        <div class="feat"><div class="ic">−</div><strong>Robotiza la marca premium</strong><p>Si suena frío, mata el ticket alto. Mitigación: voz humana del negocio + audio del dueño al inicio.</p></div>
+        <div class="feat"><div class="ic">−</div><strong>HIPAA / GDPR</strong><p>Datos sensibles en el chat. Mitigación: cifrado at-rest, no entrenar con datos del paciente, auditoría.</p></div>
+        <div class="feat"><div class="ic">−</div><strong>Lead nocturno reserva, no aparece</strong><p>Workee 2026: 40% reservas son fuera de horario, pero sube no-show. Mitigación: depósito 30-50€ + recordatorio voz IA 24h.</p></div>
+      </div>
+      <p class="r muted" style="margin-top:1rem;font-size:.78rem">Conclusión: el chat IA post-quiz funciona <strong>si</strong> tiene guardrails médicos, tono humano, calendario nativo, depósito y handoff a humano cuando toca. AURA lo trae configurado.</p>
+    </div>`},
+
+  // 4d QUIÉN LO ESTÁ HACIENDO YA EN EL MUNDO
+  {dark:true,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Quién lo está haciendo ya</span>
+      <h2 class="r" style="margin-top:.7rem">El embudo Quiz → Chat IA → Cita <em>ya existe</em>. Pero parcial.</h2>
+      <p class="r muted" style="margin-top:.4rem;font-size:.88rem">Nadie lo entrega completo y modular para 1.000 clínicas. AURA es el primer SaaS que lo empaqueta así.</p>
+      <div class="list r" style="margin-top:1rem">
+        <div class="item"><span class="num">🇬🇧</span><div><strong>Hyperleap (UK + US)</strong><p>Chat IA en Instagram DM y web para medspas. Reserva en Cal.com. <em>Falta el embudo Meta Ads completo y el quiz cualificador previo.</em></p></div></div>
+        <div class="item"><span class="num">🇺🇸</span><div><strong>PxlPeak (US)</strong><p>Agentes IA + voz + 45 herramientas para medspas. Done-For-You por agencia. <em>No es SaaS escalable, es servicio.</em></p></div></div>
+        <div class="item"><span class="num">🇺🇸</span><div><strong>Workee (US)</strong><p>AI booking + reminders + outreach para medspas y salones. <em>Falta el quiz pre-cualificador y el embudo Meta Ads.</em></p></div></div>
+        <div class="item"><span class="num">🇬🇧</span><div><strong>ClinicGrower (UK)</strong><p>Agencia con embudo y quiz para clínicas estéticas. <em>Es servicio, no producto. No incluye chat IA ni recordatorios voz.</em></p></div></div>
+        <div class="item"><span class="num">🇪🇸</span><div><strong>Glow Marketing (Sevilla)</strong><p>Máx 30 clínicas/mes. Done-For-You con quiz y CRM. 7× ROI 90d. <em>Tope de capacidad humana. No escala.</em></p></div></div>
+        <div class="item"><span class="num">🇺🇸</span><div><strong>Holly Nimblr (US)</strong><p>Voz IA para dental con garantía 600% ROI. <em>Solo voz, no embudo completo.</em></p></div></div>
+        <div class="item"><span class="num">🇪🇸</span><div><strong>ClinicGrowth (Madrid)</strong><p>Setup + 3 meses + ad spend 900-2000€/mes. <em>Servicio, no SaaS. Cap humano de clínicas.</em></p></div></div>
+      </div>
+      <p class="r muted" style="margin-top:1rem;font-size:.78rem">El hueco: <strong>nadie ofrece SaaS escalable con quiz + chat IA + calendario + recordatorios voz + banco de anuncios + webinars diarios</strong>, todo en un solo producto, replicable a 6 verticales. Ahí entra AURA.</p>
     </div>`},
 
   // 5 CHAT IA QUE RESERVA LA CITA
