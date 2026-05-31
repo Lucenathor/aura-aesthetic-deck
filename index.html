@@ -117,6 +117,10 @@ body.dark-bar .progress span.active{background:var(--rose)}
 .typing i:nth-child(2){animation-delay:.18s}.typing i:nth-child(3){animation-delay:.36s}
 @keyframes tDot{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
 
+/* QUIZ OPTIONS */
+.metaform .opt{display:block;padding:.5rem .65rem;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(212,165,116,.2);color:#f5ecdc;font-size:.78rem;transition:background .25s,border-color .25s,transform .15s var(--ease)}
+.metaform .opt.sel{background:linear-gradient(135deg,rgba(212,165,116,.35),rgba(94,26,42,.35));border-color:var(--rose);color:#fff;transform:translateX(2px)}
+
 /* META INSTANT FORM */
 .metaform{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid rgba(212,165,116,.2);border-radius:14px;padding:.75rem .8rem;font-size:.78rem;color:#f5ecdc}
 .metaform .meta-head{display:flex;align-items:center;gap:.4rem;margin-bottom:.5rem;padding-bottom:.4rem;border-bottom:1px solid rgba(212,165,116,.15)}
@@ -286,11 +290,11 @@ const VERT={
       {who:"ai",t:"Te entiendo, son dos tratamientos muy elegidos. Te paso la agenda para que reserves tu valoración 1:1 con la Dra. Elvira."}
     ],
     funnel:[
-      ["Meta Ads · Leads + Instant Form","Anuncio UGC del banco mensual + oferta 'valoración gratis + 50€'. 30 % presupuesto a frío, 70 % a retargeting."],
-      ["Lead capturado en 5 segundos","Nombre + teléfono pre-rellenados por Meta. Pixel + Conversion API server-side. Lead entra en el CRM."],
-      ["Chat IA en <5 min","Resuelve dudas y abre el calendario embebido. El lead reserva sin hablar con nadie."],
-      ["Recordatorios IA","SMS al instante + voz IA 24h antes + voz IA 2h antes. No-show baja del 22% a <9%."],
-      ["Cita + venta humana en clínica","Tu equipo cierra la venta en consulta. Post-visita: review request + membership upsell."]
+      ["Meta Ads · objetivo Leads externos","Anuncio UGC del banco mensual + oferta. 70% retargeting, 30% prospecting. Pixel + Conversion API server-side."],
+      ["Landing premium + Quiz de 5 preguntas","NO Instant Form. La clínica capta lead 3-5× más cualificado con quiz interactivo. Coste por cita reservada hasta 60% más bajo."],
+      ["Chat IA que reserva la cita en <5 min","Toma el control con el contexto del quiz, resuelve objeciones y abre calendario embebido. El lead reserva sin hablar con nadie."],
+      ["Recordatorios IA SOLO para confirmar","SMS al instante + voz IA 24h antes + voz IA 2h antes. No-show baja del 22% a <9%. La IA NO vende."],
+      ["Cita + venta humana en clínica","Tu equipo cierra en consulta. Post-visita: review request + membership upsell."]
     ],
     market:[["27€-55€","CPL Meta Ads estética inyectables"],["3-5×","leads contactados &lt;5 min convierten"],["40-60%","menos no-show con recordatorios voz IA"]],
     pricing:{a:"4.000 €",b:"+ 497 €/mes desde el mes 4"},
@@ -314,10 +318,10 @@ const VERT={
       {who:"ai",t:"Tenemos planes desde 89€/mes. ¿Te abro el calendario para una valoración 3D gratis?"}
     ],
     funnel:[
-      ["Meta Ads · Leads + Instant Form","UGC paciente real + oferta 'estudio 3D gratis'. Hyper-local con Pin Drop."],
-      ["Lead en 5 segundos","Pre-relleno + CAPI server-side."],
-      ["Chat IA en <5 min","Resuelve dudas, abre calendario, reserva valoración 3D."],
-      ["Recordatorios IA","SMS + voz IA 24h y 2h antes. No-show dental baja del 30% a 6%."],
+      ["Meta Ads · Leads externos","UGC paciente real + oferta 'estudio 3D gratis'. Hyper-local con Pin Drop."],
+      ["Landing + Quiz de 5 preguntas","NO Instant Form. Cualifica antes: motivo, plazo, presupuesto, miedo. ×3 conversión a cita."],
+      ["Chat IA reserva cita en <5 min","Con contexto del quiz, resuelve dudas y reserva valoración 3D."],
+      ["Recordatorios IA confirmación","SMS + voz IA 24h y 2h antes. No-show dental baja del 30% a 6%."],
       ["Cita + venta humana","Higienista cierra plan + financiación."]
     ],
     market:[["18-42€","CPL Meta Ads tratamientos dentales"],["600%","ROI Holly Nimblr en dental"],["30-39%","no-show medio antes de IA"]],
@@ -342,10 +346,10 @@ const VERT={
       {who:"ai",t:"Es nuestra especialidad. ¿Le agendo la primera consulta de pago con el socio?"}
     ],
     funnel:[
-      ["Meta Ads · Leads + Instant Form","Anuncio educativo + filtro: tipo de caso · presupuesto · urgencia."],
-      ["Lead en 5 segundos","Pre-relleno + CAPI."],
-      ["Chat IA en <5 min","Reserva consulta de pago. Filtra time-wasters."],
-      ["Recordatorios IA","SMS + voz IA 24h y 2h antes."],
+      ["Meta Ads · Leads externos","Anuncio educativo + retargeting orgánico."],
+      ["Landing + Quiz cualificador","Tipo de caso · plazo · expectativa · presupuesto · urgencia. Filtra time-wasters antes de la consulta."],
+      ["Chat IA reserva consulta de pago","El socio solo ve casos cualificados."],
+      ["Recordatorios IA confirmación","SMS + voz IA 24h y 2h antes."],
       ["Consulta + propuesta","El socio cierra."]
     ],
     market:[["35-120€","CPL Meta Ads servicios legales"],["3-12 m","decision window cliente premium"],["180k€","gasto medio marketing legal/año"]],
@@ -370,10 +374,10 @@ const VERT={
       {who:"ai",t:"Empezamos con clase prueba gratis. ¿Te reservo martes a las 18:30?"}
     ],
     funnel:[
-      ["Meta Ads · Leads + Instant Form","Anuncio UGC cliente real + oferta clase prueba."],
-      ["Lead en 5 segundos","Pre-relleno + CAPI."],
-      ["Chat IA en <5 min","Recomienda plan + reserva clase prueba."],
-      ["Recordatorios IA","SMS + voz IA 24h y 2h antes. No-show de 25% a 8%."],
+      ["Meta Ads · Leads externos","Anuncio UGC cliente real + oferta clase prueba."],
+      ["Landing + Quiz de transformación","Objetivo · plazo · experiencia · hábitos · presupuesto. Pre-cualifica."],
+      ["Chat IA reserva clase prueba","Recomienda plan personalizado y abre calendario."],
+      ["Recordatorios IA confirmación","SMS + voz IA 24h y 2h antes. No-show de 25% a 8%."],
       ["Clase + venta del plan","Coach cierra el pack."]
     ],
     market:[["8-25€","CPL Meta Ads fitness"],["18%","cancelan en mes 1"],["29%","new clients rebooks"]],
@@ -398,10 +402,10 @@ const VERT={
       {who:"ai",t:"En tu zona 6.000-7.200€/m². ¿Te abro el calendario para tasación gratis?"}
     ],
     funnel:[
-      ["Meta Ads · Leads + Instant Form","'¿Cuánto vale tu casa?' + estimación rápida."],
-      ["Lead en 5 segundos","Pre-relleno + CAPI."],
-      ["Chat IA en <5 min","Da estimación y reserva tasación."],
-      ["Recordatorios IA","SMS + voz IA 24h y 2h antes."],
+      ["Meta Ads · Leads externos","'¿Cuánto vale tu casa?' como hook."],
+      ["Landing + Quiz tasación rápida","Tipo · m² · zona · plazo · motivo. Estimación IA personalizada."],
+      ["Chat IA reserva tasación","Explica el rango y abre calendario."],
+      ["Recordatorios IA confirmación","SMS + voz IA 24h y 2h antes."],
       ["Visita + exclusiva","Agente cierra."]
     ],
     market:[["45-95€","CPL Meta Ads captación propietarios"],["3-9 m","funnel del comprador"],["$15-50k","comisión venta media"]],
@@ -426,10 +430,10 @@ const VERT={
       {who:"ai",t:"Sí, 8 pasos a 89€. ¿Te reservo mesa para 2 a las 21h?"}
     ],
     funnel:[
-      ["Meta Ads · Leads + Instant Form","UGC del plato slow-motion + oferta degustación."],
-      ["Lead en 5 segundos","Pre-relleno + CAPI."],
-      ["Chat IA en <5 min","Recomienda mesa, alergias, maridaje, reserva."],
-      ["Recordatorios IA","SMS + voz IA 24h y 2h antes."],
+      ["Meta Ads · Leads externos","UGC del plato slow-motion + oferta degustación."],
+      ["Landing + Quiz experiencia","Ocasión · personas · alergias · presupuesto · fecha."],
+      ["Chat IA reserva mesa","Recomienda mesa, maridaje y abre calendario."],
+      ["Recordatorios IA confirmación","SMS + voz IA 24h y 2h antes."],
       ["Mesa + experiencia","Equipo de sala cierra."]
     ],
     market:[["3-12€","CPL Meta Ads restauración"],["15-25%","cancelaciones tardías"],["80-150€","ticket menú degustación"]],
@@ -445,7 +449,7 @@ const SL=(V)=>([
   {dark:true,build:()=>`
     <div class="hero-bg"></div>
     <div class="container" style="position:relative;z-index:2;text-align:center;padding:2rem 0">
-      <span class="pill r"><span class="dot"></span> Pitch deck animado · v4</span>
+      <span class="pill r"><span class="dot"></span> Pitch deck animado · v5</span>
       <h1 class="r" style="margin-top:1rem">${V.h1}</h1>
       <p class="r muted" style="margin-top:.9rem;font-size:1rem;max-width:520px;margin-left:auto;margin-right:auto">${V.sub}</p>
       <div class="r" style="margin-top:1.6rem;display:flex;flex-direction:column;align-items:center;gap:.7rem">
@@ -486,27 +490,48 @@ const SL=(V)=>([
       </div>
     </div>`},
 
-  // 4 INSTANT FORM ANIMADO
+  // 4 LANDING + QUIZ CUALIFICADOR (en lugar del Instant Form)
   {dark:true,build:()=>`
     <div class="container">
-      <span class="pill r"><span class="dot"></span> Paso 2 · Meta Instant Form</span>
-      <h2 class="r" style="margin-top:.7rem">Lead en <em>5 segundos</em>, sin landing.</h2>
-      <p class="r muted" style="margin-top:.4rem;font-size:.88rem">Objetivo Leads + Instant Form: hasta 50% más conversión que landing externa. Sin esperar carga. Pre-rellenado por Meta.</p>
+      <span class="pill r"><span class="dot"></span> Paso 2 · Landing + Quiz cualificador</span>
+      <h2 class="r" style="margin-top:.7rem">La clave: <em>quiz interactivo</em>, no Instant Form.</h2>
+      <p class="r muted" style="margin-top:.4rem;font-size:.88rem">El quiz convierte al 30-40% (vs 2-3% de un formulario estático) y los leads que llegan a la clínica son 3-5× más cualificados.</p>
       <div class="r" style="margin-top:1rem;display:flex;justify-content:center">
         <div class="phone">
           <div class="notch"></div>
           <div class="screen">
-            <div class="header"><span class="av"></span><span>${V.business}<small>Formulario · ${V.offerName}</small></span></div>
+            <div class="header"><span class="av"></span><span>${V.business}<small>Quiz · paso <i id="qstep">1</i> de 5</small></span></div>
             <div class="metaform">
-              <div class="meta-head"><div class="meta-logo">M</div><span>Reserva tu plaza</span></div>
-              <div class="field"><label>Nombre</label><div class="input"><span id="if_name"></span><span class="typed">|</span></div></div>
-              <div class="field"><label>Teléfono</label><div class="input"><span id="if_phone"></span></div></div>
-              <div class="field"><label>¿Qué tratamiento te interesa?</label><div class="input"><span id="if_tt"></span></div></div>
-              <div class="btn-submit">Enviar</div>
+              <div class="meta-head"><div class="meta-logo" style="background:linear-gradient(135deg,#D4A574,#8B2A3F)">Q</div><span id="qTitle">¿Qué te llevaría a dar el paso?</span></div>
+              <div id="qOptions" style="display:flex;flex-direction:column;gap:5px">
+                <span class="opt">Quiero sentirme mejor conmigo</span>
+                <span class="opt">Tengo un evento próximo</span>
+                <span class="opt">Aún me estoy informando</span>
+                <span class="opt">Llevo años pensándolo</span>
+              </div>
+              <div class="field" style="margin-top:.6rem"><label>Progreso</label><div style="height:4px;border-radius:2px;background:rgba(212,165,116,.18);overflow:hidden"><div id="qBar" style="height:100%;width:20%;background:linear-gradient(90deg,#D4A574,#8B2A3F);transition:width .5s var(--ease)"></div></div></div>
             </div>
           </div>
         </div>
       </div>
+      <p class="r muted" style="margin-top:.7rem;font-size:.72rem;text-align:center">Fuentes: Interact Quiz Report 2026 (40,1% vs 6,6%) · Dashform 2026 · Adfirm Meta Lead Gen 2026.</p>
+    </div>`},
+
+  // 4b POR QUÉ EL QUIZ BATE AL INSTANT FORM
+  {dark:false,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Por qué bate al Instant Form</span>
+      <h2 class="r" style="margin-top:.7rem">CPL más caro al inicio. <em>Cost-per-booked</em> más barato al final.</h2>
+      <div class="gold-line r"></div>
+      <div class="row r" style="margin-top:1rem">
+        <div class="feat"><div class="ic">×3-5</div><strong>cualificación del lead</strong><p>El quiz obliga a leer, pensar y elegir. La fricción ES la cualificación. Instant Form pre-rellena y atrae curiosos.</p></div>
+        <div class="feat"><div class="ic">40,1%</div><strong>conversión media del quiz</strong><p>Interact 2026: quizzes convierten al 40,1% vs 6,6% landings estáticas. Y 10× una contact form.</p></div>
+        <div class="feat"><div class="ic">-60%</div><strong>cost-per-booked</strong><p>El show-rate y el cierre en consulta suben. Show × close × LTV gana sobre CPL en estética.</p></div>
+        <div class="feat"><div class="ic">★</div><strong>efecto wow</strong><p>El lead vive una experiencia personalizada con su recomendación, no un formulario gris de Meta.</p></div>
+        <div class="feat"><div class="ic">📊</div><strong>data rica</strong><p>Recoges preferencias, plazo, presupuesto y objeción. La IA llega al chat con contexto que el Instant Form no da.</p></div>
+        <div class="feat"><div class="ic">⚙</div><strong>tu dato, no Meta</strong><p>El quiz vive en tu dominio, en tu CRM, con tu pixel + CAPI server-side. Si Meta sube precios o cierra tu cuenta, conservas todo.</p></div>
+      </div>
+      <p class="r muted" style="margin-top:1rem;font-size:.78rem">El Instant Form gana solo si el equipo de ventas absorbe leads pobres y los limpia por teléfono. En estética no aplica: la doctora cobra por consulta, no quiere atender 30 curiosos para sacar 3 clientes. AURA monta el embudo correcto.</p>
     </div>`},
 
   // 5 CHAT IA QUE RESERVA LA CITA
@@ -727,7 +752,7 @@ function go(n){
 
 function animateContent(idx,slide){
   if(slide.querySelector('#adbank'))playAdBank(slide);
-  if(slide.querySelector('.metaform'))playInstantForm(slide);
+  if(slide.querySelector('#qOptions'))playQuizMulti(slide);
   if(slide.querySelector('#chatBox'))playChat(slide);
   if(slide.querySelector('#viewerCount'))playViewers(slide);
   if(slide.querySelector('#leadList'))playDash(slide);
@@ -743,17 +768,37 @@ function playAdBank(slide){
   });
 }
 
-/* ANIM: INSTANT FORM */
-function playInstantForm(slide){
-  const name=slide.querySelector('#if_name');
-  const phone=slide.querySelector('#if_phone');
-  const tt=slide.querySelector('#if_tt');
-  const caret=slide.querySelector('.typed');
-  if(!name)return;
-  const type=(el,str,done)=>{let k=0;const tick=()=>{el.textContent=str.slice(0,k);k++;if(k<=str.length)timers.push(setTimeout(tick,55));else if(done)timers.push(setTimeout(done,400))};tick();};
-  type(name,V.leadName,()=>type(phone,'+34 612 045 219',()=>type(tt,V.business.includes('Cl')||V.business.includes('Lum')||V.business.includes('Mediterr')?'Información':'Información',()=>{
-    if(caret)caret.style.display='none';
-  })));
+/* ANIM: QUIZ MULTI-STEP */
+function playQuizMulti(slide){
+  const bar=slide.querySelector('#qBar');
+  const step=slide.querySelector('#qstep');
+  const title=slide.querySelector('#qTitle');
+  const optsBox=slide.querySelector('#qOptions');
+  if(!bar||!optsBox)return;
+  const questions=[
+    {q:'¿Qué te llevaría a dar el paso?',o:['Sentirme mejor conmigo','Tengo un evento próximo','Aún me informo','Llevo años pensándolo']},
+    {q:'¿Qué tratamiento te interesa más?',o:['Labios glow','Rinomodelación','HIFU lifting','Otro']},
+    {q:'¿En qué plazo lo harías?',o:['Esta semana','Este mes','En 2-3 meses','No tengo prisa']},
+    {q:'¿Has hecho algún tratamiento antes?',o:['Nunca','Una vez','Varias veces','Paciente habitual']},
+    {q:'¿Cuál es tu mayor preocupación?',o:['Naturalidad','Precio','Recuperación','Resultados']}
+  ];
+  let s=0;
+  const renderOptions=(arr)=>{optsBox.innerHTML=arr.map(o=>`<span class="opt">${o}</span>`).join('');};
+  const cycle=()=>{
+    const Q=questions[s];
+    title.textContent=Q.q;
+    renderOptions(Q.o);
+    const opts=[...optsBox.querySelectorAll('.opt')];
+    bar.style.width=((s+1)*20)+'%';
+    if(step)step.textContent=s+1;
+    timers.push(setTimeout(()=>{
+      const target=opts[Math.floor(Math.random()*opts.length)];
+      if(target)target.classList.add('sel');
+    },650));
+    s=(s+1)%questions.length;
+    timers.push(setTimeout(cycle,2400));
+  };
+  cycle();
 }
 
 /* ANIM: CHAT + CALENDAR */
