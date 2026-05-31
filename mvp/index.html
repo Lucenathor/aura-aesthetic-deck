@@ -574,21 +574,21 @@ function confirmAppointment(day,time){
   const cal=chatBody.querySelector('.cal-card');
   if(cal)cal.style.opacity='.5';
 
-  addMsg('me',`Sí, me viene bien el ${day} a las ${time}`);
+  addMsg('me',`vale ${day.toLowerCase()} a las ${time} me viene`);
   setTimeout(async()=>{
     await typing(800);
     addRaw(`<div class="confirm-card">
       <div class="ic">✓</div>
-      <h4>Cita confirmada</h4>
-      <p>${state.name||'Marta'}, la Dra. Elvira te espera. Tu valoración es gratis y dura 30 minutos.</p>
-      <div class="when">📍 ${day} · ${time} · Clínica Elvira (Velázquez 84, Madrid)</div>
+      <h4>cita confirmada</h4>
+      <p>${(state.name||'Marta').toLowerCase()}, te espera la doctora. valoración gratis, 30 min.</p>
+      <div class="when">${day} · ${time} · velázquez 84, madrid</div>
       <span class="msg-time" style="display:block;text-align:right;font-size:.62rem;color:rgba(255,255,255,.5);margin-top:6px">${nowTime()}</span>
     </div>`);
     await delay(600);
-    addMsg('them','Te acabo de mandar la confirmación por SMS con la ruta y un enlace para guardarlo en tu calendario 💌');
+    addMsg('them','te mando ahora un sms con la ruta y el ics');
     await delay(900);
-    addMsg('them','Te recordaré la noche de antes y unas horas antes. Si necesitas reagendar, escríbeme cuando quieras.');
-    setSuggested(['Perfecto, gracias','¿Llevo algo en especial?','Me ha encantado la atención']);
+    addMsg('them','te aviso la noche de antes y unas horas antes, si necesitas mover algo me escribes');
+    setSuggested(['vale gracias','llevo algo?','genial']);
     onlineStatus.textContent='en línea';
   },400);
 }
@@ -600,40 +600,41 @@ async function startChat(){
 
   await delay(500);
   await typing(1100);
-  addMsg('them',`¡Hola ${state.name||'Marta'}! Soy Adrián, asesor de Clínica Elvira ✨`);
+  addMsg('them',`hola ${(state.name||'Marta').toLowerCase()}, soy adrián de elvira`);
   await delay(900);
   await typing(1200);
-  addMsg('them','He visto que has terminado el cuestionario. Te dejo un audio rápido para presentarme, ¿vale?');
+  addMsg('them','acabo de ver q has terminado el formulario');
   await delay(900);
+  addMsg('them','te mando un audio rápido');
+  await delay(700);
   addRaw(buildAudioMsg(44));
   await delay(400);
-  // Auto-play attempt
   playWelcomeAudio();
   await delay(45000);
 
   await typing(1200);
-  addMsg('them',`Mientras te lo piensas, te enseño nuestra sala (es donde te atendería la doctora):`);
+  addMsg('them','te enseño la sala mientras lo escuchas');
   await delay(700);
-  addRaw(`<div class="media-card"><img src="./assets/sala-tratamiento.png" alt="Sala de tratamiento"><div class="cap">📸 Nuestra sala principal · luz natural y privacidad total</div><span class="msg-time" style="display:block;text-align:right;font-size:.62rem;color:rgba(255,255,255,.5);padding:0 .35rem .15rem">${nowTime()}</span></div>`);
+  addRaw(`<div class="media-card"><img src="./assets/sala-tratamiento.png" alt="Sala de tratamiento"><div class="cap">aquí es donde te atenderíamos</div><span class="msg-time" style="display:block;text-align:right;font-size:.62rem;color:rgba(255,255,255,.5);padding:0 .35rem .15rem">${nowTime()}</span></div>`);
   await delay(1100);
   await typing(1100);
 
   // Adapt to objection
   const objMap={
-    'Que se note natural':'Lo de que se note artificial es lo que más preguntan. La Dra. Elvira trabaja con técnica glow muy sutil, nadie nota qué te has hecho, solo te ven mejor. En la cita te enseño casos reales 🤍',
-    'El precio':'El precio depende del plan exacto. Lo que sí te adelanto: el cuponcito de 50€ se aplica automático y la valoración es gratis. Sin compromiso ninguno.',
-    'La recuperación':'En tu tratamiento la recuperación es mínima (0-24 h). La doctora te da pautas claras en la valoración para que retomes tu día sin problemas.',
-    'Que dure el resultado':'Buena. La duración depende del tratamiento (entre 6 y 18 meses según el caso). Te lo explico a fondo en la valoración con la doctora.'
+    'Que se note natural':'sobre lo natural, la doctora trabaja muy sutil, nadie nota nada raro, solo se ve a la persona mejor',
+    'El precio':'sobre el precio depende del plan, pero el cupon de 50 va aplicado y la valoración es gratis, sin compromiso',
+    'La recuperación':'la recuperación en tu caso son 0-24h, la doctora te explica todo en la valoración',
+    'Que dure el resultado':'normalmente entre 6 y 18 meses según el caso, en la valoración te concreta'
   };
-  const obj=objMap[state.objecion]||'Esa duda la tienen casi todas las pacientes la primera vez. En la valoración la doctora te lo deja todo claro.';
+  const obj=objMap[state.objecion]||'lo que comentas es muy normal, casi todas vienen con esa duda';
   addMsg('them',obj);
   await delay(1400);
   await typing(1100);
-  addMsg('them','¡Bien! Para que veas hueco real, te paso mi agenda 👇');
+  addMsg('them','te paso huecos a ver cuál te encaja');
   await delay(700);
   addRaw(buildCalendar());
   wireCalendar();
-  setSuggested(['Tengo otra duda antes','¿Cuánto cuesta exactamente?','Prefiero por la tarde']);
+  setSuggested(['otra duda','y cuánto cuesta','mejor tarde']);
   onlineStatus.textContent='en línea';
 }
 
@@ -661,25 +662,27 @@ async function respondAI(userText){
   let reply='';
   let suggs=[];
   if(t.includes('precio')||t.includes('cuesta')||t.includes('cuánto')||t.includes('cuanto')){
-    reply='El presupuesto exacto te lo damos en la valoración tras ver tu caso. Ahora bien, el ticket medio de tu tratamiento ronda 380-650€ y con tu cupón de 50€ ya descuentas. ¿Te abro hueco para verlo en directo con la doctora?';
-    suggs=['Sí, ábreme hueco','Prefiero saber más','Es mucho para mí'];
+    reply='el precio exacto te lo concreta la doctora en la valoración, pero el ticket suele ir entre 380-650 y el cupon de 50 ya va aplicado';
+    suggs=['vale ábreme hueco','y a plazos?','luego te digo'];
   } else if(t.includes('tarde')||t.includes('mañana')||t.includes('por la')||t.includes('horario')){
-    reply='Claro, tengo huecos esta semana por la tarde de 17:00 a 20:00 y los sábados por la mañana. ¿Cuándo te encaja mejor?';
-    suggs=['Jueves tarde','Sábado mañana','Cualquier día'];
+    reply='por la tarde tengo huecos esta semana de 17 a 20, y sábado por la mañana, qué te encaja mejor?';
+    suggs=['jueves tarde','sábado','cualquiera'];
   } else if(t.includes('duda')||t.includes('antes')||t.includes('preguntar')){
-    reply='Dime, ¿qué te ronda? Soy todo oídos.';
-  } else if(t.includes('mucho')||t.includes('caro')||t.includes('no puedo')){
-    reply='Entiendo. Por eso lo bonito es que la valoración no cuesta y te llevas tu cupón aplicado. Vienes, te informas y decides con calma. Sin presión.';
-    suggs=['Vale, lo veo','Necesito pensarlo','¿Hay pagos a plazos?'];
-  } else if(t.includes('hueco')||t.includes('sí')||t.includes('si,')||t.includes('cita')||t.includes('reservar')){
-    reply='Genial. Aquí tienes mi agenda 👇';
+    reply='dime, qué te ronda';
+  } else if(t.includes('mucho')||t.includes('caro')||t.includes('no puedo')||t.includes('plazo')){
+    reply='te entiendo, la valoración no cuesta nada y se puede hacer en plazos según el caso, vienes, te informas y decides con calma';
+    suggs=['vale lo veo','necesito pensarlo','y financiación?'];
+  } else if(t.includes('hueco')||t.includes('sí')||t.includes('si,')||t.includes('cita')||t.includes('reservar')||t.includes('fecha')){
+    reply='va, te paso huecos';
     setTimeout(()=>{addRaw(buildCalendar());wireCalendar();},500);
-    suggs=['Tengo otra duda antes','Mejor por la tarde'];
+    suggs=['otra duda','mejor tarde'];
   } else if(t.includes('gracias')||t.includes('encantado')||t.includes('encantada')){
-    reply='Gracias a ti 🤍 Te esperamos en Clínica Elvira. Si necesitas algo, sigo por aquí.';
+    reply='a ti, si te surge cualquier cosa me escribes y listo';
+  } else if(t.includes('hola')){
+    reply='hola, te respondo enseguida';
   } else {
-    reply='Te entiendo. La doctora te lo aterrizará todo en la valoración con casos reales y una explicación honesta. ¿Te abro hueco?';
-    suggs=['Sí, ábreme hueco','Tengo otra duda','Prefiero pensarlo'];
+    reply='la doctora te lo aterriza todo en la valoración con casos reales, te abro hueco?';
+    suggs=['vale','tengo otra duda','luego te digo'];
   }
   addMsg('them',reply);
   state.history.push({role:'assistant',content:reply});
