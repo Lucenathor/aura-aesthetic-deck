@@ -2,978 +2,803 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>AURA · El sistema operativo de la clínica del 2026</title>
-<meta name="description" content="Pitch deck premium animado del SaaS AURA: stack de IA + embudo + voz IA entrante y saliente. Lo que ya factura en estética + el efecto wow exclusivo. Replicable a dental, abogados, fitness, inmobiliaria y restauración." />
+<meta name="description" content="Pitch deck animado: cómo funciona el SaaS AURA. Stack IA + embudo + voz IA. Replicable a estética, dental, abogados, fitness, inmobiliaria y restauración." />
+<meta name="theme-color" content="#0e0408" />
 <meta property="og:title" content="AURA · El sistema operativo de la clínica del 2026" />
-<meta property="og:description" content="El SaaS que combina lo que ya factura en estética con el stack de IA que genera efecto wow. Modular y replicable por verticales." />
-<meta property="og:image" content="https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/01-hero-aesthetic-RAsnn3ywK94Q5aZYu3dqom.webp" />
+<meta property="og:description" content="Cómo funciona, animado paso a paso." />
+<meta property="og:type" content="website" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" as="style">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
 <style>
 :root{
-  /* Default theme: estética */
-  --bg:#FBF7F2; --ink:#1a0b10; --berry:#5e1a2a; --berry-2:#8B2A3F;
-  --rose:#D4A574; --gold:#caa05a; --cream:#f5ecdc; --muted:#7a5d63;
-  --line:rgba(94,26,42,.18); --accent-soft:rgba(212,165,116,.18);
+  --bg:#FBF7F2;--ink:#1a0b10;--berry:#5e1a2a;--berry2:#8B2A3F;
+  --rose:#D4A574;--gold:#caa05a;--cream:#f5ecdc;--muted:#7a5d63;
+  --line:rgba(94,26,42,.15);--accent:rgba(212,165,116,.18);
+  --ease:cubic-bezier(.23,1,.32,1);
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bot:env(safe-area-inset-bottom,0px);
 }
-*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
-html,body{height:100%;background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;overflow:hidden}
-h1,h2,h3,h4,.serif{font-family:'Cormorant Garamond',serif;letter-spacing:-.012em;font-weight:500}
-h1{font-size:clamp(2.6rem,6.6vw,6.8rem);line-height:1.02}
-h2{font-size:clamp(2rem,4.6vw,4.4rem);line-height:1.04}
-h3{font-size:clamp(1.4rem,2.4vw,2.1rem);line-height:1.15}
-em{font-style:italic;color:var(--berry-2)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;min-height:100%;min-height:100dvh;overflow-x:hidden}
+body{overscroll-behavior:none}
+h1,h2,h3,h4,.serif{font-family:'Cormorant Garamond',Georgia,serif;letter-spacing:-.012em;font-weight:600;line-height:1.06}
+h1{font-size:clamp(2.1rem,8vw,5.6rem)}
+h2{font-size:clamp(1.7rem,6vw,3.6rem)}
+h3{font-size:clamp(1.2rem,4vw,1.8rem)}
+em{font-style:italic;color:var(--berry2)}
 .muted{color:var(--muted)}
-.gold{color:var(--gold)}
-button{font-family:inherit;border:0;cursor:pointer;color:inherit;background:transparent}
+button{font:inherit;border:0;cursor:pointer;color:inherit;background:transparent}
 
-/* ===== DECK ===== */
-#deck{position:relative;width:100vw;height:100vh;overflow:hidden;perspective:1600px}
-.slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:5vh 6vw;opacity:0;visibility:hidden;transform:translate3d(0,0,0);transition:visibility 0s linear .8s}
-.slide.active{opacity:1;visibility:visible;transition:visibility 0s}
-.container{max-width:1280px;width:100%;margin:0 auto;position:relative;z-index:3}
-
-/* ===== Background image layer ===== */
-.bg-layer{position:absolute;inset:-4%;background-size:cover;background-position:center;will-change:transform,filter;filter:brightness(.9)}
-.bg-layer::after{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(251,247,242,.15) 0%,rgba(251,247,242,.85) 100%)}
-.slide.dark .bg-layer{filter:brightness(.55)}
-.slide.dark .bg-layer::after{background:linear-gradient(135deg,rgba(15,5,9,.05) 0%,rgba(15,5,9,.7) 100%)}
-
-/* ===== Particles canvas ===== */
-#fx{position:fixed;inset:0;pointer-events:none;z-index:1;mix-blend-mode:soft-light;opacity:.85}
-
-/* ===== Grain overlay ===== */
-.grain{position:fixed;inset:0;pointer-events:none;z-index:60;opacity:.07;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");mix-blend-mode:overlay}
-
-/* ===== UI ===== */
-.pill{display:inline-flex;align-items:center;gap:.5rem;padding:.42rem .9rem;border-radius:999px;background:var(--accent-soft);color:var(--berry-2);font-size:.7rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
-.pill .dot{width:6px;height:6px;background:var(--rose);border-radius:50%;box-shadow:0 0 0 4px rgba(212,165,116,.25)}
-.gold-line{height:1px;width:80px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:1.4rem 0}
-.kicker{font:700 .68rem 'Inter';letter-spacing:.22em;text-transform:uppercase;color:var(--gold)}
-.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 1.2rem;border-radius:999px;background:rgba(255,255,255,.6);backdrop-filter:blur(14px);border:1px solid var(--line);color:var(--ink);font:600 .82rem 'Inter';transition:transform .2s var(--ease,cubic-bezier(.23,1,.32,1)),background .2s,box-shadow .2s}
-.btn:hover{background:#fff;transform:translateY(-1px)}
-.btn:active{transform:scale(.97)}
-.btn.dark{background:rgba(15,5,9,.6);color:var(--cream);border-color:rgba(212,165,116,.25)}
-.btn.dark:hover{background:rgba(15,5,9,.8)}
-
-/* ===== Top bar ===== */
-.topbar{position:fixed;top:18px;left:20px;right:20px;display:flex;align-items:center;justify-content:space-between;z-index:50}
-.brand{display:flex;align-items:center;gap:.6rem;font-family:'Cormorant Garamond';font-size:1.3rem;color:var(--ink);letter-spacing:.05em;background:rgba(255,255,255,.5);backdrop-filter:blur(14px);padding:.4rem .9rem;border-radius:999px;border:1px solid var(--line)}
-.brand .logo{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,var(--gold) 60%,var(--berry) 110%);box-shadow:0 0 18px rgba(212,165,116,.6)}
-.vert-switch{display:flex;gap:.3rem;background:rgba(255,255,255,.5);backdrop-filter:blur(14px);padding:.3rem;border-radius:999px;border:1px solid var(--line);overflow-x:auto;max-width:60vw;scrollbar-width:none}
-.vert-switch::-webkit-scrollbar{display:none}
-.vert-switch button{padding:.42rem .8rem;border-radius:999px;font:600 .72rem 'Inter';color:var(--muted);transition:color .2s,background .2s;white-space:nowrap}
-.vert-switch button.on{background:var(--berry-2);color:#fff;box-shadow:0 8px 20px -10px var(--berry-2)}
-.vert-switch button:hover:not(.on){color:var(--ink)}
-.toolbar{display:flex;gap:.4rem;align-items:center}
-
-/* ===== Bottom controls ===== */
-.controls{position:fixed;left:0;right:0;bottom:22px;display:flex;justify-content:center;gap:14px;z-index:50}
-.progress{display:flex;align-items:center;gap:6px;padding:.55rem .9rem;background:rgba(255,255,255,.6);backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:999px}
-.progress span{width:8px;height:8px;border-radius:50%;background:rgba(94,26,42,.18);transition:transform .25s,background .25s}
-.progress span.active{background:var(--berry-2);transform:scale(1.5)}
-.dark-controls .btn{background:rgba(15,5,9,.55);color:var(--cream);border-color:rgba(212,165,116,.3)}
-.dark-controls .progress{background:rgba(15,5,9,.55);border-color:rgba(212,165,116,.3)}
-.dark-controls .progress span{background:rgba(245,236,220,.25)}
-.dark-controls .progress span.active{background:var(--rose)}
-
-/* Dark slide colors */
-.slide.dark{color:var(--cream)}
-.slide.dark .pill{background:rgba(212,165,116,.22);color:#fff;border:1px solid rgba(255,255,255,.12)}
+/* DECK */
+#deck{position:fixed;inset:0;overflow:hidden}
+.slide{position:absolute;inset:0;padding:calc(var(--safe-top) + 64px) 22px calc(var(--safe-bot) + 92px);overflow-y:auto;-webkit-overflow-scrolling:touch;opacity:0;visibility:hidden;transform:translate3d(20px,0,0);transition:transform .55s var(--ease),opacity .45s var(--ease),visibility 0s .55s}
+.slide.active{opacity:1;visibility:visible;transform:none;transition:transform .55s var(--ease),opacity .45s var(--ease),visibility 0s}
+.slide.exit-left{transform:translate3d(-20px,0,0);opacity:0}
+.slide.dark{color:var(--cream);background:linear-gradient(160deg,#0e0408 0%,#27101b 60%,#3a141d 100%)}
 .slide.dark .muted{color:#c9b8b3}
 .slide.dark h1,.slide.dark h2,.slide.dark h3{color:#fff}
 .slide.dark em{color:var(--rose)}
+.container{max-width:920px;margin:0 auto}
 
-/* ===== Cards / blocks ===== */
-.feat{position:relative;background:rgba(255,255,255,.65);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:18px;padding:1.4rem 1.5rem;overflow:hidden;transition:transform .3s var(--ease),box-shadow .3s}
-.feat::before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(212,165,116,.12),transparent 40%);pointer-events:none}
-.feat:hover{transform:translateY(-5px);box-shadow:0 22px 50px -25px rgba(94,26,42,.4)}
-.feat .ic{width:38px;height:38px;border-radius:11px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;color:var(--berry-2);font-weight:700;margin-bottom:.7rem;font-family:'Cormorant Garamond';font-size:1.1rem}
-.slide.dark .feat{background:rgba(255,255,255,.04);border-color:rgba(212,165,116,.22);color:var(--cream)}
+/* TOP BAR */
+.topbar{position:fixed;top:0;left:0;right:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:calc(var(--safe-top) + 10px) 14px 10px;background:linear-gradient(180deg,rgba(251,247,242,.85),rgba(251,247,242,0));backdrop-filter:blur(10px);transition:background .3s}
+body.dark-bar .topbar{background:linear-gradient(180deg,rgba(14,4,8,.7),rgba(14,4,8,0))}
+.brand{display:flex;align-items:center;gap:.5rem;font-family:'Cormorant Garamond';font-size:1.1rem;letter-spacing:.06em;color:var(--ink);background:rgba(255,255,255,.55);backdrop-filter:blur(10px);padding:.32rem .7rem;border-radius:999px;border:1px solid var(--line)}
+body.dark-bar .brand{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(212,165,116,.25)}
+.brand .logo{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,var(--gold) 60%,var(--berry) 110%);box-shadow:0 0 12px rgba(212,165,116,.5)}
+.vsw{display:flex;gap:.25rem;background:rgba(255,255,255,.55);backdrop-filter:blur(10px);padding:.2rem;border-radius:999px;border:1px solid var(--line);overflow-x:auto;scrollbar-width:none;max-width:64vw}
+body.dark-bar .vsw{background:rgba(255,255,255,.08);border-color:rgba(212,165,116,.25)}
+.vsw::-webkit-scrollbar{display:none}
+.vsw button{padding:.36rem .7rem;border-radius:999px;font-size:.72rem;font-weight:600;color:var(--muted);white-space:nowrap;flex:none}
+.vsw button.on{background:var(--berry2);color:#fff}
+body.dark-bar .vsw button{color:#c9b8b3}
+body.dark-bar .vsw button.on{background:var(--rose);color:#1a0b10}
+
+/* BOTTOM CONTROLS */
+.ctrls{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;align-items:center;justify-content:center;gap:.5rem;padding:10px 12px calc(var(--safe-bot) + 12px);background:linear-gradient(0deg,rgba(251,247,242,.92),rgba(251,247,242,0))}
+body.dark-bar .ctrls{background:linear-gradient(0deg,rgba(14,4,8,.85),rgba(14,4,8,0))}
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem .9rem;border-radius:999px;background:rgba(255,255,255,.7);backdrop-filter:blur(10px);border:1px solid var(--line);font-size:.78rem;font-weight:600;color:var(--ink);transition:transform .15s var(--ease),background .2s}
+.btn:active{transform:scale(.96)}
+body.dark-bar .btn{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(212,165,116,.25)}
+.progress{display:flex;align-items:center;gap:6px;padding:.45rem .7rem;background:rgba(255,255,255,.7);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:999px}
+body.dark-bar .progress{background:rgba(255,255,255,.08);border-color:rgba(212,165,116,.25)}
+.progress span{width:6px;height:6px;border-radius:50%;background:rgba(94,26,42,.18);transition:transform .25s,background .25s}
+.progress span.active{background:var(--berry2);transform:scale(1.5)}
+body.dark-bar .progress span{background:rgba(245,236,220,.25)}
+body.dark-bar .progress span.active{background:var(--rose)}
+
+/* COMMON BLOCKS */
+.pill{display:inline-flex;align-items:center;gap:.4rem;padding:.36rem .8rem;border-radius:999px;background:var(--accent);color:var(--berry2);font-size:.66rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+.slide.dark .pill{background:rgba(212,165,116,.22);color:#fff;border:1px solid rgba(255,255,255,.12)}
+.pill .dot{width:6px;height:6px;background:var(--rose);border-radius:50%;box-shadow:0 0 0 4px rgba(212,165,116,.25);animation:pulse 2.4s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 8px rgba(212,165,116,.05)}}
+.gold-line{height:1px;width:64px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:1.1rem 0}
+.kicker{font-size:.65rem;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);font-weight:700}
+
+.feat{position:relative;background:rgba(255,255,255,.7);border:1px solid var(--line);border-radius:16px;padding:1rem 1.1rem;transition:transform .3s var(--ease),box-shadow .3s}
+.feat .ic{width:34px;height:34px;border-radius:10px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:var(--berry2);font-weight:700;margin-bottom:.55rem;font-family:'Cormorant Garamond';font-size:.95rem}
+.feat strong{font-family:'Cormorant Garamond';font-size:1.02rem;font-weight:600;display:block}
+.feat p{font-size:.85rem;line-height:1.45;color:var(--muted);margin-top:.3rem}
+.slide.dark .feat{background:rgba(255,255,255,.05);border-color:rgba(212,165,116,.22);color:var(--cream)}
 .slide.dark .feat .ic{background:rgba(212,165,116,.2);color:var(--rose)}
+.slide.dark .feat p{color:#c9b8b3}
 
-.row{display:flex;gap:1rem;flex-wrap:wrap}
-.row > *{flex:1;min-width:230px}
-.grid{display:grid;gap:2.6rem}
-.grid-2{grid-template-columns:1.05fr .95fr;align-items:center}
-@media(max-width:900px){.grid-2{grid-template-columns:1fr}}
+.row{display:grid;gap:.7rem}
+@media(min-width:640px){.row{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:980px){.row{grid-template-columns:repeat(3,1fr)}}
 
-.image-card{border-radius:24px;overflow:hidden;box-shadow:0 30px 80px -30px rgba(94,26,42,.55),0 0 0 1px rgba(94,26,42,.06);will-change:transform}
-.image-card img{display:block;width:100%;height:100%;object-fit:cover}
+.list{display:grid;gap:.55rem}
+.list .item{display:flex;gap:.85rem;align-items:flex-start;padding:.85rem;border-radius:14px;background:rgba(255,255,255,.55);border:1px solid var(--line)}
+.slide.dark .list .item{background:rgba(255,255,255,.04);border-color:rgba(212,165,116,.18);color:var(--cream)}
+.list .num{font-family:'Cormorant Garamond';font-size:1.2rem;color:var(--gold);min-width:24px;line-height:1.4}
+.list strong{font-family:'Cormorant Garamond';font-size:1rem;font-weight:600;display:block}
+.list p{font-size:.83rem;color:var(--muted);line-height:1.45;margin-top:.15rem}
+.slide.dark .list p{color:#c9b8b3}
 
-/* Stat */
-.stat{font-family:'Cormorant Garamond';font-size:clamp(2.4rem,4vw,3.8rem);color:var(--berry-2);line-height:1}
-.slide.dark .stat{color:var(--rose)}
-.stat-label{font-size:.74rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+/* HERO */
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 30% 0%,#3a141d,transparent 60%),radial-gradient(ellipse at 80% 100%,#5e1a2a,transparent 55%),#0e0408;overflow:hidden}
+.hero-bg::before,.hero-bg::after{content:"";position:absolute;border-radius:50%;filter:blur(60px);opacity:.5;animation:float 14s ease-in-out infinite}
+.hero-bg::before{width:60vw;height:60vw;background:radial-gradient(circle,#D4A574,transparent 65%);top:-20%;left:-20%}
+.hero-bg::after{width:70vw;height:70vw;background:radial-gradient(circle,#8B2A3F,transparent 65%);bottom:-30%;right:-25%;animation-delay:-7s}
+@keyframes float{50%{transform:translate(20px,-30px) scale(1.05)}}
 
-/* Comparison list */
-.list{display:grid;gap:.8rem}
-.list .row-line{display:flex;align-items:center;gap:1rem;padding:.85rem 1rem;border-radius:14px;background:rgba(255,255,255,.5);border:1px solid var(--line);transition:transform .25s var(--ease)}
-.list .row-line .num{font-family:'Cormorant Garamond';color:var(--gold);font-size:1.3rem;width:28px;flex:none}
-.list .row-line:hover{transform:translateX(4px)}
-.slide.dark .list .row-line{background:rgba(255,255,255,.04);border-color:rgba(212,165,116,.18);color:var(--cream)}
+.gold-orb{position:absolute;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,var(--gold) 50%,var(--berry) 90%);box-shadow:0 0 60px 10px rgba(212,165,116,.5);top:50%;left:50%;transform:translate(-50%,-50%);animation:orbBreath 4s ease-in-out infinite}
+@keyframes orbBreath{50%{transform:translate(-50%,-50%) scale(1.06);box-shadow:0 0 80px 16px rgba(212,165,116,.65)}}
 
-/* Funnel */
-.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:.9rem;align-items:stretch}
-.step{position:relative;padding:1.1rem 1rem 1.3rem;border-radius:16px;background:rgba(255,255,255,.7);border:1px solid var(--line);text-align:center;backdrop-filter:blur(6px)}
-.step .num{font-family:'Cormorant Garamond';font-size:2.3rem;color:var(--gold);line-height:1}
-.step h4{font-family:'Cormorant Garamond';font-size:1.1rem;margin:.15rem 0 .35rem;font-weight:600}
-.step p{font-size:.78rem;color:var(--muted);line-height:1.45}
-.step::after{content:"";position:absolute;right:-9px;top:50%;width:18px;height:1px;background:var(--gold);opacity:.55;transform-origin:left}
-.step:last-child::after{display:none}
-@media(max-width:900px){.steps{grid-template-columns:1fr}.step::after{display:none}}
+/* TYPING / CHAT */
+.phone{position:relative;margin:0 auto;width:min(280px,80vw);aspect-ratio:9/19.5;background:linear-gradient(180deg,#0e0408 0%,#1a0b10 100%);border-radius:36px;border:8px solid #1a0b10;box-shadow:0 25px 60px -25px rgba(0,0,0,.7),0 0 0 1px rgba(212,165,116,.25);overflow:hidden;color:#fff}
+.phone .notch{position:absolute;top:6px;left:50%;transform:translateX(-50%);width:90px;height:18px;background:#000;border-radius:14px;z-index:5}
+.phone .screen{position:absolute;inset:0;padding:34px 14px 14px;display:flex;flex-direction:column;gap:8px;font-size:.78rem}
+.phone .header{display:flex;align-items:center;gap:.4rem;font-family:'Cormorant Garamond';font-size:.85rem;color:#fff;background:rgba(255,255,255,.06);border:1px solid rgba(212,165,116,.25);padding:.35rem .55rem;border-radius:12px}
+.phone .header .av{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle,#fff,var(--gold));box-shadow:0 0 10px rgba(212,165,116,.6)}
+.phone .header span small{display:block;font-size:.55rem;color:#c9b8b3;letter-spacing:.1em;text-transform:uppercase;font-family:'Inter';margin-top:1px}
 
-/* Agents grid */
-.agents{display:grid;grid-template-columns:repeat(3,1fr);gap:.9rem}
-@media(max-width:1000px){.agents{grid-template-columns:1fr 1fr}}
-@media(max-width:700px){.agents{grid-template-columns:1fr}}
-.agent{padding:1.1rem 1.15rem;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(212,165,116,.22);font-size:.9rem;line-height:1.45;color:var(--cream);transition:transform .25s var(--ease),background .25s}
-.agent:hover{transform:translateY(-3px);background:rgba(255,255,255,.09)}
-.agent strong{font-family:'Cormorant Garamond';font-size:1.05rem;color:var(--rose);font-weight:600;display:block;margin-bottom:.2rem}
-.agent .who{font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:600;display:block;margin-bottom:.45rem}
+.bubble{max-width:85%;padding:.5rem .7rem;border-radius:14px;font-size:.78rem;line-height:1.35;animation:bIn .35s var(--ease) both}
+@keyframes bIn{from{opacity:0;transform:translateY(6px)}}
+.bubble.ai{background:rgba(255,255,255,.08);border:1px solid rgba(212,165,116,.2);color:#f5ecdc;align-self:flex-start;border-bottom-left-radius:6px}
+.bubble.me{background:linear-gradient(135deg,#8B2A3F,#5e1a2a);align-self:flex-end;color:#fff;border-bottom-right-radius:6px}
+.typing{display:inline-flex;gap:3px;padding:.45rem .6rem;background:rgba(255,255,255,.08);border:1px solid rgba(212,165,116,.2);border-radius:14px;border-bottom-left-radius:6px;align-self:flex-start}
+.typing i{width:5px;height:5px;border-radius:50%;background:#f5ecdc;animation:tDot 1s infinite}
+.typing i:nth-child(2){animation-delay:.18s}
+.typing i:nth-child(3){animation-delay:.36s}
+@keyframes tDot{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
 
-/* Offer table */
-.offer-table{width:100%;border-collapse:collapse;font-size:.95rem}
+/* QUIZ */
+.quiz{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid rgba(212,165,116,.2);border-radius:14px;padding:.7rem .8rem;font-size:.78rem;color:#f5ecdc}
+.quiz .q-title{font-family:'Cormorant Garamond';font-size:.95rem;color:#fff;margin-bottom:.5rem}
+.quiz .opt{display:block;padding:.42rem .6rem;margin-bottom:5px;border-radius:10px;background:rgba(255,255,255,.06);border:1px solid rgba(212,165,116,.18);transition:background .25s,border-color .25s,transform .15s var(--ease)}
+.quiz .opt.sel{background:linear-gradient(135deg,rgba(212,165,116,.3),rgba(94,26,42,.3));border-color:var(--rose);color:#fff}
+.quiz .progress-bar{height:3px;border-radius:2px;background:rgba(212,165,116,.15);margin-top:.55rem;overflow:hidden}
+.quiz .progress-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--rose));width:0%;transition:width .55s var(--ease)}
+
+/* CALL */
+.call{display:flex;flex-direction:column;align-items:center;gap:.7rem;padding:.8rem;background:rgba(255,255,255,.04);border:1px solid rgba(212,165,116,.2);border-radius:14px}
+.call .label{font-family:'Cormorant Garamond';font-size:.95rem;color:#fff;text-align:center}
+.call .label small{display:block;font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--rose);font-family:'Inter';margin-top:2px}
+.ring{position:relative;width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#D4A574,#8B2A3F);display:grid;place-items:center;color:#fff;font-size:1.4rem;box-shadow:0 0 0 0 rgba(212,165,116,.5);animation:ringPulse 1.4s ease-out infinite}
+@keyframes ringPulse{0%{box-shadow:0 0 0 0 rgba(212,165,116,.55)}100%{box-shadow:0 0 0 22px rgba(212,165,116,0)}}
+.bars{display:flex;gap:3px;align-items:flex-end;height:18px}
+.bars i{width:3px;background:var(--rose);border-radius:2px;animation:bar 1s ease-in-out infinite}
+.bars i:nth-child(1){animation-delay:0s}.bars i:nth-child(2){animation-delay:.1s}.bars i:nth-child(3){animation-delay:.2s}.bars i:nth-child(4){animation-delay:.3s}.bars i:nth-child(5){animation-delay:.4s}
+@keyframes bar{0%,100%{height:4px}50%{height:18px}}
+
+/* DASHBOARD MOCK */
+.dash{border-radius:16px;overflow:hidden;background:#fff;border:1px solid var(--line);box-shadow:0 25px 60px -25px rgba(94,26,42,.4)}
+.dash .head{background:#1a0b10;color:#fff;padding:.7rem .9rem;display:flex;align-items:center;gap:.55rem;font-family:'Cormorant Garamond';font-size:.95rem}
+.dash .head .av{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle,#fff,var(--gold))}
+.dash .body{padding:.7rem .8rem .9rem;display:grid;gap:.55rem}
+.dash .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;margin-bottom:.4rem}
+.dash .stat{background:rgba(212,165,116,.1);border:1px solid var(--line);border-radius:10px;padding:.45rem .55rem;text-align:center}
+.dash .stat b{display:block;font-family:'Cormorant Garamond';font-size:1.4rem;color:var(--berry2);line-height:1}
+.dash .stat span{font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.dash .lead{display:flex;align-items:center;gap:.55rem;padding:.5rem .55rem;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:.78rem;animation:rowIn .55s var(--ease) both}
+@keyframes rowIn{from{opacity:0;transform:translateY(8px)}}
+.dash .lead .pic{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#D4A574,#8B2A3F);flex:none}
+.dash .lead .who{flex:1;font-weight:600;color:var(--ink);font-family:'Cormorant Garamond';font-size:.95rem}
+.dash .lead .who small{display:block;font-family:'Inter';font-weight:400;font-size:.65rem;color:var(--muted);margin-top:1px}
+.dash .lead .tag{font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;padding:.18rem .42rem;border-radius:6px}
+.dash .lead .tag.hot{background:rgba(139,42,63,.15);color:var(--berry2)}
+.dash .lead .tag.warm{background:rgba(212,165,116,.25);color:#7a5d63}
+
+/* AGENTS NETWORK */
+.network{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:.55rem}
+.node{padding:.65rem .7rem;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(212,165,116,.2);font-size:.72rem;color:#f5ecdc;line-height:1.35;text-align:left;animation:nodeIn .5s var(--ease) both}
+.node b{display:block;font-family:'Cormorant Garamond';font-size:.85rem;color:#fff;font-weight:600;margin-bottom:2px}
+.node small{display:block;font-size:.55rem;letter-spacing:.16em;text-transform:uppercase;color:var(--rose);font-weight:700;margin-bottom:5px}
+@keyframes nodeIn{from{opacity:0;transform:translateY(6px) scale(.96)}}
+@media(max-width:520px){.network{grid-template-columns:repeat(2,1fr)}.node small{font-size:.5rem}}
+
+/* FUNNEL STEPS */
+.funnel{display:grid;gap:.55rem}
+.funnel .fstep{display:grid;grid-template-columns:32px 1fr;gap:.7rem;align-items:flex-start;padding:.65rem .8rem;border-radius:12px;background:rgba(255,255,255,.55);border:1px solid var(--line);position:relative}
+.slide.dark .funnel .fstep{background:rgba(255,255,255,.04);border-color:rgba(212,165,116,.18)}
+.funnel .fstep:not(:last-child)::after{content:"";position:absolute;left:25px;top:100%;width:1px;height:.55rem;background:linear-gradient(180deg,var(--gold),transparent)}
+.funnel .fnum{width:32px;height:32px;border-radius:50%;background:rgba(212,165,116,.18);display:grid;place-items:center;font-family:'Cormorant Garamond';color:var(--gold);font-size:1.1rem;font-weight:600}
+.funnel strong{font-family:'Cormorant Garamond';font-size:1rem;font-weight:600;display:block}
+.funnel p{font-size:.82rem;color:var(--muted);line-height:1.4;margin-top:.1rem}
+.slide.dark .funnel p{color:#c9b8b3}
+
+/* OFFER */
+.offer-table{width:100%;border-collapse:collapse;font-size:.85rem}
 .offer-table tr{border-bottom:1px dashed rgba(245,236,220,.18)}
-.offer-table td{padding:.7rem .3rem}
-.offer-table td:last-child{text-align:right;font-family:'Cormorant Garamond';color:var(--rose);font-size:1.05rem}
-.offer-table tr.total td{border-top:1px solid var(--rose);border-bottom:none;font-weight:700;font-size:1.05rem;padding-top:1rem}
-.offer-table tr.total td:last-child{font-size:1.5rem;color:var(--gold)}
-.price-box{padding:1.6rem 1.8rem;border-radius:18px;background:linear-gradient(135deg,#1a0b10,#3a141d);color:#f5ecdc;text-align:center;margin-top:1.2rem;border:1px solid rgba(212,165,116,.3);box-shadow:0 30px 60px -25px rgba(0,0,0,.6)}
-.price-box .big{font-family:'Cormorant Garamond';font-size:3.2rem;color:var(--rose);line-height:1}
+.offer-table td{padding:.55rem .25rem;color:#f5ecdc}
+.offer-table td:last-child{text-align:right;font-family:'Cormorant Garamond';color:var(--rose);font-size:1rem}
+.offer-table tr.total td{border-top:1px solid var(--rose);border-bottom:none;font-weight:700;padding-top:.85rem;color:#fff}
+.offer-table tr.total td:last-child{font-size:1.4rem;color:var(--gold)}
 
-/* Verticals showcase */
-.verticals-list{display:grid;grid-template-columns:repeat(3,1fr);gap:.9rem}
-@media(max-width:900px){.verticals-list{grid-template-columns:1fr}}
-.v-card{padding:1.2rem 1.3rem;border-radius:16px;background:rgba(255,255,255,.55);border:1px solid var(--line);transition:all .3s var(--ease);cursor:pointer}
-.v-card:hover{transform:translateY(-4px);box-shadow:0 20px 40px -25px rgba(94,26,42,.4);background:#fff}
-.v-card .v-icon{font-family:'Cormorant Garamond';font-size:1.5rem;color:var(--berry-2);margin-bottom:.5rem;display:block}
-.v-card strong{font-family:'Cormorant Garamond';font-size:1.2rem;display:block;margin-bottom:.25rem}
-.v-card span{font-size:.82rem;color:var(--muted);line-height:1.45}
+.price-box{padding:1.2rem 1.4rem;border-radius:18px;background:linear-gradient(135deg,#0e0408,#3a141d);color:#f5ecdc;text-align:center;border:1px solid rgba(212,165,116,.3);box-shadow:0 25px 60px -25px rgba(0,0,0,.6)}
+.price-box .big{font-family:'Cormorant Garamond';font-size:2.7rem;color:var(--rose);line-height:1}
 
-/* Reveal */
-.r{opacity:0;transform:translateY(28px)}
-.r-fade{opacity:0}
-.r-scale{opacity:0;transform:scale(.95)}
-.r-rotate{opacity:0;transform:translateY(28px) rotateX(8deg)}
+/* VERTICAL CARDS */
+.vlist{display:grid;gap:.5rem;grid-template-columns:repeat(2,1fr)}
+@media(min-width:640px){.vlist{grid-template-columns:repeat(3,1fr)}}
+.vcard{padding:.85rem .9rem;border-radius:14px;background:rgba(255,255,255,.55);border:1px solid var(--line);transition:transform .25s var(--ease),background .25s}
+.vcard:active{transform:scale(.97)}
+.vcard:hover{background:#fff;transform:translateY(-3px);box-shadow:0 20px 35px -22px rgba(94,26,42,.4)}
+.vcard b{display:block;font-family:'Cormorant Garamond';font-size:1.05rem;color:var(--ink);margin-bottom:2px}
+.vcard span{font-size:.72rem;color:var(--muted);line-height:1.4}
 
-/* Letter splitting on titles */
-.split-letters > span{display:inline-block;will-change:transform,opacity}
+/* REELS CASCADE */
+.reels{display:grid;gap:.4rem;grid-template-columns:repeat(3,1fr)}
+.reel{aspect-ratio:9/16;border-radius:10px;background:linear-gradient(160deg,#3a141d,#8B2A3F);position:relative;overflow:hidden;border:1px solid rgba(212,165,116,.2);animation:reelIn .55s var(--ease) both}
+.reel::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 30% 30%,rgba(212,165,116,.4),transparent 60%)}
+.reel::after{content:"▶";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:rgba(255,255,255,.6);font-size:1rem}
+@keyframes reelIn{from{opacity:0;transform:translateY(20px) scale(.9)}}
 
-/* Cinematic transition curtain */
-.curtain{position:fixed;inset:0;background:linear-gradient(135deg,#0e0408 0%,#3a141d 100%);transform-origin:left;transform:scaleX(0);z-index:80;pointer-events:none}
+/* VOICE WAVE */
+.wave{display:flex;gap:3px;align-items:center;justify-content:center;padding:.6rem;background:rgba(255,255,255,.04);border-radius:12px;border:1px solid rgba(212,165,116,.2)}
+.wave i{width:3px;background:var(--rose);border-radius:2px;animation:wv 1.2s ease-in-out infinite}
+.wave i:nth-child(odd){animation-duration:.9s}
+@keyframes wv{0%,100%{height:6px}50%{height:24px}}
 
-/* Autoplay pulse indicator */
-.autoplay-ring{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);width:140px;height:3px;background:rgba(94,26,42,.15);border-radius:2px;overflow:hidden;z-index:55;display:none}
-.autoplay-ring.on{display:block}
-.autoplay-ring i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--berry-2));width:0%;border-radius:2px}
-
-/* Help hint */
-.hint{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:50;font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);pointer-events:none;opacity:.7}
-@media(max-width:780px){.hint{display:none}}
+/* TIME FLOW (visual del 60s) */
+.timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:.6rem 0}
+.timeline .tk{height:6px;border-radius:3px;background:rgba(212,165,116,.15);position:relative;overflow:hidden}
+.timeline .tk i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--rose));width:0;animation:tkFill 4s var(--ease) forwards}
+.timeline .tk:nth-child(2) i{animation-delay:1s}
+.timeline .tk:nth-child(3) i{animation-delay:2s}
+.timeline .tk:nth-child(4) i{animation-delay:3s}
+@keyframes tkFill{to{width:100%}}
 
 /* small util */
 .center{text-align:center}
-.tiles-wrapper{position:relative}
-.tile-svg{position:absolute;inset:0;pointer-events:none;z-index:0}
+.btn-cta{display:inline-flex;align-items:center;gap:.5rem;background:linear-gradient(135deg,var(--rose),var(--berry2));color:#fff;padding:.85rem 1.4rem;border-radius:999px;font-weight:700;letter-spacing:.04em;box-shadow:0 18px 40px -18px rgba(139,42,63,.7)}
+.btn-cta:active{transform:scale(.97)}
+.hint{position:fixed;bottom:calc(var(--safe-bot) + 78px);left:50%;transform:translateX(-50%);font-size:.6rem;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;z-index:40;opacity:.6;pointer-events:none}
+body.dark-bar .hint{color:#c9b8b3}
+.bg-img{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity .8s ease}
+.bg-img.on{opacity:.16}
+
+/* reveal hooks */
+.r{opacity:0;transform:translateY(16px);transition:opacity .55s var(--ease),transform .55s var(--ease)}
+.slide.active .r{opacity:1;transform:none}
+.slide.active .r:nth-child(2){transition-delay:.05s}
+.slide.active .r:nth-child(3){transition-delay:.1s}
+.slide.active .r:nth-child(4){transition-delay:.15s}
+.slide.active .r:nth-child(5){transition-delay:.2s}
+.slide.active .r:nth-child(6){transition-delay:.25s}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:0.01ms !important;transition-duration:0.01ms !important}
+}
 </style>
 </head>
-<body data-vertical="aesthetics">
-<canvas id="fx"></canvas>
-<div class="grain"></div>
+<body>
 
-<!-- Top bar -->
-<div class="topbar">
-  <div class="brand"><span class="logo"></span> <span>AURA</span></div>
-  <div class="hint">← →  ·  espacio  ·  scroll  ·  P para autoplay  ·  F pantalla completa</div>
-  <div class="vert-switch" id="vsw"></div>
-</div>
+<header class="topbar">
+  <div class="brand"><span class="logo"></span><span>AURA</span></div>
+  <nav class="vsw" id="vsw"></nav>
+</header>
 
-<!-- Deck -->
 <div id="deck"></div>
 
-<!-- Controls -->
-<div class="controls" id="controls">
+<div class="hint">desliza para avanzar</div>
+
+<footer class="ctrls">
   <button class="btn" id="prev">←</button>
   <div class="progress" id="progress"></div>
   <button class="btn" id="next">Siguiente →</button>
-  <button class="btn" id="autoplay">▶ Autoplay</button>
-  <button class="btn" id="full">⛶</button>
-</div>
-<div class="autoplay-ring" id="ring"><i></i></div>
-<div class="curtain" id="curtain"></div>
+</footer>
 
 <script>
-/* ============================================================
-   DATA · 6 verticales, copy y paleta intercambiables
-============================================================ */
-const VERTICALS={
+/* ============== DATA: 6 verticales modulares ============== */
+const VERT={
   aesthetics:{
     label:"Estética",
-    theme:{bg:"#FBF7F2",ink:"#1a0b10",berry:"#5e1a2a",berry2:"#8B2A3F",rose:"#D4A574",gold:"#caa05a",cream:"#f5ecdc",muted:"#7a5d63",line:"rgba(94,26,42,.18)",accent:"rgba(212,165,116,.18)"},
-    name:"AURA Aesthetics",
-    tagline:"El sistema operativo de la clínica del 2026",
-    h1:"El sistema que <em>llena la agenda</em><br/>de cualquier clínica estética.",
-    sub:"Investigación 2026 + stack IA + embudo wow + anuncios Meta ganadores. Lo que ya factura, más lo que tu competencia aún no tiene.",
-    market:[
-      {k:"42%",v:"de llamadas sin atender en horas hábiles",src:"Tested.media 2026"},
-      {k:"7×",v:"ROI medio en 90 días",src:"Glow Marketing — máx 30 clínicas/mes"},
-      {k:"15-40$",v:"CPC en términos Botox/filler",src:"LTV paciente: 1.800-4.500$"},
-      {k:"+13%",v:"membresías medspa YoY",src:"Zenoti Benchmark 2026"}
+    theme:{bg:"#FBF7F2",ink:"#1a0b10",berry:"#5e1a2a",berry2:"#8B2A3F",rose:"#D4A574",gold:"#caa05a",cream:"#f5ecdc",muted:"#7a5d63",line:"rgba(94,26,42,.15)",accent:"rgba(212,165,116,.18)"},
+    h1:`El sistema que <em>llena la agenda</em> de tu clínica estética.`,
+    sub:"Cómo funciona, animado paso a paso. Lo que ya factura + lo que tu competencia aún no tiene.",
+    business:"Clínica Elvira",
+    callerName:"Asesora Elvira",
+    quizQ:[
+      "¿Qué te llevaría a dar el paso?",
+      ["Quiero sentirme bien","Tengo un evento próximo","Solo me informo","Llevo años pensándolo"]
     ],
-    arr:[
-      {n:"01",t:"Agenda online + recordatorios",d:"Recordatorios SMS/email con tap-to-confirm. Estándar Mangomint, Boulevard, Pabau."},
-      {n:"02",t:"Fichas clínicas + consentimiento + before/after",d:"GDPR/HIPAA. Fotografía clínica segura. Estándar AestheticsPro y Pabau."},
-      {n:"03",t:"Stock de inyectables (lote, caducidad, alertas)",d:"Estándar Pabau, Mangomint, Zenoti."},
-      {n:"04",t:"Memberships y fidelización",d:"Único stream creciendo (+13% YoY). Estándar Boulevard."},
-      {n:"05",t:"Reporting financiero, retención, mix",d:"KPI de ticket medio (484$ top10% vs 216$ mediana). Estándar Zenoti."},
-      {n:"06",t:"AI Concierge 24/7",d:"Lift +5% sales growth (Zenoti HyperConnect 2025)."}
-    ],
-    wow:[
-      {n:"01",t:"Asesor conversacional post-quiz",d:"GPT-5.5 con prompt de la doctora. Cualifica, levanta objeciones y pre-cierra desde el chat."},
-      {n:"02",t:"Caller saliente IA en &lt;60 s",d:"Vapi/Bland en castellano. Lift form-fill→consulta de 22% a 48%."},
-      {n:"03",t:"Reactivación IA sobre BBDD",d:"Hasta 1.500 contactos viejos. 5-12% reaparece. Paga la suscripción 12 veces."},
-      {n:"04",t:"Estudio de reels con tu avatar",d:"HeyGen + voz clonada + Opus Clip. 30 reels/mes con la doctora hablando sin grabar."},
-      {n:"05",t:"Analista de lead con IA",d:"Score 0-100, objeción detectada, siguiente acción concreta para el equipo."},
-      {n:"06",t:"Coach del equipo de recepción",d:"Graba la llamada humana y devuelve coaching en 2 min. Mejora el cierre 15-30%."}
+    chat:[
+      {who:"ai",t:"¡Hola Marta! Soy la asesora de Clínica Elvira. He visto tu cuestionario."},
+      {who:"me",t:"Hola, me preocupa que se note antinatural"},
+      {who:"ai",t:"Te entiendo. Trabajamos labios glow muy naturales, sin volumen excesivo. ¿Te reservo una valoración esta semana? Es gratuita."}
     ],
     funnel:[
-      {n:1,t:"Reel UGC",d:"Paciente real + The Reveal. Hooks 2026."},
-      {n:2,t:"Quiz 5 preguntas",d:"Motivo · plazo · presupuesto · experiencia · objeción."},
-      {n:3,t:"Chat IA",d:"Resuelve dudas, objeciones, pre-cierra."},
-      {n:4,t:"Llamada IA 60 s",d:"Voz humana en castellano."},
-      {n:5,t:"Reserva + depósito 50€",d:"Anti no-show. Calendario en agenda."}
+      ["Reel UGC","Paciente real + The Reveal."],
+      ["Quiz 5 preguntas","Motivo · plazo · presupuesto · experiencia · objeción."],
+      ["Chat IA","Resuelve dudas y objeciones."],
+      ["Llamada IA 60 s","Voz humana en castellano."],
+      ["Reserva + 50€","Anti no-show."]
     ],
-    offerName:"Aesthetic Growth · 90 días",
-    offerLines:[
-      ["① Auditoría + diagnóstico IA","500 €"],
-      ["② Embudo Funnel AI 2.0","2.000 €"],
-      ["③ Recepcionista IA 24/7","1.500 €"],
-      ["④ Caller saliente <60s","1.500 €"],
-      ["⑤ Reactivación BBDD (1.500 contactos)","1.000 €"],
-      ["⑥ 30 reels con avatar de la doctora","1.500 €"],
-      ["⑦ Lanzamiento Meta/TikTok 90 días","2.500 €"],
-      ["⑧ Formación + 12 sesiones 1:1","1.800 €"],
-      ["⑨ Garantía 90 días","—"],
-    ],
+    market:[["42%","llamadas sin atender"],["7×","ROI 90 días"],["+13%","memberships YoY"]],
+    pricing:{a:"4.000 €",b:"+ 497 €/mes desde el mes 4"},
     valueTotal:"12.300 €",
-    pricing:{a:"4.000 €",b:"497 €/mes desde el mes 4"},
-    metaHooks:[
-      {h:"\"I didn’t expect this to work…\"",d:"UGC reveal. Sorpresa + escepticismo. Longest-running winner."},
-      {h:"\"Ever notice your skin looks dull by 3pm?\"",d:"Question hook. 13% del feed DTC. Ideal mid-funnel."},
-      {h:"\"Mistake #1: pagar Botox sin probar X primero\"",d:"Category-attack. Funciona con escepticismo educado."}
-    ],
-    closing:"Cargamos tu URL en directo y en 10 minutos verás tu embudo funcionando."
+    closing:"Cargamos tu URL y en 10 minutos verás tu embudo funcionando."
   },
   dental:{
     label:"Dental",
-    theme:{bg:"#F5F8FB",ink:"#0e1e2c",berry:"#0b2a4a",berry2:"#143a66",rose:"#5fa8d3",gold:"#c8a35a",cream:"#eef3f8",muted:"#5a6d7a",line:"rgba(20,58,102,.18)",accent:"rgba(95,168,211,.16)"},
-    name:"AURA Dental",
-    tagline:"El asistente que llena la agenda dental sin contratar a nadie",
-    h1:"El sistema que <em>llena la agenda</em><br/>de cualquier clínica dental.",
-    sub:"Recall higiene automatizado, recepcionista IA en español, captación con quiz de diseño de sonrisa. Lo mismo que ya factura, con efecto wow.",
-    market:[
-      {k:"42%",v:"de llamadas dentales sin atender",src:"Tested.media 2026"},
-      {k:"30-39%",v:"no-show en clínicas dentales",src:"Brody School of Medicine"},
-      {k:"600%",v:"ROI garantizado por Holly Nimblr (dental)",src:"Holly · Nimblr.ai"},
-      {k:"2-5k €",v:"ticket implante completo",src:"España 2026"}
-    ],
-    arr:[
-      {n:"01",t:"Recall automático de higiene cada 6 meses",d:"Estándar Pabau, Dentrix, Curve."},
-      {n:"02",t:"Historial dental + odontograma digital",d:"Estándar Curve, Open Dental."},
-      {n:"03",t:"Consentimiento informado digital + firma",d:"GDPR. Estándar Pabau."},
-      {n:"04",t:"Recordatorios SMS/email + confirmación",d:"Cut no-show 30%."},
-      {n:"05",t:"Reporting financiero + producción por doctor",d:"Estándar Dentrix Ascend."},
-      {n:"06",t:"AI receptionist dental",d:"Holly Nimblr ya garantiza 600% ROI en dental."}
-    ],
-    wow:[
-      {n:"01",t:"Quiz de diseño de sonrisa",d:"Pre-cualifica antes de la primera visita. Reserva con depósito anti no-show."},
-      {n:"02",t:"Caller saliente IA &lt;60 s",d:"Llama al lead nada más completar el quiz."},
-      {n:"03",t:"Reactivación de pacientes inactivos &gt;1 año",d:"Caller IA + SMS personalizado por historial."},
-      {n:"04",t:"Reels IA con el doctor explicando casos",d:"Avatar HeyGen + voz clonada. 4 reels/semana."},
-      {n:"05",t:"Score de lead + análisis de objeciones",d:"Opus 4.8 detecta miedo al dolor, precio, tiempo."},
-      {n:"06",t:"Coach IA del equipo de recepción",d:"Graba llamadas humanas y devuelve coaching."}
+    theme:{bg:"#F5F8FB",ink:"#0e1e2c",berry:"#0b2a4a",berry2:"#143a66",rose:"#5fa8d3",gold:"#c8a35a",cream:"#eef3f8",muted:"#5a6d7a",line:"rgba(20,58,102,.15)",accent:"rgba(95,168,211,.16)"},
+    h1:`El sistema que <em>llena la agenda</em> de tu clínica dental.`,
+    sub:"Recall higiene + recepcionista IA + quiz de diseño de sonrisa.",
+    business:"Clínica Dental Lumière",
+    callerName:"Asistente Lumière",
+    quizQ:["¿Qué te limita ahora?",["Estética dental","Dolor/función","Precio","Miedo"]],
+    chat:[
+      {who:"ai",t:"Hola Sara, vengo de la clínica Lumière. Vi tu cuestionario."},
+      {who:"me",t:"¿Cuánto cuesta una ortodoncia invisible?"},
+      {who:"ai",t:"Depende del caso. Tenemos planes desde 89€/mes con financiación. ¿Te reservo una valoración 3D gratuita?"}
     ],
     funnel:[
-      {n:1,t:"Reel del doctor",d:"Caso real: 'antes / 6 meses después'."},
-      {n:2,t:"Quiz 5 preguntas",d:"¿Qué te limita? plazo · presupuesto · seguro · miedo."},
-      {n:3,t:"Chat IA",d:"Explica tratamiento + ortodoncia invisible vs lingual."},
-      {n:4,t:"Llamada IA 60 s",d:"Reserva valoración con higienista."},
-      {n:5,t:"Cita + depósito 30€",d:"Anti no-show + intake digital."}
+      ["Reel doctor","Caso real: antes / 6 meses."],
+      ["Quiz 5 preguntas","Limite · plazo · presupuesto · seguro · miedo."],
+      ["Chat IA","Plan + ortodoncia invisible."],
+      ["Llamada IA 60 s","Reserva con higienista."],
+      ["Cita + 30€","Anti no-show + intake digital."]
     ],
-    offerName:"Dental Growth · 90 días",
-    offerLines:[
-      ["① Auditoría dental + diagnóstico IA","500 €"],
-      ["② Embudo de diseño de sonrisa","2.000 €"],
-      ["③ Recepcionista dental IA 24/7","1.500 €"],
-      ["④ Caller saliente <60s","1.500 €"],
-      ["⑤ Reactivación pacientes &gt;1 año","1.000 €"],
-      ["⑥ 30 reels del doctor con avatar","1.500 €"],
-      ["⑦ Lanzamiento Meta/TikTok 90 días","2.500 €"],
-      ["⑧ Formación equipo + 12 sesiones 1:1","1.800 €"],
-      ["⑨ Garantía 90 días","—"],
-    ],
+    market:[["42%","llamadas dentales sin atender"],["600%","ROI Holly Nimblr"],["30-39%","no-show medio"]],
+    pricing:{a:"4.000 €",b:"+ 497 €/mes desde el mes 4"},
     valueTotal:"12.300 €",
-    pricing:{a:"4.000 €",b:"497 €/mes desde el mes 4"},
-    metaHooks:[
-      {h:"\"Mistake #1: pagar la ortodoncia sin esto\"",d:"Category-attack."},
-      {h:"\"¿Tu sonrisa te quita seguridad en el trabajo?\"",d:"Question hook con dolor profesional."},
-      {h:"\"Caso real: antes / 6 meses\"",d:"UGC reveal del paciente."}
-    ],
     closing:"Carga la web de la clínica y en 10 min ves tu embudo dental funcionando."
   },
   legal:{
     label:"Abogados",
-    theme:{bg:"#F6F4EE",ink:"#1c180f",berry:"#3d2f17",berry2:"#5f4623",rose:"#b88a4a",gold:"#caa05a",cream:"#efe9da",muted:"#6e6555",line:"rgba(95,70,35,.18)",accent:"rgba(184,138,74,.18)"},
-    name:"AURA Legal",
-    tagline:"El despacho que captura el lead a las 3am",
-    h1:"El sistema que <em>cualifica al cliente</em><br/>incluso fuera de horario.",
-    sub:"Recepcionista IA 24/7, quiz '¿tu caso encaja?', VSL del socio. Mismas funcionalidades que ya facturan, con la voz IA encima.",
-    market:[
-      {k:"42%",v:"llamadas legales fuera de horario",src:"Tested.media 2026"},
-      {k:"180k$",v:"coste anual de marketing legal medio",src:"Inbound Medic"},
-      {k:"3-12 meses",v:"decision window cliente premium",src:"Inbound Medic"},
-      {k:"81%",v:"clientes prefieren llamar (no formularios)",src:"Zenoti 2025"}
-    ],
-    arr:[
-      {n:"01",t:"Gestión de clientes + matter management",d:"Estándar Clio, MyCase."},
-      {n:"02",t:"Document automation + e-signature",d:"Estándar Clio Manage."},
-      {n:"03",t:"Time tracking + facturación por hora",d:"Estándar PracticePanther."},
-      {n:"04",t:"Compliance GDPR + secreto profesional",d:"Estándar."},
-      {n:"05",t:"Calendario y reservas online",d:"Estándar Clio Grow."},
-      {n:"06",t:"Reporting de pipeline y matters",d:"Estándar enterprise."}
-    ],
-    wow:[
-      {n:"01",t:"Quiz '¿tu caso encaja con nosotros?'",d:"5 preguntas de cualificación: tipo de caso, plazo, expectativa, presupuesto, urgencia."},
-      {n:"02",t:"Recepcionista IA 24/7 tono formal",d:"Retell + ElevenLabs. Atiende a las 3am como un socio junior."},
-      {n:"03",t:"Caller saliente IA al lead caliente",d:"En 60 s tras el quiz. Reserva consulta de pago con el socio."},
-      {n:"04",t:"VSL personalizado por perfil de caso",d:"Avatar IA del socio explicando ese tipo concreto de caso."},
-      {n:"05",t:"Score + objeción + próxima acción",d:"Opus 4.8 detecta miedo a costes, urgencia, complejidad."},
-      {n:"06",t:"Resumen IA de cada llamada",d:"Asignado al socio responsable con próxima acción concreta."}
+    theme:{bg:"#F6F4EE",ink:"#1c180f",berry:"#3d2f17",berry2:"#5f4623",rose:"#b88a4a",gold:"#caa05a",cream:"#efe9da",muted:"#6e6555",line:"rgba(95,70,35,.15)",accent:"rgba(184,138,74,.18)"},
+    h1:`El despacho que <em>cualifica al cliente</em> a las 3am.`,
+    sub:"Recepcionista IA 24/7 + quiz '¿tu caso encaja?' + VSL del socio.",
+    business:"Despacho Vega",
+    callerName:"Asistente Vega",
+    quizQ:["¿Qué tipo de caso tienes?",["Herencia","Laboral","Civil","Otro"]],
+    chat:[
+      {who:"ai",t:"Buenas tardes Carlos, soy del Despacho Vega."},
+      {who:"me",t:"Tengo una herencia con problemas entre hermanos."},
+      {who:"ai",t:"Lo llevamos a menudo. ¿Le agendo una primera consulta de pago de 30 min con el socio?"}
     ],
     funnel:[
-      {n:1,t:"Anuncio educativo",d:"Hook: 'Tres errores al elegir abogado para…'"},
-      {n:2,t:"Quiz 5 preguntas",d:"Tipo de caso · plazo · expectativa · presupuesto · urgencia."},
-      {n:3,t:"VSL personalizado",d:"Avatar del socio explicando ese caso."},
-      {n:4,t:"Llamada IA 60 s",d:"Cualifica y reserva consulta de pago."},
-      {n:5,t:"Consulta + depósito",d:"Filtra curiosos. Filtra time-wasters."}
+      ["Anuncio educativo","'Tres errores al elegir abogado…'"],
+      ["Quiz 5 preguntas","Tipo · plazo · expectativa · presupuesto · urgencia."],
+      ["VSL personalizado","Avatar del socio explicando ese caso."],
+      ["Llamada IA 60 s","Reserva consulta de pago."],
+      ["Consulta + depósito","Filtra time-wasters."]
     ],
-    offerName:"Legal Growth · 90 días",
-    offerLines:[
-      ["① Auditoría despacho + diagnóstico IA","500 €"],
-      ["② Embudo '¿Tu caso encaja?'","2.000 €"],
-      ["③ Recepcionista IA 24/7","1.500 €"],
-      ["④ Caller saliente <60s","1.500 €"],
-      ["⑤ Reactivación de prospects fríos","1.000 €"],
-      ["⑥ 30 reels con avatar del socio","1.500 €"],
-      ["⑦ Lanzamiento Meta/LinkedIn 90 días","2.500 €"],
-      ["⑧ Formación equipo + 12 sesiones 1:1","1.800 €"],
-      ["⑨ Garantía 90 días","—"],
-    ],
+    market:[["42%","llamadas fuera de horario"],["3-12 m","decision window"],["180k$","gasto medio mkt legal"]],
+    pricing:{a:"4.000 €",b:"+ 497 €/mes desde el mes 4"},
     valueTotal:"12.300 €",
-    pricing:{a:"4.000 €",b:"497 €/mes desde el mes 4"},
-    metaHooks:[
-      {h:"\"3 errores al elegir abogado para una herencia\"",d:"Educational hook con autoridad."},
-      {h:"\"¿Tu caso encaja con un despacho boutique?\"",d:"Cualifica antes de prometer."},
-      {h:"\"Lo que no te cuentan en la primera consulta\"",d:"Secret hook, alta autoridad."}
-    ],
     closing:"Carga la web del despacho y en 10 min ves el embudo legal funcionando."
   },
   fitness:{
     label:"Fitness",
-    theme:{bg:"#F8F6F1",ink:"#181a14",berry:"#2a3320",berry2:"#3d5226",rose:"#c79e3b",gold:"#caa05a",cream:"#eee8d8",muted:"#5d6754",line:"rgba(61,82,38,.18)",accent:"rgba(199,158,59,.18)"},
-    name:"AURA Fitness",
-    tagline:"Llena clases y vende packs sin gastar en redes",
-    h1:"El sistema que <em>llena clases</em><br/>de cualquier estudio o coach.",
-    sub:"Quiz de transformación, reels con tu cliente real, caller que reactiva ex alumnos. Lo que ya factura Mindbody, con efecto wow.",
-    market:[
-      {k:"+18%",v:"miembros que cancelan al primer mes",src:"Industry"},
-      {k:"29%",v:"new clients rebooks (only)",src:"Phorest 2025"},
-      {k:"+13%",v:"membership growth YoY (medspa applies)",src:"Zenoti"},
-      {k:"3-12$",v:"CPC fitness ads",src:"2026"}
-    ],
-    arr:[
-      {n:"01",t:"Booking de clases + waitlist",d:"Estándar Mindbody, Glofox."},
-      {n:"02",t:"Memberships + packs",d:"Estándar Mindbody."},
-      {n:"03",t:"Recordatorios SMS/email",d:"Cut no-show 30%."},
-      {n:"04",t:"App con login del cliente",d:"Estándar Glofox."},
-      {n:"05",t:"Reporting de retención",d:"Estándar."},
-      {n:"06",t:"Membership churn dashboard",d:"Estándar."}
-    ],
-    wow:[
-      {n:"01",t:"Quiz de transformación",d:"Cualifica objetivo, plazo, experiencia, presupuesto, hábitos."},
-      {n:"02",t:"Caller saliente IA en 60 s",d:"Llama al lead post-quiz y reserva clase de prueba."},
-      {n:"03",t:"Reactivación de ex alumnos",d:"Caller IA win-back + oferta personalizada por su histórico."},
-      {n:"04",t:"Reels con tu propio cliente",d:"UGC reveal. Avatar IA del coach explicando el plan."},
-      {n:"05",t:"Score + objeción + próxima acción",d:"Detecta miedo a no rendir, tiempo, precio."},
-      {n:"06",t:"Onboarding IA SMS+email los 7 primeros días",d:"Reduce churn early-stage 30-40%."}
+    theme:{bg:"#F8F6F1",ink:"#181a14",berry:"#2a3320",berry2:"#3d5226",rose:"#c79e3b",gold:"#caa05a",cream:"#eee8d8",muted:"#5d6754",line:"rgba(61,82,38,.15)",accent:"rgba(199,158,59,.18)"},
+    h1:`El sistema que <em>llena clases</em> de tu estudio.`,
+    sub:"Quiz de transformación + caller IA + reactivación de ex alumnos.",
+    business:"Estudio Hara",
+    callerName:"Asistente Hara",
+    quizQ:["¿Cuál es tu objetivo?",["Bajar peso","Tonificar","Rendimiento","Hábitos"]],
+    chat:[
+      {who:"ai",t:"Hola Lucía, soy del Estudio Hara."},
+      {who:"me",t:"Quiero perder 8kg, no sé por dónde empezar."},
+      {who:"ai",t:"Tenemos un plan inicial de 4 semanas con clase prueba gratis. ¿Te reservo el martes a las 18:30?"}
     ],
     funnel:[
-      {n:1,t:"Reel UGC del cliente",d:"Antes/ahora real."},
-      {n:2,t:"Quiz transformación",d:"Objetivo · plazo · experiencia · hábitos · presupuesto."},
-      {n:3,t:"Chat IA",d:"Recomienda plan + clase prueba."},
-      {n:4,t:"Llamada IA 60 s",d:"Reserva clase prueba o consultoría 1:1."},
-      {n:5,t:"Pago/depósito",d:"Anti drop. Compromiso."}
+      ["Reel cliente real","Antes / ahora."],
+      ["Quiz 5 preguntas","Objetivo · plazo · experiencia · hábitos · presupuesto."],
+      ["Chat IA","Recomienda plan + clase prueba."],
+      ["Llamada IA 60 s","Reserva clase prueba."],
+      ["Pago / depósito","Anti drop. Compromiso."]
     ],
-    offerName:"Fitness Growth · 90 días",
-    offerLines:[
-      ["① Auditoría centro + diagnóstico IA","500 €"],
-      ["② Embudo de transformación","2.000 €"],
-      ["③ Recepcionista IA 24/7","1.500 €"],
-      ["④ Caller saliente <60s","1.500 €"],
-      ["⑤ Reactivación ex alumnos","1.000 €"],
-      ["⑥ 30 reels con avatar del coach","1.500 €"],
-      ["⑦ Lanzamiento Meta/TikTok 90 días","2.500 €"],
-      ["⑧ Formación + 12 sesiones 1:1","1.800 €"],
-      ["⑨ Garantía 90 días","—"],
-    ],
+    market:[["29%","new clients rebooks"],["18%","cancel. mes 1"],["3-12$","CPC fitness"]],
+    pricing:{a:"4.000 €",b:"+ 497 €/mes desde el mes 4"},
     valueTotal:"12.300 €",
-    pricing:{a:"4.000 €",b:"497 €/mes desde el mes 4"},
-    metaHooks:[
-      {h:"\"Mistake #1: pagar el gym sin esto primero\"",d:"Category-attack."},
-      {h:"\"Antes / 12 semanas\"",d:"UGC reveal cliente real."},
-      {h:"\"¿Cuánto te cuesta no entrenar este mes?\"",d:"Pain hook directo."}
-    ],
     closing:"Carga el IG del centro y en 10 min ves el embudo fitness funcionando."
   },
   realestate:{
     label:"Inmobiliaria",
-    theme:{bg:"#F4F4F0",ink:"#10141a",berry:"#1f2c3c",berry2:"#2e4263",rose:"#c5a36b",gold:"#caa05a",cream:"#e9eaee",muted:"#5a6470",line:"rgba(46,66,99,.18)",accent:"rgba(197,163,107,.18)"},
-    name:"AURA Real Estate",
-    tagline:"Captura propietarios y compradores con IA",
-    h1:"El sistema que <em>captura propietarios</em><br/>antes que tu competencia.",
-    sub:"Quiz '¿cuánto vale tu casa?' + caller IA al propietario en 60 s. Lo que ya factura un CRM inmobiliario, con voz encima.",
-    market:[
-      {k:"42%",v:"llamadas inmobiliarias fuera de horario",src:"Tested.media 2026"},
-      {k:"$15-50k",v:"comisión media venta vivienda ES",src:"2026"},
-      {k:"3-9 meses",v:"funnel comprador típico",src:"Inbound Medic"},
-      {k:"5-10",v:"agentes que llaman al lead en &lt;5min",src:"Industry"}
-    ],
-    arr:[
-      {n:"01",t:"CRM inmobiliario + propiedades",d:"Estándar Witei, Inmoweb."},
-      {n:"02",t:"Portales sync (Idealista, Fotocasa)",d:"Estándar."},
-      {n:"03",t:"Cartera de propietarios y compradores",d:"Estándar."},
-      {n:"04",t:"Mailing y nutrición leads",d:"Estándar."},
-      {n:"05",t:"Reporting comercial",d:"Estándar."},
-      {n:"06",t:"Calendario visitas + recordatorios",d:"Estándar."}
-    ],
-    wow:[
-      {n:"01",t:"Quiz '¿Cuánto vale tu casa?'",d:"5 preguntas, valoración orientativa con IA en pantalla."},
-      {n:"02",t:"Caller IA al propietario en 60 s",d:"Tras el quiz reserva visita de tasación."},
-      {n:"03",t:"Reactivación de cartera fría",d:"Antiguos contactos &gt;6m. Caller + SMS."},
-      {n:"04",t:"Reels de propiedades con avatar del agente",d:"30 reels/mes en automático."},
-      {n:"05",t:"Score y objeción del lead",d:"Opus 4.8 detecta urgencia, precio, dudas legales."},
-      {n:"06",t:"VSL personalizado por tipo de propiedad",d:"Avatar del agente explicando ese caso."}
+    theme:{bg:"#F4F4F0",ink:"#10141a",berry:"#1f2c3c",berry2:"#2e4263",rose:"#c5a36b",gold:"#caa05a",cream:"#e9eaee",muted:"#5a6470",line:"rgba(46,66,99,.15)",accent:"rgba(197,163,107,.18)"},
+    h1:`El sistema que <em>captura propietarios</em> antes que la competencia.`,
+    sub:"Quiz '¿cuánto vale tu casa?' + caller IA al propietario en 60s.",
+    business:"Inmobiliaria Cordel",
+    callerName:"Asistente Cordel",
+    quizQ:["¿Por qué quieres vender?",["Mudanza","Inversión","Reforma","Aún no lo sé"]],
+    chat:[
+      {who:"ai",t:"Hola Javier, soy de Inmobiliaria Cordel."},
+      {who:"me",t:"¿Cuánto se vende mi piso de 90m² en Eixample?"},
+      {who:"ai",t:"En la zona 6.000-7.200€/m². ¿Le agendo tasación gratuita el viernes?"}
     ],
     funnel:[
-      {n:1,t:"Reel propiedad",d:"60s recorrido + cliente real reaccionando."},
-      {n:2,t:"Quiz '¿Cuánto vale?'",d:"Tipo · m² · zona · plazo · motivo."},
-      {n:3,t:"Estimación IA",d:"Rango con explicación de variables."},
-      {n:4,t:"Llamada IA 60 s",d:"Reserva visita de tasación."},
-      {n:5,t:"Visita + acuerdo de exclusiva",d:"Cierre del agente."}
+      ["Reel propiedad","60s recorrido + cliente real."],
+      ["Quiz '¿Cuánto vale?'","Tipo · m² · zona · plazo · motivo."],
+      ["Estimación IA","Rango con explicación."],
+      ["Llamada IA 60 s","Reserva tasación."],
+      ["Visita + exclusiva","Cierre del agente."]
     ],
-    offerName:"Real Estate Growth · 90 días",
-    offerLines:[
-      ["① Auditoría agencia + diagnóstico IA","500 €"],
-      ["② Embudo '¿Cuánto vale tu casa?'","2.000 €"],
-      ["③ Recepcionista IA 24/7","1.500 €"],
-      ["④ Caller saliente <60s","1.500 €"],
-      ["⑤ Reactivación de cartera fría","1.000 €"],
-      ["⑥ 30 reels con avatar del agente","1.500 €"],
-      ["⑦ Lanzamiento Meta/TikTok 90 días","2.500 €"],
-      ["⑧ Formación + 12 sesiones 1:1","1.800 €"],
-      ["⑨ Garantía 90 días","—"],
-    ],
+    market:[["42%","llamadas fuera de horario"],["$15-50k","comisión venta media"],["3-9m","funnel comprador"]],
+    pricing:{a:"4.000 €",b:"+ 497 €/mes desde el mes 4"},
     valueTotal:"12.300 €",
-    pricing:{a:"4.000 €",b:"497 €/mes desde el mes 4"},
-    metaHooks:[
-      {h:"\"¿Cuánto vale tu casa hoy? Estimación en 60s\"",d:"Question + value bait."},
-      {h:"\"3 errores al vender un piso en 2026\"",d:"Educational + autoridad."},
-      {h:"\"Mistake #1: poner tu piso en 5 portales sin esto\"",d:"Category-attack."}
-    ],
     closing:"Carga la web de la agencia y en 10 min ves el embudo inmobiliario funcionando."
   },
   hospitality:{
     label:"Restauración",
-    theme:{bg:"#F6F1EC",ink:"#1c1310",berry:"#3a1a14",berry2:"#5e2a20",rose:"#c98a5a",gold:"#caa05a",cream:"#efe2d3",muted:"#7a5d50",line:"rgba(94,42,32,.18)",accent:"rgba(201,138,90,.18)"},
-    name:"AURA Hospitality",
-    tagline:"Reservas, upsell y reactivación 24/7",
-    h1:"El sistema que <em>llena mesas</em><br/>incluso fuera de horario.",
-    sub:"Reservas IA, upsell de menú degustación, reactivación de clientes inactivos. Mismo stack, otro playbook.",
-    market:[
-      {k:"42%",v:"llamadas a restaurantes fuera de horario",src:"Tested.media 2026"},
-      {k:"15-25%",v:"reservas pierden por cancelaciones tardías",src:"Industry"},
-      {k:"+13%",v:"membresías growth YoY",src:"Zenoti"},
-      {k:"€80-150",s:"ticket medio menú degustación",v:"ticket medio menú degustación"}
-    ],
-    arr:[
-      {n:"01",t:"Reservas online + waitlist",d:"Estándar TheFork, Resy."},
-      {n:"02",t:"Carta digital + QR + pedido en mesa",d:"Estándar."},
-      {n:"03",t:"CRM de clientes + historial pedidos",d:"Estándar."},
-      {n:"04",t:"Email + SMS para campañas",d:"Estándar."},
-      {n:"05",t:"Reporting ticket medio + ocupación",d:"Estándar."},
-      {n:"06",t:"Encuestas post-visita",d:"Estándar."}
-    ],
-    wow:[
-      {n:"01",t:"Recepcionista IA de reservas multilingüe",d:"Toma reservas a las 23:30 sin equipo. Multi-idioma."},
-      {n:"02",t:"Upsell IA tras la reserva",d:"'¿Le interesa el menú degustación esa noche?' por SMS o WhatsApp."},
-      {n:"03",t:"Reactivación de inactivos &gt;60 días",d:"Caller IA + oferta personalizada por su histórico."},
-      {n:"04",t:"Reels de platos con voz del chef",d:"Avatar IA + ElevenLabs. 4-5/semana."},
-      {n:"05",t:"Score por afinidad + sugerencia de mesa",d:"Detecta clientes premium, allergies, frecuencia."},
-      {n:"06",t:"Encuesta post-visita IA + review routing",d:"5★ a Google, ≤4★ al gerente. FTC compliant."}
+    theme:{bg:"#F6F1EC",ink:"#1c1310",berry:"#3a1a14",berry2:"#5e2a20",rose:"#c98a5a",gold:"#caa05a",cream:"#efe2d3",muted:"#7a5d50",line:"rgba(94,42,32,.15)",accent:"rgba(201,138,90,.18)"},
+    h1:`El sistema que <em>llena mesas</em> incluso fuera de horario.`,
+    sub:"Recepcionista IA multilingüe + upsell post-reserva + reactivación.",
+    business:"Restaurante Mediterráneo",
+    callerName:"Asistente Mediterráneo",
+    quizQ:["¿Qué experiencia buscas?",["Cena romántica","Negocios","Celebración","Tranquila"]],
+    chat:[
+      {who:"ai",t:"Hola Pablo, soy de Restaurante Mediterráneo."},
+      {who:"me",t:"¿Tenéis menú degustación el sábado?"},
+      {who:"ai",t:"Sí, 8 pasos a 89€. ¿Le reservo mesa para 2 a las 21h con maridaje?"}
     ],
     funnel:[
-      {n:1,t:"Reel del plato",d:"Slow-motion del corte + voz del chef."},
-      {n:2,t:"Quiz '¿Qué experiencia buscas?'",d:"Ocasión · personas · alergias · presupuesto · fecha."},
-      {n:3,t:"Recomendación + reserva",d:"Sugerencia de mesa y menú."},
-      {n:4,t:"Llamada IA confirma",d:"Tono cercano. Confirma alergias y hora."},
-      {n:5,t:"Reserva con depósito",d:"Anti no-show 50€."}
+      ["Reel del plato","Slow-motion + voz del chef."],
+      ["Quiz experiencia","Ocasión · personas · alergias · presupuesto · fecha."],
+      ["Recomendación + reserva","Sugerencia de mesa y menú."],
+      ["Llamada IA confirma","Confirma alergias y hora."],
+      ["Reserva con depósito","Anti no-show 50€."]
     ],
-    offerName:"Hospitality Growth · 90 días",
-    offerLines:[
-      ["① Auditoría restaurante + diagnóstico IA","500 €"],
-      ["② Embudo de reservas premium","2.000 €"],
-      ["③ Recepcionista IA 24/7 multilingüe","1.500 €"],
-      ["④ Upsell IA post-reserva","1.500 €"],
-      ["⑤ Reactivación inactivos &gt;60 días","1.000 €"],
-      ["⑥ 30 reels del chef con avatar","1.500 €"],
-      ["⑦ Lanzamiento Meta/TikTok 90 días","2.500 €"],
-      ["⑧ Formación + 12 sesiones 1:1","1.800 €"],
-      ["⑨ Garantía 90 días","—"],
-    ],
+    market:[["42%","llamadas fuera horario"],["15-25%","cancelaciones tardías"],["80-150€","ticket degustación"]],
+    pricing:{a:"4.000 €",b:"+ 497 €/mes desde el mes 4"},
     valueTotal:"12.300 €",
-    pricing:{a:"4.000 €",b:"497 €/mes desde el mes 4"},
-    metaHooks:[
-      {h:"\"3 mesas que no volverías a perder con esto\"",d:"Pain hook + autoridad."},
-      {h:"\"Cómo elegir tu menú degustación de viernes\"",d:"Education hook."},
-      {h:"\"Slow-motion: el corte que enamora\"",d:"UGC reveal del chef."}
-    ],
     closing:"Carga la web del restaurante y en 10 min ves el embudo de reservas funcionando."
   }
 };
 
-/* ============================================================
-   IMAGES (compartidas entre verticales — el mismo deck con un cambio de copy)
-============================================================ */
-const IMG={
-  hero:"https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/01-hero-aesthetic-RAsnn3ywK94Q5aZYu3dqom.webp",
-  agents:"https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/02-agents-constellation-HQ76Ps3zCbpsn6gV276xVE.webp",
-  funnel:"https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/03-funnel-isometric-NmuQvLdjuhXvfDmAtecGDv.webp",
-  call:"https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/04-call-moment-RnNLFoxe8m2GkGeJ9DS3Wy.webp",
-  dashboard:"https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/05-dashboard-XMQ8xzeDGujDr9up38K6Jb.webp",
-  ads:"https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/06-meta-ad-grid-SnCS5epifmoGmgaAwgkiuk.webp",
-  comparison:"https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/07-saas-comparison-4wFbeHNkppNWWZgTwtVZPp.webp",
-  offer:"https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/08-offer-guarantee-5CKBDc5qTThikqVYiygqS2.webp",
-  verticals:"https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/09-verticals-9miEm7g2425rrx9NfmH4CM.webp",
-  ledger:"https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/10-arr-features-LKzizgKUwu9kGjA4TUc936.webp",
-  closing:"https://d2xsxph8kpxj0f.cloudfront.net/310519663288181369/o7An9HTgrY6DcQFSrdm54G/11-closing-JeiKPXfsiGuvei4vGHxWnL.webp"
-};
+/* ============== SLIDE BUILDERS ============== */
+const SL=(V)=>([
+  // 1 HERO
+  {dark:true,build:()=>`
+    <div class="hero-bg"></div>
+    <div class="container" style="position:relative;z-index:2;text-align:center;padding:2rem 0">
+      <span class="pill r"><span class="dot"></span> Pitch deck animado</span>
+      <h1 class="r" style="margin-top:1rem">${V.h1}</h1>
+      <p class="r muted" style="margin-top:.9rem;font-size:1rem;max-width:520px;margin-left:auto;margin-right:auto">${V.sub}</p>
+      <div class="r" style="margin-top:1.6rem;display:flex;flex-direction:column;align-items:center;gap:.7rem">
+        <div class="gold-orb" style="position:relative;width:80px;height:80px;margin:.5rem auto 0;left:auto;top:auto;transform:none"></div>
+        <span class="kicker">desliza ↓ para ver cómo funciona</span>
+      </div>
+    </div>`},
 
-/* ============================================================
-   SLIDE BUILDERS — devuelven HTML según vertical
-============================================================ */
-const SLIDES = (V)=>([
-  // 1. HERO
-  {kind:"dark",bg:IMG.hero,html:`
-    <span class="pill r" style="background:rgba(212,165,116,.22);color:#fff;border:1px solid rgba(255,255,255,.16)"><span class="dot"></span> ${V.tagline}</span>
-    <h1 class="r split-letters" style="margin-top:1.4rem;color:#fff;max-width:880px">${V.h1}</h1>
-    <p class="r muted" style="margin-top:1.4rem;color:#f5ecdc;font-size:1.15rem;max-width:780px">${V.sub}</p>
-    <div class="r" style="margin-top:2rem;display:flex;gap:.6rem;flex-wrap:wrap"><span class="kicker" style="color:#D4A574">12 slides · pitch deck modular · cambia de vertical arriba a la derecha</span></div>
-  `},
+  // 2 EL PROBLEMA
+  {dark:false,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> El mercado en 2026</span>
+      <h2 class="r" style="margin-top:.7rem">${V.label} pierde el <em>35-40%</em> de las oportunidades.</h2>
+      <div class="gold-line r"></div>
+      <div class="row r" style="margin-top:1rem">
+        ${V.market.map(([k,t])=>`<div class="feat"><div class="ic">${k}</div><strong>${t}</strong></div>`).join('')}
+      </div>
+      <p class="muted r" style="margin-top:1rem;font-size:.78rem">Fuente: Tested.media, Zenoti Benchmark 2026, Glow Marketing.</p>
+    </div>`},
 
-  // 2. EL MERCADO
-  {kind:"light",html:`
-    <span class="pill r"><span class="dot"></span> El mercado en 2026</span>
-    <h2 class="r split-letters" style="margin-top:.9rem;max-width:1000px">El sector <em>${V.label.toLowerCase()}</em> pierde el 35-40% de oportunidades.</h2>
-    <div class="gold-line r"></div>
-    <div class="row r" style="margin-top:1rem">
-      ${V.market.map(m=>`<div class="feat"><div class="ic">${m.k}</div><strong style="font-family:'Cormorant Garamond';font-size:1.1rem;display:block">${m.v}</strong><p class="muted" style="margin-top:.4rem;font-size:.85rem">${m.src}</p></div>`).join("")}
-    </div>
-  `},
+  // 3 EL EMBUDO
+  {dark:false,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> El embudo en 5 pasos</span>
+      <h2 class="r" style="margin-top:.7rem">60 segundos entre el reel y la <em>llamada IA</em>.</h2>
+      <div class="gold-line r"></div>
+      <div class="funnel r" style="margin-top:1rem">
+        ${V.funnel.map((f,i)=>`<div class="fstep"><div class="fnum">${i+1}</div><div><strong>${f[0]}</strong><p>${f[1]}</p></div></div>`).join('')}
+      </div>
+    </div>`},
 
-  // 3. ARR FEATURES
-  {kind:"light",html:`
-    <div class="grid grid-2">
-      <div>
-        <span class="pill r"><span class="dot"></span> Lo que ya factura</span>
-        <h2 class="r split-letters" style="margin-top:.9rem">Las 6 piezas que <em>todo SaaS ganador</em> incluye.</h2>
-        <div class="gold-line r"></div>
-        <div class="list r" style="margin-top:1.2rem">
-          ${V.arr.map(a=>`<div class="row-line"><span class="num">${a.n}</span><div><strong style="font-family:'Cormorant Garamond';font-size:1.05rem">${a.t}</strong><p class="muted" style="margin-top:.2rem;font-size:.82rem">${a.d}</p></div></div>`).join("")}
+  // 4 REELS UGC EN CASCADA
+  {dark:true,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Paso 1 · Captación</span>
+      <h2 class="r" style="margin-top:.7rem">Reels IA: <em>30 al mes</em>, con tu propia voz.</h2>
+      <p class="r muted" style="margin-top:.4rem;font-size:.9rem">Avatar HeyGen + voz clonada + Opus Clip. Tú no grabas, ellos publican.</p>
+      <div class="reels r" style="margin-top:1rem" id="reelsGrid"></div>
+      <div class="r" style="margin-top:.8rem;display:flex;gap:.5rem;align-items:center;font-size:.78rem;color:#c9b8b3">
+        <span class="kicker" style="color:var(--rose)">Hooks 2026:</span> "I didn't expect this to work…" · "Ever notice…" · "Mistake #1…"
+      </div>
+    </div>`},
+
+  // 5 QUIZ ANIMADO
+  {dark:true,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Paso 2 · Quiz que cualifica</span>
+      <h2 class="r" style="margin-top:.7rem">5 preguntas. Cierra <em>3× más</em> que un formulario.</h2>
+      <div class="r" style="margin-top:1rem;display:flex;justify-content:center">
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="header"><span class="av"></span><span>${V.business}<small>quiz · paso <i id="qstep">1</i> de 5</small></span></div>
+            <div class="quiz" id="quizBox">
+              <div class="q-title" id="qTitle">${V.quizQ[0]}</div>
+              <div id="qOptions">${V.quizQ[1].map((o,i)=>`<span class="opt" data-i="${i}">${o}</span>`).join('')}</div>
+              <div class="progress-bar"><i id="qBar"></i></div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="r-scale image-card" style="aspect-ratio:16/9"><img src="${IMG.ledger}" alt="ARR ledger"/></div>
-    </div>
-  `},
+    </div>`},
 
-  // 4. EL EFECTO WOW
-  {kind:"dark",bg:IMG.agents,html:`
-    <span class="pill r"><span class="dot"></span> El efecto wow exclusivo</span>
-    <h2 class="r split-letters" style="margin-top:.9rem;color:#fff;max-width:1100px">Lo que <em>ningún competidor</em> tiene empaquetado.</h2>
-    <div class="gold-line r"></div>
-    <div class="agents r" style="margin-top:1.2rem">
-      ${V.wow.map(w=>`<div class="agent"><span class="who">${w.n}</span><strong>${w.t}</strong>${w.d}</div>`).join("")}
-    </div>
-  `},
-
-  // 5. EMBUDO
-  {kind:"light",html:`
-    <span class="pill r"><span class="dot"></span> El embudo definitivo</span>
-    <h2 class="r split-letters" style="margin-top:.9rem;max-width:1100px">5 pasos. <em>60 segundos</em> entre que vio el reel y le suena el teléfono.</h2>
-    <div class="gold-line r"></div>
-    <div class="r-scale image-card" style="aspect-ratio:16/9;margin-top:.9rem;max-height:42vh"><img src="${IMG.funnel}" alt="Embudo isométrico"/></div>
-    <div class="steps r" style="margin-top:1.2rem">
-      ${V.funnel.map(s=>`<div class="step"><div class="num">${s.n}</div><h4>${s.t}</h4><p>${s.d}</p></div>`).join("")}
-    </div>
-  `},
-
-  // 6. STACK IA · 12 AGENTES
-  {kind:"dark",bg:IMG.agents,html:`
-    <span class="pill r"><span class="dot"></span> Stack IA · 12 agentes</span>
-    <h2 class="r split-letters" style="margin-top:.9rem;color:#fff">El stack que <em>nadie tiene reunido</em>.</h2>
-    <div class="gold-line r"></div>
-    <div class="agents r" style="margin-top:1.2rem">
-      <div class="agent"><span class="who">Captación</span><strong>① Estratega de Contenidos</strong>Opus 4.8 — 20 ideas virales/mes basadas en tu nicho.</div>
-      <div class="agent"><span class="who">Captación</span><strong>② Editor Reels IA</strong>HeyGen + ElevenLabs voz clonada + Opus Clip.</div>
-      <div class="agent"><span class="who">Captación</span><strong>③ Buyer de Anuncios</strong>GPT-5.5 + Meta Marketing API. A/B con los 9 hooks.</div>
-      <div class="agent"><span class="who">Embudo</span><strong>④ Asesor Conversacional</strong>GPT-5.5 con prompt de tu negocio + contexto del quiz.</div>
-      <div class="agent"><span class="who">Voz</span><strong>⑤ Recepcionista 24/7</strong>Retell + ElevenLabs castellano + Twilio.</div>
-      <div class="agent"><span class="who">Voz</span><strong>⑥ Caller Saliente 60s</strong>Vapi/Bland — speed-to-lead automático.</div>
-      <div class="agent"><span class="who">Voz</span><strong>⑦ Reactivador BBDD</strong>Outbound IA sobre &gt;90 días inactivos.</div>
-      <div class="agent"><span class="who">Inteligencia</span><strong>⑧ Analista de Lead</strong>Opus 4.8 — score 0-100, objeciones, próxima acción.</div>
-      <div class="agent"><span class="who">Inteligencia</span><strong>⑨ Coach del Equipo</strong>Graba la llamada humana y devuelve coaching.</div>
-      <div class="agent"><span class="who">Retención</span><strong>⑩ Review Engine FTC-compliant</strong>Route 5★ Google, intercept ≤4★.</div>
-      <div class="agent"><span class="who">Retención</span><strong>⑪ Membership Bot</strong>Upsell personalizado (+13% YoY).</div>
-      <div class="agent"><span class="who">Compliance</span><strong>⑫ Compliance Guardian</strong>Revisa todos los outputs (FTC, GDPR, off-label).</div>
-    </div>
-  `},
-
-  // 7. EL MOMENTO WOW (LLAMADA IA)
-  {kind:"dark",bg:IMG.call,html:`
-    <span class="pill r" style="background:rgba(212,165,116,.22);color:#fff;border:1px solid rgba(255,255,255,.22)"><span class="dot"></span> El momento que cierra</span>
-    <h2 class="r split-letters" style="margin-top:.9rem;color:#fff;max-width:780px">Su teléfono suena. <em style="color:#D4A574">"Hola Marta, soy de tu clínica"</em>.</h2>
-    <p class="r muted" style="color:#f5ecdc;margin-top:.9rem;max-width:680px;font-size:1.05rem">No bot. Voz natural en castellano, clonada del propio dueño si lo desea. Reserva la consulta y deja nota grabada en el dashboard.</p>
-    <div class="r row" style="margin-top:1.4rem;max-width:920px">
-      <div class="feat" style="background:rgba(255,255,255,.06);border-color:rgba(212,165,116,.3);color:#fff"><div class="ic" style="background:rgba(212,165,116,.25);color:#D4A574">+30-50%</div><strong>consultas reservadas</strong><p style="color:#c9b8b3;margin-top:.3rem;font-size:.85rem">Lift en 30 días con voz IA inbound (Tested.media).</p></div>
-      <div class="feat" style="background:rgba(255,255,255,.06);border-color:rgba(212,165,116,.3);color:#fff"><div class="ic" style="background:rgba(212,165,116,.25);color:#D4A574">22 → 48%</div><strong>form-fill → consulta</strong><p style="color:#c9b8b3;margin-top:.3rem;font-size:.85rem">Speed-to-lead saliente &lt;60 s.</p></div>
-      <div class="feat" style="background:rgba(255,255,255,.06);border-color:rgba(212,165,116,.3);color:#fff"><div class="ic" style="background:rgba(212,165,116,.25);color:#D4A574">25-60k €</div><strong>facturación añadida/mes</strong><p style="color:#c9b8b3;margin-top:.3rem;font-size:.85rem">Single-location con stack IA 700-1.500 $/mes.</p></div>
-    </div>
-  `},
-
-  // 8. ANUNCIOS META QUE GANAN
-  {kind:"light",html:`
-    <div class="grid grid-2">
-      <div>
-        <span class="pill r"><span class="dot"></span> Meta Ad Library 2026</span>
-        <h2 class="r split-letters" style="margin-top:.9rem">Los anuncios que <em>siempre ganan</em>.</h2>
-        <div class="gold-line r"></div>
-        <p class="r muted" style="max-width:560px;margin-top:.5rem">9 hooks copan el 70% del feed DTC. Para tu vertical, estos 3 dominan.</p>
-        <div class="list r" style="margin-top:1.1rem">
-          ${V.metaHooks.map((h,i)=>`<div class="row-line"><span class="num">0${i+1}</span><div><strong style="font-family:'Cormorant Garamond';font-size:1.05rem">${h.h}</strong><p class="muted" style="margin-top:.2rem;font-size:.82rem">${h.d}</p></div></div>`).join("")}
-        </div>
-        <p class="r muted" style="margin-top:1rem;font-size:.78rem">Formato: UGC video 36,8% (longest-running) · Demonstration 38,8%. Evita split-screen Before/After (Meta lo veta).</p>
-      </div>
-      <div class="r-scale image-card" style="aspect-ratio:16/9"><img src="${IMG.ads}" alt="Anuncios Meta ganadores"/></div>
-    </div>
-  `},
-
-  // 9. DASHBOARD
-  {kind:"light",html:`
-    <div class="grid grid-2">
-      <div>
-        <span class="pill r"><span class="dot"></span> Panel del propietario</span>
-        <h2 class="r split-letters" style="margin-top:.9rem">Dashboard <em>SDR-first</em>: ve el lead caliente sin pensar.</h2>
-        <div class="gold-line r"></div>
-        <p class="r muted" style="margin-top:.5rem;max-width:560px">Score 0-100, temperatura, objeción detectada por IA, próxima acción. Conectado a la agenda y al recepcionista.</p>
-        <div class="row r" style="margin-top:1.3rem">
-          <div><div class="stat-label">Leads totales</div><div class="stat" data-count="47">0</div></div>
-          <div><div class="stat-label">Hot leads</div><div class="stat" data-count="12">0</div></div>
-          <div><div class="stat-label">ROI 90 días</div><div class="stat" data-count="7" data-suffix="×">0×</div></div>
+  // 6 CHAT IA TIPEANDO
+  {dark:true,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Paso 3 · Chat IA</span>
+      <h2 class="r" style="margin-top:.7rem">Una asesora <em>en directo</em>, 24/7.</h2>
+      <p class="r muted" style="margin-top:.4rem;font-size:.9rem">Resuelve objeciones, recomienda y pre-cierra. GPT-5.5 con el prompt de tu negocio.</p>
+      <div class="r" style="margin-top:1rem;display:flex;justify-content:center">
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="header"><span class="av"></span><span>${V.callerName}<small>en línea</small></span></div>
+            <div id="chatBox" style="display:flex;flex-direction:column;gap:6px;flex:1;overflow:hidden"></div>
+          </div>
         </div>
       </div>
-      <div class="r-scale image-card" style="aspect-ratio:16/9"><img src="${IMG.dashboard}" alt="Dashboard"/></div>
-    </div>
-  `},
+    </div>`},
 
-  // 10. REPLICABILIDAD POR VERTICALES
-  {kind:"light",html:`
-    <span class="pill r"><span class="dot"></span> Una infraestructura, 6 verticales</span>
-    <h2 class="r split-letters" style="margin-top:.9rem;max-width:1100px">El mismo SaaS, <em>seis playbooks</em>. Cambia el prompt, no la arquitectura.</h2>
-    <div class="gold-line r"></div>
-    <div class="r-scale image-card" style="aspect-ratio:16/9;max-height:46vh;margin-top:.9rem"><img src="${IMG.verticals}" alt="Verticales"/></div>
-    <div class="verticals-list r" style="margin-top:1.3rem">
-      <div class="v-card" data-go="aesthetics"><span class="v-icon">❀</span><strong>Estética</strong><span>Aumento labios · hilos · HIFU · láser</span></div>
-      <div class="v-card" data-go="dental"><span class="v-icon">◗</span><strong>Dental</strong><span>Diseño sonrisa · invisalign · implantes</span></div>
-      <div class="v-card" data-go="legal"><span class="v-icon">⚖</span><strong>Abogados</strong><span>Cualificación 24/7 · VSL del socio</span></div>
-      <div class="v-card" data-go="fitness"><span class="v-icon">⛬</span><strong>Fitness · Coaches</strong><span>Quiz transformación · clase prueba</span></div>
-      <div class="v-card" data-go="realestate"><span class="v-icon">⌂</span><strong>Inmobiliaria</strong><span>"¿Cuánto vale tu casa?" + caller</span></div>
-      <div class="v-card" data-go="hospitality"><span class="v-icon">⌕</span><strong>Restauración</strong><span>Reservas IA · upsell · reactivación</span></div>
-    </div>
-  `},
-
-  // 11. OFERTA
-  {kind:"dark",bg:IMG.offer,html:`
-    <div class="grid grid-2">
-      <div>
-        <span class="pill r" style="background:rgba(212,165,116,.22);color:#fff;border:1px solid rgba(255,255,255,.22)"><span class="dot"></span> ${V.offerName}</span>
-        <h2 class="r split-letters" style="margin-top:.9rem;color:#fff">90 días <em style="color:#D4A574">para llenar tu agenda</em>. O el siguiente trimestre lo regalamos.</h2>
-        <div class="gold-line r"></div>
-        <p class="r" style="color:#f5ecdc;margin-top:.7rem;font-size:1rem">Setup + Done-For-You + IA + acompañamiento humano semanal.</p>
-        <div class="r price-box">
-          <div class="kicker" style="color:#D4A574">Inversión 90 días</div>
-          <div class="big">${V.pricing.a}</div>
-          <div style="font-size:.85rem;margin-top:.3rem;color:#D4A574">+ ${V.pricing.b}</div>
+  // 7 LLAMADA IA SALIENTE
+  {dark:true,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Paso 4 · Caller IA</span>
+      <h2 class="r" style="margin-top:.7rem">Su teléfono suena en <em>menos de 60 s</em>.</h2>
+      <p class="r muted" style="margin-top:.4rem;font-size:.9rem">Voz humana en castellano. Reserva consulta y deja nota grabada en tu dashboard.</p>
+      <div class="timeline r" aria-hidden="true"><div class="tk"><i></i></div><div class="tk"><i></i></div><div class="tk"><i></i></div><div class="tk"><i></i></div></div>
+      <div class="r" style="margin-top:.8rem;display:flex;justify-content:center">
+        <div class="phone">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="header"><span class="av"></span><span>${V.business}<small>llamada entrante</small></span></div>
+            <div class="call" style="margin-top:.5rem">
+              <div class="ring">📞</div>
+              <div class="label">${V.callerName}<small>en castellano · IA</small></div>
+              <div class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+              <div class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            </div>
+          </div>
         </div>
-        <p class="r" style="margin-top:.9rem;color:#c9b8b3;font-size:.78rem">Limitado a 10-15 cuentas/mes. Garantía por escrito.</p>
       </div>
-      <div class="r">
-        <table class="offer-table" style="color:#fff">
-          ${V.offerLines.map(([t,p])=>`<tr><td>${t}</td><td>${p}</td></tr>`).join("")}
+    </div>`},
+
+  // 8 DASHBOARD QUE SE LLENA
+  {dark:false,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Paso 5 · Dashboard SDR-first</span>
+      <h2 class="r" style="margin-top:.7rem">Ves el lead caliente <em>sin pensarlo</em>.</h2>
+      <div class="r" style="margin-top:1rem">
+        <div class="dash">
+          <div class="head"><span class="av"></span> ${V.business} · panel</div>
+          <div class="body">
+            <div class="stats">
+              <div class="stat"><b id="kLeads">0</b><span>Leads</span></div>
+              <div class="stat"><b id="kHot">0</b><span>Hot leads</span></div>
+              <div class="stat"><b id="kRoi">0×</b><span>ROI 90 d</span></div>
+            </div>
+            <div id="leadList"></div>
+          </div>
+        </div>
+      </div>
+    </div>`},
+
+  // 9 STACK 12 AGENTES
+  {dark:true,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Stack IA · 12 agentes</span>
+      <h2 class="r" style="margin-top:.7rem">Lo que <em>nadie tiene reunido</em>.</h2>
+      <div class="network r" style="margin-top:.9rem">
+        ${[
+          ["Captación","① Estratega de Contenidos","Opus 4.8 · 20 ideas/mes"],
+          ["Captación","② Editor Reels IA","HeyGen + ElevenLabs + Opus Clip"],
+          ["Captación","③ Buyer de Anuncios","GPT-5.5 + Meta Marketing API"],
+          ["Embudo","④ Asesor Conversacional","GPT-5.5 con tu prompt"],
+          ["Voz","⑤ Recepcionista 24/7","Retell + ElevenLabs ES"],
+          ["Voz","⑥ Caller Saliente 60s","Vapi/Bland speed-to-lead"],
+          ["Voz","⑦ Reactivador BBDD","Outbound IA &gt;90 días"],
+          ["IA","⑧ Analista de Lead","Opus 4.8 score 0-100"],
+          ["IA","⑨ Coach del Equipo","Coaching 2 min auto"],
+          ["Retención","⑩ Review Engine","FTC compliant"],
+          ["Retención","⑪ Membership Bot","Upsell +13% YoY"],
+          ["Compliance","⑫ Compliance Guardian","FTC · GDPR · off-label"]
+        ].map((a,i)=>`<div class="node" style="animation-delay:${i*40}ms"><small>${a[0]}</small><b>${a[1]}</b>${a[2]}</div>`).join('')}
+      </div>
+    </div>`},
+
+  // 10 REPLICABILIDAD
+  {dark:false,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> Una infra, 6 verticales</span>
+      <h2 class="r" style="margin-top:.7rem">Cambia el <em>playbook</em>, no la arquitectura.</h2>
+      <div class="vlist r" style="margin-top:1rem">
+        ${Object.entries(VERT).map(([k,v])=>`<div class="vcard" data-go="${k}"><b>${v.label}</b><span>${v.sub.split('.')[0]}</span></div>`).join('')}
+      </div>
+      <p class="muted r" style="margin-top:.8rem;font-size:.78rem">Toca cualquier vertical para ver su pitch entero adaptado.</p>
+    </div>`},
+
+  // 11 OFERTA
+  {dark:true,build:()=>`
+    <div class="container">
+      <span class="pill r"><span class="dot"></span> La oferta</span>
+      <h2 class="r" style="margin-top:.7rem">90 días <em>para llenar tu agenda</em>. O el siguiente trimestre lo regalamos.</h2>
+      <div class="r" style="margin-top:1rem">
+        <table class="offer-table">
+          <tr><td>① Auditoría + diagnóstico IA</td><td>500 €</td></tr>
+          <tr><td>② Embudo Funnel AI 2.0</td><td>2.000 €</td></tr>
+          <tr><td>③ Recepcionista IA 24/7</td><td>1.500 €</td></tr>
+          <tr><td>④ Caller saliente &lt;60s</td><td>1.500 €</td></tr>
+          <tr><td>⑤ Reactivación BBDD (1.500)</td><td>1.000 €</td></tr>
+          <tr><td>⑥ 30 reels con avatar</td><td>1.500 €</td></tr>
+          <tr><td>⑦ Lanzamiento Meta/TikTok 90d</td><td>2.500 €</td></tr>
+          <tr><td>⑧ Formación + 12 sesiones 1:1</td><td>1.800 €</td></tr>
+          <tr><td>⑨ Garantía 90 días</td><td>—</td></tr>
           <tr class="total"><td>Valor declarado</td><td>${V.valueTotal}</td></tr>
         </table>
       </div>
-    </div>
-  `},
+      <div class="price-box r" style="margin-top:1rem">
+        <div class="kicker" style="color:var(--rose)">Inversión 90 días</div>
+        <div class="big">${V.pricing.a}</div>
+        <div style="font-size:.85rem;color:var(--rose);margin-top:.2rem">${V.pricing.b}</div>
+      </div>
+    </div>`},
 
-  // 12. CIERRE
-  {kind:"dark",bg:IMG.closing,html:`
-    <div style="text-align:center">
-      <span class="pill r" style="margin-bottom:.7rem;background:rgba(212,165,116,.22);color:#fff;border:1px solid rgba(255,255,255,.22)"><span class="dot"></span> Próximo paso</span>
-      <h2 class="r split-letters" style="max-width:920px;margin:0 auto;color:#fff">${V.closing.replace(/En 10/,"<em style='color:#D4A574'>En 10</em>").replace(/cargamos/i,"cargamos").replace(/funcionando/i,"<em style='color:#D4A574'>funcionando</em>")}</h2>
-      <div class="gold-line r" style="margin:1.4rem auto 1.6rem"></div>
-      <p class="r" style="max-width:680px;margin:0 auto;font-size:1.05rem;color:#f5ecdc">Demo 30 min. Tu propio teléfono suena con la asesora IA hablando como si fuera tu recepcionista. <strong style="color:#D4A574">Cierra el 60% de los que iban a cerrar.</strong></p>
-      <p class="r" style="margin:2.4rem auto 0;font-family:'Cormorant Garamond';font-size:1.6rem;color:#D4A574">"Si esto lo enchufas, alucinas."</p>
-      <p class="r" style="margin-top:.7rem;font-size:.78rem;letter-spacing:.18em;text-transform:uppercase;color:#c9b8b3">${V.name} · ${V.tagline}</p>
-    </div>
-  `}
+  // 12 CIERRE
+  {dark:true,build:()=>`
+    <div class="container" style="text-align:center">
+      <span class="pill r"><span class="dot"></span> Próximo paso</span>
+      <h2 class="r" style="margin-top:.7rem">${V.closing.replace(/10 minutos|10 min/,m=>`<em>${m}</em>`)}</h2>
+      <div class="gold-line r" style="margin:1rem auto"></div>
+      <p class="r" style="font-size:1rem;color:#f5ecdc;max-width:520px;margin:.5rem auto 0">Demo 30 min. Tu propio teléfono suena con la asesora IA hablando como tu recepcionista. <strong style="color:var(--rose)">Cierra el 60 % de los que iban a cerrar.</strong></p>
+      <a class="btn-cta r" href="#" style="margin-top:1.4rem" id="cta">Reservar demo</a>
+      <p class="r" style="margin-top:1.4rem;font-family:'Cormorant Garamond';font-size:1.4rem;color:var(--rose)">"Si esto lo enchufas, alucinas."</p>
+    </div>`}
 ]);
 
-/* ============================================================
-   RENDER · build deck for the active vertical
-============================================================ */
+/* ============== RUNTIME ============== */
 const deck=document.getElementById('deck');
 const vsw=document.getElementById('vsw');
-const ctrls=document.getElementById('controls');
-const progressEl=document.getElementById('progress');
+const progress=document.getElementById('progress');
+let i=0,slides=[],V=null,timers=[];
 
-// Build vertical switcher
-Object.keys(VERTICALS).forEach(k=>{
+Object.entries(VERT).forEach(([k,v])=>{
   const b=document.createElement('button');
-  b.dataset.k=k;b.textContent=VERTICALS[k].label;
+  b.dataset.k=k;b.textContent=v.label;
   b.onclick=()=>setVertical(k);
   vsw.appendChild(b);
 });
 
-let currentSlides=[];
-let i=0;
-let autoplay=null;
-
 function setVertical(key){
-  const V=VERTICALS[key];
+  V=VERT[key];
   document.body.dataset.vertical=key;
-  // theme tokens
-  const t=V.theme;
-  const r=document.documentElement.style;
+  // Theme tokens
+  const t=V.theme,r=document.documentElement.style;
   r.setProperty('--bg',t.bg);r.setProperty('--ink',t.ink);
-  r.setProperty('--berry',t.berry);r.setProperty('--berry-2',t.berry2);
+  r.setProperty('--berry',t.berry);r.setProperty('--berry2',t.berry2);
   r.setProperty('--rose',t.rose);r.setProperty('--gold',t.gold);
   r.setProperty('--cream',t.cream);r.setProperty('--muted',t.muted);
-  r.setProperty('--line',t.line);r.setProperty('--accent-soft',t.accent);
-  document.title=`${V.name} · ${V.tagline}`;
-
-  // mark active in switcher
+  r.setProperty('--line',t.line);r.setProperty('--accent',t.accent);
+  document.title=`AURA ${V.label} · pitch deck`;
   [...vsw.children].forEach(b=>b.classList.toggle('on',b.dataset.k===key));
 
-  // build slides
-  currentSlides=SLIDES(V);
-  deck.innerHTML='';
-  progressEl.innerHTML='';
-  currentSlides.forEach((s,idx)=>{
-    const el=document.createElement('section');
-    el.className='slide'+(s.kind==='dark'?' dark':'');
-    el.dataset.bg=s.kind;
-    el.innerHTML=
-      (s.bg?`<div class="bg-layer" style="background-image:url('${s.bg}')"></div>`:'')+
-      `<div class="container">${s.html}</div>`;
-    deck.appendChild(el);
-    const p=document.createElement('span');progressEl.appendChild(p);
-    el.querySelectorAll('[data-go]').forEach(c=>c.addEventListener('click',()=>{setVertical(c.dataset.go);transition(0,'right');}));
+  slides=SL(V);
+  deck.innerHTML='';progress.innerHTML='';
+  slides.forEach((s,k)=>{
+    const sec=document.createElement('section');
+    sec.className='slide'+(s.dark?' dark':'');
+    sec.innerHTML=s.build();
+    deck.appendChild(sec);
+    const dot=document.createElement('span');progress.appendChild(dot);
+    sec.querySelectorAll('[data-go]').forEach(c=>c.addEventListener('click',()=>{setVertical(c.dataset.go);go(0)}));
   });
-  i=Math.min(i,currentSlides.length-1);
-  showInstant(i);
+  go(Math.min(i,slides.length-1));
 }
 
-/* ============================================================
-   ANIMATION ENGINE
-============================================================ */
-const ease='power3.out';
-const easeIO='power3.inOut';
+function go(n){
+  n=Math.max(0,Math.min(slides.length-1,n));
+  // clear timers from previous slide animations
+  timers.forEach(t=>clearTimeout(t));timers=[];
+  [...deck.children].forEach((el,k)=>{
+    el.classList.remove('exit-left');
+    if(k===n){el.classList.add('active');setTimeout(()=>animateContent(k,el),50)}
+    else if(k===i){el.classList.remove('active');el.classList.add('exit-left')}
+    else{el.classList.remove('active','exit-left')}
+  });
+  [...progress.children].forEach((el,k)=>el.classList.toggle('active',k===n));
+  document.body.classList.toggle('dark-bar',!!slides[n].dark);
+  i=n;
+}
 
-function splitTitle(el){
-  if(el.dataset.split)return;
-  el.dataset.split='1';
-  const html=el.innerHTML;
-  // Wrap each character that is a letter; preserve <em>, <br/>, spaces
-  const tmp=document.createElement('div');tmp.innerHTML=html;
-  const walk=(node)=>{
-    if(node.nodeType===3){
-      const txt=node.textContent;
-      const frag=document.createDocumentFragment();
-      [...txt].forEach(ch=>{
-        if(ch===' '||ch==='\u00a0'){frag.appendChild(document.createTextNode(ch));return}
-        const sp=document.createElement('span');sp.textContent=ch;frag.appendChild(sp);
-      });
-      node.replaceWith(frag);
-    } else if(node.nodeType===1 && node.tagName!=='BR'){
-      [...node.childNodes].forEach(walk);
+function animateContent(idx,slide){
+  // slide-specific animations
+  const reels=slide.querySelector('#reelsGrid');
+  if(reels){
+    reels.innerHTML='';
+    for(let k=0;k<9;k++){
+      const r=document.createElement('div');
+      r.className='reel';r.style.animationDelay=(k*60)+'ms';
+      reels.appendChild(r);
+    }
+  }
+  const qBox=slide.querySelector('#quizBox');
+  if(qBox)playQuiz(slide);
+  const chatBox=slide.querySelector('#chatBox');
+  if(chatBox)playChat(slide);
+  const dash=slide.querySelector('#leadList');
+  if(dash)playDash(slide);
+}
+
+/* ANIM: QUIZ */
+function playQuiz(slide){
+  const opts=[...slide.querySelectorAll('#qOptions .opt')];
+  const bar=slide.querySelector('#qBar');
+  const step=slide.querySelector('#qstep');
+  let s=0;
+  bar.style.width='20%';
+  const cycle=()=>{
+    opts.forEach(o=>o.classList.remove('sel'));
+    const target=opts[Math.floor(Math.random()*opts.length)];
+    timers.push(setTimeout(()=>{
+      target.classList.add('sel');
+    },550));
+    s=(s+1)%5;
+    timers.push(setTimeout(()=>{
+      bar.style.width=((s+1)*20)+'%';
+      if(step)step.textContent=s+1;
+    },800));
+    timers.push(setTimeout(cycle,2200));
+  };
+  cycle();
+}
+
+/* ANIM: CHAT */
+function playChat(slide){
+  const box=slide.querySelector('#chatBox');
+  if(!box)return;
+  box.innerHTML='';
+  const msgs=V.chat;
+  let k=0;
+  const next=()=>{
+    if(k>=msgs.length){
+      // restart loop
+      timers.push(setTimeout(()=>{box.innerHTML='';k=0;next()},1800));
+      return;
+    }
+    const m=msgs[k];
+    if(m.who==='ai'){
+      const ty=document.createElement('div');ty.className='typing';ty.innerHTML='<i></i><i></i><i></i>';
+      box.appendChild(ty);
+      timers.push(setTimeout(()=>{
+        ty.remove();
+        const b=document.createElement('div');b.className='bubble ai';b.textContent=m.t;box.appendChild(b);
+        k++;timers.push(setTimeout(next,m.t.length*22+500));
+      },900));
+    }else{
+      const b=document.createElement('div');b.className='bubble me';b.textContent=m.t;box.appendChild(b);
+      k++;timers.push(setTimeout(next,800));
     }
   };
-  [...tmp.childNodes].forEach(walk);
-  el.innerHTML=tmp.innerHTML;
+  next();
 }
 
-function animateSlide(slide,dir='right'){
-  const tl=gsap.timeline();
-  // bg parallax in
-  const bg=slide.querySelector('.bg-layer');
-  if(bg){tl.fromTo(bg,{scale:1.12,opacity:.85},{scale:1,opacity:1,duration:1.6,ease:'power2.out'},0)}
-  // title letter animation
-  const title=slide.querySelector('.split-letters');
-  if(title){splitTitle(title);const chars=title.querySelectorAll('span');gsap.set(chars,{display:'inline-block',opacity:0,y:24,rotateX:-30});tl.to(chars,{opacity:1,y:0,rotateX:0,duration:.55,ease,stagger:.018},.05);}
-  // generic reveals
-  const r=slide.querySelectorAll('.r');
-  if(r.length)tl.fromTo(r,{opacity:0,y:28},{opacity:1,y:0,duration:.7,ease,stagger:.07},.15);
-  const rf=slide.querySelectorAll('.r-fade');
-  if(rf.length)tl.fromTo(rf,{opacity:0},{opacity:1,duration:.7,ease,stagger:.06},.2);
-  const rs=slide.querySelectorAll('.r-scale');
-  if(rs.length)tl.fromTo(rs,{opacity:0,scale:.95},{opacity:1,scale:1,duration:.85,ease},.2);
-  // counter stats
-  slide.querySelectorAll('[data-count]').forEach(el=>{
-    const target=parseFloat(el.dataset.count);
-    const suffix=el.dataset.suffix||'';
-    const obj={n:0};
-    tl.to(obj,{n:target,duration:1.4,ease:'power2.out',onUpdate(){el.textContent=Math.round(obj.n)+suffix}},.4);
+/* ANIM: DASHBOARD */
+function playDash(slide){
+  const list=slide.querySelector('#leadList');
+  const kL=slide.querySelector('#kLeads');
+  const kH=slide.querySelector('#kHot');
+  const kR=slide.querySelector('#kRoi');
+  const sample=[
+    ['Camila R.','Instagram · Full Face','hot'],
+    ['María F.','Reels IA · Skin Boost','hot'],
+    ['Andrea S.','Facebook · Rinomodel.','warm'],
+    ['Valentina K.','WhatsApp · Lips Glow','hot'],
+    ['Daniela P.','Instagram · Full Face','warm'],
+    ['Sofía M.','Reels IA · Hilos','hot'],
+  ];
+  // animate counters
+  const animCount=(el,end,suf="")=>{
+    let n=0;const dur=1100;const t0=performance.now();
+    const step=(t)=>{const p=Math.min(1,(t-t0)/dur);n=end*(1-Math.pow(1-p,3));el.textContent=Math.round(n)+suf;if(p<1)requestAnimationFrame(step)};
+    requestAnimationFrame(step);
+  };
+  list.innerHTML='';
+  timers.push(setTimeout(()=>animCount(kL,47),200));
+  timers.push(setTimeout(()=>animCount(kH,12),400));
+  timers.push(setTimeout(()=>animCount(kR,7,'×'),600));
+  sample.forEach((s,k)=>{
+    timers.push(setTimeout(()=>{
+      const row=document.createElement('div');row.className='lead';row.style.animationDelay='0s';
+      row.innerHTML=`<div class="pic"></div><div class="who">${s[0]}<small>${s[1]}</small></div><span class="tag ${s[2]}">${s[2]==='hot'?'caliente':'tibia'}</span>`;
+      list.appendChild(row);
+    },800+k*220));
   });
 }
 
-function showInstant(n){
-  [...deck.children].forEach((el,k)=>el.classList.toggle('active',k===n));
-  [...progressEl.children].forEach((el,k)=>el.classList.toggle('active',k===n));
-  document.body.style.background=currentSlides[n].kind==='dark'?'#0e0408':'var(--bg)';
-  ctrls.classList.toggle('dark-controls',currentSlides[n].kind==='dark');
-  animateSlide(deck.children[n]);
-}
-
-function transition(toIdx,dir='right'){
-  toIdx=Math.max(0,Math.min(currentSlides.length-1,toIdx));
-  if(toIdx===i)return;
-  const cur=deck.children[i];
-  const nxt=deck.children[toIdx];
-  // out animation on current
-  const tl=gsap.timeline({onComplete(){
-    cur.classList.remove('active');
-    nxt.classList.add('active');
-    [...progressEl.children].forEach((el,k)=>el.classList.toggle('active',k===toIdx));
-    document.body.style.background=currentSlides[toIdx].kind==='dark'?'#0e0408':'var(--bg)';
-    ctrls.classList.toggle('dark-controls',currentSlides[toIdx].kind==='dark');
-    i=toIdx;
-    animateSlide(nxt,dir);
-  }});
-  // curtain wipe
-  const curtain=document.getElementById('curtain');
-  tl.set(curtain,{transformOrigin: dir==='right'?'left':'right',scaleX:0});
-  tl.to(curtain,{scaleX:1,duration:.45,ease:easeIO},0);
-  tl.to(cur,{opacity:0,scale:.98,duration:.4,ease:easeIO},0);
-  tl.set(curtain,{transformOrigin: dir==='right'?'right':'left'},.5);
-  tl.to(curtain,{scaleX:0,duration:.55,ease:easeIO},.55);
-}
-
-/* ============================================================
-   CONTROLS · keys, wheel, touch, autoplay, fullscreen
-============================================================ */
-document.getElementById('next').onclick=()=>transition(i+1,'right');
-document.getElementById('prev').onclick=()=>transition(i-1,'left');
-document.getElementById('full').onclick=()=>{
-  if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();
-  else document.exitFullscreen?.();
-};
-const apBtn=document.getElementById('autoplay');
-const ring=document.getElementById('ring');
-const ringBar=ring.querySelector('i');
-function startAuto(){
-  if(autoplay)return;
-  ring.classList.add('on');
-  apBtn.textContent='⏸ Pausar';
-  const tick=()=>{
-    gsap.fromTo(ringBar,{width:'0%'},{width:'100%',duration:7,ease:'none',onComplete:()=>{
-      transition(i+1<currentSlides.length?i+1:0,'right');
-      tick();
-    }});
-  };
-  tick();
-  autoplay=true;
-}
-function stopAuto(){
-  if(!autoplay)return;
-  gsap.killTweensOf(ringBar);
-  gsap.set(ringBar,{width:'0%'});
-  ring.classList.remove('on');
-  apBtn.textContent='▶ Autoplay';
-  autoplay=null;
-}
-apBtn.onclick=()=>autoplay?stopAuto():startAuto();
+/* navigation */
+document.getElementById('next').onclick=()=>go(i+1);
+document.getElementById('prev').onclick=()=>go(i-1);
 document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' ')transition(i+1,'right');
-  if(e.key==='ArrowLeft'||e.key==='PageUp')transition(i-1,'left');
-  if(e.key==='Home')transition(0,'left');
-  if(e.key==='End')transition(currentSlides.length-1,'right');
-  if(e.key.toLowerCase()==='p')autoplay?stopAuto():startAuto();
-  if(e.key.toLowerCase()==='f'){if(!document.fullscreenElement)document.documentElement.requestFullscreen?.();else document.exitFullscreen?.();}
+  if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' ')go(i+1);
+  if(e.key==='ArrowLeft'||e.key==='PageUp')go(i-1);
 });
 let touchY=0,touchX=0;
-document.addEventListener('touchstart',e=>{touchY=e.touches[0].clientY;touchX=e.touches[0].clientX});
+document.addEventListener('touchstart',e=>{touchY=e.touches[0].clientY;touchX=e.touches[0].clientX},{passive:true});
 document.addEventListener('touchend',e=>{
   const dy=touchY-e.changedTouches[0].clientY;
   const dx=touchX-e.changedTouches[0].clientX;
-  if(Math.abs(dx)>Math.abs(dy)&&Math.abs(dx)>40){transition(i+(dx>0?1:-1),dx>0?'right':'left');return}
-  if(Math.abs(dy)>40)transition(i+(dy>0?1:-1),dy>0?'right':'left');
-});
-let wlock=false;
-document.addEventListener('wheel',e=>{
-  if(wlock||Math.abs(e.deltaY)<35)return;
-  wlock=true;transition(i+(e.deltaY>0?1:-1),e.deltaY>0?'right':'left');
-  setTimeout(()=>wlock=false,800);
+  if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)){go(i+(dx>0?1:-1));return}
+  if(Math.abs(dy)>60)go(i+(dy>0?1:-1));
 },{passive:true});
 
-/* ============================================================
-   PARTICLES (subtle gold dust)
-============================================================ */
-const cv=document.getElementById('fx');
-const ctx=cv.getContext('2d');
-let pts=[];
-function resize(){cv.width=innerWidth*devicePixelRatio;cv.height=innerHeight*devicePixelRatio}
-addEventListener('resize',resize);resize();
-function spawn(n){pts=Array.from({length:n},()=>({x:Math.random()*cv.width,y:Math.random()*cv.height,r:Math.random()*1.6*devicePixelRatio+.4,vx:(Math.random()-.5)*.15,vy:(Math.random()-.5)*.15,a:Math.random()*.6+.2}))}
-spawn(70);
-function draw(){
-  ctx.clearRect(0,0,cv.width,cv.height);
-  for(const p of pts){
-    p.x+=p.vx;p.y+=p.vy;
-    if(p.x<0)p.x=cv.width;if(p.x>cv.width)p.x=0;
-    if(p.y<0)p.y=cv.height;if(p.y>cv.height)p.y=0;
-    ctx.fillStyle=`rgba(212,165,116,${p.a})`;
-    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
-  }
-  requestAnimationFrame(draw);
-}
-draw();
-
-/* ============================================================
-   INIT
-============================================================ */
 setVertical('aesthetics');
 </script>
 </body>
