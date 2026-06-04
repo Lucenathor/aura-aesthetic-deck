@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Activa AURA para tu clínica</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#F7EFE8;--card:#fff;--ink:#2A211C;--ink-soft:#6B5D52;--muted:#9C8C7E;--terra:#C8745A;--terra-d:#A85942;--champ:#C9A86A;--mint:#A4E5CD;--line:#EAE0D2;--ease:cubic-bezier(.2,.8,.2,1)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased}
+.serif{font-family:'Fraunces',serif}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(45% 40% at 15% 20%,rgba(200,116,90,.16),transparent 60%),radial-gradient(45% 45% at 88% 85%,rgba(201,168,106,.2),transparent 60%);pointer-events:none}
+.wrap{position:relative;z-index:2;max-width:960px;margin:0 auto;padding:2.4rem 1.2rem 4rem}
+.brand{text-align:center;margin-bottom:2rem}
+.brand .wm{font-family:'Fraunces',serif;font-weight:500;font-size:1.7rem;letter-spacing:.22em;color:var(--terra-d)}
+.brand .tag{font-size:.6rem;letter-spacing:.34em;text-transform:uppercase;color:var(--muted);margin-top:.2rem}
+.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:1.6rem;align-items:start}
+@media(max-width:780px){.grid{grid-template-columns:1fr}}
+h1{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(1.9rem,5vw,2.8rem);line-height:1.1;letter-spacing:-.01em}
+h1 em{font-style:italic;color:var(--terra-d)}
+.lead{color:var(--ink-soft);font-size:1.05rem;line-height:1.6;margin-top:1rem}
+.bullets{margin-top:1.4rem;display:flex;flex-direction:column;gap:.8rem}
+.bullet{display:flex;gap:.7rem;align-items:flex-start;font-size:.95rem;color:var(--ink-soft)}
+.bullet .ck{width:22px;height:22px;border-radius:50%;background:var(--mint);color:#1f6b4f;display:grid;place-items:center;flex:none;font-size:.8rem;font-weight:700;margin-top:.1rem}
+.bullet b{color:var(--ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:1.6rem;box-shadow:0 40px 80px -40px rgba(42,33,28,.35)}
+.card h3{font-family:'Fraunces',serif;font-weight:600;font-size:1.3rem}
+.card .sub{color:var(--muted);font-size:.88rem;margin:.3rem 0 1.2rem}
+label{display:block;font-size:.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:.35rem;margin-top:.9rem}
+input,select{width:100%;padding:.8rem .9rem;border-radius:11px;border:1px solid var(--line);font-size:.98rem;font-family:inherit;outline:none}
+input:focus,select:focus{border-color:var(--terra)}
+.slots{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.5rem}
+.slot{padding:.7rem .5rem;border-radius:11px;border:1.5px solid var(--line);background:#fff;font-weight:600;font-size:.85rem;cursor:pointer;text-align:center;transition:all .16s var(--ease)}
+.slot.sel{background:linear-gradient(135deg,var(--terra),var(--terra-d));color:#fff;border-color:transparent}
+.btn{width:100%;margin-top:1.2rem;padding:.95rem;border-radius:12px;background:linear-gradient(135deg,var(--terra),var(--terra-d));color:#fff;font-weight:700;font-size:1rem;border:0;cursor:pointer;box-shadow:0 14px 30px -14px rgba(176,93,68,.6)}
+.btn:disabled{opacity:.5}
+.ok{text-align:center;padding:1.5rem 0}
+.ok .big{width:64px;height:64px;border-radius:50%;background:var(--mint);color:#1f6b4f;display:grid;place-items:center;font-size:1.8rem;margin:0 auto 1rem}
+.msg{text-align:center;font-size:.85rem;color:#c0392b;margin-top:.6rem;min-height:1rem}
+.foot{text-align:center;color:var(--muted);font-size:.78rem;margin-top:1rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><div class="wm">AURA</div><div class="tag">Clínica Estética Avanzada</div></div>
+  <div class="grid">
+    <div>
+      <h1>Tu embudo ya está montado. <em>Vamos a activarlo.</em></h1>
+      <p class="lead">Acabas de ver el embudo de <strong id="clinicName">tu clínica</strong> funcionando: quiz que cualifica, asesor IA que reserva y panel para no perder ni un paciente. En una videollamada de 20 minutos te lo dejamos en producción con tu marca, tu WhatsApp y tu agenda.</p>
+      <div class="bullets">
+        <div class="bullet"><span class="ck">✓</span><div>Te conectamos tu <b>WhatsApp y tu agenda real</b> de citas.</div></div>
+        <div class="bullet"><span class="ck">✓</span><div>Activamos el <b>asesor IA</b> con el tono de tu clínica.</div></div>
+        <div class="bullet"><span class="ck">✓</span><div>Te dejamos <b>anuncios listos</b> para lanzar en Meta.</div></div>
+        <div class="bullet"><span class="ck">✓</span><div>Sin permanencia. <b>Si no llena tu agenda, no sigues.</b></div></div>
+      </div>
+    </div>
+    <div class="card" id="card">
+      <div id="form">
+        <h3>Agenda tu videollamada</h3>
+        <p class="sub">20 minutos. Te enseñamos cómo quedaría todo activo en tu clínica.</p>
+        <label>Tu nombre</label>
+        <input id="name" placeholder="Nombre y apellidos"/>
+        <label>Email</label>
+        <input id="email" type="email" placeholder="tu@clinica.com"/>
+        <label>Móvil / WhatsApp</label>
+        <input id="phone" type="tel" placeholder="600 00 00 00"/>
+        <label>¿Cuándo te viene bien?</label>
+        <div class="slots" id="slots"></div>
+        <button class="btn" id="send" onclick="book()">Reservar mi videollamada</button>
+        <div class="msg" id="msg"></div>
+      </div>
+      <div id="done" class="ok" style="display:none">
+        <div class="big">✓</div>
+        <h3 class="serif">Videollamada reservada</h3>
+        <p class="sub" id="doneSub">Te hemos enviado la confirmación. Hablamos pronto.</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot">AURA · el embudo IA para clínicas estéticas</div>
+</div>
+<script>
+const WORKER='https://aura-chat-worker.adrian-7b9.workers.dev';
+const T=new URLSearchParams(location.search).get('t')||'';
+let slot='';
+// nombre de la clínica
+(async function(){ if(!T)return; try{ const r=await fetch(WORKER+'/api/tenant/'+T); const d=await r.json(); const t=d.tenant||d; if(t.name) document.getElementById('clinicName').textContent=t.name; }catch(e){} })();
+// generar slots próximos
+(function(){
+  const dn=['dom','lun','mar','mié','jue','vie','sáb'];
+  const c=document.getElementById('slots'); const now=new Date(); let added=0;
+  for(let d=1; d<=10 && added<6; d++){ const dt=new Date(now.getTime()+d*86400000); const day=dt.getDay(); if(day===0||day===6)continue;
+    [11,17].forEach(h=>{ if(added>=6)return; const lbl=dn[day]+' '+dt.getDate()+' · '+h+':00'; const b=document.createElement('div'); b.className='slot'; b.textContent=lbl; b.onclick=()=>{document.querySelectorAll('.slot').forEach(s=>s.classList.remove('sel'));b.classList.add('sel');slot=lbl;}; c.appendChild(b); added++; });
+  }
+})();
+function msg(t){ document.getElementById('msg').textContent=t; }
+async function book(){
+  const name=document.getElementById('name').value.trim();
+  const email=document.getElementById('email').value.trim();
+  const phone=document.getElementById('phone').value.trim();
+  if(!name||!email.includes('@')||!phone){ msg('Completa tus datos'); return; }
+  if(!slot){ msg('Elige un hueco'); return; }
+  const b=document.getElementById('send'); b.disabled=true; b.textContent='Reservando…';
+  try{
+    await fetch(WORKER+'/api/consultations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,phone,slot,tenant_id:T})});
+    document.getElementById('form').style.display='none';
+    document.getElementById('done').style.display='block';
+    document.getElementById('doneSub').textContent='El '+slot+'. Te hemos enviado la confirmación a '+email+'.';
+  }catch(e){ msg('Error, inténtalo de nuevo'); b.disabled=false; b.textContent='Reservar mi videollamada'; }
+}
+</script>
+</body>
+</html>

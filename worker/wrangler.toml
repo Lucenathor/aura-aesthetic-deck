@@ -1,0 +1,23 @@
+name = "aura-chat-worker"
+main = "src/index.ts"
+compatibility_date = "2024-11-12"
+account_id = "7b92a21dc56bedffe54ed6113ab9cf38"
+
+[ai]
+binding = "AI"
+
+[[d1_databases]]
+binding = "aura_db"
+database_name = "aura-db"
+database_id = "f8c45a8d-5a83-4673-9e4e-56f76f458aa5"
+
+[[kv_namespaces]]
+binding = "AURA_IMG"
+id = "c03e3252543b4210af87828d75607ca8"
+
+[[r2_buckets]]
+binding = "aura_r2"
+bucket_name = "aura-storage"
+
+[triggers]
+crons = ["0 * * * *"]

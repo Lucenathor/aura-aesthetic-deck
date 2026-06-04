@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1"/>
+<title>Tus labios perfectos · Valoración gratuita</title>
+<meta name="description" content="Descubre tu aumento de labios ideal. Cuestionario de 40 segundos + valoración gratuita con la doctora."/>
+<meta name="theme-color" content="#F6EEE7"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#F7EFE8;--bg2:#F1E4DA;--ink:#2A211C;--ink-soft:#5C4F46;--muted:#9A8B7E;
+  --nude:#E8D5C7;--terra:#C8745A;--terra-d:#B05D44;--champ:#C9A86A;--rose:#D9A38C;
+  --card:#FFFEFC;--line:#E7DACC;
+  --wa-bg:#0b141a;--wa-panel:#111b21;--wa-me:#005c4b;--wa-them:#202c33;--wa-text:#e9edef;--wa-muted:#8696a0;--wa-input:#2a3942;
+  --ease:cubic-bezier(.22,1,.36,1);
+  --st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--ink);font-family:'Inter',system-ui,sans-serif;overflow-x:hidden}
+.serif{font-family:'Fraunces',Georgia,serif}
+button{font:inherit;border:0;cursor:pointer;color:inherit;background:transparent}
+img{max-width:100%;display:block}
+
+/* page texture */
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(120% 80% at 80% -10%,rgba(201,168,106,.16),transparent 55%),radial-gradient(90% 70% at -10% 110%,rgba(200,116,90,.12),transparent 55%);}
+.grain{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.05;background-image:url("data:image/svg+xml;utf8,<svg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")}
+
+.wrap{position:relative;z-index:1;max-width:480px;margin:0 auto;min-height:100dvh}
+
+/* ============ VIEWS ============ */
+.view{display:none !important;animation:fade .55s var(--ease)}
+.view.on{display:block !important}
+.view.hero.on,.view.quiz.on,.view.res.on,.view.chat.on{display:flex !important;flex-direction:column}
+@keyframes fade{from{opacity:0;transform:translateY(12px)}}
+
+/* ============ DESKTOP / IPAD: marco de dispositivo centrado ============ */
+@media(min-width:781px){
+  body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px 0}
+  body::after{content:"";position:fixed;inset:0;z-index:0;background:
+    radial-gradient(60% 50% at 18% 30%,rgba(200,116,90,.10),transparent 60%),
+    radial-gradient(50% 50% at 85% 75%,rgba(201,168,106,.12),transparent 60%);pointer-events:none}
+  .wrap{width:430px;max-width:430px;min-height:0;height:min(880px,94vh);border-radius:40px;overflow:hidden;
+    box-shadow:0 50px 100px -30px rgba(42,33,28,.45),0 0 0 10px #efe4d8,0 0 0 11px rgba(42,33,28,.08);
+    position:relative;z-index:2;background:var(--bg)}
+  .wrap .view{height:100%;overflow-y:auto;scrollbar-width:none}
+  .wrap .view::-webkit-scrollbar{display:none}
+  .quiz,.res,.chat{min-height:100%}
+}
+@media(min-width:1100px){
+  .wrap::before{content:"Vista previa del embudo";position:absolute;top:-30px;left:0;right:0;text-align:center;font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);z-index:5}
+}
+
+/* ============ HERO (corto) ============ */
+.hero{position:relative;min-height:auto;display:flex;flex-direction:column;padding:calc(var(--st) + 14px) 22px 22px}
+.hero-img{position:absolute;top:0;left:0;right:0;height:62vh;background:url('/assets/labios-hero.webp') center 16%/cover;z-index:0}
+.hero-veil{position:absolute;top:0;left:0;right:0;height:62vh;z-index:1;background:linear-gradient(180deg,rgba(247,239,232,.42) 0%,rgba(247,239,232,.2) 20%,rgba(247,239,232,.55) 50%,rgba(247,239,232,.94) 78%,rgba(247,239,232,1) 100%)}
+.hero>.hc{position:relative;z-index:2;display:flex;flex-direction:column;flex:1}
+
+/* ANTES/DESPUÉS lado a lado */
+.proof-sec{margin-top:1rem}
+.proof-h{font-weight:700;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;color:var(--terra-d);margin-bottom:.7rem;display:flex;justify-content:space-between}
+.proof-h span{color:var(--muted);font-weight:600}
+.ba2{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.ba2-c{position:relative;border-radius:16px;overflow:hidden;border:1px solid var(--line);box-shadow:0 14px 32px -20px rgba(42,33,28,.35);aspect-ratio:1}
+.ba2-c img{object-position:center 35%}
+.ba2-c img{width:100%;height:100%;object-fit:cover;display:block}
+.ba2-tag{position:absolute;bottom:8px;left:8px;font-size:.58rem;font-weight:800;letter-spacing:.08em;padding:.2rem .5rem;border-radius:6px;background:rgba(42,33,28,.72);color:#fff}
+.ba2-tag.after{background:var(--terra)}
+.ba-cap{margin-top:.7rem;margin-bottom:.4rem;font-size:.78rem;color:var(--muted);text-align:center}
+.hl{position:relative;color:var(--ink);font-weight:700;white-space:nowrap}
+.hl-line{position:absolute;left:-4px;right:-4px;bottom:-7px;width:calc(100% + 8px);height:11px;overflow:visible}
+.hl-line path{fill:none;stroke:var(--terra);stroke-width:2.4;stroke-linecap:round;stroke-dasharray:170;stroke-dashoffset:170;animation:hlDraw 4s ease-in-out infinite}
+@keyframes hlDraw{0%{stroke-dashoffset:170}20%{stroke-dashoffset:0}70%{stroke-dashoffset:0;opacity:1}85%{opacity:0}86%{stroke-dashoffset:170;opacity:0}100%{stroke-dashoffset:170;opacity:1}}
+@media(prefers-reduced-motion:reduce){.hl-line path{animation:none;stroke-dashoffset:0}}
+
+/* REVIEWS */
+.revs{margin-top:.8rem;display:flex;flex-direction:column;gap:.6rem}
+.gcard{display:flex;align-items:center;gap:.8rem;background:#fff;border:1px solid var(--line);border-radius:14px;padding:.85rem 1rem;box-shadow:0 6px 18px rgba(42,33,28,.06)}
+.glogo{width:30px;height:30px;flex:none}
+.gc-top{display:flex;align-items:center;gap:.5rem}
+.gc-top b{font-size:1.5rem;font-weight:700;color:#202124;line-height:1;font-family:'Inter',sans-serif}
+.gc-top .gstars{color:#FBBC04;font-size:1rem;letter-spacing:1px}
+.gc-sub{font-size:.76rem;color:var(--muted);margin-top:3px}
+.gc-sub u{text-decoration:none;color:#1a73e8;font-weight:500}
+.rev{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:.85rem;box-shadow:0 4px 14px rgba(42,33,28,.04)}
+.rev .rev-h{display:flex;align-items:center;gap:.55rem;margin-bottom:.4rem}
+.rev .rev-h i{width:34px;height:34px;border-radius:50%;background-size:cover;background-position:center;flex:none}
+.rev .rev-h b{font-size:.84rem;display:block}
+.rev .rev-h span{font-size:.68rem;color:var(--muted)}
+.rev .rev-s{margin-left:auto;color:#FBBC04;font-size:.8rem;letter-spacing:0}
+.rev p{font-size:.86rem;color:var(--ink-soft);line-height:1.45}
+.topbar{display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:.6rem;font-family:'Fraunces',serif;font-weight:600;letter-spacing:.005em;font-size:1.2rem;color:var(--ink)}
+.brand .lo{width:38px;height:38px;border-radius:50%;background:#fff;border:1.5px solid var(--champ);box-shadow:0 2px 10px rgba(42,33,28,.1);display:grid;place-items:center;flex:none}
+.brand .lo span{font-family:'Fraunces',serif;font-style:italic;font-weight:600;font-size:1.15rem;color:var(--terra-d);line-height:1}
+.trust-mini{display:inline-flex;align-items:center;gap:.35rem;font-size:.7rem;font-weight:600;color:var(--ink);background:rgba(255,255,255,.7);backdrop-filter:blur(8px);padding:.34rem .6rem;border-radius:999px;border:1px solid rgba(255,255,255,.7)}
+.trust-mini .st{color:var(--champ);letter-spacing:-.04em}
+.trust-mini .gmini{width:14px;height:14px;flex:none}
+.trust-mini b{font-weight:700}
+.trust-mini .gmstars{color:#FBBC04}
+
+.hero-spacer{height:clamp(.5rem,3vh,1.6rem)}
+.hero-txt{position:relative}
+.hero-txt::before{content:"";position:absolute;left:-22px;right:-22px;top:-24px;bottom:-40px;z-index:-1;background:linear-gradient(180deg,rgba(247,239,232,0) 0%,rgba(247,239,232,.78) 26%,rgba(247,239,232,.94) 55%,rgba(247,239,232,1) 100%)}
+.eyebrow{display:inline-flex;align-items:center;gap:.4rem;align-self:flex-start;width:auto;font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--terra-d);background:rgba(255,255,255,.82);backdrop-filter:blur(8px);padding:.42rem .85rem;border-radius:999px;border:1px solid rgba(200,116,90,.22);box-shadow:0 3px 10px rgba(42,33,28,.05)}
+.eyebrow svg{color:var(--champ);flex:none}
+.h1{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(2.1rem,9vw,2.9rem);line-height:1.02;letter-spacing:-.02em;margin-top:.7rem;color:var(--ink);text-shadow:0 1px 18px rgba(247,239,232,.7)}
+.h1 em{font-style:italic;color:var(--terra)}
+.h-sub{margin-top:.6rem;font-size:.96rem;line-height:1.45;color:var(--ink);max-width:30ch;font-weight:500}
+.faces{margin-top:.8rem;display:flex;align-items:center;gap:.6rem}
+.faces .st{display:flex}
+.faces .st i{width:30px;height:30px;border-radius:50%;border:2px solid var(--bg);background-size:cover;background-position:center;margin-left:-9px;box-shadow:0 2px 6px rgba(42,33,28,.12)}
+.faces .st i:first-child{margin-left:0}
+.faces .tx{font-size:.76rem;color:var(--ink-soft);line-height:1.3}
+.faces .tx b{color:var(--ink);font-weight:700}
+
+.cta{position:relative;margin-top:1rem;width:100%;padding:1.02rem 1.4rem;border-radius:16px;background:linear-gradient(135deg,var(--terra),var(--terra-d));color:#fff;font-weight:700;font-size:1.02rem;letter-spacing:.01em;display:flex;align-items:center;justify-content:center;gap:.55rem;box-shadow:0 16px 34px -14px rgba(176,93,68,.6);transition:transform .16s var(--ease);overflow:hidden;isolation:isolate;animation:ctaBreath 3.6s ease-in-out infinite}
+.cta::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:16px;background:linear-gradient(135deg,var(--terra),var(--terra-d))}
+.cta::after{content:"";position:absolute;top:0;left:-60%;width:45%;height:100%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.45),transparent);transform:skewX(-18deg);animation:ctaShine 4.2s ease-in-out infinite}
+.cta:active{transform:scale(.975)}
+.cta svg{transition:transform .25s var(--ease)}
+.cta:active svg{transform:translateX(3px)}
+.cta-wrap{position:relative}
+.cta-wrap::before{content:"";position:absolute;inset:-6px;border-radius:22px;background:radial-gradient(60% 120% at 50% 50%,rgba(200,116,90,.45),transparent 70%);z-index:0;filter:blur(10px);animation:ctaHalo 3.6s ease-in-out infinite;pointer-events:none}
+.cta-wrap .cta{position:relative;z-index:1}
+@keyframes ctaBreath{50%{transform:scale(1.018)}}
+@keyframes ctaHalo{0%,100%{opacity:.4;transform:scale(.98)}50%{opacity:.85;transform:scale(1.02)}}
+@keyframes ctaShine{0%{left:-60%}45%,100%{left:130%}}
+@media(prefers-reduced-motion:reduce){.cta,.cta::after,.cta-wrap::before{animation:none}}
+.cta-chips{margin-top:.7rem;display:flex;align-items:center;justify-content:center;gap:.45rem;flex-wrap:nowrap}
+.cta-chips .chip{display:inline-flex;align-items:center;gap:.3rem;font-size:.76rem;font-weight:600;white-space:nowrap;color:var(--ink-soft);background:rgba(255,255,255,.8);backdrop-filter:blur(8px);border:1px solid var(--line);padding:.42rem .8rem;border-radius:999px;box-shadow:0 4px 12px rgba(42,33,28,.05);opacity:0;transform:translateY(8px) scale(.94);animation:chipIn .5s var(--ease) forwards;animation-delay:var(--d)}
+.cta-chips .chip b{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;background:var(--mint);color:#1f8c69;font-size:.62rem;font-weight:800}
+@keyframes chipIn{to{opacity:1;transform:none}}
+
+/* ============ QUIZ ============ */
+.quiz{min-height:100dvh;display:flex;flex-direction:column;padding:calc(var(--st) + 18px) 22px calc(var(--sb) + 22px)}
+.qtop{display:flex;align-items:center;gap:.8rem}
+.qback{width:40px;height:40px;border-radius:50%;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;font-size:1.2rem;color:var(--ink);flex:none}
+.qbar{flex:1;height:6px;background:var(--bg2);border-radius:4px;overflow:hidden}
+.qbar i{display:block;height:100%;width:20%;background:linear-gradient(90deg,var(--terra),var(--champ));border-radius:4px;transition:width .5s var(--ease)}
+.qcount{font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--terra-d);flex:none}
+.qbody{flex:1;display:flex;flex-direction:column;justify-content:center;padding:1.5rem 0}
+.qq{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(1.8rem,7vw,2.3rem);line-height:1.12;letter-spacing:-.02em;color:var(--ink)}
+.qhelp{margin-top:.6rem;font-size:.92rem;color:var(--muted)}
+.qopts{margin-top:1.8rem;display:flex;flex-direction:column;gap:.7rem}
+.qopt{padding:1.15rem 1.25rem;background:var(--card);border:1.5px solid var(--line);border-radius:16px;text-align:left;font-size:1rem;font-weight:500;color:var(--ink);display:flex;align-items:center;gap:.8rem;transition:all .22s var(--ease);box-shadow:0 3px 12px rgba(42,33,28,.04)}
+.qopt .em{font-size:1.4rem;flex:none}
+.qopt:active,.qopt.sel{background:linear-gradient(135deg,rgba(200,116,90,.12),rgba(201,168,106,.1));border-color:var(--terra);transform:translateY(-1px)}
+.qopt .rb{margin-left:auto;width:22px;height:22px;border-radius:50%;border:2px solid var(--line);flex:none;transition:all .2s}
+.qopt.sel .rb{border-color:var(--terra);background:var(--terra);box-shadow:inset 0 0 0 4px var(--card)}
+
+/* form */
+.qfield{margin-top:1.3rem}
+.qfield label{display:block;font-size:.8rem;font-weight:600;color:var(--ink-soft);margin-bottom:.45rem}
+.qinput{width:100%;padding:1.1rem 1.2rem;background:var(--card);border:1.5px solid var(--line);border-radius:14px;font-size:1.05rem;color:var(--ink);outline:none;transition:border .2s}
+.qinput:focus{border-color:var(--terra)}
+.qinput::placeholder{color:#BCAE9F}
+.qsubmit{margin-top:1.4rem;width:100%;padding:1.12rem;border-radius:16px;background:linear-gradient(135deg,var(--terra),var(--terra-d));color:#fff;font-weight:700;font-size:1.05rem;display:flex;align-items:center;justify-content:center;gap:.5rem;box-shadow:0 16px 34px -14px rgba(176,93,68,.6);opacity:.45;pointer-events:none;transition:opacity .25s,transform .16s}
+.qsubmit.ready{opacity:1;pointer-events:auto}
+.qsubmit:active{transform:scale(.975)}
+.priv{margin-top:.8rem;text-align:center;font-size:.72rem;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:.35rem}
+.recip{margin-top:.9rem;display:flex;align-items:center;justify-content:center;gap:.45rem;font-size:.82rem;font-weight:600;color:var(--terra-d);background:rgba(200,116,90,.1);border:1px solid rgba(200,116,90,.22);padding:.55rem .8rem;border-radius:12px}
+.recip svg{flex:none;color:var(--terra)}
+/* micro feedback */
+.qfb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:1rem;animation:fade .4s var(--ease)}
+.qfb-ic{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--terra),var(--champ));display:grid;place-items:center;color:#fff;box-shadow:0 14px 30px -12px rgba(176,93,68,.5);animation:pop2 .5s var(--ease)}
+@keyframes pop2{from{transform:scale(.6);opacity:0}}
+.qfb p{font-family:'Fraunces',serif;font-size:1.3rem;color:var(--ink);max-width:22ch;line-height:1.25}
+/* nutrición por paso */
+.nrt{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:.9rem;animation:fade .4s var(--ease);padding:.5rem 0}
+.nrt-h{font-family:'Fraunces',serif;font-size:1.35rem;color:var(--ink);line-height:1.2;max-width:18ch}
+.nrt-sub{font-size:.84rem;color:var(--muted)}
+.gl{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:.6rem;width:100%;max-width:300px;margin:.4rem auto}
+.gl-card{aspect-ratio:1;border-radius:16px;background-size:cover;background-position:center;border:3px solid #fff;box-shadow:0 12px 28px -14px rgba(42,33,28,.4);opacity:0;transform:rotate(var(--r)) scale(.8);animation:glIn .6s var(--ease) forwards;animation-delay:var(--gd)}
+@keyframes glIn{to{opacity:1;transform:rotate(var(--r)) scale(1)}}
+.nrt-ic{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--terra),var(--champ));display:grid;place-items:center;color:#fff;box-shadow:0 14px 30px -12px rgba(176,93,68,.5);animation:pop2 .5s var(--ease)}
+.nrt-ic.warn{background:linear-gradient(135deg,#E0A23C,#C8745A)}
+.nrt-big{font-family:'Fraunces',serif;font-size:1.35rem;color:var(--ink);line-height:1.25;max-width:24ch}
+.nrt-big b{color:var(--terra)}
+.nrt-rev{background:#fff;border:1px solid var(--line);border-radius:16px;padding:1rem;box-shadow:0 10px 26px -16px rgba(42,33,28,.25);max-width:320px;animation:pop2 .5s var(--ease)}
+.nrt-rev-h{display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem}
+.nrt-rev-h i{width:40px;height:40px;border-radius:50%;background-size:cover;background-position:center;flex:none}
+.nrt-rev-h b{display:block;font-size:.9rem;text-align:left}
+.nrt-stars{color:#FBBC04;font-size:.8rem}
+.nrt-rev p{font-size:.92rem;color:var(--ink-soft);line-height:1.5;text-align:left}
+.nrt-tag{font-size:.78rem;color:var(--terra-d);font-weight:600}
+.nrt-clinic{width:100%;max-width:300px;aspect-ratio:3/2;border-radius:18px;background-size:cover;background-position:center;position:relative;border:3px solid #fff;box-shadow:0 16px 36px -18px rgba(42,33,28,.4);animation:pop2 .5s var(--ease)}
+.nrt-clinic-tag{position:absolute;bottom:8px;left:8px;font-size:.62rem;font-weight:700;color:#fff;background:rgba(42,33,28,.6);backdrop-filter:blur(4px);padding:.25rem .6rem;border-radius:8px}
+.nrt-clinic{background-position:center 60%}
+.nrt-doc{position:relative;animation:pop2 .5s var(--ease)}
+.nrt-doc-pic{width:104px;height:104px;border-radius:50%;background-size:cover;background-position:center top;border:3px solid #fff;box-shadow:0 12px 28px -12px rgba(42,33,28,.4)}
+.nrt-doc-wave{position:absolute;right:-6px;bottom:6px;font-size:1.5rem;animation:wave 1.4s ease-in-out infinite;transform-origin:70% 70%}
+@keyframes wave{0%,60%,100%{transform:rotate(0)}15%{transform:rotate(16deg)}30%{transform:rotate(-8deg)}45%{transform:rotate(14deg)}}
+/* analyzing */
+.analyzing{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.4rem;text-align:center}
+.an-ring{position:relative;width:130px;height:130px}
+.an-ring svg{width:130px;height:130px;transform:rotate(-90deg)}
+.an-ring .an-bg{fill:none;stroke:var(--bg2);stroke-width:8}
+.an-ring .an-fg{fill:none;stroke:url(#g) ;stroke:var(--terra);stroke-width:8;stroke-linecap:round}
+.an-ring .an-pct{position:absolute;inset:0;display:grid;place-items:center;font-family:'Fraunces',serif;font-size:1.9rem;font-weight:600;color:var(--ink)}
+.analyzing .an-t{font-family:'Fraunces',serif;font-size:1.5rem;color:var(--ink)}
+.an-steps{display:flex;flex-direction:column;gap:.7rem;width:100%;max-width:300px;margin-top:.4rem}
+.an-step{display:flex;align-items:center;gap:.7rem;font-size:.9rem;color:var(--muted);opacity:.5;transition:opacity .4s,color .4s}
+.an-step i{width:24px;height:24px;border-radius:50%;border:2px solid var(--line);flex:none;position:relative;transition:all .35s var(--ease)}
+.an-step.done{opacity:1;color:var(--ink)}
+.an-step.done i{background:var(--mint);border-color:var(--mint)}
+.an-step.done i::after{content:"✓";position:absolute;inset:0;display:grid;place-items:center;color:#1f8c69;font-size:.7rem;font-weight:800;animation:pop2 .3s var(--ease)}
+
+/* ============ RESULT ============ */
+.res{min-height:100dvh;padding:calc(var(--st) + 20px) 22px calc(var(--sb) + 26px);display:flex;flex-direction:column}
+.res-badge{align-self:center;display:inline-flex;align-items:center;gap:.4rem;font-size:.7rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--terra-d);background:rgba(200,116,90,.1);padding:.4rem .85rem;border-radius:999px;border:1px solid rgba(200,116,90,.25)}
+.res h2{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(2rem,8vw,2.6rem);line-height:1.1;letter-spacing:-.02em;text-align:center;margin-top:1rem}
+.res h2 em{font-style:italic;color:var(--terra)}
+.res-card{margin-top:1.5rem;background:var(--card);border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:0 22px 50px -28px rgba(42,33,28,.3)}
+.res-pic{width:100%;aspect-ratio:5/4;object-fit:cover}
+.res-in{padding:1.3rem}
+.res-plan{font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--champ)}
+.res-name{font-family:'Fraunces',serif;font-weight:600;font-size:1.5rem;margin-top:.3rem;line-height:1.15}
+.res-desc{font-size:.92rem;color:var(--ink-soft);line-height:1.55;margin-top:.6rem}
+.res-meta{margin-top:1rem;display:flex;gap:.6rem}
+.res-meta .m{flex:1;text-align:center;background:var(--bg);border-radius:12px;padding:.7rem .4rem}
+.res-meta .m b{display:block;font-family:'Fraunces',serif;font-size:1.15rem;color:var(--ink)}
+.res-meta .m span{font-size:.64rem;color:var(--muted);margin-top:2px;display:block}
+.res-cta{margin-top:1.5rem;width:100%;padding:1.15rem;border-radius:16px;background:#1f8c69;color:#fff;font-weight:700;font-size:1.05rem;display:flex;align-items:center;justify-content:center;gap:.6rem;box-shadow:0 16px 34px -14px rgba(31,140,105,.55);transition:transform .16s}
+.res-cta:active{transform:scale(.975)}
+.res-cta .wa{width:22px;height:22px}
+
+/* ============ CHAT (WhatsApp real) ============ */
+.chat{height:100dvh;max-height:100dvh;background:var(--wa-bg);display:flex;flex-direction:column;padding-top:var(--st);overflow:hidden}
+.chat-h{background:var(--wa-panel);padding:.6rem .8rem;display:flex;align-items:center;gap:.7rem;position:sticky;top:0;z-index:10}
+.chat-h .av{width:40px;height:40px;border-radius:50%;background:url('/assets/clinic-logo.webp') center/cover,linear-gradient(135deg,var(--terra),var(--champ));flex:none}
+.chat-h .nm{flex:1;min-width:0}
+.chat-h .nm b{color:var(--wa-text);font-size:.92rem;display:block}
+.chat-h .nm small{color:#8696a0;font-size:.72rem}
+.chat-h .nm .on{color:#3ddc97}
+.chat-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:1rem .8rem;display:flex;flex-direction:column;gap:.45rem;background-image:linear-gradient(rgba(11,20,26,.96),rgba(11,20,26,.96))}
+.b{max-width:82%;padding:.55rem .75rem;border-radius:10px;font-size:.92rem;line-height:1.42;color:var(--wa-text);position:relative;animation:pop .3s var(--ease)}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}}
+.b.them{align-self:flex-start;background:var(--wa-them);border-top-left-radius:3px}
+.b.me{align-self:flex-end;background:var(--wa-me);border-top-right-radius:3px}
+.b .tm{font-size:.6rem;color:rgba(255,255,255,.45);text-align:right;margin-top:2px}
+.b.typing{align-self:flex-start;background:var(--wa-them);padding:.7rem .9rem}
+.b.typing span{display:inline-block;width:7px;height:7px;border-radius:50%;background:#8696a0;margin:0 1.5px;animation:td 1.2s infinite}
+.b.typing span:nth-child(2){animation-delay:.2s}.b.typing span:nth-child(3){animation-delay:.4s}
+@keyframes td{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
+.b-audio{align-self:flex-start;background:var(--wa-them);border-radius:10px;border-top-left-radius:3px;padding:.6rem .7rem;display:flex;align-items:center;gap:.6rem;min-width:210px}
+.b-audio .pl{width:34px;height:34px;border-radius:50%;background:var(--wa-me);display:grid;place-items:center;flex:none;color:#fff}
+.b-audio .wv{flex:1;height:24px;display:flex;align-items:center;gap:2px}
+.b-audio .wv i{flex:1;background:#5b7a72;border-radius:2px;height:30%}
+.b-audio.playing .wv i{animation:wv .8s infinite}
+@keyframes wv{50%{height:90%}}
+.b-img{align-self:flex-start;max-width:70%;border-radius:10px;overflow:hidden;border-top-left-radius:3px}
+.b-img img{width:100%;display:block}
+.b-img .cap{background:var(--wa-them);padding:.45rem .6rem;font-size:.78rem;color:var(--wa-text)}
+.chat-foot{padding:.6rem .7rem calc(var(--sb) + .6rem);background:var(--wa-panel);display:flex;gap:.5rem;align-items:center}
+.chat-foot input{flex:1;background:var(--wa-input);border:0;border-radius:20px;padding:.7rem 1rem;color:var(--wa-text);font-size:.92rem;outline:none}
+.chat-foot input::placeholder{color:#8696a0}
+.fix-cta{padding:.5rem .7rem;background:var(--wa-panel)}
+.fix-cta button{width:100%;padding:.85rem;border-radius:12px;background:linear-gradient(135deg,var(--terra),var(--terra-d));color:#fff;font-weight:700;font-size:.95rem;box-shadow:0 8px 20px -10px rgba(176,93,68,.7)}
+.fix-cta button:active{transform:scale(.97)}
+.cal.flash{animation:calFlash .9s var(--ease)}
+@keyframes calFlash{0%,100%{box-shadow:0 6px 18px rgba(0,0,0,.25)}50%{box-shadow:0 0 0 4px var(--terra)}}
+.chat-foot .send{width:42px;height:42px;border-radius:50%;background:var(--wa-me);display:grid;place-items:center;color:#fff;flex:none}
+.cal{align-self:flex-start;background:var(--card);color:var(--ink);border-radius:12px;padding:.8rem;max-width:90%;margin-top:.2rem;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.cal h5{font-family:'Fraunces',serif;font-size:1rem;margin-bottom:.5rem}
+.cal .slots{display:flex;flex-wrap:wrap;gap:.4rem}
+.cal .slot{padding:.5rem .7rem;border:1.5px solid var(--line);border-radius:10px;font-size:.82rem;font-weight:600;background:var(--bg);transition:all .2s}
+.cal .slot:active,.cal .slot.sel{background:var(--terra);color:#fff;border-color:var(--terra)}
+.appt-card{align-self:flex-start;background:var(--card);color:var(--ink);border-radius:14px;padding:.9rem 1rem;max-width:92%;margin-top:.3rem;box-shadow:0 8px 22px rgba(0,0,0,.28)}
+.appt-card .ac-h{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.appt-card .ac-d{font-family:'Fraunces',serif;font-size:1.15rem;font-weight:600;margin:.2rem 0 .7rem;text-transform:capitalize}
+.appt-card .ac-btns{display:flex;flex-direction:column;gap:.5rem}
+.appt-card .ac-ok{background:#25d366;color:#073;font-weight:700;border-radius:10px;padding:.65rem;font-size:.9rem}
+.appt-card .ac-ch{background:#fff;border:1px solid var(--line);border-radius:10px;padding:.6rem;font-size:.86rem;color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<audio id="aud" src="/assets/welcome.wav" preload="auto"></audio>
+<div id="demoBadge" style="display:none;position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(42,33,28,.92);backdrop-filter:blur(8px);color:#fff;font-family:Inter,sans-serif;font-size:.82rem;padding:.55rem 1rem;display:none;align-items:center;justify-content:center;gap:.8rem;text-align:center">
+  <span>Demo de AURA para <b id="demoBadgeName">tu clínica</b></span>
+  <button onclick="openSalesCall()" style="background:#C8745A;color:#fff;border:0;padding:.4rem .8rem;border-radius:999px;font-weight:700;font-size:.78rem;cursor:pointer;white-space:nowrap">Activar AURA →</button>
+</div>
+<div class="wrap">
+
+  <!-- ===== HERO ===== -->
+  <section class="view on hero" id="vHero">
+    <div class="hero-img" data-img="hero"></div>
+    <div class="hero-veil"></div>
+    <div class="hc">
+      <div class="topbar">
+        <div class="brand"><span class="lo"><span id="bInit">E</span></span><span id="bName">Clínica Elvira</span></div>
+        <div class="trust-mini"><svg class="gmini" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1A11 11 0 0 0 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/></svg> <b>4,9</b> <span class="gmstars">★</span> · 312</div>
+      </div>
+      <div class="hero-spacer"></div>
+      <div class="hero-txt">
+      <span class="eyebrow"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6 4.5 2.3 7.1L12 16.6 5.7 21l2.3-7.1-6-4.5h7.6z"/></svg> Aumento de labios · técnica glow</span>
+      <h1 class="h1" data-c="hero_title">Tus labios, <em>naturales</em> y perfectos.</h1>
+      <p class="h-sub" data-c="hero_sub">Responde 4 preguntas y diseñamos tu resultado ideal. Valoración con la doctora gratuita.</p>
+      <div class="faces">
+        <div class="st">
+          <i style="background-image:url('/assets/face1.webp')"></i>
+          <i style="background-image:url('/assets/face2.webp')"></i>
+          <i style="background-image:url('/assets/face3.webp')"></i>
+        </div>
+        <div class="tx"><b>+1.200 pacientes</b><br>confían en nosotros</div>
+      </div>
+      </div>
+      <div class="cta-wrap"><button class="cta" onclick="go('vQuiz');startQuiz()">
+        Empezar · 40 segundos
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button></div>
+      <div class="cta-chips">
+        <span class="chip" style="--d:.05s"><b>✓</b> Sin tarjeta</span>
+        <span class="chip" style="--d:.17s"><b>✓</b> Gratis</span>
+        <span class="chip" style="--d:.29s"><b>✓</b> 40 seg</span>
+      </div>
+
+      <!-- ANTES / DESPUÉS lado a lado -->
+      <div class="proof-sec">
+        <div class="proof-h">Resultados reales <span>· antes y después</span></div>
+        <div class="ba2">
+          <div class="ba2-c"><img data-img="before" src="/assets/lab-antes.webp" alt="antes"/><span class="ba2-tag">ANTES</span></div>
+          <div class="ba2-c"><img data-img="after" src="/assets/lab-despues.webp" alt="después"/><span class="ba2-tag after">DESPUÉS</span></div>
+        </div>
+        <p class="ba-cap">Aumento de labios técnica glow · resultado natural, <span class="hl">1 sesión<svg class="hl-line" viewBox="0 0 120 18" preserveAspectRatio="none"><path d="M3 11 C 25 16, 55 4, 88 9 C 102 11, 112 13, 117 8"/></svg></span></p>
+      </div>
+
+      <!-- REVIEWS GOOGLE -->
+      <div class="revs">
+        <div class="gcard">
+          <svg class="glogo" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1A11 11 0 0 0 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/></svg>
+          <div class="gc-tx">
+            <div class="gc-top"><b>4,9</b><span class="gstars">★★★★★</span></div>
+            <div class="gc-sub">Excelente · <u>312 reseñas en Google</u></div>
+          </div>
+        </div>
+        <div class="rev"><div class="rev-h"><i style="background-image:url('/assets/rev1.webp')"></i><div><b>Laura M.</b><span>hace 1 semana</span></div><span class="rev-s">★★★★★</span></div><p>“Tenía miedo de que se notara artificial y es justo lo contrario. Naturales, me encantan.”</p></div>
+        <div class="rev"><div class="rev-h"><i style="background-image:url('/assets/rev2.webp')"></i><div><b>Cristina P.</b><span>hace 3 semanas</span></div><span class="rev-s">★★★★★</span></div><p>“Me respondieron en 2 minutos por WhatsApp y reservé al momento. Trato exquisito.”</p></div>
+      </div>
+
+      <div class="cta-wrap" style="margin-top:1.4rem"><button class="cta" style="margin-top:0" onclick="go('vQuiz');startQuiz()">
+        Quiero saber mi resultado
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button></div>
+    </div>
+  </section>
+
+  <!-- ===== QUIZ ===== -->
+  <section class="view quiz" id="vQuiz">
+    <div class="qtop">
+      <button class="qback" onclick="quizBack()">‹</button>
+      <div class="qbar"><i id="qBar"></i></div>
+      <span class="qcount" id="qCount">1/5</span>
+    </div>
+    <div class="qbody" id="qBody"></div>
+  </section>
+
+  <!-- ===== RESULT ===== -->
+  <section class="view res" id="vRes">
+    <span class="res-badge">Tu plan personalizado</span>
+    <h2 id="resH">Marta, este es <em>tu resultado ideal</em></h2>
+    <div class="res-card">
+      <img class="res-pic" id="resPic" src="/assets/case-labios.png" alt="Labios glow"/>
+      <div class="res-in">
+        <div class="res-plan">Recomendación de la doctora</div>
+        <div class="res-name" id="resName">Aumento de labios técnica glow</div>
+        <div class="res-desc" id="resDesc">Ácido hialurónico de última generación con técnica glow: volumen sutil e hidratación. Resultado natural, nada exagerado.</div>
+        <div class="res-meta">
+          <div class="m"><b id="mPrice">380€</b><span>desde</span></div>
+          <div class="m"><b>45 min</b><span>sesión</span></div>
+          <div class="m"><b>0 dolor</b><span>anestesia</span></div>
+        </div>
+      </div>
+    </div>
+    <button class="res-cta" onclick="go('vChat');startChat()">
+      <svg class="wa" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-2.8.9.9-2.7-.2-.3A8 8 0 1 1 12 20z"/></svg>
+      Hablar con la doctora ahora
+    </button>
+    <p class="priv" style="margin-top:.9rem"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Tus datos están protegidos · RGPD</p>
+  </section>
+
+  <!-- ===== CHAT ===== -->
+  <section class="view chat" id="vChat">
+    <div class="chat-h">
+      <div class="av"></div>
+      <div class="nm"><b id="cName">Adrián · Clínica Elvira</b><small class="on">en línea</small></div>
+    </div>
+    <div class="chat-body" id="cBody"></div>
+    <div class="chat-foot">
+      <input id="cInput" placeholder="Escribe un mensaje" onkeydown="if(event.key==='Enter')sendMsg()" onfocus="setTimeout(scroll,300)"/>
+      <button class="send" onclick="sendMsg()"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 20l18-8L3 4v6l13 2-13 2z"/></svg></button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+/* ============ CONFIG (personalizable por clínica) ============ */
+function openSalesCall(){ window.open('/activar?t='+TENANT_ID,'_blank'); }
+const TENANT_ID = (function(){
+  const m = location.pathname.match(/\/c\/([^\/?#]+)/);
+  if(m&&m[1]) return decodeURIComponent(m[1]);
+  return (new URLSearchParams(location.search).get('tenant'))||'clinica-elvira';
+})();
+const WORKER='https://aura-chat-worker.adrian-7b9.workers.dev';
+let CFG={ name:'Clínica Elvira', advisor:'Adrián', doctor:'la Dra. Elvira', price:380, whatsapp:'34600000000' };
+
+function genRef(){ const s='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r=''; for(let i=0;i<5;i++)r+=s[Math.floor(Math.random()*s.length)]; return 'AURA-'+r; }
+const state={ name:'', phone:'', a:{}, lead_id:null, ref:genRef() };
+
+/* ============ LINK MÁGICO: reanudar conversación guardada ============ */
+(async function resumeIfMagic(){
+  const qs=new URLSearchParams(location.search); const lead=qs.get('lead'); const k=qs.get('k');
+  if(!lead||!k) return;
+  state._bookMode = qs.get('book')==='1';
+  try{
+    const r=await fetch(WORKER+'/api/resume?lead='+encodeURIComponent(lead)+'&k='+encodeURIComponent(k));
+    const d=await r.json();
+    if(!d.ok) return;
+    state.lead_id=lead; if(d.lead){ state.name=d.lead.name||''; state.phone=d.lead.phone||''; }
+    state._resumed=true; state._history=d.messages||[];
+    // comprobar si tiene cita para mostrar confirmación
+    try{ const ar=await fetch(WORKER+'/api/appt-status?lead='+encodeURIComponent(lead)+'&k='+encodeURIComponent(k)); const ad=await ar.json(); if(ad.ok&&ad.appointment&&ad.appointment.status==='booked'){ state._appt=ad.appointment; state._apptKey=k; } }catch(e){}
+    // esperar a que existan las funciones del embudo y saltar directo al chat (poll robusto)
+    let _tries=0;
+    const _tryGo=function(){ _tries++; if(typeof go==='function' && typeof startChat==='function'){ go('vChat'); startChat(); } else if(_tries<60){ setTimeout(_tryGo,100); } };
+    setTimeout(_tryGo, 200);
+  }catch(e){}
+})();
+
+/* ============ QUIZ DE LABIOS ============ */
+const QUIZ=[
+  { k:'objetivo', q:'¿Qué te gustaría conseguir?', help:'Elige lo que más se acerque a tu idea.',
+    opts:[
+      {em:'💧',t:'Más hidratación y jugosidad'},
+      {em:'✨',t:'Un poco más de volumen, natural'},
+      {em:'💋',t:'Definir mejor el contorno'},
+      {em:'⚖️',t:'Corregir asimetría'},
+    ]},
+  { k:'datos', form:true, q:'Tu plan de labios, gratis', help:'Te decimos qué técnica te va mejor y el precio exacto, antes de pisar la clínica.' },
+  { k:'estilo', q:'¿Cómo los quieres?', help:'Tranquila, trabajamos siempre resultados naturales.',
+    opts:[
+      {em:'🌿',t:'Muy naturales, que no se note'},
+      {em:'💄',t:'Con un toque más marcado'},
+      {em:'🤔',t:'No lo tengo claro aún'},
+    ]},
+  { k:'plazo', q:'¿Para cuándo te gustaría?', help:'Así te damos prioridad de agenda.',
+    opts:[
+      {em:'🔥',t:'Lo antes posible'},
+      {em:'📅',t:'Tengo un evento próximo'},
+      {em:'🗓️',t:'En las próximas semanas'},
+      {em:'👀',t:'Solo me estoy informando'},
+    ]},
+  { k:'duda', q:'¿Cuál es tu mayor duda?', help:'La doctora te la resolverá en la valoración.',
+    opts:[
+      {em:'😬',t:'Que se note artificial'},
+      {em:'💉',t:'Que duela'},
+      {em:'💶',t:'El precio'},
+      {em:'🙂',t:'Ninguna, lo tengo claro'},
+    ]},
+];
+
+/* ============ preguntas editables del content ============ */
+function applyQuizContent(){
+  try{ const cq=window.CONTENT_QUIZ||{}; const map=['q1','q2','q3','q4','q5'];
+    // q1->objetivo(idx0), q2 es datos(form, idx1 no se toca), q3->estilo(idx2), q4->plazo(idx3), q5->duda(idx4)
+    const idxByQ={q1:0,q3:2,q4:3,q5:4};
+    Object.keys(idxByQ).forEach(k=>{ const c=cq[k]; const i=idxByQ[k]; if(c&&QUIZ[i]){ if(c.pregunta)QUIZ[i].q=c.pregunta; if(c.opciones&&c.opciones.length)QUIZ[i].opts=c.opciones.map(t=>({em:'',t})); } });
+  }catch(e){}
+}
+/* ============ preview: navegar pantallas desde el editor ============ */
+window.addEventListener('message',function(ev){ try{ const d=ev.data||{}; if(d.aura==='goto'){ if(d.screen==='hero')go('vHero'); else if(d.screen==='quiz'){go('vQuiz');startQuiz();} else if(d.screen==='result')go('vResult'); else if(d.screen==='chat')go('vChat'); } }catch(e){} });
+/* ============ NAV ============ */
+function go(id){ document.querySelectorAll('.view').forEach(v=>v.classList.remove('on')); var el=document.getElementById(id); if(el)el.classList.add('on'); window.scrollTo(0,0); }
+let qi=0;
+function startQuiz(){ applyQuizContent(); qi=0; renderQ(); }
+function quizBack(){ if(qi===0){ go('vHero'); return;} qi--; renderQ(); }
+function renderQ(){
+  const Q=QUIZ[qi];
+  document.getElementById('qBar').style.width=((qi+1)/QUIZ.length*100)+'%';
+  document.getElementById('qCount').textContent=(qi+1)+'/'+QUIZ.length;
+  const body=document.getElementById('qBody');
+  if(Q.form){
+    body.innerHTML=`
+      <div class="qq">${Q.q}</div>
+      <p class="qhelp">${Q.help}</p>
+      <div class="qfield"><label>Tu nombre</label><input class="qinput" id="fName" placeholder="Marta" autocomplete="given-name"/></div>
+      <div class="qfield"><label>Tu móvil</label><input class="qinput" id="fPhone" type="tel" inputmode="tel" placeholder="600 00 00 00" autocomplete="tel"/></div>
+      <button class="qsubmit" id="fSubmit" onclick="submitData()">Continuar
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
+      <div class="recip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7S9 2 6 4s2 3 6 3M12 7s3-5 6-3-2 3-6 3"/></svg> Verás cómo quedarían tus labios + cuánto costaría (te gustará 😏)</div>
+      <p class="priv"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Datos cifrados · 100% confidencial · sin spam</p>`;
+    const n=document.getElementById('fName'),p=document.getElementById('fPhone'),s=document.getElementById('fSubmit');
+    function chk(){ s.classList.toggle('ready', n.value.trim().length>1 && p.value.replace(/\D/g,'').length>=9); }
+    n.oninput=chk; p.oninput=chk;
+    return;
+  }
+  body.innerHTML=`
+    <div class="qq">${Q.q}</div>
+    <p class="qhelp">${Q.help}</p>
+    <div class="qopts">${Q.opts.map((o,i)=>`<button class="qopt" onclick="pick('${Q.k}','${o.t.replace(/'/g,"")}',this)"><span class="em">${o.em}</span>${o.t}<span class="rb"></span></button>`).join('')}</div>`;
+}
+function pick(k,val,el){
+  state.a[k]=val;
+  el.parentNode.querySelectorAll('.qopt').forEach(x=>x.classList.remove('sel'));
+  el.classList.add('sel');
+  const body=document.getElementById('qBody');
+  const hide=document.querySelector('.qtop');
+  const isLast = qi >= QUIZ.length-1;
+  setTimeout(()=>{ body.innerHTML=nurture(k,val); const dwell=nurtureTime(k);
+    setTimeout(()=>{ if(isLast){ finishQuiz(); } else { qi++; renderQ(); } }, dwell);
+  }, 300);
+}
+function submitData(){
+  state.name=document.getElementById('fName').value.trim();
+  state.phone=document.getElementById('fPhone').value.trim();
+  persistLead();
+  qi++; renderQ();
+}
+function nurtureTime(k){ return k==='objetivo'?6800 : 5400; }
+function nurture(k,val){
+  // P1 objetivo -> galería de labios de clientas, rotadas, progresivas
+  if(k==='objetivo'){
+    const lips=['lips1','lips2','lips3','lips4'];
+    const rots=[-6,4,-3,7];
+    const cards=lips.map((l,i)=>`<div class="gl-card" style="--r:${rots[i]}deg;--gd:${.25+i*.5}s;background-image:url('/assets/${l}.webp')"></div>`).join('');
+    return `<div class="nrt"><div class="nrt-h">Mira los labios de nuestras pacientes</div><div class="gl">${cards}</div><div class="nrt-sub">Resultados naturales · todas en una sola sesión</div></div>`;
+  }
+  // estilo -> review de paciente similar (prueba social)
+  if(k==='estilo'){
+    return `<div class="nrt"><div class="nrt-rev"><div class="nrt-rev-h"><i style="background-image:url('/assets/rev1.webp')"></i><div><b>Laura M.</b><span class="nrt-stars">★★★★★</span></div></div><p>“Yo también los quería naturales y quedé encantada, nadie nota que me los hice.”</p></div><div class="nrt-tag">+1.200 pacientes han elegido lo mismo</div></div>`;
+  }
+  // plazo -> escasez honesta + foto de la clínica (familiaridad / lugar real)
+  if(k==='plazo'){
+    return `<div class="nrt"><div class="nrt-clinic" style="background-image:url('/assets/clinica-quiz.webp')"><span class="nrt-clinic-tag">Velázquez 84 · Madrid</span></div><p class="nrt-big">Estamos en <b>Velázquez 84</b>, Madrid</p><div class="nrt-sub">Aquí es donde te atendería la doctora</div></div>`;
+  }
+  // duda -> objeción resuelta + autoridad
+  if(k==='duda'){
+    const map={
+      'Que se note artificial':'La doctora trabaja microcantidades. El 94% dice que <b>nadie nota</b> que se los hizo.',
+      'Que duela':'Usamos anestesia y cánula. La mayoría lo describe como <b>una molestia mínima</b>.',
+      'El precio':'Te damos el <b>plan y el precio claro</b> en la valoración, sin sorpresas ni compromiso.',
+      'Ninguna, lo tengo claro':'Genial. La doctora te abrirá hueco esta misma semana.'
+    };
+    const txt=map[val]||'La doctora te lo resuelve en la valoración, sin compromiso.';
+    return `<div class="nrt"><div class="nrt-doc"><div class="nrt-doc-pic" style="background-image:url('/assets/doctora-quiz.webp')"></div></div><p class="nrt-big">${txt}</p><div class="nrt-sub">— Dra. Elvira, tu médico estético</div></div>`;
+  }
+  return `<div class="nrt"><p class="nrt-big">Perfecto</p></div>`;
+}
+function finishQuiz(){
+  buildResult();
+  // pantalla analizando que nutre el valor percibido
+  go('vQuiz');
+  const body=document.getElementById('qBody');
+  document.querySelector('.qtop').style.visibility='hidden';
+  body.innerHTML=`<div class="analyzing">
+    <div class="an-ring">
+      <svg viewBox="0 0 120 120"><circle class="an-bg" cx="60" cy="60" r="52"/><circle class="an-fg" id="anFg" cx="60" cy="60" r="52"/></svg>
+      <div class="an-pct" id="anPct">0%</div>
+    </div>
+    <div class="an-t">Analizando tu perfil…</div>
+    <div class="an-steps">
+      <div class="an-step" id="as0"><i></i><span>Cruzando con +1.200 casos reales</span></div>
+      <div class="an-step" id="as1"><i></i><span>Calculando tu resultado ideal</span></div>
+      <div class="an-step" id="as2"><i></i><span>Preparando tu plan personalizado</span></div>
+    </div>
+  </div>`;
+  const fg=document.getElementById('anFg'), pct=document.getElementById('anPct');
+  const C=2*Math.PI*52; fg.style.strokeDasharray=C; fg.style.strokeDashoffset=C;
+  const t0=performance.now(), DUR=4800;
+  function frame(t){ let p=Math.min((t-t0)/DUR,1); const e=1-Math.pow(1-p,2.2); fg.style.strokeDashoffset=C*(1-e); pct.textContent=Math.round(e*100)+'%';
+    if(p>=.30)document.getElementById('as0')?.classList.add('done');
+    if(p>=.62)document.getElementById('as1')?.classList.add('done');
+    if(p>=.95)document.getElementById('as2')?.classList.add('done');
+    if(p<1)requestAnimationFrame(frame); }
+  requestAnimationFrame(frame);
+  setTimeout(()=>{ document.querySelector('.qtop').style.visibility='visible'; go('vRes'); }, 5200);
+}
+
+/* ============ RESULT ============ */
+function buildResult(){
+  document.getElementById('resH').innerHTML=`${state.name||'Hola'}, este es <em>tu resultado ideal</em>`;
+  const est=state.a.estilo||'';
+  let name='Aumento de labios técnica glow', desc='Ácido hialurónico de última generación con técnica glow: volumen sutil e hidratación. Resultado natural, nada exagerado.';
+  if((state.a.objetivo||'').includes('hidrat')){ name='Hidratación profunda de labios'; desc='Skinbooster específico para labios: jugosidad e hidratación sin apenas volumen. Ideal si buscas un efecto muy sutil.'; }
+  if((state.a.objetivo||'').includes('contorno')){ name='Perfilado y definición de labios'; desc='Definimos el contorno y el arco de cupido con microcantidades. Resultado armónico y natural.'; }
+  document.getElementById('resName').textContent=name;
+  document.getElementById('resDesc').textContent=desc;
+  document.getElementById('mPrice').textContent=CFG.price+'€';
+}
+
+/* ============ TENANT LOAD ============ */
+(async function load(){
+  try{
+    const r=await fetch(WORKER+'/api/tenant/'+TENANT_ID);
+    if(r.ok){ const d=await r.json(); const t=d.tenant||d;
+      if(t.name){ CFG.name=t.name; document.getElementById('bName').textContent=t.name; document.getElementById('cName').textContent=(t.advisor_name||'Adrián')+' · '+t.name; }
+      if(t.doctor_name) CFG.doctor='la '+t.doctor_name;
+      if(t.whatsapp) CFG.whatsapp=t.whatsapp;
+      if(t.advisor_name) CFG.advisor=t.advisor_name;
+      // colores de marca reales
+      if(t.brand_primary){ document.documentElement.style.setProperty('--terra', t.brand_primary); }
+      if(t.brand_accent){ document.documentElement.style.setProperty('--champ', t.brand_accent); }
+      // imágenes generadas reales (hero, sala, asesor)
+      if(t.hero_image_url){ document.querySelectorAll('[data-img="hero"]').forEach(el=>{ if(el.tagName==='IMG')el.src=t.hero_image_url; else el.style.backgroundImage='url('+t.hero_image_url+')'; }); }
+      if(t.doctor_image_url){ document.querySelectorAll('[data-img="doctor"]').forEach(el=>{ if(el.tagName==='IMG')el.src=t.doctor_image_url; }); }
+      if(t.room_image_url){ document.querySelectorAll('[data-img="room"]').forEach(el=>{ if(el.tagName==='IMG')el.src=t.room_image_url; }); }
+      // modo demo: mostrar badge de activación si el tenant no ha pagado
+      if(t.status==='demo' || t.plan==='trial'){
+        const badge=document.getElementById('demoBadge');
+        if(badge){ badge.style.display='flex'; document.getElementById('demoBadgeName').textContent=t.name||'tu clínica'; document.body.style.paddingTop='2.4rem'; }
+      }
+    }
+    // CONTENIDO editable (textos/quiz/imágenes) — solo contenido, nunca estructura
+    try{
+      const cr=await fetch(WORKER+'/api/content?tenant='+TENANT_ID); const cd=await cr.json(); const c=cd.content||{};
+      const setTxt=(sel,v)=>{ if(v==null)return; document.querySelectorAll(sel).forEach(el=>el.innerHTML=v); };
+      if(c.hero_title) setTxt('[data-c="hero_title"]', c.hero_title);
+      if(c.hero_sub) setTxt('[data-c="hero_sub"]', c.hero_sub);
+      if(c.cta) setTxt('[data-c="cta"]', c.cta);
+      if(c.lead_magnet) setTxt('[data-c="lead_magnet"]', c.lead_magnet);
+      if(c.img_before){ document.querySelectorAll('[data-img="before"]').forEach(el=>{ if(el.tagName==='IMG')el.src=c.img_before; }); }
+      if(c.img_after){ document.querySelectorAll('[data-img="after"]').forEach(el=>{ if(el.tagName==='IMG')el.src=c.img_after; }); }
+      // preguntas del quiz editables: c.q1..c.q5 = {pregunta, opciones:[]}
+      window.CONTENT_QUIZ = {};
+      ['q1','q2','q3','q4','q5'].forEach(k=>{ if(c[k]) window.CONTENT_QUIZ[k]=c[k]; });
+      if(c.advisor_name) CFG.advisor=c.advisor_name;
+      if(c.clinic_name){ CFG.name=c.clinic_name; document.getElementById('bName').textContent=c.clinic_name; }
+    }catch(e){}
+  }catch(e){}
+})();
+
+/* ============ PERSIST ============ */
+async function persistLead(){
+  try{
+    const r=await fetch(WORKER+'/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({tenant_id:TENANT_ID,name:state.name,phone:state.phone,treatment:'Aumento de labios',answers:state.a,source:'embudo_labios',ref:state.ref})});
+    if(r.ok){ const d=await r.json(); state.lead_id=d.lead_id||d.id||null; }
+  }catch(e){}
+}
+async function persistMsg(role,content){
+  try{ await fetch(WORKER+'/api/messages',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({tenant_id:TENANT_ID,lead_id:state.lead_id,role,content,channel:'chat_web'})}); }catch(e){}
+}
+
+/* ============ CHAT ============ */
+const cBody=()=>document.getElementById('cBody');
+function nowT(){ const d=new Date(); return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0'); }
+function addThem(html,save){ const b=document.createElement('div'); b.className='b them'; b.innerHTML=html+`<div class="tm">${nowT()}</div>`; cBody().appendChild(b); scroll(); if(save) persistMsg('assistant',html.replace(/<[^>]+>/g,'')); }
+function addMe(txt){ const b=document.createElement('div'); b.className='b me'; b.innerHTML=txt+`<div class="tm">${nowT()} ✓✓</div>`; cBody().appendChild(b); scroll(); persistMsg('user',txt); }
+function addRaw(html){ const d=document.createElement('div'); d.innerHTML=html; cBody().appendChild(d.firstElementChild); scroll(); }
+function scroll(){ const c=cBody(); requestAnimationFrame(()=>{ c.scrollTop=c.scrollHeight; setTimeout(()=>{c.scrollTop=c.scrollHeight;},60); }); }
+function typing(){ const b=document.createElement('div'); b.className='b typing'; b.id='typing'; b.innerHTML='<span></span><span></span><span></span>'; cBody().appendChild(b); scroll(); }
+function unType(){ const t=document.getElementById('typing'); if(t)t.remove(); }
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+
+let chatStarted=false;
+async function startChat(){
+  if(chatStarted) return; chatStarted=true;
+  // ── modo reserva (link de recall): directo al calendario de revisión ──
+  if(state._resumed && state._bookMode){
+    await wait(300); typing(); await wait(900); unType();
+    addThem(`hola ${state.name? state.name.toLowerCase().split(' ')[0]:''}, me alegra que quieras mantener tu resultado`.trim(),true);
+    await wait(700); typing(); await wait(900); unType();
+    addThem('te dejo los huecos para tu revisión. elige el que mejor te venga',true);
+    await wait(500); showCal(); await wait(300); showFixedCta();
+    return;
+  }
+  // ── reanudación por link mágico: pintar historial guardado ──
+  if(state._resumed && state._history && state._history.length){
+    state._history.forEach(m=>{
+      if(m.channel==='sms') return;
+      if(m.role==='assistant') addThem((m.content||'').replace(/\n/g,'<br>'),false);
+      else if(m.role==='user'){ const b=document.createElement('div'); b.className='b me'; b.innerHTML=(m.content||'')+`<div class="tm">✓✓</div>`; cBody().appendChild(b); scroll(); }
+    });
+    await wait(400); typing(); await wait(900); unType();
+    if(state._appt){
+      const dt=new Date(state._appt.date_iso); const f=dt.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'}); const h=dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+      addThem(`hola otra vez ${state.name? state.name.toLowerCase():''}, tu cita es el ${f} a las ${h}`.trim(),true);
+      await wait(500); showApptConfirm(f,h);
+    } else {
+      addThem(`hola otra vez ${state.name? state.name.toLowerCase():''}, seguimos donde lo dejamos. ¿te abro hueco para tu valoración?`.trim(),true);
+      await wait(500); showCal(); await wait(400); showFixedCta();
+    }
+    return;
+  }
+  await wait(500); typing(); await wait(1300); unType();
+  addThem(`hola ${state.name? state.name.toLowerCase():''}, soy adrián de ${CFG.name.toLowerCase()}`.trim(),true);
+  await wait(700); typing(); await wait(1100); unType();
+  addThem('he visto tus respuestas, tienes muy buen caso para labios glow',true);
+  await wait(700); typing(); await wait(900); unType();
+  addThem('te dejo un audio de 15s y, si lo tienes claro, te abro hueco ya mismo',true);
+  await wait(500);
+  // audio opcional, NO bloquea
+  addRaw(`<div class="b-audio" id="aBub" onclick="playAud()"><div class="pl"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div><div class="wv">${Array(18).fill('<i></i>').join('')}</div><span style="font-size:.7rem;color:#8696a0">0:15</span></div>`);
+  scroll();
+  await wait(700); typing(); await wait(1100); unType();
+  addThem('si ahora no puedes escucharlo no pasa nada, te lo resumo: muy buen caso para labios glow y la valoración es gratis. lo importante es que cojas hueco y lo vemos en persona',true);
+  // calendario inmediato
+  await wait(600);
+  showCal();
+  await wait(500); typing(); await wait(800); unType();
+  addThem('te dejo los huecos de esta semana. si te surge cualquier duda antes de elegir, escríbeme por aquí y te la resuelvo',true);
+  showFixedCta();
+}
+/*__APPTCSS__*/
+function showApptConfirm(f,h){
+  const html='<div class="appt-card" id="apptCard"><div class="ac-h">Tu cita</div><div class="ac-d">'+f+' · '+h+'</div><div class="ac-btns"><button class="ac-ok" onclick="apptAct(\'confirm\')">Confirmar cita</button><button class="ac-ch" onclick="apptAct(\'change\')">Necesito cambiarla</button></div></div>';
+  addRaw(html); scroll();
+}
+async function apptAct(action){
+  const card=document.getElementById('apptCard'); if(card) card.querySelector('.ac-btns').innerHTML='<span style="font-size:.82rem;color:#8696a0">guardando…</span>';
+  try{ await fetch(WORKER+'/api/appt-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lead:state.lead_id,k:state._apptKey,action})}); }catch(e){}
+  await wait(400); typing(); await wait(800); unType();
+  if(action==='confirm'){ if(card)card.querySelector('.ac-btns').innerHTML='<span style="color:#25d366;font-weight:700;font-size:.9rem">✓ Cita confirmada</span>'; addThem('perfecto, queda confirmada. te esperamos. cualquier cosa me escribes por aquí',true); }
+  else { if(card)card.querySelector('.ac-btns').innerHTML='<span style="color:var(--terra);font-weight:700;font-size:.9rem">te ayudamos a cambiarla</span>'; addThem('sin problema, dime qué día te viene mejor y te busco otro hueco',true); }
+}
+function showFixedCta(){
+  if(document.getElementById('fixCta'))return;
+  const f=document.querySelector('.chat-foot');
+  const bar=document.createElement('div'); bar.id='fixCta'; bar.className='fix-cta';
+  bar.innerHTML='<button onclick="jumpCal()">'+(state._bookMode?'Reservar mi revisión':'Reservar mi valoración gratis')+'</button>';
+  f.parentNode.insertBefore(bar, f);
+}
+function jumpCal(){ const c=document.querySelector('.cal'); if(c){ c.scrollIntoView({behavior:'smooth',block:'center'}); c.classList.add('flash'); setTimeout(()=>c.classList.remove('flash'),900);} }
+function playAud(){ const a=document.getElementById('aud'),b=document.getElementById('aBub'); if(!a)return; if(a.paused){a.play();b.classList.add('playing');}else{a.pause();b.classList.remove('playing');} a.onended=()=>b.classList.remove('playing'); }
+
+async function sendMsg(){
+  const inp=document.getElementById('cInput'); const v=inp.value.trim(); if(!v)return;
+  addMe(v); inp.value='';
+  // marcar que conversó en el chat (prioridad de llamada punto B)
+  if(!state._chatted){ state._chatted=true; try{ if(state.lead_id) fetch(WORKER+'/api/lead-chatted',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lead_id:state.lead_id})}); }catch(e){} }
+  await wait(350); typing();
+  try{
+    const r=await fetch(WORKER+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:[{role:'user',content:v}],tenant_id:TENANT_ID,lead:{name:state.name,treatment:'Aumento de labios',answers:state.a}})});
+    const d=await r.json(); await wait(300); unType();
+    addThem((d.content||'perdona, dame un segundo').replace(/\n/g,'<br>'),true);
+    if(!document.querySelector('.cal')){ await wait(500); showCal(); }
+  }catch(e){ unType(); addThem('se me ha ido la conexión un momento, me lo repites?',true); }
+}
+async function showCal(){
+  if(document.querySelector('.cal'))return;
+  let slots=[];
+  try{ const r=await fetch(WORKER+'/api/slots?tenant='+TENANT_ID); const d=await r.json(); slots=d.slots||[]; }catch(e){}
+  if(!slots.length){ slots=[{label:'Jue 12:00'},{label:'Jue 17:30'},{label:'Vie 10:00'},{label:'Vie 18:00'}]; }
+  const btns=slots.slice(0,4).map(s=>`<button class="slot" onclick="book(this,'${s.label}')">${s.label}</button>`).join('');
+  addRaw(`<div class="cal"><h5>Te abro hueco esta semana</h5><div class="slots">${btns}</div></div>`);
+}
+async function book(el,slot){
+  el.parentNode.querySelectorAll('.slot').forEach(s=>s.classList.remove('sel')); el.classList.add('sel');
+  const fc=document.getElementById('fixCta'); if(fc)fc.remove();
+  addMe('me viene bien el '+slot.toLowerCase());
+  await wait(400); typing(); await wait(900); unType();
+  const esRecall = state._bookMode;
+  addThem('hecho, te he reservado el '+slot.toLowerCase()+(esRecall?' para tu revisión':'')+'. te acaba de llegar un sms de confirmación',true);
+  await wait(500); typing(); await wait(800); unType();
+  const waText=encodeURIComponent('Hola, soy '+(state.name||'')+'. Acabo de reservar mi '+(esRecall?'revisión':'cita')+' el '+slot.toLowerCase()+' (ref '+state.ref+')');
+  addThem('si prefieres que te lo confirme por whatsapp, toca aquí: <a href="https://wa.me/'+CFG.whatsapp+'?text='+waText+'" onclick="markWa()" style="color:#7ee0c2">abrir whatsapp</a>',true);
+  try{ await fetch(WORKER+'/api/appointments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:TENANT_ID,lead_id:state.lead_id,treatment:(esRecall?'Revisión / retoque':'Aumento de labios'),slot,ref:state.ref})}); }catch(e){}
+}
+function markWa(){
+  try{ fetch(WORKER+'/api/lead-event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:TENANT_ID,lead_id:state.lead_id,ref:state.ref,event:'whatsapp_opened'})}); }catch(e){}
+}
+</script>
+</body>
+</html>

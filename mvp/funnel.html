@@ -1,0 +1,1326 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1" />
+<title>Clínica Elvira · Valoración personalizada gratuita</title>
+<meta name="description" content="Descubre tu mejor versión en Clínica Elvira. Cuestionario de 60 segundos + valoración personalizada gratuita con tu asesor." />
+<meta name="theme-color" content="#1a0b10" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Inter+Tight:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&family=Caveat:wght@500;700&display=swap">
+<style>
+:root{
+  --bg:#FBF8F2;--ink:#0F1011;--ink-soft:#1F2024;
+  --berry:#FF6B5A;--berry2:#FF6B5A;--rose:#FF6B5A;--accent2:#9B7BFF;--mint:#A4E5CD;
+  --gold:#FF6B5A;--cream:#FAF6EB;--muted:#7C7872;
+  --line:#EAE2D2;--line-soft:#F2EBDD;--card:#FFFFFF;
+  --wa-bg:#0b141a;--wa-panel:#111b21;--wa-bubble-me:#005c4b;--wa-bubble-them:#202c33;
+  --wa-text:#e9edef;--wa-muted:#8696a0;--wa-input:#2a3942;
+  --ease:cubic-bezier(.23,1,.32,1);
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bot:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--ink);font-family:'Inter','Inter Tight',system-ui,sans-serif}
+h1,h2,h3,.serif{font-family:'Inter Tight','Inter',sans-serif;letter-spacing:-.024em;font-weight:700;line-height:1.05}
+em{font-style:italic;color:var(--berry2)}
+button{font:inherit;border:0;cursor:pointer;color:inherit;background:transparent}
+
+/* ===== ROUTER VIEWS ===== */
+.view{display:none;min-height:100dvh}
+.view.active{display:block;animation:fadeIn .5s var(--ease)}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}}
+
+/* ===== LANDING ===== */
+.landing-hero{position:relative;min-height:100dvh;background:var(--bg);overflow:hidden;color:var(--ink)}
+.landing-hero::before{content:"";position:absolute;inset:0;background:url('/assets/sala-tratamiento.png') center/cover;opacity:.12;filter:blur(2px)}
+.landing-hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(251,248,242,.55),rgba(251,248,242,.92))}
+.landing-content{position:relative;z-index:2;padding:calc(var(--safe-top) + 14px) 22px calc(var(--safe-bot) + 22px);display:flex;flex-direction:column;min-height:100dvh}
+
+.brand{display:flex;align-items:center;gap:.5rem;font-family:'Cormorant Garamond';font-size:1.15rem;letter-spacing:.08em;color:#fff}
+.brand .logo{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#fff,var(--gold) 60%,var(--berry) 110%);box-shadow:0 0 12px rgba(212,165,116,.5)}
+
+.pill{display:inline-flex;align-items:center;gap:.4rem;padding:.36rem .8rem;border-radius:999px;background:rgba(212,165,116,.18);color:#fff;font-size:.62rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase;border:1px solid rgba(255,255,255,.12)}
+.pill .dot{width:6px;height:6px;background:var(--rose);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 6px rgba(212,165,116,.1)}}
+
+.hero-headline{margin-top:1rem;font-size:clamp(2.4rem,9vw,4.5rem)}
+.hero-sub{margin-top:.9rem;font-size:1rem;color:#c9b8b3;max-width:520px}
+
+.hero-doctor{display:flex;gap:.7rem;align-items:center;margin-top:1.4rem;padding:.7rem;background:rgba(255,255,255,.05);border:1px solid rgba(212,165,116,.22);border-radius:14px}
+.hero-doctor .pic{width:48px;height:60px;border-radius:10px;background:url('/assets/hero-doctora.png') center/cover;flex:none;box-shadow:0 8px 20px -10px rgba(0,0,0,.6)}
+.hero-doctor .info{flex:1;font-size:.85rem;color:#f5ecdc}
+.hero-doctor .info strong{font-family:'Cormorant Garamond';font-size:1.05rem;color:#fff;display:block}
+.hero-doctor .info small{display:flex;align-items:center;gap:.3rem;color:#c9b8b3;font-size:.7rem;margin-top:2px;letter-spacing:.05em}
+.hero-doctor .stars{color:var(--rose);font-size:.8rem;letter-spacing:.05em}
+
+.lead-magnet{margin-top:1.2rem;padding:1.1rem;background:linear-gradient(135deg,rgba(212,165,116,.18),rgba(139,42,63,.18));border:1px solid var(--rose);border-radius:16px;display:flex;gap:.8rem;align-items:center}
+.lead-magnet .gift{font-size:1.8rem}
+.lead-magnet div{flex:1}
+.lead-magnet strong{font-family:'Cormorant Garamond';font-size:1.2rem;color:#fff;display:block}
+.lead-magnet p{color:#c9b8b3;font-size:.78rem;margin-top:2px}
+
+.btn-cta{display:flex;align-items:center;justify-content:center;gap:.5rem;background:linear-gradient(135deg,var(--rose),var(--berry2));color:#fff;padding:1.05rem 1.4rem;border-radius:14px;font-weight:700;letter-spacing:.04em;width:100%;font-size:1.02rem;margin-top:1.4rem;box-shadow:0 18px 40px -18px rgba(139,42,63,.7);transition:transform .15s var(--ease)}
+.btn-cta:active{transform:scale(.97)}
+.btn-cta .arrow{transition:transform .25s var(--ease)}
+.btn-cta:hover .arrow{transform:translateX(3px)}
+
+.trust{margin-top:1.4rem;display:flex;align-items:center;gap:.6rem;font-size:.72rem;color:#c9b8b3;letter-spacing:.06em;flex-wrap:wrap}
+.trust .item{display:flex;align-items:center;gap:.3rem}
+.trust .item span{color:var(--rose);font-weight:700}
+
+.spacer{flex:1;min-height:1rem}
+
+/* ===== ANTI-IA POLISH (21st.dev-inspired) ===== */
+.fraunces{font-family:'Fraunces','Cormorant Garamond',serif;font-variation-settings:'SOFT' 80,'opsz' 144}
+.script{font-family:'Caveat',cursive;font-weight:500;color:var(--rose);letter-spacing:.01em}
+
+/* Scroll progress bar at top */
+.spbar{position:fixed;top:0;left:0;height:2px;background:linear-gradient(90deg,var(--rose),var(--berry2));width:0;z-index:999;transition:width .12s linear;box-shadow:0 0 12px rgba(212,165,116,.5)}
+
+/* Subtle film grain over hero */
+.grain{position:absolute;inset:0;pointer-events:none;opacity:.06;mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,<svg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");z-index:3}
+
+/* Rotating word in headline */
+.rotator{display:inline-block;position:relative;min-width:5ch;vertical-align:bottom}
+.rotator{color:var(--rose)}
+.rotator span{position:absolute;left:0;top:0;opacity:0;transform:translateY(8px) rotateX(-30deg);transition:opacity .55s var(--ease),transform .55s var(--ease);font-style:normal;color:var(--rose);font-weight:800;will-change:transform,opacity}
+.rotator span.on{opacity:1;transform:translateY(0) rotateX(0);position:relative}
+
+/* Headline letter-by-letter mask reveal */
+.lh1 .word{display:inline-block;overflow:hidden;padding-bottom:.05em;line-height:1.05}
+.lh1 .word .ch{display:inline-block;transform:translateY(110%);transition:transform .9s cubic-bezier(.2,.8,.2,1);color:var(--ink)}
+.lh1.in .word .ch{transform:translateY(0)}
+.lh1 .word .ch:nth-child(n){transition-delay:calc(var(--i,0) * 32ms)}
+
+/* Marquee strip (brand legitimacy bottom of hero) */
+.marquee{position:relative;overflow:hidden;mask-image:linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent);padding:.5rem 0;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:#c9b8b3;border-top:1px solid rgba(212,165,116,.14);border-bottom:1px solid rgba(212,165,116,.14);background:rgba(0,0,0,.18)}
+.marquee .track{display:inline-flex;gap:2.4rem;white-space:nowrap;animation:scroll 28s linear infinite}
+.marquee .track span{display:inline-flex;align-items:center;gap:.4rem}
+.marquee .track span::before{content:"▸";color:var(--rose);font-size:.5rem}
+@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* Reveal-on-scroll */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .9s var(--ease),transform .9s var(--ease)}
+.reveal.in{opacity:1;transform:none}
+.reveal.stagger > *{opacity:0;transform:translateY(20px);transition:opacity .8s var(--ease),transform .8s var(--ease)}
+.reveal.stagger.in > *{opacity:1;transform:none;transition-delay:calc(var(--i,0) * 90ms)}
+
+/* Magnetic CTA */
+.cta{position:relative;will-change:transform}
+.cta::after{content:"";position:absolute;inset:0;border-radius:14px;background:radial-gradient(120% 100% at 50% 0,rgba(255,255,255,.18),transparent 50%);pointer-events:none;mix-blend-mode:overlay;opacity:.85}
+
+/* Numeric ticker for cta-meta */
+.tick b{display:inline-block;font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* Editorial asymmetric quote */
+.quote-pull{position:relative;padding:1.2rem 1.4rem;border-left:3px solid var(--rose);font-family:'Fraunces',serif;font-style:italic;font-size:1.05rem;line-height:1.45;color:#3a262a;background:#fff;border-radius:0 12px 12px 0;margin-top:1rem;box-shadow:0 12px 28px -18px rgba(94,26,42,.18)}
+.quote-pull::before{content:"“";position:absolute;left:.6rem;top:-.2rem;color:var(--rose);font-family:'Fraunces',serif;font-size:2.4rem;line-height:1;opacity:.4}
+.quote-pull cite{display:block;margin-top:.6rem;font-style:normal;font-family:'Inter',sans-serif;font-size:.78rem;color:var(--berry);font-weight:600}
+
+/* Floating call-out chip (hand-written) */
+.chip-hw{position:absolute;background:#fff;color:#1a0b10;padding:.4rem .7rem;border-radius:999px;font-family:'Caveat',cursive;font-size:1.05rem;font-weight:500;box-shadow:0 12px 28px -14px rgba(0,0,0,.4);transform:rotate(-3deg)}
+.chip-hw::after{content:"";position:absolute;width:18px;height:18px;background:#fff;left:-6px;bottom:-6px;border-radius:50%;box-shadow:-6px -6px 0 -10px #fff;transform:rotate(-12deg)}
+
+/* ===== LANDING v2 (high-conversion) ===== */
+.lhero{position:relative;min-height:100dvh;background:var(--bg);color:var(--ink);overflow:hidden}
+.lhero-bg{position:absolute;inset:0;background:url('/assets/hero-paciente.png') right center/cover;opacity:1;filter:saturate(1.02)}
+.lhero-veil{position:absolute;inset:0;background:linear-gradient(95deg,rgba(251,248,242,.97) 0%,rgba(251,248,242,.9) 36%,rgba(251,248,242,.5) 62%,rgba(251,248,242,.1) 100%)}
+@media(min-width:520px){.lhero-bg{background-position:right center}}
+@media(max-width:520px){.lhero-bg{background-position:70% center;background-size:auto 100%}.lhero-veil{background:linear-gradient(180deg,rgba(251,248,242,.4) 0%,rgba(251,248,242,.72) 46%,rgba(251,248,242,.97) 100%)}}
+.lwrap{position:relative;z-index:2;display:flex;flex-direction:column;min-height:100dvh;padding:calc(var(--safe-top) + 12px) 20px 0}
+.lnav{display:flex;align-items:center;justify-content:space-between}
+.lbrand{display:flex;align-items:center;gap:.5rem;font-family:'Inter Tight';font-weight:800;letter-spacing:-.01em;color:var(--ink);font-size:1.1rem}
+.lbrand .lo{width:24px;height:24px;border-radius:50%;background:conic-gradient(from 120deg,var(--rose),var(--accent2),var(--mint),var(--rose));box-shadow:0 0 10px rgba(255,107,90,.3)}
+.live{display:inline-flex;align-items:center;gap:.4rem;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);background:#fff;padding:.32rem .6rem;border-radius:999px;border:1px solid var(--line)}
+.social-strip{margin-top:.7rem;display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;font-size:.74rem;color:var(--ink-soft);background:rgba(255,255,255,.85);backdrop-filter:blur(8px);border:1px solid var(--line);padding:.5rem .65rem;border-radius:14px;width:fit-content;box-shadow:0 4px 14px rgba(15,16,17,.05)}
+.social-strip .stack{display:flex}
+.social-strip .stack i{display:block;width:24px;height:24px;border-radius:50%;border:2px solid #fff;background-size:cover;background-position:center;margin-left:-8px}
+.social-strip .stack i:first-child{margin-left:0}
+.social-strip .rate{color:var(--rose);font-weight:700;letter-spacing:.04em}
+.social-strip .sep{color:var(--line)}
+.social-strip b{color:var(--ink);font-weight:700}
+.live i{width:7px;height:7px;background:#3ddc97;border-radius:50%;animation:pulseG 1.6s infinite}
+@keyframes pulseG{50%{box-shadow:0 0 0 6px rgba(61,220,151,.18)}}
+.lbadge{display:inline-flex;align-items:center;gap:.4rem;align-self:flex-start;margin-top:1.3rem;padding:.42rem .85rem;border-radius:999px;background:rgba(255,107,90,.1);color:var(--rose);font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border:1px solid rgba(255,107,90,.22)}
+.lh1{font-family:'Inter Tight';font-weight:800;font-size:clamp(2.4rem,9.5vw,4.4rem);line-height:1.02;letter-spacing:-.028em;margin-top:.9rem;color:var(--ink)}
+.lh1 em{font-style:normal;color:var(--rose)}
+.lsub{margin-top:.9rem;font-size:1rem;color:var(--ink-soft);max-width:540px;line-height:1.55}
+.bullets{margin-top:1rem;display:flex;flex-direction:column;gap:.45rem}
+.bullets .b{display:flex;align-items:center;gap:.55rem;font-size:.88rem;color:var(--ink-soft)}
+.bullets .b svg{flex:none;color:var(--rose)}
+.cta{display:flex;align-items:center;justify-content:center;gap:.5rem;background:linear-gradient(135deg,var(--rose),var(--berry2));color:#fff;padding:1.05rem 1.4rem;border-radius:14px;font-weight:700;letter-spacing:.04em;width:100%;font-size:1.04rem;margin-top:1.3rem;box-shadow:0 18px 40px -18px rgba(139,42,63,.7);transition:transform .15s var(--ease)}
+.cta:active{transform:scale(.97)}
+.cta-meta{margin-top:.55rem;display:flex;align-items:center;justify-content:center;gap:.6rem;flex-wrap:wrap;font-size:.72rem;color:var(--muted);letter-spacing:.04em}
+.cta-meta b{color:var(--rose);font-weight:700}
+
+/* Sticky CTA */
+.scta{position:fixed;left:14px;right:14px;bottom:14px;z-index:30;padding:.85rem 1rem;border-radius:14px;background:linear-gradient(135deg,var(--rose),var(--berry2));color:#fff;font-weight:700;font-size:.96rem;text-align:center;box-shadow:0 14px 36px -14px rgba(139,42,63,.7);transform:translateY(140%);transition:transform .35s var(--ease);display:flex;align-items:center;justify-content:center;gap:.5rem}
+.scta.show{transform:translateY(0)}
+.scta:active{transform:translateY(0) scale(.97)}
+.scta .pulse{width:8px;height:8px;background:#fff;border-radius:50%;animation:pulseG 1.6s infinite}
+
+/* Sections under hero */
+.lsec{padding:2.2rem 20px}
+.lsec.dark{background:#fff;color:var(--ink);border-top:1px solid var(--line)}
+.lsec.cream{background:#fff;color:var(--ink)}
+.lsec h2{font-family:'Inter Tight';font-size:clamp(1.6rem,6vw,2.2rem);font-weight:800;line-height:1.12;letter-spacing:-.02em}
+.lsec p.tlead{margin-top:.5rem;font-size:.92rem;color:var(--muted)}
+.lsec .pill-d{display:inline-flex;align-items:center;gap:.4rem;padding:.32rem .8rem;border-radius:999px;background:rgba(255,107,90,.1);color:var(--rose);font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;border:1px solid rgba(255,107,90,.2)}
+.lsec .pill-d span{width:6px;height:6px;border-radius:50%;background:var(--rose)}
+
+/* Concierge card */
+.concierge{display:grid;grid-template-columns:96px 1fr;gap:.85rem;align-items:center;padding:1rem;border-radius:16px;background:#FAF6EB;border:1px solid var(--line);margin-top:1rem}
+.concierge .pic{width:96px;height:96px;border-radius:14px;background:url('/assets/asesora-whatsapp.png') center/cover;flex:none;box-shadow:0 8px 22px -10px rgba(0,0,0,.5)}
+.concierge h4{font-family:'Inter Tight';font-weight:700;font-size:1.15rem;color:var(--ink)}
+.concierge p{font-size:.82rem;color:var(--muted);margin-top:2px;line-height:1.4}
+.concierge small{display:inline-flex;align-items:center;gap:.4rem;font-size:.7rem;color:#3ddc97;margin-top:.4rem;letter-spacing:.05em}
+.concierge small i{width:6px;height:6px;background:#3ddc97;border-radius:50%;animation:pulseG 1.6s infinite}
+
+/* Reviews / social proof */
+.reviews{margin-top:1rem;display:flex;flex-direction:column;gap:.7rem}
+.review{padding:1rem;background:#fff;border-radius:14px;border:1px solid rgba(94,26,42,.08);box-shadow:0 6px 18px -10px rgba(94,26,42,.12)}
+.rev-h{display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem}
+.rev-av{width:36px;height:36px;border-radius:50%;flex:none;background:#eee;background-size:cover;background-position:center}
+.rev-name{font-weight:600;font-size:.85rem;color:#1a0b10}
+.rev-meta{font-size:.7rem;color:#7a5d63}
+.rev-stars{color:#caa05a;font-size:.78rem;margin-left:auto;letter-spacing:.06em}
+.rev-text{font-size:.86rem;color:#3a262a;line-height:1.5}
+.rev-google{display:inline-flex;align-items:center;gap:.3rem;margin-top:.5rem;font-size:.7rem;color:#7a5d63}
+.rev-google::before{content:"G";display:inline-grid;place-items:center;width:14px;height:14px;border-radius:50%;background:#4285f4;color:#fff;font-size:.62rem;font-weight:700}
+
+/* KPIs */
+.kpis{margin-top:1rem;display:grid;grid-template-columns:repeat(3,1fr);gap:.55rem}
+.kpi{padding:.85rem .6rem;border-radius:12px;background:#FAF6EB;border:1px solid var(--line);text-align:center}
+.kpi b{display:block;font-family:'Inter Tight';font-size:1.5rem;color:var(--ink);font-weight:800;line-height:1}
+.kpi span{font-size:.66rem;color:var(--muted);margin-top:4px;display:block;letter-spacing:.04em}
+
+/* How it works */
+.steps{margin-top:1rem;display:flex;flex-direction:column;gap:.6rem}
+.step{display:flex;gap:.7rem;padding:.95rem;border-radius:14px;background:#FAF6EB;border:1px solid var(--line)}
+.step .num{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--rose),var(--accent2));display:grid;place-items:center;font-weight:700;color:#fff;flex:none}
+.step h4{font-size:.95rem;color:var(--ink);margin-bottom:2px;font-family:'Inter Tight';font-weight:700}
+.step p{font-size:.78rem;color:var(--muted);line-height:1.45}
+
+/* Treatments grid */
+.treatments{margin-top:1rem;display:grid;grid-template-columns:1fr 1fr;gap:.55rem}
+.tt{padding:.85rem .7rem;border-radius:12px;background:#FAF6EB;border:1px solid var(--line);font-size:.86rem;color:var(--ink);display:flex;flex-direction:column;gap:.18rem}
+.tt b{font-family:'Inter Tight';font-size:1rem;font-weight:700}
+.tt span{font-size:.7rem;color:var(--muted)}
+
+/* Sala */
+.sala-card{margin-top:1rem;border-radius:16px;overflow:hidden;border:1px solid rgba(94,26,42,.15);box-shadow:0 14px 40px -20px rgba(0,0,0,.4)}
+.sala-card img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+.sala-card .cap{padding:.8rem 1rem;background:#fff;font-size:.84rem;color:#3a262a}
+
+/* Cases gallery */
+.case{position:relative;border-radius:14px;overflow:hidden;border:1px solid rgba(212,165,116,.18)}
+.case img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+.case-info{position:absolute;left:0;right:0;bottom:0;padding:.6rem .85rem;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.78));color:#fff;display:flex;justify-content:space-between;align-items:flex-end;font-size:.85rem}
+.case-info b{font-family:'Cormorant Garamond';font-size:1.05rem;font-weight:600}
+.case-info span{font-size:.72rem;color:#e9d5d1}
+
+/* Doctora */
+.doc-card{margin-top:1rem;display:grid;grid-template-columns:130px 1fr;gap:1rem;align-items:flex-start}
+.doc-card img{width:130px;aspect-ratio:3/4;object-fit:cover;border-radius:14px;box-shadow:0 12px 28px -12px rgba(94,26,42,.25)}
+.doc-info h4{font-family:'Cormorant Garamond';font-size:1.3rem;color:#1a0b10;font-weight:600}
+.doc-info p{font-size:.86rem;color:#3a262a;margin-top:.4rem;line-height:1.5}
+.doc-tags{margin-top:.6rem;display:flex;flex-wrap:wrap;gap:.3rem}
+.doc-tags span{padding:.28rem .55rem;background:rgba(94,26,42,.06);border:1px solid rgba(94,26,42,.12);border-radius:999px;font-size:.66rem;color:var(--berry);font-weight:600;letter-spacing:.04em}
+@media(max-width:380px){.doc-card{grid-template-columns:108px 1fr}.doc-card img{width:108px}}
+
+/* FAQ */
+.faq{margin-top:1rem;display:flex;flex-direction:column;gap:.4rem}
+.faq details{background:#fff;border:1px solid rgba(94,26,42,.1);border-radius:12px;padding:.85rem 1rem}
+.faq details[open]{box-shadow:0 8px 24px -14px rgba(94,26,42,.18)}
+.faq summary{font-weight:600;font-size:.92rem;color:#1a0b10;cursor:pointer;list-style:none}
+.faq summary::after{content:"+";float:right;font-weight:300;color:var(--berry);transition:transform .2s}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq p{margin-top:.5rem;font-size:.86rem;color:#5a3e44;line-height:1.55}
+
+/* Urgency */
+.urgency{margin-top:1rem;padding:.85rem 1rem;background:rgba(255,107,90,.08);border:1px solid rgba(255,107,90,.25);border-radius:12px;display:flex;gap:.7rem;align-items:center;font-size:.84rem;color:var(--ink-soft)}
+.urgency .ic{width:30px;height:30px;border-radius:50%;background:rgba(255,107,90,.15);display:grid;place-items:center;color:var(--rose);flex:none}
+.urgency b{color:var(--ink)}
+
+/* Lead magnet refresh (for medium-ticket) */
+.lm-card{margin-top:1.2rem;padding:1rem;border-radius:14px;background:linear-gradient(135deg,rgba(255,107,90,.1),rgba(155,123,255,.1));border:1px solid rgba(255,107,90,.25);display:flex;gap:.8rem;align-items:flex-start}
+.lm-card .ic{width:42px;height:42px;border-radius:12px;background:rgba(255,107,90,.16);display:grid;place-items:center;color:var(--rose);flex:none}
+.lm-card div.tx strong{display:block;font-family:'Inter Tight';font-size:1.1rem;color:var(--ink);font-weight:700}
+.lm-card div.tx p{font-size:.78rem;color:var(--muted);margin-top:3px;line-height:1.45}
+
+/* Stickers row (legitimacy) */
+.legitimacy{margin-top:1.2rem;display:flex;flex-wrap:wrap;gap:.4rem;font-size:.62rem;color:var(--muted);letter-spacing:.04em}
+.legitimacy span{padding:.3rem .55rem;background:#FAF6EB;border:1px solid var(--line);border-radius:999px;display:inline-flex;align-items:center;gap:.3rem}
+.legitimacy span::before{content:"●";color:var(--rose);font-size:.5rem}
+
+/* ===== QUIZ ===== */
+.quiz-bg{min-height:100dvh;background:var(--bg);color:var(--ink);padding:calc(var(--safe-top) + 14px) 22px calc(var(--safe-bot) + 22px);display:flex;flex-direction:column}
+.quiz-header{display:flex;align-items:center;gap:.7rem;margin-bottom:1.4rem}
+.quiz-back{padding:.5rem;border-radius:50%;background:#fff;border:1px solid var(--line);width:38px;height:38px;display:grid;place-items:center;color:var(--ink);font-size:1.1rem}
+.quiz-progress{flex:1;height:5px;background:#F2EBDD;border-radius:3px;overflow:hidden}
+.quiz-progress i{display:block;height:100%;background:linear-gradient(90deg,var(--rose),var(--accent2));width:20%;transition:width .55s var(--ease)}
+.quiz-step{font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--rose);font-weight:700}
+
+.quiz-q{margin-top:1.5rem;font-family:'Inter Tight';font-weight:800;font-size:clamp(1.7rem,6vw,2.3rem);line-height:1.12;letter-spacing:-.02em;animation:slideIn .55s var(--ease)}
+@keyframes slideIn{from{opacity:0;transform:translateY(20px)}}
+.quiz-helper{color:var(--muted);font-size:.88rem;margin-top:.5rem}
+.quiz-options{margin-top:1.6rem;display:grid;gap:.6rem}
+.quiz-opt{padding:1rem 1.2rem;background:#fff;border:1.5px solid var(--line);border-radius:14px;color:var(--ink);font-size:.95rem;text-align:left;display:flex;align-items:center;gap:.6rem;transition:all .25s var(--ease);box-shadow:0 2px 8px rgba(15,16,17,.03)}
+.quiz-opt:hover,.quiz-opt:active{background:#FFF3EE;border-color:var(--rose);transform:translateX(2px)}
+.quiz-opt .emoji{font-size:1.2rem}
+
+.quiz-input{padding:1rem 1.2rem;background:#fff;border:1.5px solid var(--line);border-radius:14px;color:var(--ink);font-size:1rem;width:100%;outline:none}
+.quiz-input:focus{border-color:var(--rose)}
+.quiz-input::placeholder{color:#A89F94}
+.quiz-cta{display:flex;align-items:center;justify-content:center;gap:.5rem;background:linear-gradient(135deg,var(--rose),var(--berry2));color:#fff;padding:1rem;border-radius:14px;font-weight:700;width:100%;font-size:1rem;margin-top:1rem;opacity:.5;pointer-events:none;transition:opacity .25s}
+.quiz-cta.ready{opacity:1;pointer-events:auto}
+
+/* ===== RESULT ===== */
+.result-bg{min-height:100dvh;background:var(--bg);color:var(--ink);padding:calc(var(--safe-top) + 14px) 22px calc(var(--safe-bot) + 22px)}
+.result-card{margin-top:1.4rem;background:#fff;border:1px solid var(--line);border-radius:18px;padding:1.4rem;box-shadow:0 14px 36px -20px rgba(15,16,17,.12)}
+.result-card h3{font-family:'Inter Tight';font-weight:800;font-size:1.5rem;letter-spacing:-.02em}
+.result-card .reco{margin-top:1rem;padding:1rem;background:linear-gradient(135deg,rgba(255,107,90,.1),rgba(155,123,255,.1));border-radius:12px;font-size:.95rem;color:var(--ink-soft);line-height:1.5}
+.result-card .reco strong{color:var(--ink);font-family:'Inter Tight';font-weight:700;font-size:1.1rem;display:block;margin-bottom:.3rem}
+
+/* ===== CHAT WHATSAPP-LIKE ===== */
+.chat-bg{min-height:100dvh;min-height:100vh;background:var(--wa-bg);color:var(--wa-text);display:flex;flex-direction:column;padding-top:var(--safe-top)}
+.chat-header{background:var(--wa-panel);padding:.65rem .8rem;display:flex;align-items:center;gap:.7rem;box-shadow:0 1px 0 rgba(255,255,255,.04);position:sticky;top:0;z-index:10}
+.chat-back{color:var(--wa-text);font-size:1.4rem;padding:.2rem}
+.chat-avatar{width:42px;height:42px;border-radius:50%;background:url('/assets/asesora-whatsapp.png') center/cover;flex:none}
+.chat-meta{flex:1}
+.chat-meta strong{font-size:1rem;font-weight:600;color:var(--wa-text)}
+.chat-meta small{display:block;font-size:.72rem;color:var(--wa-muted);margin-top:1px}
+.chat-icons{display:flex;gap:1rem;color:var(--wa-text);font-size:1.1rem;align-items:center}
+
+.chat-body{flex:1;overflow-y:auto;background:#0b141a;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'><defs><pattern id='p' x='0' y='0' width='200' height='200' patternUnits='userSpaceOnUse'><circle cx='10' cy='10' r='.5' fill='%23304049'/><circle cx='80' cy='40' r='.5' fill='%23304049'/><circle cx='150' cy='80' r='.5' fill='%23304049'/><circle cx='40' cy='160' r='.5' fill='%23304049'/></pattern></defs><rect width='600' height='600' fill='url(%23p)' opacity='.4'/></svg>");padding:1rem .7rem 1rem;display:flex;flex-direction:column;gap:.4rem;-webkit-overflow-scrolling:touch}
+
+.msg-row{display:flex;width:100%;animation:msgIn .35s var(--ease)}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px) scale(.96)}}
+.msg-row.them{justify-content:flex-start}
+.msg-row.me{justify-content:flex-end}
+
+.msg{max-width:78%;padding:.5rem .65rem .35rem;border-radius:10px;font-size:.9rem;line-height:1.4;position:relative;word-wrap:break-word}
+.msg-row.them .msg{background:var(--wa-bubble-them);border-top-left-radius:2px}
+.msg-row.me .msg{background:var(--wa-bubble-me);border-top-right-radius:2px}
+.msg-time{display:block;font-size:.62rem;color:rgba(255,255,255,.5);text-align:right;margin-top:2px}
+.msg-row.me .msg-time::after{content:" ✓✓";color:#53bdeb}
+
+.msg.audio{display:flex;align-items:center;gap:.5rem;min-width:200px}
+.audio-play{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.1);display:grid;place-items:center;color:var(--wa-text);font-size:1.1rem;flex:none;transition:background .2s}
+.audio-play:hover{background:rgba(255,255,255,.18)}
+.audio-wave{flex:1;display:flex;gap:2px;align-items:center;height:24px}
+.audio-wave i{width:2px;background:var(--wa-text);opacity:.4;border-radius:1px;transition:opacity .2s}
+.audio-wave i.active{opacity:1;background:#53bdeb}
+.audio-time{font-size:.7rem;color:rgba(255,255,255,.5)}
+.audio-mic{font-size:.95rem;color:var(--wa-muted)}
+
+.typing-bubble{display:inline-flex;gap:3px;padding:.55rem .7rem;background:var(--wa-bubble-them);border-radius:10px;border-top-left-radius:2px}
+.typing-bubble i{width:6px;height:6px;border-radius:50%;background:var(--wa-text);opacity:.4;animation:tdot 1.2s infinite}
+.typing-bubble i:nth-child(2){animation-delay:.18s}
+.typing-bubble i:nth-child(3){animation-delay:.36s}
+@keyframes tdot{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:.95;transform:translateY(-3px)}}
+
+.chat-input{background:var(--wa-panel);padding:.5rem .55rem calc(var(--safe-bot) + .55rem);display:flex;align-items:center;gap:.45rem}
+.input-field{flex:1;background:var(--wa-input);border-radius:24px;padding:.55rem .85rem;display:flex;align-items:center;gap:.5rem;color:var(--wa-text);font-size:.95rem;min-height:42px;border:0;outline:none;font-family:inherit}
+.input-field input{flex:1;background:transparent;border:0;outline:none;color:var(--wa-text);font:inherit}
+.input-field input::placeholder{color:var(--wa-muted)}
+.input-icon{color:var(--wa-muted);font-size:1.15rem;padding:.15rem;cursor:pointer}
+.send-btn{width:42px;height:42px;border-radius:50%;background:#00a884;display:grid;place-items:center;color:#fff;font-size:1.1rem;flex:none;transition:transform .15s}
+.send-btn:active{transform:scale(.92)}
+.send-btn.mic{background:#00a884}
+
+.suggested{padding:.5rem .8rem;background:var(--wa-panel);border-top:1px solid rgba(255,255,255,.04);display:flex;gap:.4rem;overflow-x:auto;scrollbar-width:none}
+.suggested::-webkit-scrollbar{display:none}
+.suggested .chip{padding:.45rem .85rem;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:999px;font-size:.78rem;color:var(--wa-text);white-space:nowrap;transition:all .2s;flex:none}
+.suggested .chip:active{background:rgba(255,255,255,.14)}
+
+/* ===== CALENDAR EMBEBIDO en CHAT ===== */
+.cal-card{max-width:82%;background:var(--wa-bubble-them);border-radius:10px;border-top-left-radius:2px;padding:.7rem;overflow:hidden}
+.cal-card h4{font-family:'Cormorant Garamond';font-size:1.05rem;color:#fff;font-weight:600;margin-bottom:.4rem;display:flex;align-items:center;gap:.4rem}
+.cal-card .day-row{display:flex;gap:.3rem;margin-bottom:.5rem;overflow-x:auto;scrollbar-width:none}
+.cal-card .day-row::-webkit-scrollbar{display:none}
+.cal-card .day{flex:none;padding:.45rem .55rem;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;text-align:center;font-size:.7rem;cursor:pointer;transition:all .2s}
+.cal-card .day.on{background:linear-gradient(135deg,var(--rose),var(--berry2));border-color:var(--rose)}
+.cal-card .day b{display:block;font-family:'Cormorant Garamond';font-size:1.05rem;font-weight:600;color:#fff;line-height:1}
+.cal-card .day span{color:var(--wa-muted);font-size:.6rem}
+.cal-card .day.on span{color:#fff}
+.cal-card .slots{display:grid;grid-template-columns:repeat(3,1fr);gap:.3rem;margin-top:.4rem}
+.cal-card .slot{padding:.45rem .3rem;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;text-align:center;font-size:.8rem;cursor:pointer;color:#fff;transition:all .2s}
+.cal-card .slot:hover{background:rgba(255,255,255,.12)}
+.cal-card .slot.taken{opacity:.35;text-decoration:line-through}
+
+/* ===== CONFIRMACIÓN FINAL ===== */
+.confirm-card{max-width:85%;background:linear-gradient(135deg,rgba(212,165,116,.2),rgba(139,42,63,.2));border:1px solid var(--rose);border-radius:10px;border-top-left-radius:2px;padding:.85rem;color:#fff}
+.confirm-card .ic{width:36px;height:36px;border-radius:50%;background:rgba(0,168,132,.25);display:grid;place-items:center;color:#00d99a;font-size:1.1rem;margin-bottom:.5rem}
+.confirm-card h4{font-family:'Cormorant Garamond';font-size:1.15rem;margin-bottom:.3rem}
+.confirm-card p{font-size:.85rem;line-height:1.45;color:#f5ecdc}
+.confirm-card .when{margin-top:.55rem;padding:.55rem .7rem;background:rgba(0,0,0,.25);border-radius:8px;font-size:.82rem;color:#fff}
+
+.media-card{max-width:78%;background:var(--wa-bubble-them);border-radius:10px;border-top-left-radius:2px;padding:.35rem .35rem .25rem;overflow:hidden}
+.media-card img{width:100%;border-radius:8px;display:block;background:#000;aspect-ratio:4/3;object-fit:cover}
+.media-card .cap{padding:.45rem .35rem .2rem;font-size:.82rem;color:var(--wa-text);line-height:1.4}
+
+/* compact mobile */
+@media(max-width:380px){
+  .hero-headline{font-size:2.1rem}
+  .lead-magnet{padding:.85rem}
+  .lead-magnet .gift{font-size:1.5rem}
+  .lead-magnet strong{font-size:1.05rem}
+}
+</style>
+</head>
+<body>
+
+<!-- ====== VISTA 1: LANDING (high-conversion v2) ====== -->
+<section class="view active" id="view-landing">
+  <!-- HERO -->
+  <div class="lhero">
+    <div class="lhero-bg"></div>
+    <div class="lhero-veil"></div>
+    <div class="lwrap">
+      <div class="lnav">
+        <div class="lbrand"><span class="lo"></span>Clínica Elvira</div>
+        <span class="live"><i></i> hueco hoy</span>
+      </div>
+
+      <div class="social-strip" aria-label="Prueba social">
+        <span class="stack">
+          <i style="background-image:url('/assets/rev-marta.png')"></i>
+          <i style="background-image:url('/assets/rev-lucia.png')"></i>
+          <i style="background-image:url('/assets/rev-sofia.png')"></i>
+        </span>
+        <span class="rate">★ 4,9</span>
+        <span><b>312</b> reseñas Google</span>
+        <span class="sep">·</span>
+        <span><b>+12.000</b> tratamientos</span>
+      </div>
+
+      <span class="lbadge" style="margin-top:.9rem">Valoración con la Dra. Elvira · gratis</span>
+      <h1 class="lh1" id="lh1">
+        <span class="word"><span class="ch" style="--i:0">T</span><span class="ch" style="--i:1">u</span></span>
+        <span class="word"><span class="ch" style="--i:2">m</span><span class="ch" style="--i:3">e</span><span class="ch" style="--i:4">j</span><span class="ch" style="--i:5">o</span><span class="ch" style="--i:6">r</span></span>
+        <span class="word"><em><span class="rotator" id="rotator"><span class="on">versión</span><span>perfil</span><span>piel</span><span>mirada</span><span>sonrisa</span></span></em></span>
+      </h1>
+      <p class="lsub">Responde 5 preguntas, te diseñamos un plan a tu medida y te abrimos hueco con la doctora. Sin tarjeta, sin compromiso, sin prisa.</p>
+
+      <div class="bullets">
+        <div class="b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>tarda menos de 60 segundos</div>
+        <div class="b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> recomendación personalizada al final</div>
+        <div class="b"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> hablas con tu asesor real, no con un bot</div>
+      </div>
+
+      <div class="lm-card">
+        <div class="ic">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+        </div>
+        <div class="tx">
+          <strong>Llevándote tu plan personalizado</strong>
+          <p>Foto-análisis 3D del perfil + recomendación médica concreta. Sin coste si decides no continuar.</p>
+        </div>
+      </div>
+
+      <button class="cta" onclick="goView('quiz')">
+        empezar valoración gratuita <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+      <div class="cta-meta tick"><b>3</b> huecos esta semana · última cita reservada hace <b id="hoursAgo">2</b> h</div>
+      <div style="position:relative">
+        <span class="chip-hw" style="top:-14px;right:8px">tarda 47 s</span>
+      </div>
+
+      <div class="legitimacy">
+        <span>Madrid · Velázquez 84</span>
+        <span>+12.000 tratamientos</span>
+        <span>Datos cifrados</span>
+        <span>RGPD</span>
+      </div>
+
+      <div style="height:1.4rem"></div>
+    </div>
+    <div class="marquee">
+      <div class="track">
+        <span>Madrid · velázquez 84</span>
+        <span>+12.000 tratamientos</span>
+        <span>Dra. Elvira Mateos</span>
+        <span>medicina estética certificada</span>
+        <span>4,87★ en Google</span>
+        <span>312 reseñas verificadas</span>
+        <span>Madrid · velázquez 84</span>
+        <span>+12.000 tratamientos</span>
+        <span>Dra. Elvira Mateos</span>
+        <span>medicina estética certificada</span>
+        <span>4,87★ en Google</span>
+        <span>312 reseñas verificadas</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIS strip secundaria -->
+  <section class="lsec dark" style="padding-top:1.4rem">
+    <div class="kpis reveal stagger">
+      <div class="kpi" style="--i:0"><b>4,87<span style="color:var(--rose);font-size:.9rem"> ★</span></b><span>312 reseñas Google</span></div>
+      <div class="kpi" style="--i:1"><b>+12.347</b><span>tratamientos</span></div>
+      <div class="kpi" style="--i:2"><b>9 de cada 10</b><span>vuelven en 6 meses</span></div>
+    </div>
+  </section>
+
+  <!-- CONCIERGE - movido después del KPI strip -->
+  <section class="lsec dark">
+    <span class="pill-d" style="background:rgba(212,165,116,.16);color:#f7e6d2;border-color:rgba(212,165,116,.3)"><span></span> Tu asesor</span>
+    <h2 style="color:#fff;margin-top:.5rem">Adrián te acompaña paso a paso.</h2>
+    <p class="tlead" style="color:#c9b8b3">No es un bot. Resuelve dudas, te enseña casos reales y te abre hueco directo con la doctora.</p>
+    <div class="concierge">
+      <div class="pic"></div>
+      <div>
+        <h4>Adrián</h4>
+        <p>Asesor de Clínica Elvira · te responde en menos de 30 segundos</p>
+        <small><i></i> en línea ahora</small>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="lsec cream">
+    <span class="pill-d"><span></span> Cómo funciona</span>
+    <h2 class="fraunces" style="margin-top:.5rem">Tres pasos. <em style="color:var(--berry);font-style:italic">Cero fricción.</em></h2>
+    <div class="quote-pull reveal">
+      Vine a informarme y reservé sin darme cuenta. Adrián me resolvió todo en cinco mensajes y al final estaba apuntando la fecha en mi calendario.
+      <cite>— Marta G., 32 años, paciente de labios glow</cite>
+    </div>
+    <div class="steps" style="--ease:cubic-bezier(.23,1,.32,1)">
+      <div class="step" style="background:#fff;border-color:rgba(94,26,42,.1);color:#1a0b10"><div class="num">1</div><div><h4 style="color:#1a0b10">cuestionario de 60 s</h4><p style="color:#5a3e44">5 preguntas rápidas. Te conocemos sin tener que llamarte.</p></div></div>
+      <div class="step" style="background:#fff;border-color:rgba(94,26,42,.1);color:#1a0b10"><div class="num">2</div><div><h4 style="color:#1a0b10">hablas con tu asesor</h4><p style="color:#5a3e44">Adrián te resuelve dudas reales y te enseña casos parecidos al tuyo.</p></div></div>
+      <div class="step" style="background:#fff;border-color:rgba(94,26,42,.1);color:#1a0b10"><div class="num">3</div><div><h4 style="color:#1a0b10">eliges hueco con la doctora</h4><p style="color:#5a3e44">Valoración gratis de 30 min. Sin tarjeta, sin compromiso.</p></div></div>
+    </div>
+  </section>
+
+  <!-- REVIEWS -->
+  <section class="lsec cream">
+    <span class="pill-d"><span></span> Lo que dicen pacientes reales</span>
+    <h2 style="margin-top:.5rem">No te lo decimos nosotras.</h2>
+    <div class="reviews">
+      <div class="review">
+        <div class="rev-h"><div class="rev-av" style="background-image:url('/assets/rev-marta.png')"></div><div><div class="rev-name">Marta G.</div><div class="rev-meta">Hace 2 semanas · labios glow</div></div><div class="rev-stars">★★★★★</div></div>
+        <p class="rev-text">Llevaba meses dando vueltas. La valoración fue honesta, sin venta agresiva. La doctora me explicó lo que necesitaba y lo que no. Resultado natural total, mis amigas no notan qué me he hecho.</p>
+        <span class="rev-google">Reseña verificada en Google</span>
+      </div>
+      <div class="review">
+        <div class="rev-h"><div class="rev-av" style="background-image:url('/assets/rev-lucia.png')"></div><div><div class="rev-name">Lucía R.</div><div class="rev-meta">Hace 1 mes · hidratación facial</div></div><div class="rev-stars">★★★★★</div></div>
+        <p class="rev-text">El cuestionario me sorprendió, super rápido. Adrián me atendió enseguida y me explicó todo sin tecnicismos. La doctora una crack, super honesta con lo que me convienía.</p>
+        <span class="rev-google">Reseña verificada en Google</span>
+      </div>
+      <div class="review">
+        <div class="rev-h"><div class="rev-av" style="background-image:url('/assets/rev-sofia.png')"></div><div><div class="rev-name">Sara M.</div><div class="rev-meta">Hace 3 semanas · rinomodelación</div></div><div class="rev-stars">★★★★★</div></div>
+        <p class="rev-text">Me daba miedo el resultado, tenía dudas. Me enseñaron casos reales antes y después y vi que la técnica era muy sutil. Encantada con el resultado.</p>
+        <span class="rev-google">Reseña verificada en Google</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- TREATMENTS GALLERY (editorial photos) -->
+  <section class="lsec dark">
+    <span class="pill-d" style="background:rgba(212,165,116,.16);color:#f7e6d2;border-color:rgba(212,165,116,.3)"><span></span> Resultados naturales</span>
+    <h2 style="color:#fff;margin-top:.5rem">Sutiles. Reales. <em style="color:var(--rose);font-style:italic">A tu medida.</em></h2>
+    <p class="tlead" style="color:#c9b8b3">No buscamos transformaciones imposibles. Solo que te veas mejor cada día.</p>
+    <div class="gallery" style="margin-top:1rem;display:flex;flex-direction:column;gap:.7rem">
+      <div class="case">
+        <img src="/assets/case-labios.png" alt="Labios glow naturales"/>
+        <div class="case-info"><b>labios glow</b><span>aumento natural · desde 380€</span></div>
+      </div>
+      <div class="case">
+        <img src="/assets/case-rino.png" alt="Rinomodelación sin cirugía"/>
+        <div class="case-info"><b>rinomodelación</b><span>sin cirugía · desde 480€</span></div>
+      </div>
+      <div class="case">
+        <img src="/assets/case-piel.png" alt="Hidratación facial profunda"/>
+        <div class="case-info"><b>piel hidratada</b><span>hydrafacial premium · desde 90€</span></div>
+      </div>
+    </div>
+    <div class="treatments" style="margin-top:1rem">
+      <div class="tt"><b>botox expresión</b><span>desde 280€ · sutil</span></div>
+      <div class="tt"><b>perfilado mandíbula</b><span>desde 420€</span></div>
+      <div class="tt"><b>ojeras</b><span>desde 320€</span></div>
+      <div class="tt"><b>otros</b><span>te asesoramos</span></div>
+    </div>
+  </section>
+
+  <!-- DOCTORA ELVIRA -->
+  <section class="lsec cream">
+    <span class="pill-d"><span></span> Tu doctora</span>
+    <h2 style="margin-top:.5rem">La Dra. Elvira Mateos.</h2>
+    <div class="doc-card">
+      <img src="/assets/dra-elvira.png" alt="Dra. Elvira Mateos"/>
+      <div class="doc-info">
+        <h4>+12.000 tratamientos</h4>
+        <p>Especializada en medicina estética facial. Filosofía: el resultado más natural posible. Si un tratamiento no encaja contigo, te lo dice. Eso es lo que más nos diferencia.</p>
+        <div class="doc-tags">
+          <span>Medicina estética</span>
+          <span>Inyectables</span>
+          <span>Hilos tensores</span>
+          <span>Hydrafacial</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SALA -->
+  <section class="lsec cream">
+    <span class="pill-d"><span></span> Clínica Elvira</span>
+    <h2 style="margin-top:.5rem">Aquí es donde te atenderíamos.</h2>
+    <div class="sala-card">
+      <img src="/assets/sala-tratamiento.png" alt="Sala de tratamiento Clínica Elvira"/>
+      <div class="cap">Madrid · Velázquez 84 · luz natural y privacidad total</div>
+    </div>
+  </section>
+
+  <!-- URGENCY -->
+  <section class="lsec dark">
+    <div class="urgency">
+      <div class="ic">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <div>
+        <b>solo 3 huecos esta semana</b><br>
+        <span style="font-size:.78rem;color:#c9b8b3">la doctora atiende valoraciones limitadas para mantener la calidad</span>
+      </div>
+    </div>
+    <button class="cta" onclick="goView('quiz')" style="margin-top:1rem">empezar valoración gratuita</button>
+  </section>
+
+  <!-- FAQ -->
+  <section class="lsec cream" style="padding-bottom:6rem">
+    <span class="pill-d"><span></span> Preguntas habituales</span>
+    <h2 style="margin-top:.5rem">Lo que la gente nos pregunta antes.</h2>
+    <div class="faq">
+      <details><summary>¿El cuestionario tiene coste?</summary><p>No. Es gratis y no requiere tarjeta. Lo único que necesitas es 60 segundos en el móvil.</p></details>
+      <details><summary>¿Qué pasa después del cuestionario?</summary><p>Te pasa al chat con Adrián, tu asesor. Él te resuelve dudas y, si quieres, te abre hueco con la doctora. La valoración con ella también es gratuita.</p></details>
+      <details><summary>¿Me van a llamar para venderme?</summary><p>No. Solo te enviamos un sms con la confirmación y un recordatorio. Si quieres, hablamos por WhatsApp cuando tú lo inicies.</p></details>
+      <details><summary>¿Puedo cancelar la cita si no me encaja?</summary><p>Sí, sin coste ni penalización. Lo movemos al día que te encaje.</p></details>
+      <details><summary>¿Quién hace el tratamiento?</summary><p>La Dra. Elvira Mateos, médico estético con +12.000 tratamientos. La valoración y el procedimiento siempre los hace ella en persona.</p></details>
+      <details><summary>¿Hay financiación?</summary><p>Sí, ofrecemos pagos a plazos sin intereses para los tratamientos elegibles. La doctora te lo explica en la valoración.</p></details>
+    </div>
+  </section>
+
+  <!-- STICKY CTA -->
+  <button class="scta" id="scta" onclick="goView('quiz')"><span class="pulse"></span> empezar valoración gratis</button>
+</section>
+
+<!-- ====== VISTA 2: QUIZ ====== -->
+<section class="view" id="view-quiz">
+  <div class="quiz-bg">
+    <div class="quiz-header">
+      <button class="quiz-back" onclick="goView('landing')">←</button>
+      <div class="quiz-progress"><i id="qBar"></i></div>
+      <span class="quiz-step" id="qStep">1 / 5</span>
+    </div>
+    <div id="quizContent"></div>
+  </div>
+</section>
+
+<!-- ====== VISTA 3: RESULTADO ====== -->
+<section class="view" id="view-result">
+  <div class="result-bg">
+    <div class="quiz-header">
+      <div class="quiz-progress"><i style="width:100%"></i></div>
+      <span class="quiz-step">✓ Completado</span>
+    </div>
+    <span class="pill" style="margin-top:1.4rem;align-self:flex-start"><span class="dot"></span> Tu resultado</span>
+    <h1 class="hero-headline" style="font-size:2.4rem;margin-top:.8rem">Personalizado para ti, <em style="color:var(--rose)" id="resName">Marta</em>.</h1>
+    <div class="result-card">
+      <h3>Tu plan recomendado</h3>
+      <div class="reco">
+        <strong id="recoTitle">Aumento de labios técnica glow natural</strong>
+        <span id="recoText">Combinación de aumento de labios glow natural + hidratación profunda con HydraFacial. Ideal para tu objetivo en tu plazo. Sesión inicial 60 min con la Dra. Elvira.</span>
+      </div>
+      <div style="margin-top:1rem;padding:.85rem;background:rgba(212,165,116,.12);border-radius:10px;display:flex;align-items:center;gap:.7rem">
+        <div style="font-size:1.4rem;color:var(--rose);font-weight:300">✓</div>
+        <div style="font-size:.85rem;color:#f5ecdc"><strong style="color:#fff;display:block;font-family:'Cormorant Garamond';font-size:1.05rem">Foto-análisis 3D + plan personalizado</strong>Incluido en tu valoración gratuita con la doctora.</div>
+      </div>
+    </div>
+    <div style="margin-top:1.4rem;border-radius:14px;overflow:hidden;border:1px solid rgba(212,165,116,.22);box-shadow:0 12px 30px -16px rgba(0,0,0,.45)">
+      <img id="resPic" src="/assets/case-labios.png" alt="Caso recomendado" style="display:block;width:100%;aspect-ratio:4/3;object-fit:cover"/>
+    </div>
+    <button class="btn-cta" style="margin-top:1rem" onclick="goView('chat')">Hablar con Adrián ahora →</button>
+    <p style="text-align:center;color:#c9b8b3;font-size:.78rem;margin-top:.8rem">        Te conecta directamente con <strong style="color:var(--rose)">Adrián</strong> en chat. Responde en menos de 30 segundos.</p>
+  </div>
+</section>
+
+<!-- ====== VISTA 4: CHAT ESTILO WHATSAPP ====== -->
+<section class="view" id="view-chat">
+  <div class="chat-bg">
+    <header class="chat-header">
+      <button class="chat-back" onclick="goView('result')">←</button>
+      <div class="chat-avatar"></div>
+      <div class="chat-meta">
+        <strong>Adrián · Clínica Elvira</strong>
+        <small id="onlineStatus">en línea · escribiendo…</small>
+      </div>
+      <div class="chat-icons">
+        <span>📞</span>
+        <span>⋮</span>
+      </div>
+    </header>
+
+    <div class="chat-body" id="chatBody"></div>
+
+    <div class="suggested" id="suggested" style="display:none"></div>
+
+    <div class="chat-input">
+      <button class="input-icon">😊</button>
+      <div class="input-field">
+        <input id="inputMsg" type="text" placeholder="Escribe un mensaje" autocomplete="off" />
+        <button class="input-icon">📎</button>
+        <button class="input-icon">💸</button>
+      </div>
+      <button class="send-btn mic" id="sendBtn">🎙</button>
+    </div>
+  </div>
+</section>
+
+<audio id="audioBienvenida" src="/assets/welcome.wav" preload="auto"></audio>
+
+<script>
+/* ============ STATE ============ */
+const TENANT_ID = (function(){
+  const m = location.pathname.match(/\/c\/([^\/?#]+)/);
+  if(m && m[1]) return decodeURIComponent(m[1]);
+  return (new URLSearchParams(location.search).get('tenant')) || 'clinica-elvira';
+})();
+let TENANT = null; // cargado dinámicamente
+const state={
+  name:'',phone:'',email:'',
+  treatment:'',plazo:'',objecion:'',motivo:'',
+  history:[],
+  step:1,
+  audioPlaying:false,
+  lead_id: null,
+};
+
+// Cargar tenant desde el Worker
+(async function loadTenant(){
+  try{
+    const r = await fetch('https://aura-chat-worker.adrian-7b9.workers.dev/api/tenant/'+TENANT_ID);
+    const d = await r.json();
+    if(d && d.tenant){
+      TENANT = d.tenant;
+      // Aplicar paleta dinámica
+      if(TENANT.brand_primary){ document.documentElement.style.setProperty('--berry', TENANT.brand_primary); document.documentElement.style.setProperty('--berry2', TENANT.brand_primary); }
+      if(TENANT.brand_accent){ document.documentElement.style.setProperty('--rose', TENANT.brand_accent); document.documentElement.style.setProperty('--gold', TENANT.brand_accent); }
+      // Reescribir el nombre de la clínica donde aparezca "Clínica Elvira"
+      if(TENANT.name && TENANT.name!=='Clínica Elvira'){
+        document.querySelectorAll('.lbrand').forEach(el=>{ el.innerHTML = '<span class="lo"></span>'+TENANT.name; });
+        document.title = TENANT.name + ' · Valoración personalizada gratuita';
+      }
+      // Doctora
+      if(TENANT.doctor_name){
+        document.querySelectorAll('.lbadge').forEach(el=>{ el.textContent = 'Valoración con '+TENANT.doctor_name+' · gratis'; });
+      }
+      // Imágenes generadas: hero, asesor, sala
+      const W = 'https://aura-chat-worker.adrian-7b9.workers.dev';
+      if(TENANT.hero_image_url){
+        const u = TENANT.hero_image_url.startsWith('/') ? W+TENANT.hero_image_url : TENANT.hero_image_url;
+        document.querySelectorAll('.lhero-bg').forEach(el=>el.style.backgroundImage='url('+u+')');
+      }
+      if(TENANT.doctor_image_url){
+        const u = TENANT.doctor_image_url.startsWith('/') ? W+TENANT.doctor_image_url : TENANT.doctor_image_url;
+        document.querySelectorAll('.concierge .pic,.chat-avatar,.rev-av[data-replace="advisor"]').forEach(el=>el.style.backgroundImage='url('+u+')');
+      }
+      if(TENANT.room_image_url){
+        const u = TENANT.room_image_url.startsWith('/') ? W+TENANT.room_image_url : TENANT.room_image_url;
+        document.querySelectorAll('.sala-card img,.media-card img').forEach(el=>{ if(el.src && (el.src.includes('sala-tratamiento')||el.alt.includes('Sala')||el.alt.includes('sala'))) el.src = u; });
+      }
+      // Si todavía no están listas, polling cada 8s hasta 5 min
+      if(TENANT.images_status === 'generating' || !TENANT.hero_image_url){
+        let tries = 0;
+        const poll = setInterval(async()=>{
+          tries++;
+          if(tries > 40){clearInterval(poll); return;}
+          try{
+            const r = await fetch(W+'/api/tenant/'+TENANT_ID);
+            const d = await r.json();
+            if(d.tenant?.hero_image_url){
+              TENANT = d.tenant;
+              clearInterval(poll);
+              if(TENANT.hero_image_url){
+                const u = TENANT.hero_image_url.startsWith('/') ? W+TENANT.hero_image_url : TENANT.hero_image_url;
+                document.querySelectorAll('.lhero-bg').forEach(el=>{el.style.transition='background-image .8s';el.style.backgroundImage='url('+u+')';});
+              }
+              if(TENANT.doctor_image_url){
+                const u = TENANT.doctor_image_url.startsWith('/') ? W+TENANT.doctor_image_url : TENANT.doctor_image_url;
+                document.querySelectorAll('.concierge .pic,.chat-avatar').forEach(el=>el.style.backgroundImage='url('+u+')');
+              }
+              if(TENANT.room_image_url){
+                const u = TENANT.room_image_url.startsWith('/') ? W+TENANT.room_image_url : TENANT.room_image_url;
+                document.querySelectorAll('.sala-card img').forEach(el=>el.src=u);
+              }
+            }
+          }catch{}
+        }, 8000);
+      }
+    }
+  }catch(e){console.warn('tenant load fail',e);}
+})();
+
+/* ============ ROUTER ============ */
+function goView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  window.scrollTo(0,0);
+  if(id==='quiz'&&state.step===1)renderQuestion(1);
+  if(id==='result')showResult();
+  if(id==='chat')startChat();
+  const scta=document.getElementById('scta');
+  if(scta){scta.classList.toggle('show', id==='landing' && window.scrollY>500);}
+  // Lanzar headline mask reveal en landing
+  if(id==='landing'){const lh=document.getElementById('lh1');if(lh)setTimeout(()=>lh.classList.add('in'),120);}
+}
+
+// Scroll progress bar + reveal animations
+(function setupReveals(){
+  const bar=document.createElement('div');bar.className='spbar';document.body.appendChild(bar);
+  window.addEventListener('scroll',()=>{
+    const h=document.documentElement.scrollHeight-window.innerHeight;
+    bar.style.width=(window.scrollY/h*100)+'%';
+  },{passive:true});
+  const io=new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});
+  },{threshold:.18});
+  setTimeout(()=>{document.querySelectorAll('.reveal').forEach(el=>io.observe(el));document.querySelectorAll('.lsec h2, .lsec .pill-d, .lsec .pill, .gallery .case, .reviews .review, .doc-card, .steps .step, .faq details, .treatments .tt, .lm-card').forEach((el,i)=>{el.classList.add('reveal');el.style.setProperty('--i',i%6);io.observe(el);});},200);
+})();
+
+// Rotating word
+(function rotator(){
+  const r=document.getElementById('rotator');if(!r)return;
+  const items=r.querySelectorAll('span');let i=0;
+  setInterval(()=>{items[i].classList.remove('on');i=(i+1)%items.length;items[i].classList.add('on');},2400);
+})();
+
+// Magnetic CTA hover (desktop)
+(function magnetic(){
+  if(window.matchMedia('(pointer:coarse)').matches)return;
+  document.querySelectorAll('.cta,.btn-cta').forEach(btn=>{
+    btn.addEventListener('mousemove',(e)=>{
+      const r=btn.getBoundingClientRect();
+      const x=e.clientX-r.left-r.width/2;const y=e.clientY-r.top-r.height/2;
+      btn.style.transform=`translate(${x*.08}px,${y*.18}px)`;
+    });
+    btn.addEventListener('mouseleave',()=>{btn.style.transform='';});
+  });
+})();
+
+// Time-since 'last booked' tick (random 1-3h)
+(function lastBooked(){
+  const el=document.getElementById('hoursAgo');if(!el)return;
+  el.textContent=String(1+Math.floor(Math.random()*3));
+})();
+window.addEventListener('scroll',()=>{
+  const scta=document.getElementById('scta');
+  if(!scta)return;
+  const onLanding=document.getElementById('view-landing').classList.contains('active');
+  // Mostrar entre 500px y antes de FAQ (hórrese fuera de las dos zonas)
+  const faqStart=document.querySelector('.faq');
+  const faqTop=faqStart?faqStart.getBoundingClientRect().top + window.scrollY:Infinity;
+  const insideRange = window.scrollY>500 && (window.scrollY + window.innerHeight*0.7) < faqTop;
+  scta.classList.toggle('show', onLanding && insideRange);
+});
+
+/* ============ QUIZ ============ */
+const questions=[
+  {
+    n:1,key:'motivo',
+    q:'¿Qué te llevaría a dar el paso?',
+    helper:'Elige la que más te encaja',
+    options:[
+      {emoji:'✨',label:'Quiero sentirme mejor conmigo'},
+      {emoji:'🎉',label:'Tengo un evento próximo'},
+      {emoji:'🤍',label:'Aún me estoy informando'},
+      {emoji:'⏳',label:'Llevo años pensándolo'}
+    ]
+  },
+  {
+    n:2,key:'datos',
+    q:'¿Cómo te llamas?',
+    helper:'Para que Adrián pueda atenderte como mereces',
+    fields:['name','phone']
+  },
+  {
+    n:3,key:'treatment',
+    q:'¿Qué te interesa más?',
+    helper:'Tu plan se adapta a tu objetivo',
+    options:[
+      {emoji:'💋',label:'Labios glow naturales'},
+      {emoji:'👃',label:'Rinomodelación'},
+      {emoji:'✨',label:'Piel: hidratación y luminosidad'},
+      {emoji:'🌿',label:'Otro tratamiento'}
+    ]
+  },
+  {
+    n:4,key:'plazo',
+    q:'¿En qué plazo te gustaría?',
+    helper:'Te buscamos hueco prioritario si encaja',
+    options:[
+      {emoji:'🔥',label:'Esta misma semana'},
+      {emoji:'📅',label:'Este mes'},
+      {emoji:'🌸',label:'En 2-3 meses'},
+      {emoji:'🌙',label:'Aún no lo tengo claro'}
+    ]
+  },
+  {
+    n:5,key:'objecion',
+    q:'¿Cuál es tu mayor preocupación?',
+    helper:'Tu asesor lo tendrá en cuenta',
+    options:[
+      {emoji:'💎',label:'Que se note natural'},
+      {emoji:'💰',label:'El precio'},
+      {emoji:'⏰',label:'La recuperación'},
+      {emoji:'🤲',label:'Que dure el resultado'}
+    ]
+  }
+];
+
+function renderQuestion(n){
+  const q=questions[n-1];
+  state.step=n;
+  document.getElementById('qStep').textContent=n+' / 5';
+  document.getElementById('qBar').style.width=(n*20)+'%';
+  const c=document.getElementById('quizContent');
+  let html=`<h2 class="quiz-q">${q.q}</h2><p class="quiz-helper">${q.helper}</p>`;
+  if(q.options){
+    html+=`<div class="quiz-options">`;
+    q.options.forEach((o,i)=>{
+      html+=`<button class="quiz-opt" data-i="${i}"><span class="emoji">${o.emoji}</span><span>${o.label}</span></button>`;
+    });
+    html+='</div>';
+  } else if(q.fields){
+    html+=`
+      <div class="quiz-options">
+        <input class="quiz-input" id="fName" placeholder="Tu nombre" autocomplete="given-name" />
+        <input class="quiz-input" id="fPhone" type="tel" placeholder="Tu móvil (+34 6XX XXX XXX)" autocomplete="tel" />
+        <button class="quiz-cta" id="fNext">Continuar →</button>
+      </div>
+      <p style="margin-top:.7rem;color:#c9b8b3;font-size:.72rem;text-align:center">Solo lo usamos para enviarte tu plan. Cumplimos GDPR + LSSI.</p>
+    `;
+  }
+  c.innerHTML=html;
+  if(q.options){
+    c.querySelectorAll('.quiz-opt').forEach(b=>{
+      b.onclick=()=>{
+        state[q.key]=q.options[b.dataset.i].label;
+        nextStep();
+      };
+    });
+  } else if(q.fields){
+    const cta=c.querySelector('#fNext');
+    const ni=c.querySelector('#fName');
+    const pi=c.querySelector('#fPhone');
+    const upd=()=>{
+      const ok=ni.value.trim().length>=2 && pi.value.replace(/\D/g,'').length>=9;
+      cta.classList.toggle('ready',ok);
+    };
+    ni.oninput=upd;pi.oninput=upd;
+    cta.onclick=()=>{
+      if(!cta.classList.contains('ready'))return;
+      state.name=ni.value.trim().split(' ')[0];
+      state.phone=pi.value.trim();
+      nextStep();
+    };
+    setTimeout(()=>ni.focus(),300);
+  }
+}
+function nextStep(){
+  const n=state.step+1;
+  if(n>5){goView('result');return;}
+  renderQuestion(n);
+}
+
+/* ============ RESULT ============ */
+function showResult(){
+  document.getElementById('resName').textContent=state.name||'Marta';
+  // Persist lead al terminar el quiz
+  persistLead();
+  // Map treatment to recommendation
+  const map={
+    'Labios glow naturales':{t:'Aumento de labios técnica glow natural',d:'Ácido hialurónico de última generación con técnica de hidratación + microvolumen. Resultado discreto, sin volumen excesivo. Sesión 45 min con la Dra. Elvira.'},
+    'Rinomodelación':{t:'Rinomodelación con ácido hialurónico',d:'Corrige perfil, dorso o punta sin cirugía. Resultado inmediato y reversible. Sesión 60 min con la Dra. Elvira.'},
+    'Piel: hidratación y luminosidad':{t:'HydraFacial Premium + ácido hialurónico',d:'Hidratación profunda, luminosidad y minimización de poros. Resultado en una sola sesión. 60 min con la Dra. Elvira.'},
+    'Otro tratamiento':{t:'Plan personalizado en valoración',d:'Adrián abrirá la conversación contigo para entender mejor tu objetivo y agendarte una valoración 1:1 con la Dra. Elvira.'},
+  };
+  const r=map[state.treatment]||map['Otro tratamiento'];
+  document.getElementById('recoTitle').textContent=r.t;
+  document.getElementById('recoText').textContent=r.d;
+  // Mini-foto del tratamiento
+  const picMap={
+    'Labios glow naturales':'/assets/case-labios.png',
+    'Rinomodelación':'/assets/case-rino.png',
+    'Piel: hidratación y luminosidad':'/assets/case-piel.png',
+  };
+  const pic=document.getElementById('resPic');
+  if(pic){pic.src=picMap[state.treatment]||'/assets/case-piel.png';}
+}
+
+/* ============ CHAT WHATSAPP ============ */
+const chatBody=document.getElementById('chatBody');
+const input=document.getElementById('inputMsg');
+const sendBtn=document.getElementById('sendBtn');
+const suggested=document.getElementById('suggested');
+const onlineStatus=document.getElementById('onlineStatus');
+
+function nowTime(){const d=new Date();return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)}
+
+function addMsg(side,html,opts={}){
+  const row=document.createElement('div');
+  row.className='msg-row '+side;
+  row.innerHTML=`<div class="msg ${opts.cls||''}">${html}<span class="msg-time">${nowTime()}</span></div>`;
+  chatBody.appendChild(row);
+  chatBody.scrollTop=chatBody.scrollHeight;
+  return row;
+}
+function addRaw(html){
+  const row=document.createElement('div');
+  row.className='msg-row them';
+  row.innerHTML=html;
+  chatBody.appendChild(row);
+  chatBody.scrollTop=chatBody.scrollHeight;
+  return row;
+}
+function typing(ms=900){
+  return new Promise(res=>{
+    const t=document.createElement('div');
+    t.className='msg-row them';
+    t.innerHTML='<div class="typing-bubble"><i></i><i></i><i></i></div>';
+    chatBody.appendChild(t);
+    chatBody.scrollTop=chatBody.scrollHeight;
+    onlineStatus.textContent='escribiendo…';
+    setTimeout(()=>{t.remove();onlineStatus.textContent='en línea';res()},ms);
+  });
+}
+function delay(ms){return new Promise(r=>setTimeout(r,ms))}
+
+function setSuggested(arr){
+  if(!arr||!arr.length){suggested.style.display='none';return}
+  suggested.innerHTML='';
+  arr.forEach(s=>{
+    const b=document.createElement('button');
+    b.className='chip';b.textContent=s;
+    b.onclick=()=>{sendUser(s)};
+    suggested.appendChild(b);
+  });
+  suggested.style.display='flex';
+}
+
+/* === AUDIO WAVE === */
+function buildAudioMsg(durationSec=44){
+  const bars=Array.from({length:28},(_,i)=>`<i style="height:${4+(Math.sin(i*0.6)*8+8)}px"></i>`).join('');
+  return `
+    <div class="msg audio" style="background:var(--wa-bubble-them)">
+      <button class="audio-play" id="playAudio">▶</button>
+      <div class="audio-wave" id="wave">${bars}</div>
+      <span class="audio-time" id="aTime">0:${String(durationSec).padStart(2,'0')}</span>
+      <span class="audio-mic">🎙</span>
+      <span class="msg-time">${nowTime()}</span>
+    </div>`;
+}
+function playWelcomeAudio(){
+  const a=document.getElementById('audioBienvenida');
+  const playBtn=document.getElementById('playAudio');
+  const wave=document.getElementById('wave');
+  const tEl=document.getElementById('aTime');
+  if(!a||!playBtn)return;
+  a.currentTime=0;
+  a.play().catch(()=>{/* el usuario tendrá que pulsar */});
+  playBtn.textContent='⏸';
+  const bars=wave.querySelectorAll('i');
+  a.ontimeupdate=()=>{
+    const pct=a.currentTime/a.duration;
+    bars.forEach((b,i)=>b.classList.toggle('active',i/bars.length<=pct));
+    const rem=Math.max(0,Math.round(a.duration-a.currentTime));
+    tEl.textContent='0:'+String(rem).padStart(2,'0');
+  };
+  a.onended=()=>{
+    playBtn.textContent='▶';
+    bars.forEach(b=>b.classList.remove('active'));
+  };
+  playBtn.onclick=()=>{
+    if(a.paused){a.play();playBtn.textContent='⏸';}
+    else{a.pause();playBtn.textContent='▶';}
+  };
+}
+
+/* === CALENDAR EMBEBIDO === */
+function buildCalendar(){
+  const tt=(state.treatment||'tu tratamiento').toLowerCase();
+  const days=['Lun 3','Mar 4','Mié 5','Jue 6','Vie 7','Sáb 8'];
+  const html=`
+    <div class="cal-card">
+      <h4>valoración para ${tt}</h4>
+      <p style="font-size:.72rem;color:var(--wa-muted);margin-bottom:.5rem;line-height:1.4">al pulsar un hueco se reserva al instante · gratis · 30 min con la doctora</p>
+      <div class="day-row" id="dayRow">
+        ${days.map((d,i)=>{const [w,n]=d.split(' ');return `<button class="day ${i===2?'on':''}" data-day="${d}"><b>${n}</b><span>${w}</span></button>`}).join('')}
+      </div>
+      <div class="slots" id="slotsBox">
+        <button class="slot taken">10:00</button>
+        <button class="slot">11:30</button>
+        <button class="slot">13:00</button>
+        <button class="slot">17:00</button>
+        <button class="slot">18:30</button>
+        <button class="slot taken">20:00</button>
+      </div>
+      <span class="msg-time">${nowTime()}</span>
+    </div>`;
+  return html;
+}
+function wireCalendar(){
+  const calEl=chatBody.querySelector('.cal-card');
+  if(!calEl)return;
+  let day='Mié 5';
+  calEl.querySelectorAll('.day').forEach(d=>{
+    d.onclick=()=>{
+      calEl.querySelectorAll('.day').forEach(x=>x.classList.remove('on'));
+      d.classList.add('on');day=d.dataset.day;
+    };
+  });
+  calEl.querySelectorAll('.slot').forEach(s=>{
+    if(s.classList.contains('taken'))return;
+    s.onclick=()=>confirmAppointment(day,s.textContent);
+  });
+}
+async function confirmAppointment(day,time){
+  // Hide suggestions and disable calendar
+  setSuggested([]);
+  // Persistir cita en backend
+  try{
+    if(!state.lead_id) await persistLead();
+    if(state.lead_id){
+      await fetch(WORKER_URL+'/api/appointments',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({tenant_id:TENANT_ID, lead_id:state.lead_id, treatment:state.treatment, date_iso:day+' '+time, duration_min:30})
+      });
+    }
+  }catch{}
+  const cal=chatBody.querySelector('.cal-card');
+  if(cal)cal.style.opacity='.5';
+
+  addMsg('me',`vale ${day.toLowerCase()} a las ${time} me viene`);
+  setTimeout(async()=>{
+    await typing(1200);
+    const tt=(state.treatment||'tu tratamiento').toLowerCase();
+    addRaw(`<div class="confirm-card">
+      <div class="ic">✓</div>
+      <h4>cita confirmada</h4>
+      <p>${(state.name||'marta').toLowerCase()}, te he reservado la valoración para ${tt} con la doctora. gratis, 30 min, sin compromiso.</p>
+      <div class="when">${day} · ${time} · velázquez 84, madrid</div>
+      <span class="msg-time" style="display:block;text-align:right;font-size:.62rem;color:rgba(255,255,255,.5);margin-top:6px">${nowTime()}</span>
+    </div>`);
+    await delay(2200);
+    await typing(1500);
+    addMsg('them','te mando un sms ahora con la ruta y un enlace para guardarlo en el calendario');
+    await delay(2800);
+    await typing(1800);
+    addMsg('them','te aviso la noche de antes para confirmar, si te surge cualquier cosa me escribes y lo movemos');
+    setSuggested(['perfecto','llevo algo?','gracias']);
+    onlineStatus.textContent='en línea';
+  },1200);
+}
+
+/* === STEP-BY-STEP CHAT FLOW (timings realistas) === */
+async function startChat(){
+  if(chatBody.dataset.started)return;
+  chatBody.dataset.started='1';
+
+  // (0) Pre-skeleton: mensaje de sistema que evita pantalla negra inicial
+  const sysRow=document.createElement('div');
+  sysRow.style.cssText='display:flex;justify-content:center;margin:.5rem 0';
+  sysRow.innerHTML='<div style="background:rgba(255,255,255,.05);color:var(--wa-muted);font-size:.72rem;padding:.4rem .8rem;border-radius:8px;text-align:center;max-width:80%">Mensajes cifrados de extremo a extremo. Adrián está conectándose…</div>';
+  chatBody.appendChild(sysRow);
+  await delay(1500+Math.random()*1500);
+  sysRow.remove();
+
+  // (1) Pausa inicial: 2-4s. Como si Adrián hubiera visto la notificación
+  await delay(2400+Math.random()*1600);
+  // (1a) Typing visible 3-5s antes del primer mensaje
+  await typing(3000+Math.random()*2000);
+  // (1b) Saludo SIN nombre del lead (más natural)
+  addMsg('them','hola, soy adrián de elvira');
+
+  // (2) Pausa 8-14s entre el saludo y la siguiente frase
+  await delay(8000+Math.random()*6000);
+  await typing(2800+Math.random()*2200);
+  addMsg('them','acabo de ver q has terminado el formulario');
+
+  // (3) Pausa 5-10s antes del aviso del audio
+  await delay(5000+Math.random()*5000);
+  await typing(1800+Math.random()*1800);
+  addMsg('them','te mando un audio rápido');
+
+  // (4) Pausa 6-10s grabando antes de enviar el audio
+  await delay(6000+Math.random()*4000);
+  addRaw(buildAudioMsg(44));
+  await delay(700);
+  // (5) Auto-play del audio. Adrián se calla durante toda la reproducción + 12-18s extra (como si esperase a que la lead lo escuche y responda)
+  playWelcomeAudio();
+  const audioEl=document.getElementById('audioBienvenida');
+  const dur=(audioEl&&audioEl.duration&&isFinite(audioEl.duration))?audioEl.duration*1000:45000;
+  // online status indica que ya envió, y baja
+  if(typeof onlineStatus!=='undefined')onlineStatus.textContent='en línea';
+  await delay(dur+12000+Math.random()*6000);
+
+  // (6) Tras audio: típico typing más largo (le da tiempo a la lead)
+  await typing(3200+Math.random()*2200);
+  addMsg('them','te enseño la sala mientras lo piensas');
+
+  // (7) Pausa 7-12s antes de la imagen (como si buscara la foto)
+  await delay(7000+Math.random()*5000);
+  addRaw(`<div class="media-card"><img src="/assets/sala-tratamiento.png" alt="Sala de tratamiento"><div class="cap">aquí es donde te atenderíamos</div><span class="msg-time" style="display:block;text-align:right;font-size:.62rem;color:rgba(255,255,255,.5);padding:0 .35rem .15rem">${nowTime()}</span></div>`);
+
+  // (8) Pausa 10-16s para que la lead mire la foto antes de la objeción
+  await delay(10000+Math.random()*6000);
+  await typing(3000+Math.random()*2200);
+
+  // Adapt to objection
+  const objMap={
+    'Que se note natural':'sobre lo natural, la doctora trabaja muy sutil, nadie nota nada raro, solo se ve a la persona mejor',
+    'El precio':'sobre el precio depende del plan, pero el cupon de 50 va aplicado y la valoración es gratis, sin compromiso',
+    'La recuperación':'la recuperación en tu caso son 0-24h, la doctora te explica todo en la valoración',
+    'Que dure el resultado':'normalmente entre 6 y 18 meses según el caso, en la valoración te concreta'
+  };
+  const obj=objMap[state.objecion]||'lo que comentas es muy normal, casi todas vienen con esa duda';
+  addMsg('them',obj);
+
+  // (9) Pausa 7-12s antes de cerrar con la oferta de huecos
+  await delay(7000+Math.random()*5000);
+  await typing(2200+Math.random()*1800);
+  addMsg('them','si quieres, te paso huecos a ver cuál te encaja');
+  await delay(2200+Math.random()*1800);
+  addRaw(buildCalendar());
+  wireCalendar();
+  setSuggested(['otra duda','y cuánto cuesta','mejor tarde']);
+  onlineStatus.textContent='en línea';
+}
+
+/* === MANUAL USER INPUT ============ */
+const WORKER_URL='https://aura-chat-worker.adrian-7b9.workers.dev';
+
+// Guardar lead en backend al terminar el quiz
+async function persistLead(){
+  if(state.lead_id) return state.lead_id;
+  try{
+    const r = await fetch(WORKER_URL+'/api/leads', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        tenant_id: TENANT_ID,
+        funnel_id: TENANT_ID+'__'+(state.treatment ? slugifyT(state.treatment) : 'generic'),
+        name: state.name, phone: state.phone, email: state.email,
+        treatment: state.treatment, motivo: state.motivo,
+        plazo: state.plazo, objecion: state.objecion,
+        quiz_score: 50, temperature:'warm', source:'demo'
+      })
+    });
+    const d = await r.json();
+    state.lead_id = d.lead_id;
+    return state.lead_id;
+  }catch(e){return null;}
+}
+function slugifyT(s){ return (s||'').toLowerCase().includes('labio')?'labios': (s||'').toLowerCase().includes('rino')?'rino': (s||'').toLowerCase().includes('hidrat')?'hidratacion':'generic'; }
+
+// Guardar mensajes en el thread del lead
+async function persistMessage(role,content){
+  if(!state.lead_id) await persistLead();
+  if(!state.lead_id) return;
+  try{
+    await fetch(WORKER_URL+'/api/messages',{method:'POST',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({tenant_id:TENANT_ID, lead_id:state.lead_id, role, content, channel:'chat_web'})
+    });
+  }catch{}
+}
+let groupTimer=null;
+let pendingUserMsgs=[];
+let lastReplies=[]; // anti-repetición
+
+function sendUser(text){
+  text=(text||input.value||'').trim();
+  if(!text)return;
+  addMsg('me',text);
+  input.value='';
+  pendingUserMsgs.push(text);
+  state.history.push({role:'user',content:text});
+  setSuggested([]);
+  // Agrupar mensajes: si el lead manda otro en menos de 3.5s, esperamos
+  if(groupTimer)clearTimeout(groupTimer);
+  groupTimer=setTimeout(()=>{
+    const grouped=pendingUserMsgs.join(' / ');
+    pendingUserMsgs=[];
+    respondAI(grouped);
+  },3500);
+}
+input.addEventListener('keypress',e=>{if(e.key==='Enter')sendUser()});
+sendBtn.onclick=()=>{ if(input.value.trim())sendUser(); else { /* mic placeholder */ } };
+input.addEventListener('input',()=>{
+  sendBtn.classList.toggle('mic',!input.value.trim());
+  sendBtn.textContent=input.value.trim()?'➤':'🎙';
+});
+
+async function respondAI(userText){
+  // Delay realista: simula que Adrián acaba de leer
+  const initial=2500+Math.random()*4500; // 2,5-7s antes de empezar a escribir
+  await delay(initial);
+  // Tiempo de typing proporcional al largo de la respuesta esperada
+  await typing(2500+Math.random()*2500);
+
+  let reply='';
+  let suggs=[];
+  let triggerCalendar=false;
+
+  try{
+    const r=await fetch(WORKER_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        tenant_id: TENANT_ID,
+        messages:state.history.slice(-12),
+        context:{name:state.name,treatment:state.treatment,plazo:state.plazo,objecion:state.objecion,motivo:state.motivo}
+      })
+    });
+    const data=await r.json();
+    reply=(data.content||'no te he pillado, cómo era?').trim();
+    persistMessage('user',userText);
+    // Anti-repetición: si el modelo nos devuelve algo casi idéntico a algo reciente, fuerza variante
+    if(lastReplies.some(prev=>similar(prev,reply))){
+      reply='perdona, no me expliqué bien antes. dame un segundo y te lo aclaro mejor';
+    }
+    lastReplies.push(reply);if(lastReplies.length>5)lastReplies.shift();
+    // Detectar intención de calendario
+    const t=userText.toLowerCase();
+    if(t.includes('sí')||t.includes('si ')||t.includes('vale')||t.includes('hueco')||t.includes('cita')||t.includes('reservar')||t.includes('fecha')||t.includes('agendar')){
+      triggerCalendar=true;
+    }
+  }catch(e){
+    reply='se me ha cortado un momento, dame 2 seg';
+  }
+
+  addMsg('them',reply);
+  state.history.push({role:'assistant',content:reply});
+  persistMessage('assistant',reply);
+  if(triggerCalendar){
+    await delay(900);
+    addMsg('them','toca el día y la hora, queda agendado al instante, gratis');
+    await delay(700);
+    addRaw(buildCalendar());
+    wireCalendar();
+  }
+  // Sugerencias contextuales mínimas
+  if(!triggerCalendar){
+    setSuggested(['otra duda','más tarde','dame fecha']);
+  }
+}
+
+// similar simple: si la mayoría de palabras coinciden con una respuesta anterior
+function similar(a,b){
+  const wa=new Set(a.toLowerCase().split(/\s+/).filter(w=>w.length>3));
+  const wb=new Set(b.toLowerCase().split(/\s+/).filter(w=>w.length>3));
+  if(!wa.size||!wb.size)return false;
+  let inter=0;wa.forEach(w=>{if(wb.has(w))inter++});
+  return inter/Math.min(wa.size,wb.size)>0.75;
+}
+</script>
+</body>
+</html>
