@@ -1351,6 +1351,12 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
   function fill(s: string, vars: any){ return (s||'').replace(/\{(\w+)\}/g, (_m, k)=> vars[k]!=null ? String(vars[k]) : ''); }
   const tenantsCache: any = {};
   async function tenant(id: string){ if(!tenantsCache[id]){ tenantsCache[id] = await env.aura_db.prepare('SELECT id,name,whatsapp,address FROM tenants WHERE id=?').bind(id).first(); } return tenantsCache[id]; }
+  // Disponibilidad SIEMPRE fresca: se relee cada ejecución del cron (cada hora) para reflejar cambios de horario/vacaciones.
+  const schedCache: any = {}; const vacCache: any = {};
+  async function schedFor(tid: string){ if(!schedCache[tid]) schedCache[tid] = await getScheduleByDay(env, tid); return schedCache[tid]; }
+  async function vacFor(tid: string){ if(!vacCache[tid]) vacCache[tid] = await getVacations(env, tid); return vacCache[tid]; }
+  // ¿Hay algún día abierto al que enviar a la gente en el horizonte? (evita invitar a reservar si todo está cerrado)
+  async function hasOpenDayAhead(tid: string){ const sch = await schedFor(tid); const vac = await vacFor(tid); const today = madridParts(nowUTC).dateStr; const nxt = nextOpenDate(today, sch, vac); return !isDateClosed(nxt, sch, vac).closed; }
 
   if (within) {
     // 1) Citas futuras: recordatorio 24h y 2h
@@ -1364,15 +1370,21 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
       const hora = dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
       const mlink = await magicLink(env, a.tenant_id, a.lead_id);
       const vars = { clinica: tn.name||'', nombre: a.lead_name||'', fecha, hora, direccion: tn.address||'', tel: (tn.whatsapp||''), link: mlink };
+      // La cita NO debe caer en un día cerrado/vacaciones (edge case: se cerró el día después de reservar).
+      // Si cae cerrada, no enviamos recordatorios que confundan y marcamos como enviados para no reintentar.
+      const apptDay = String(a.date_iso).slice(0,10);
+      const apptClosed = isDateClosed(apptDay, await schedFor(a.tenant_id), await vacFor(a.tenant_id)).closed;
       // 24h exactas (ventana técnica de 1h del cron: 23-24h)
       if (!a.sms_24h && diffH <= 24 && diffH > 23) {
-        const r = await sendSMS(env, a.lead_phone, fill(T.reminder_24h, vars), tn.name||'AURA', a.tenant_id);
-        if (r.ok) { await env.aura_db.prepare('UPDATE appointments SET sms_24h=1 WHERE id=?').bind(a.id).run(); sent++; }
+        if (apptClosed) { await env.aura_db.prepare('UPDATE appointments SET sms_24h=1 WHERE id=?').bind(a.id).run(); }
+        else { const r = await sendSMS(env, a.lead_phone, fill(T.reminder_24h, vars), tn.name||'AURA', a.tenant_id);
+          if (r.ok) { await env.aura_db.prepare('UPDATE appointments SET sms_24h=1 WHERE id=?').bind(a.id).run(); sent++; } }
       }
       // 2h exactas (ventana técnica de 1h del cron: 1-2h)
       if (!a.sms_2h && diffH <= 2 && diffH > 1) {
-        const r = await sendSMS(env, a.lead_phone, fill(T.reminder_2h, vars), tn.name||'AURA', a.tenant_id);
-        if (r.ok) { await env.aura_db.prepare('UPDATE appointments SET sms_2h=1 WHERE id=?').bind(a.id).run(); sent++; }
+        if (apptClosed) { await env.aura_db.prepare('UPDATE appointments SET sms_2h=1 WHERE id=?').bind(a.id).run(); }
+        else { const r = await sendSMS(env, a.lead_phone, fill(T.reminder_2h, vars), tn.name||'AURA', a.tenant_id);
+          if (r.ok) { await env.aura_db.prepare('UPDATE appointments SET sms_2h=1 WHERE id=?').bind(a.id).run(); sent++; } }
       }
       // no-show: 2h exactas después de la cita (ventana 2-3h), si sigue booked
       if (!a.sms_noshow && diffH <= -2 && diffH > -3) {
@@ -1388,10 +1400,14 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
       const T = await tpl(l.tenant_id);
       const mlink = await magicLink(env, l.tenant_id, l.id);
       const vars = { clinica: tn.name||'', nombre: l.name||'', link: mlink, tel:(tn.whatsapp||'') };
+      // Solo invitamos a reservar si hay algún día abierto al que enviar a la gente.
+      const openAhead = await hasOpenDayAhead(l.tenant_id);
       if (!l.react_d3 && days >= 3 && days < 3.0417) {
+        if (!openAhead) continue;
         const r = await sendSMS(env, l.phone, fill(T.reactivation, vars), tn.name||'AURA', l.tenant_id);
         if (r.ok) { await env.aura_db.prepare('UPDATE leads SET react_d3=1 WHERE id=?').bind(l.id).run(); sent++; }
       } else if (!l.react_d7 && days >= 7 && days < 7.0417) {
+        if (!openAhead) continue;
         const r = await sendSMS(env, l.phone, fill(T.reactivation, vars), tn.name||'AURA', l.tenant_id);
         if (r.ok) { await env.aura_db.prepare('UPDATE leads SET react_d7=1 WHERE id=?').bind(l.id).run(); sent++; }
       }
@@ -1399,9 +1415,6 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
     // 3) Recall de nueva venta: recall_date vencido y tipo venta, SMS una vez
     const recalls: any = await env.aura_db.prepare("SELECT * FROM leads WHERE recall_type='venta' AND recall_date IS NOT NULL AND (recall_sms_sent IS NULL OR recall_sms_sent=0) AND phone IS NOT NULL").all();
     const todayStr = nowUTC.toISOString().slice(0,10);
-    const schedCache: any = {}; const vacCache: any = {};
-    async function schedFor(tid: string){ if(!schedCache[tid]) schedCache[tid] = await getScheduleByDay(env, tid); return schedCache[tid]; }
-    async function vacFor(tid: string){ if(!vacCache[tid]) vacCache[tid] = await getVacations(env, tid); return vacCache[tid]; }
     for (const l of (recalls.results||[])) {
       if (String(l.recall_date) > todayStr) continue; // aún no vence
       // Si el día de recall cae en día cerrado/vacaciones, desplazar al siguiente día abierto y esperar a esa fecha
@@ -1418,6 +1431,8 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
       // NO enviar recall si ya tiene una cita futura reservada (no pisar)
       const futura: any = await env.aura_db.prepare("SELECT COUNT(*) as c FROM appointments WHERE lead_id=? AND status='booked' AND date_iso > ?").bind(l.id, nowUTC.toISOString()).first();
       if ((futura?.c||0) > 0) { await env.aura_db.prepare('UPDATE leads SET recall_sms_sent=1 WHERE id=?').bind(l.id).run(); continue; }
+      // Seguridad extra: no invitar a reservar si no hay ningún día abierto en el horizonte (espera al siguiente cron)
+      if (!(await hasOpenDayAhead(l.tenant_id))) continue;
       const tn: any = await tenant(l.tenant_id); if(!tn) continue;
       const T = await tpl(l.tenant_id);
       const mlink = await magicLink(env, l.tenant_id, l.id);
