@@ -1251,8 +1251,8 @@ export default {
         // crear/asociar lead
         let leadId = b.lead_id;
         if (!leadId) {
-          leadId = 'l_'+uid();
-          await env.aura_db.prepare('INSERT INTO leads (id,tenant_id,name,phone,treatment,status,temperature,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(leadId, b.tenant_id, b.name||'Cliente', b.phone||'', b.treatment||'', 'booked','warm', Date.now()).run();
+          leadId = uid();
+          await env.aura_db.prepare('INSERT INTO leads (id,tenant_id,name,phone,treatment,status,temperature,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(leadId, b.tenant_id, b.name||'Cliente', b.phone||'', b.treatment||'', 'booked','warm', new Date().toISOString()).run();
         }
         const id=appId();
         await env.aura_db.prepare('INSERT INTO appointments (id,tenant_id,lead_id,treatment,date_iso,duration_min,status,professional_id) VALUES (?,?,?,?,?,?,?,?)').bind(id, b.tenant_id, leadId, b.treatment||null, b.date_iso, b.duration_min||30, 'booked', b.professional_id||null).run();
@@ -1467,7 +1467,7 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
 // ─── BACKUP: exporta todas las tablas D1 a JSON y lo guarda en KV con fecha + retención 30 días ───
 async function runBackup(env: Env): Promise<{ ok: boolean; key?: string; tables?: number; rows?: number; error?: string }> {
   try {
-    const tables = ['tenants','funnels','leads','messages','appointments','consultations','lead_analyses','users','team_members','sms_templates','pipeline_stages','calendar_config','schedule_by_day','vacations','professionals','time_blocks','waitlist','treatments_log','owners'];
+    const tables = ['tenants','funnels','leads','messages','appointments','consultations','lead_analyses','users','team_members','sms_templates','pipeline_config','calendar_config','schedule_by_day','vacations','professionals','time_blocks','waitlist','treatments_log','owners'];
     const dump: any = { created_at: new Date().toISOString(), tables: {} };
     let totalRows = 0;
     for (const t of tables) {
