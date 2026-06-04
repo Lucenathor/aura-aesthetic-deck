@@ -750,7 +750,18 @@ async function showCal(){
   try{ const r=await fetch(WORKER+'/api/slots?tenant='+TENANT_ID); const d=await r.json(); slots=d.slots||[]; }catch(e){}
   if(!slots.length){ slots=[{label:'Jue 12:00'},{label:'Jue 17:30'},{label:'Vie 10:00'},{label:'Vie 18:00'}]; }
   const btns=slots.slice(0,4).map(s=>`<button class="slot" onclick="book(this,'${s.label}')">${s.label}</button>`).join('');
-  addRaw(`<div class="cal"><h5>Te abro hueco esta semana</h5><div class="slots">${btns}</div></div>`);
+  // Encabezado dinámico: si el primer hueco no es hoy/mañana, lo enmarcamos como exclusividad (agenda muy demandada), nunca como 'cerrado'.
+  let titulo='Te abro hueco esta semana';
+  try{
+    const fd=slots[0]&&slots[0].date; if(fd){
+      const hoy=new Date(); const hoyStr=hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-'+String(hoy.getDate()).padStart(2,'0');
+      const diff=Math.round((new Date(fd+'T12:00:00')-new Date(hoyStr+'T12:00:00'))/86400000);
+      const DIAS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+      const nom=DIAS[new Date(fd+'T12:00:00').getDay()];
+      if(diff>=2){ titulo='Tengo mucha demanda estos días. Mi primer hueco libre es el '+nom; }
+    }
+  }catch(e){}
+  addRaw(`<div class="cal"><h5>${titulo}</h5><div class="slots">${btns}</div></div>`);
 }
 async function book(el,slot){
   el.parentNode.querySelectorAll('.slot').forEach(s=>s.classList.remove('sel')); el.classList.add('sel');

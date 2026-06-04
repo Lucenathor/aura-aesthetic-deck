@@ -323,6 +323,21 @@ function nextOpenDate(dateStr: string, schedule: any[], vacations: any[], maxDay
   return cur;
 }
 
+// Texto legible y persuasivo del próximo día abierto, relativo a hoy (hora Madrid).
+// Devuelve cosas como 'hoy', 'mañana', 'el lunes', 'el lunes 15'. Nunca dice 'cerrado'.
+function proximoDiaTexto(dateStr: string, todayStr: string): string {
+  const DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const d = new Date(dateStr + 'T12:00:00Z');
+  const today = new Date(todayStr + 'T12:00:00Z');
+  const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
+  if (diff <= 0) return 'hoy';
+  if (diff === 1) return 'mañana';
+  const nombre = DIAS[d.getUTCDay()];
+  // dentro de la semana próxima usamos 'el lunes'; más lejos añadimos el día del mes
+  if (diff <= 6) return 'el ' + nombre;
+  return 'el ' + nombre + ' ' + d.getUTCDate();
+}
+
 const SYSTEM_BASE = `Eres un asesor real de la clínica. Hablas desde tu móvil:
 - TODO en minúsculas. Sin signos de apertura (¿¡).
 - Frases de máximo 12 palabras.
@@ -787,7 +802,8 @@ export default {
         reminder_24h: '{clinica}: tu cita es mañana {fecha} a las {hora}. Confírmala o cámbiala con un toque aquí: {link}',
         reminder_2h: '{clinica}: te esperamos hoy a las {hora} en {direccion}. Hasta ahora!',
         no_show: '{clinica}: {nombre}, hoy no pudimos verte. ¿Reprogramamos? Te guardo otro hueco: {link}',
-        reactivation: '{clinica}: {nombre}, tu valoración sigue disponible. Esta semana tenemos agenda: {link}'
+        reactivation: '{clinica}: {nombre}, tu valoración sigue disponible. Tengo hueco {proximo_dia}, te lo guardo: {link}',
+        recall_sale: '{clinica}: {nombre}, toca tu revisión para mantener el resultado. Tengo hueco {proximo_dia}, reserva aquí: {link}'
       };
       if (p === '/api/sms-templates' && req.method === 'GET') {
         const tenant = url.searchParams.get('tenant');
@@ -804,7 +820,7 @@ export default {
       if (p === '/api/sms-generate' && req.method === 'POST') {
         const b: any = await req.json();
         const t: any = await env.aura_db.prepare('SELECT name FROM tenants WHERE id=?').bind(b.tenant_id).first();
-        const sys='Eres copywriter experto en SMS para clínicas estéticas en España. Genera SMS disruptivos, breves (<160 car), que empiecen con el nombre de la clínica, con beneficio claro y un link {link}. Usa variables {clinica} {nombre} {link} {fecha} {hora} {direccion} {tel}. Devuelve SOLO JSON con claves: result_no_chat, chat_no_book, reminder_24h, reminder_2h, no_show, reactivation.';
+        const sys='Eres copywriter experto en SMS para clínicas estéticas en España. Genera SMS disruptivos, breves (<160 car), que empiecen con el nombre de la clínica, con beneficio claro y un link {link}. Usa variables {clinica} {nombre} {link} {fecha} {hora} {direccion} {tel} {proximo_dia}. La variable {proximo_dia} resuelve al próximo día abierto de la clínica (ej: el lunes); úsala en reactivation y recall_sale para empujar la reserva sin decir que está cerrado. Devuelve SOLO JSON con claves: result_no_chat, chat_no_book, reminder_24h, reminder_2h, no_show, reactivation.';
         const usr='Clínica: '+(t?.name||'clínica estética')+'. Tratamiento principal: '+(b.treatment||'aumento de labios')+'. Tono: '+(b.tone||'cercano y profesional')+'.';
         let raw='{}'; try{ raw=await runAI(env,[{role:'system',content:sys},{role:'user',content:usr}],true); }catch(e){}
         let gen={}; try{ const m=raw.match(/\{[\s\S]*\}/); gen=m?JSON.parse(m[0]):{}; }catch(e){}
@@ -1340,8 +1356,8 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
     reminder_24h: '{clinica}: tu cita es mañana {fecha} a las {hora}. Confírmala o cámbiala con un toque aquí: {link}',
     reminder_2h: '{clinica}: te esperamos hoy a las {hora} en {direccion}. Hasta ahora!',
     no_show: '{clinica}: {nombre}, hoy no pudimos verte. ¿Reprogramamos? Te guardo otro hueco: {link}',
-    reactivation: '{clinica}: {nombre}, tu valoración sigue disponible. Esta semana tenemos agenda: {link}',
-    recall_sale: '{clinica}: {nombre}, ya han pasado unos meses de tu tratamiento. Si quieres mantener el resultado, te guardo hueco para una revisión sin compromiso: {link}'
+    reactivation: '{clinica}: {nombre}, tu valoración sigue disponible. Tengo hueco {proximo_dia}, te lo guardo: {link}',
+    recall_sale: '{clinica}: {nombre}, toca tu revisión para mantener el resultado. Tengo hueco {proximo_dia}, reserva aquí: {link}'
   };
   async function tpl(tenantId: string){
     const row: any = await env.aura_db.prepare('SELECT templates FROM sms_templates WHERE tenant_id=?').bind(tenantId).first();
@@ -1355,8 +1371,9 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
   const schedCache: any = {}; const vacCache: any = {};
   async function schedFor(tid: string){ if(!schedCache[tid]) schedCache[tid] = await getScheduleByDay(env, tid); return schedCache[tid]; }
   async function vacFor(tid: string){ if(!vacCache[tid]) vacCache[tid] = await getVacations(env, tid); return vacCache[tid]; }
-  // ¿Hay algún día abierto al que enviar a la gente en el horizonte? (evita invitar a reservar si todo está cerrado)
-  async function hasOpenDayAhead(tid: string){ const sch = await schedFor(tid); const vac = await vacFor(tid); const today = madridParts(nowUTC).dateStr; const nxt = nextOpenDate(today, sch, vac); return !isDateClosed(nxt, sch, vac).closed; }
+  // Texto del próximo día abierto (ej 'el lunes') para apuntar SIEMPRE la conversión al siguiente hueco real.
+  // Los anuncios corren 24/7: nunca dejamos enfriar al lead, lo redirigimos al próximo día abierto.
+  async function proximoDiaFor(tid: string){ const sch = await schedFor(tid); const vac = await vacFor(tid); const today = madridParts(nowUTC).dateStr; const nxt = nextOpenDate(today, sch, vac); if (isDateClosed(nxt, sch, vac).closed) return null; return proximoDiaTexto(nxt, today); }
 
   if (within) {
     // 1) Citas futuras: recordatorio 24h y 2h
@@ -1399,15 +1416,15 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
       const tn: any = await tenant(l.tenant_id); if(!tn) continue;
       const T = await tpl(l.tenant_id);
       const mlink = await magicLink(env, l.tenant_id, l.id);
-      const vars = { clinica: tn.name||'', nombre: l.name||'', link: mlink, tel:(tn.whatsapp||'') };
-      // Solo invitamos a reservar si hay algún día abierto al que enviar a la gente.
-      const openAhead = await hasOpenDayAhead(l.tenant_id);
+      // Apuntamos SIEMPRE al próximo día abierto (anuncios 24/7: nunca dejamos enfriar al lead).
+      const prox = await proximoDiaFor(l.tenant_id);
+      const vars = { clinica: tn.name||'', nombre: l.name||'', link: mlink, tel:(tn.whatsapp||''), proximo_dia: prox || 'esta semana' };
       if (!l.react_d3 && days >= 3 && days < 3.0417) {
-        if (!openAhead) continue;
+        if (!prox) continue; // sin ningún día abierto en el horizonte: espera al siguiente cron
         const r = await sendSMS(env, l.phone, fill(T.reactivation, vars), tn.name||'AURA', l.tenant_id);
         if (r.ok) { await env.aura_db.prepare('UPDATE leads SET react_d3=1 WHERE id=?').bind(l.id).run(); sent++; }
       } else if (!l.react_d7 && days >= 7 && days < 7.0417) {
-        if (!openAhead) continue;
+        if (!prox) continue;
         const r = await sendSMS(env, l.phone, fill(T.reactivation, vars), tn.name||'AURA', l.tenant_id);
         if (r.ok) { await env.aura_db.prepare('UPDATE leads SET react_d7=1 WHERE id=?').bind(l.id).run(); sent++; }
       }
@@ -1431,13 +1448,14 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
       // NO enviar recall si ya tiene una cita futura reservada (no pisar)
       const futura: any = await env.aura_db.prepare("SELECT COUNT(*) as c FROM appointments WHERE lead_id=? AND status='booked' AND date_iso > ?").bind(l.id, nowUTC.toISOString()).first();
       if ((futura?.c||0) > 0) { await env.aura_db.prepare('UPDATE leads SET recall_sms_sent=1 WHERE id=?').bind(l.id).run(); continue; }
-      // Seguridad extra: no invitar a reservar si no hay ningún día abierto en el horizonte (espera al siguiente cron)
-      if (!(await hasOpenDayAhead(l.tenant_id))) continue;
+      // Apuntamos al próximo día abierto; si no hay ninguno en el horizonte, espera al siguiente cron
+      const proxR = await proximoDiaFor(l.tenant_id);
+      if (!proxR) continue;
       const tn: any = await tenant(l.tenant_id); if(!tn) continue;
       const T = await tpl(l.tenant_id);
       const mlink = await magicLink(env, l.tenant_id, l.id);
       const bookLink = mlink + (mlink.includes('?')?'&':'?') + 'book=1';
-      const vars = { clinica: tn.name||'', nombre: (l.name||'').split(' ')[0]||'', link: bookLink, tel:(tn.whatsapp||'') };
+      const vars = { clinica: tn.name||'', nombre: (l.name||'').split(' ')[0]||'', link: bookLink, tel:(tn.whatsapp||''), proximo_dia: proxR };
       const msgTpl = l.recall_msg || T.recall_sale;
       const r = await sendSMS(env, l.phone, fill(msgTpl, vars), tn.name||'AURA', l.tenant_id);
       if (r.ok) { await env.aura_db.prepare('UPDATE leads SET recall_sms_sent=1 WHERE id=?').bind(l.id).run(); sent++; }
