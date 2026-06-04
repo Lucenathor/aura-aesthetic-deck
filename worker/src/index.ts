@@ -1015,8 +1015,8 @@ export default {
         const b: any = await req.json();
         const id = 't_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
         const baseDate = b.date_iso ? new Date(b.date_iso) : new Date();
-        await env.aura_db.prepare('INSERT INTO treatments_log (id,tenant_id,lead_id,name,amount,pay_status,date_iso,created_at) VALUES (?,?,?,?,?,?,?,?)')
-          .bind(id, b.tenant_id, b.lead_id, b.name||'Tratamiento', b.amount||0, b.pay_status||'pending', baseDate.toISOString(), Date.now()).run();
+        await env.aura_db.prepare('INSERT INTO treatments_log (id,tenant_id,lead_id,name,amount,pay_status,date_iso,created_at,method,cost) VALUES (?,?,?,?,?,?,?,?,?,?)')
+          .bind(id, b.tenant_id, b.lead_id, b.name||'Tratamiento', b.amount||0, b.pay_status||'pending', baseDate.toISOString(), Date.now(), b.method||null, Number(b.cost)||0).run();
         // Programar recall automático según tipo de tratamiento y recurrencia
         try {
           const nm = (b.name||'').toLowerCase();
@@ -1042,13 +1042,79 @@ export default {
       }
       if (p === '/api/treatments' && req.method === 'PUT') {
         const b: any = await req.json();
-        await env.aura_db.prepare('UPDATE treatments_log SET pay_status=?, amount=?, name=? WHERE id=?').bind(b.pay_status, b.amount, b.name, b.id).run();
+        await env.aura_db.prepare('UPDATE treatments_log SET pay_status=?, amount=?, name=?'+(b.method!==undefined?', method=?':'')+' WHERE id=?').bind(...(b.method!==undefined?[b.pay_status, b.amount, b.name, b.method, b.id]:[b.pay_status, b.amount, b.name, b.id])).run();
         return json({ ok:true });
       }
       if (p === '/api/treatments' && req.method === 'DELETE') {
         const b: any = await req.json();
         await env.aura_db.prepare('DELETE FROM treatments_log WHERE id=?').bind(b.id).run();
         return json({ ok:true });
+      }
+
+      // ===== CLINIC OS lite: INVENTARIO =====
+      if (p === '/api/products' && req.method === 'GET') {
+        const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
+        const r = await env.aura_db.prepare('SELECT * FROM products WHERE tenant_id=? ORDER BY name').bind(tenant).all();
+        return json({ products: r.results });
+      }
+      if (p === '/api/products' && req.method === 'POST') {
+        const b:any = await req.json();
+        if (b.delete) { await env.aura_db.prepare('DELETE FROM products WHERE id=?').bind(b.delete).run(); return json({ok:true}); }
+        if (b.id) { // editar / ajustar stock
+          await env.aura_db.prepare('UPDATE products SET name=?, stock=?, unit=?, cost=?, low_alert=? WHERE id=?')
+            .bind(b.name||'Producto', Number(b.stock)||0, b.unit||'ud', Number(b.cost)||0, Number(b.low_alert)||3, b.id).run();
+          return json({ ok:true, id:b.id });
+        }
+        const id = 'p_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+        await env.aura_db.prepare('INSERT INTO products (id,tenant_id,name,stock,unit,cost,low_alert,created_at) VALUES (?,?,?,?,?,?,?,?)')
+          .bind(id, b.tenant_id, b.name||'Producto', Number(b.stock)||0, b.unit||'ud', Number(b.cost)||0, Number(b.low_alert)||3, Date.now()).run();
+        return json({ ok:true, id });
+      }
+
+      // ===== CLINIC OS lite: BONOS / PACKS =====
+      if (p === '/api/bonos' && req.method === 'GET') {
+        const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
+        const lead = url.searchParams.get('lead');
+        let r;
+        if (lead) r = await env.aura_db.prepare("SELECT * FROM bonos WHERE tenant_id=? AND lead_id=? ORDER BY created_at DESC").bind(tenant, lead).all();
+        else r = await env.aura_db.prepare("SELECT b.*, l.name AS lead_name FROM bonos b LEFT JOIN leads l ON l.id=b.lead_id WHERE b.tenant_id=? ORDER BY b.created_at DESC LIMIT 200").bind(tenant).all();
+        return json({ bonos: r.results });
+      }
+      if (p === '/api/bonos' && req.method === 'POST') {
+        const b:any = await req.json();
+        if (b.delete) { await env.aura_db.prepare('DELETE FROM bonos WHERE id=?').bind(b.delete).run(); return json({ok:true}); }
+        if (b.use_session) { // descontar una sesión manualmente
+          await env.aura_db.prepare("UPDATE bonos SET used_sessions = MIN(total_sessions, used_sessions+1), status = CASE WHEN used_sessions+1 >= total_sessions THEN 'done' ELSE 'active' END WHERE id=?").bind(b.use_session).run();
+          return json({ ok:true });
+        }
+        const id = 'bo_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+        await env.aura_db.prepare('INSERT INTO bonos (id,tenant_id,lead_id,name,total_sessions,used_sessions,amount,status,created_at) VALUES (?,?,?,?,?,?,?,?,?)')
+          .bind(id, b.tenant_id, b.lead_id||null, b.name||'Bono', Number(b.total_sessions)||1, 0, Number(b.amount)||0, 'active', Date.now()).run();
+        // El bono es una venta: la registramos como pago en caja
+        if ((Number(b.amount)||0) > 0) {
+          await env.aura_db.prepare("INSERT INTO treatments_log (id,lead_id,tenant_id,name,amount,pay_status,date_iso,method,cost) VALUES (?,?,?,?,?,?,?,?,?)")
+            .bind('t_'+uid(), b.lead_id||null, b.tenant_id, 'Bono: '+(b.name||'pack'), Number(b.amount)||0, 'paid', new Date().toISOString(), b.method||null, 0).run();
+        }
+        return json({ ok:true, id });
+      }
+
+      // ===== CLINIC OS lite: CAJA (resumen de ingresos por fecha) =====
+      if (p === '/api/cashbox' && req.method === 'GET') {
+        const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
+        const day = url.searchParams.get('day') || new Date().toISOString().slice(0,10);
+        // pagos del día (por fecha del tratamiento)
+        const rows: any = await env.aura_db.prepare("SELECT * FROM treatments_log WHERE tenant_id=? AND substr(date_iso,1,10)=?").bind(tenant, day).all();
+        const list = rows.results || [];
+        const paid = list.filter((x:any)=>x.pay_status==='paid');
+        const totalDay = paid.reduce((s:number,x:any)=>s+(x.amount||0),0);
+        const cost = paid.reduce((s:number,x:any)=>s+(x.cost||0),0);
+        const byMethod: any = {};
+        paid.forEach((x:any)=>{ const m=x.method||'otro'; byMethod[m]=(byMethod[m]||0)+(x.amount||0); });
+        // ayer para comparar
+        const dPrev = new Date(day+'T12:00:00Z'); dPrev.setUTCDate(dPrev.getUTCDate()-1); const prevStr=dPrev.toISOString().slice(0,10);
+        const prevRows: any = await env.aura_db.prepare("SELECT amount FROM treatments_log WHERE tenant_id=? AND substr(date_iso,1,10)=? AND pay_status='paid'").bind(tenant, prevStr).all();
+        const totalPrev = (prevRows.results||[]).reduce((s:number,x:any)=>s+(x.amount||0),0);
+        return json({ day, total: totalDay, cost, margin: totalDay-cost, tickets: paid.length, by_method: byMethod, total_prev: totalPrev, items: list });
       }
 
       // CITA por link mágico: ver y confirmar/cambiar (valida token)
@@ -1155,9 +1221,25 @@ export default {
         // Registrar tratamiento/pago si viene
         const tname = b.treatment || 'Tratamiento';
         const amount = Number(b.amount)||0;
+        // Inventario ligero: descontar producto usado y calcular coste para el margen
+        let prodCost = 0;
+        if (b.product_id && b.product_qty) {
+          try {
+            const prod: any = await env.aura_db.prepare('SELECT * FROM products WHERE id=? AND tenant_id=?').bind(b.product_id, tenantId).first();
+            if (prod) {
+              const qty = Number(b.product_qty)||0;
+              prodCost = (Number(prod.cost)||0) * qty;
+              await env.aura_db.prepare('UPDATE products SET stock = stock - ? WHERE id=?').bind(qty, b.product_id).run();
+            }
+          } catch(e){}
+        }
         if (amount > 0 || b.treatment) {
-          await env.aura_db.prepare("INSERT INTO treatments_log (id,lead_id,tenant_id,name,amount,pay_status,date_iso) VALUES (?,?,?,?,?,?,?)")
-            .bind('t_'+uid(), leadId, tenantId, tname, amount, b.pay_status||'paid', new Date().toISOString()).run();
+          await env.aura_db.prepare("INSERT INTO treatments_log (id,lead_id,tenant_id,name,amount,pay_status,date_iso,method,cost) VALUES (?,?,?,?,?,?,?,?,?)")
+            .bind('t_'+uid(), leadId, tenantId, tname, amount, b.pay_status||'paid', new Date().toISOString(), b.method||null, prodCost).run();
+        }
+        // Bono/pack: si se usa una sesión de un bono, descontarla
+        if (b.bono_id) {
+          try { await env.aura_db.prepare("UPDATE bonos SET used_sessions = used_sessions + 1, status = CASE WHEN used_sessions + 1 >= total_sessions THEN 'done' ELSE 'active' END WHERE id=? AND tenant_id=?").bind(b.bono_id, tenantId).run(); } catch(e){}
         }
         // Programar recall según producto (días exactos)
         const nm = tname.toLowerCase();
@@ -1467,7 +1549,7 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
 // ─── BACKUP: exporta todas las tablas D1 a JSON y lo guarda en KV con fecha + retención 30 días ───
 async function runBackup(env: Env): Promise<{ ok: boolean; key?: string; tables?: number; rows?: number; error?: string }> {
   try {
-    const tables = ['tenants','funnels','leads','messages','appointments','consultations','lead_analyses','users','team_members','sms_templates','pipeline_config','calendar_config','schedule_by_day','vacations','professionals','time_blocks','waitlist','treatments_log','owners'];
+    const tables = ['tenants','funnels','leads','messages','appointments','consultations','lead_analyses','users','team_members','sms_templates','pipeline_config','calendar_config','schedule_by_day','vacations','professionals','time_blocks','waitlist','treatments_log','owners','products','bonos'];
     const dump: any = { created_at: new Date().toISOString(), tables: {} };
     let totalRows = 0;
     for (const t of tables) {
