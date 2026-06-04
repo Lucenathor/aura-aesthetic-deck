@@ -707,7 +707,7 @@ document.addEventListener('click',(e)=>{
   if(e.target.id==='moreBtn'){ const m=document.getElementById('moreMenu'); if(m)m.style.display=m.style.display==='none'?'block':'none'; return; }
   if(e.target.id==='addProBtn'){ const m=document.getElementById('moreMenu'); if(m)m.style.display='none'; addProfessional(); }
   if(e.target.id==='blockBtn'){ const m=document.getElementById('moreMenu'); if(m)m.style.display='none'; openBlock(); }
-  if(e.target.id==='newApptBtn'){ const d=calRef.toISOString().slice(0,10); const now=new Date(); const hh=(d===now.toISOString().slice(0,10))?String(Math.max(8,now.getHours()+1)).padStart(2,'0'):'10'; openNewAppt(d+'T'+hh+':00'); }
+  if(e.target.id==='newApptBtn'){ const d=calRef.toISOString().slice(0,10); openNewAppt(d+'T10:00'); }
   else { const mm=document.getElementById('moreMenu'); if(mm&&mm.style.display==='block'&&!e.target.closest('#moreMenu')&&e.target.id!=='moreBtn')mm.style.display='none'; }
 });
 function restoreSection(){
@@ -1020,6 +1020,7 @@ function openCloseVisit(apptId,leadId,treatment,name){
 async function doCloseVisit(apptId,leadId,attended){
   const treat=document.getElementById('cvTreat')?document.getElementById('cvTreat').value:'';
   const amount=document.getElementById('cvAmount')?document.getElementById('cvAmount').value:0;
+  if(attended && (!amount || +amount<=0)){ if(!confirm('No has puesto importe. ¿Cerrar la visita con 0€ (sin cobro)?')) return; }
   const method=document.getElementById('cvMethod')?document.getElementById('cvMethod').value:null;
   const product_id=document.getElementById('cvProduct')?document.getElementById('cvProduct').value:'';
   const product_qty=document.getElementById('cvProductQty')?(+document.getElementById('cvProductQty').value||0):0;
@@ -1165,15 +1166,21 @@ function openApptCard(id){
 function openNewAppt(iso){
   const ov=document.createElement('div'); ov.id='naOverlay'; ov.style='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:grid;place-items:center;padding:1rem';
   const proOpts=_pros.map(p=>'<option value="'+p.id+'">'+p.name+'</option>').join('');
-  ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:360px;width:100%;padding:1.4rem"><h3 class="serif" style="margin:0 0 .2rem">Nueva cita</h3><p style="color:var(--muted);font-size:.8rem;margin:0 0 .9rem">'+new Date(iso).toLocaleString('es-ES',{weekday:"long",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"})+'</p>'
+  // valor por defecto para el datetime-local: la hora recibida, pero saneada a rango 8-21h
+  let dtVal=String(iso).slice(0,16);
+  try{ const dd=new Date(iso); let hh=dd.getHours(); if(hh<8||hh>21){ dd.setHours(10,0,0,0); } dtVal=new Date(dd.getTime()-dd.getTimezoneOffset()*60000).toISOString().slice(0,16); }catch(e){}
+  ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:360px;width:100%;padding:1.4rem"><h3 class="serif" style="margin:0 0 .8rem">Nueva cita</h3>'
+    +'<label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.25rem">Día y hora</label>'
+    +'<input id="naWhen" type="datetime-local" value="'+dtVal+'" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.6rem"/>'
     +'<input id="naName" placeholder="Nombre del paciente" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/>'
     +'<input id="naPhone" placeholder="Teléfono" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/>'
     +'<input id="naTreat" placeholder="Tratamiento" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/>'
     +(_pros.length?'<select id="naPro" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.8rem"><option value="">Sin profesional</option>'+proOpts+'</select>':'')
-    +'<div style="display:flex;gap:.5rem"><button class="btn prim" style="flex:1" onclick="createAppt(\''+iso+'\')">Crear cita</button><button class="btn" onclick="document.getElementById(\'naOverlay\').remove()">Cancelar</button></div></div>';
+    +'<div style="display:flex;gap:.5rem"><button class="btn prim" style="flex:1" onclick="createAppt()">Crear cita</button><button class="btn" onclick="document.getElementById(\'naOverlay\').remove()">Cancelar</button></div></div>';
   document.body.appendChild(ov);
 }
-async function createAppt(iso){
+async function createAppt(){
+  const whenEl=document.getElementById('naWhen'); const iso=(whenEl&&whenEl.value)?whenEl.value:new Date().toISOString().slice(0,16);
   const name=document.getElementById('naName').value; const phone=document.getElementById('naPhone').value; const treat=document.getElementById('naTreat').value; const pro=document.getElementById('naPro')?document.getElementById('naPro').value:'';
   if(!name){alert('Pon el nombre');return;}
   const ds=String(iso).slice(0,10); const cl=agClosed(ds);
@@ -1208,7 +1215,8 @@ let calSel=new Set(['1','2','3','4','5']);
 +'.appt-new{animation:apptNew 1.1s cubic-bezier(.16,1,.3,1)}'
 +'@keyframes apptNew{0%{transform:scale(.6);opacity:0;box-shadow:0 0 0 3px var(--accent)}40%{transform:scale(1.12);opacity:1}70%{box-shadow:0 0 0 4px rgba(224,121,95,.4),0 8px 22px -8px rgba(224,121,95,.6)}100%{transform:scale(1);box-shadow:0 2px 8px rgba(0,0,0,.08)}}'
 +'#newApptBtn:active{transform:scale(.96)}#newApptBtn{transition:transform .14s ease,box-shadow .2s}#newApptBtn:hover{box-shadow:0 6px 20px -4px rgba(224,121,95,.7)}'
-+'@media (prefers-reduced-motion:reduce){.calday .calrow,.appt-new{animation:none;opacity:1;transform:none}}';document.head.appendChild(s);})();
++'@media (prefers-reduced-motion:reduce){.calday .calrow,.appt-new{animation:none;opacity:1;transform:none}}'
++'@media (hover:none),(max-width:780px){.addslot{opacity:.55!important}}';document.head.appendChild(s);})();
 // ===== Disponibilidad: horario por día + vacaciones =====
 const DOW_ORDER=[1,2,3,4,5,6,0]; // Lun..Dom
 const DOW_NAME={0:'Dom',1:'Lun',2:'Mar',3:'Mié',4:'Jue',5:'Vie',6:'Sáb'};

@@ -1229,7 +1229,7 @@ export default {
             if (prod) {
               const qty = Number(b.product_qty)||0;
               prodCost = (Number(prod.cost)||0) * qty;
-              await env.aura_db.prepare('UPDATE products SET stock = stock - ? WHERE id=?').bind(qty, b.product_id).run();
+              await env.aura_db.prepare('UPDATE products SET stock = MAX(0, stock - ?) WHERE id=?').bind(qty, b.product_id).run();
             }
           } catch(e){}
         }
