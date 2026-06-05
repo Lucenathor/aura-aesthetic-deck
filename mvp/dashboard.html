@@ -665,6 +665,21 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 const WORKER='https://aura-chat-worker.adrian-7b9.workers.dev';
 const params=new URLSearchParams(location.search);
 let T=params.get('t')||'clinica-elvira';
+// Blindaje: adjunta automaticamente el token de sesion a TODA llamada al WORKER (Authorization: Bearer).
+// Asi el backend verifica que esta sesion pertenece al tenant y ninguna clinica toca datos de otra.
+(function(){
+  const _origFetch = window.fetch.bind(window);
+  window.fetch = function(input, init){
+    try{
+      const u = (typeof input==='string') ? input : (input && input.url) || '';
+      if (u && u.indexOf(WORKER)===0){
+        const tok = localStorage.getItem('aura_token');
+        if (tok){ init = init || {}; const h = new Headers(init.headers || (typeof input!=='string' && input.headers) || {}); if(!h.has('Authorization')) h.set('Authorization','Bearer '+tok); init.headers = h; }
+      }
+    }catch(e){}
+    return _origFetch(input, init);
+  };
+})();
 // Protección de sesión
 async function guard(){
   const tok=localStorage.getItem('aura_token');

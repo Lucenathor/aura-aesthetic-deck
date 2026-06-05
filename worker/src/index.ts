@@ -89,6 +89,23 @@ async function signLead(env: Env, leadId: string){
 async function verifyLead(env: Env, leadId: string, token: string){
   try{ const expected=await signLead(env,leadId); return expected===token; }catch(e){ return false; }
 }
+// Guardia multi-tenant: el token de sesion (cookie/header/query) debe pertenecer al tenant solicitado.
+// Devuelve null si OK; o un objeto error para responder 403. Asi una clinica NUNCA toca datos de otra.
+async function requireTenant(env: Env, req: Request, url: URL, tenantSolicitado: string|null): Promise<string|null> {
+  if (!tenantSolicitado) return 'missing_tenant';
+  // token desde Authorization: Bearer, header x-aura-token o query ?token=
+  let tok = '';
+  const auth = req.headers.get('authorization')||'';
+  if (auth.toLowerCase().startsWith('bearer ')) tok = auth.slice(7).trim();
+  if (!tok) tok = req.headers.get('x-aura-token') || '';
+  if (!tok) tok = url.searchParams.get('token') || '';
+  if (!tok) { try{ const c=req.headers.get('cookie')||''; const m=c.match(/aura_token=([^;]+)/); if(m) tok=decodeURIComponent(m[1]); }catch(e){} }
+  if (!tok) return 'no_token';
+  const s: any = await env.aura_db.prepare('SELECT tenant_id FROM sessions WHERE token=?').bind(tok).first();
+  if (!s) return 'invalid_token';
+  if (s.tenant_id !== tenantSolicitado) return 'tenant_mismatch';
+  return null; // OK
+}
 async function magicLink(env: Env, tenantId: string, leadId: string){
   const tok=await signLead(env,leadId);
   return 'https://aura-mvp.pages.dev/c/'+tenantId+'?lead='+encodeURIComponent(leadId)+'&k='+tok;
@@ -365,6 +382,30 @@ export default {
       // Chat IA original (solo POST a raíz o /chat)
       if ((p === '/' || p === '/chat') && req.method === 'POST') return await handleChat(req, env);
       if (p === '/' || p === '/chat') return text('AURA worker · POST a este endpoint para chat IA');
+
+      // ───────────────── BLINDAJE MULTI-TENANT ─────────────────
+      // Endpoints de GESTIÓN (panel del dueño) que exigen que el token de sesión pertenezca al tenant.
+      // El embudo público del paciente y el chat NO están aquí (deben funcionar sin sesión).
+      // Siempre protegidos (cualquier método): datos sensibles del panel.
+      const TENANT_GUARDED = new Set<string>([
+        '/api/lead-stage','/api/lead-meta','/api/lead-search',
+        '/api/treatments','/api/close-visit','/api/professionals','/api/blocks',
+        '/api/waitlist','/api/pipeline','/api/products','/api/bonos','/api/cashbox','/api/profit',
+        '/api/recovered','/api/business-costs','/api/schedule-by-day','/api/vacations',
+        '/api/sms-templates','/api/team','/api/funnel-save','/api/funnel-edit'
+      ]);
+      // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
+      const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar']);
+      const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p));
+      if (mustGuard) {
+        // tenant solicitado: de query (?tenant=) o del body para POST
+        let tenantReq = url.searchParams.get('tenant') || url.searchParams.get('tenant_id');
+        if (!tenantReq && (req.method==='POST'||req.method==='PUT'||req.method==='DELETE')) {
+          try { const cloned = req.clone(); const body:any = await cloned.json(); tenantReq = body.tenant_id || body.tenant || null; } catch(e){}
+        }
+        const err = await requireTenant(env, req, url, tenantReq);
+        if (err) return json({ error:'forbidden', reason: err }, 403);
+      }
 
       // Servir imágenes: primero R2, fallback a KV (compatibilidad con imágenes antiguas)
       if (p.startsWith('/img/')) {
@@ -1598,7 +1639,10 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
   if (within) {
     // 1) Citas futuras: recordatorio 24h y 2h
     const appts: any = await env.aura_db.prepare("SELECT a.*, l.name AS lead_name, l.phone AS lead_phone FROM appointments a LEFT JOIN leads l ON l.id=a.lead_id WHERE a.status='booked' AND a.date_iso IS NOT NULL").all();
+    const SEND_CAP = 2000; // tope de seguridad de SMS por ejecución del cron (anti-desborde)
     for (const a of (appts.results||[])) {
+      if (sent >= SEND_CAP) break;
+      try {
       if (!a.lead_phone) continue;
       const dt = new Date(a.date_iso); const diffH = (dt.getTime() - nowUTC.getTime())/3600000;
       const tn: any = await tenant(a.tenant_id); if(!tn) continue;
@@ -1652,10 +1696,13 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
           await env.aura_db.prepare('UPDATE appointments SET sms_noshow2=1 WHERE id=?').bind(a.id).run();
         }
       }
+      } catch(err){ console.error('automations appt error', a && a.id, err); }
     }
     // 2) Reactivación de leads no reservados (día 3 y 7) — EXCLUYE clientes con recall (ya son clientes, no leads fríos)
     const leads: any = await env.aura_db.prepare("SELECT * FROM leads WHERE status!='booked' AND phone IS NOT NULL AND (recall_type IS NULL OR recall_type!='venta')").all();
     for (const l of (leads.results||[])) {
+      if (sent >= SEND_CAP) break;
+      try {
       const created = new Date(l.created_at); const days = (nowUTC.getTime()-created.getTime())/86400000;
       const tn: any = await tenant(l.tenant_id); if(!tn) continue;
       const T = await tpl(l.tenant_id);
@@ -1686,23 +1733,29 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
         const r = await sendSMS(env, l.phone, fill(T.react_last, vars), tn.name||'AURA', l.tenant_id);
         if (r.ok) { await env.aura_db.prepare('UPDATE leads SET react_d21=1 WHERE id=?').bind(l.id).run(); sent++; }
       }
+      } catch(err){ console.error('automations lead error', l && l.id, err); }
     }
     // 2b) CUMPLEAÑOS: SMS de felicitación una vez al año a clientes con fecha de nacimiento (mes-día = hoy)
     const md = (madridParts(nowUTC).dateStr).slice(5); // MM-DD
     const yr = (madridParts(nowUTC).dateStr).slice(0,4);
     const bdays: any = await env.aura_db.prepare("SELECT * FROM leads WHERE birthday IS NOT NULL AND substr(birthday,6,5)=? AND phone IS NOT NULL AND (bday_year_sent IS NULL OR bday_year_sent!=?)").bind(md, yr).all();
     for (const l of (bdays.results||[])) {
+      if (sent >= SEND_CAP) break;
+      try {
       const tn: any = await tenant(l.tenant_id); if(!tn) continue;
       const T = await tpl(l.tenant_id);
       const mlink = await magicLink(env, l.tenant_id, l.id);
       const vars = { clinica: tn.name||'', nombre: l.name||'', link: mlink, tel:(tn.whatsapp||'') };
       const r = await sendSMS(env, l.phone, fill(T.birthday, vars), tn.name||'AURA', l.tenant_id);
       if (r.ok) { await env.aura_db.prepare('UPDATE leads SET bday_year_sent=? WHERE id=?').bind(yr, l.id).run(); sent++; }
+      } catch(err){ console.error('automations bday error', l && l.id, err); }
     }
     // 3) Recall de nueva venta: recall_date vencido y tipo venta, SMS una vez
     const recalls: any = await env.aura_db.prepare("SELECT * FROM leads WHERE recall_type='venta' AND recall_date IS NOT NULL AND (recall_sms_sent IS NULL OR recall_sms_sent=0) AND phone IS NOT NULL").all();
     const todayStr = nowUTC.toISOString().slice(0,10);
     for (const l of (recalls.results||[])) {
+      if (sent >= SEND_CAP) break;
+      try {
       if (String(l.recall_date) > todayStr) continue; // aún no vence
       // Si el día de recall cae en día cerrado/vacaciones, desplazar al siguiente día abierto y esperar a esa fecha
       try {
@@ -1729,6 +1782,7 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
       const msgTpl = l.recall_msg || T.recall_sale;
       const r = await sendSMS(env, l.phone, fill(msgTpl, vars), tn.name||'AURA', l.tenant_id);
       if (r.ok) { await env.aura_db.prepare('UPDATE leads SET recall_sms_sent=1 WHERE id=?').bind(l.id).run(); sent++; }
+      } catch(err){ console.error('automations recall error', l && l.id, err); }
     }
   }
   return { ok: true, sent };
