@@ -313,6 +313,19 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
         <div class="kpi"><small>Reservadas</small><b id="kBooked">—</b><span class="delta">citas en agenda</span></div>
         <div class="kpi"><small>Pacientes</small><b id="kTotal">—</b><span class="delta" id="kToday">—</span></div>
       </div>
+      <!-- RECUPERADO GRACIAS A AURA -->
+      <div class="card" id="recoveredCard" style="background:linear-gradient(135deg,#1f9d63,#0f6b3f);color:#fff;border:0;position:relative;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
+          <div><div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.7)">Recuperado gracias a AURA</div>
+            <div style="display:flex;align-items:baseline;gap:.5rem;margin-top:.2rem"><span id="recMain" style="font-family:'Fraunces',serif;font-size:2.5rem;font-weight:600">—</span><span id="recSub" style="font-size:.82rem;color:rgba(255,255,255,.75)">este mes</span></div></div>
+          <div style="display:flex;gap:.3rem" id="recTabs">
+            <button class="pbtn on" data-p="month" onclick="setRecPeriod('month',this)" style="background:rgba(255,255,255,.16);color:#fff;border-color:transparent">Mes</button>
+            <button class="pbtn" data-p="year" onclick="setRecPeriod('year',this)" style="background:transparent;color:#fff;border-color:rgba(255,255,255,.3)">Año</button>
+          </div>
+        </div>
+        <div id="recBreakdown" style="margin-top:.9rem;display:grid;grid-template-columns:repeat(2,1fr);gap:.5rem"></div>
+        <div id="recMsg" style="margin-top:.8rem;font-size:.82rem;color:rgba(255,255,255,.85);font-style:italic"></div>
+      </div>
       <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:1rem;align-items:start" id="resGrid">
       <div class="card">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.8rem;flex-wrap:wrap">
@@ -804,7 +817,22 @@ async function loadTenant(){
   const url=location.origin+'/c/'+T;
   document.getElementById('funnelUrl').value=url;
 }
+let _recPeriod='month';
+function setRecPeriod(p,btn){ _recPeriod=p; document.querySelectorAll('#recTabs .pbtn').forEach(b=>{b.classList.remove('on');b.style.background='transparent';}); if(btn){btn.classList.add('on');btn.style.background='rgba(255,255,255,.16)';} loadRecovered(); }
+async function loadRecovered(){
+  try{
+    const r=await fetch(WORKER+'/api/recovered?tenant='+T+'&period='+_recPeriod); const d=await r.json();
+    const main=document.getElementById('recMain'); if(main)main.textContent=eur(d.total||0);
+    const sub=document.getElementById('recSub'); if(sub)sub.textContent=_recPeriod==='year'?'este año':'este mes';
+    const bd=document.getElementById('recBreakdown');
+    if(bd){ const icon={noshow:'🔁',recall:'💜',reactivation:'♻️',funnel:'🧲'};
+      bd.innerHTML=(d.breakdown||[]).map(b=>'<div style="background:rgba(255,255,255,.12);border-radius:10px;padding:.55rem .7rem"><div style="font-size:.72rem;color:rgba(255,255,255,.78)">'+(icon[b.key]||'')+' '+b.label+'</div><div style="font-weight:700;font-size:1.05rem;margin-top:.15rem">'+eur(b.value)+(b.n?' <span style="font-size:.7rem;font-weight:400;color:rgba(255,255,255,.65)">· '+b.n+'</span>':'')+'</div></div>').join(''); }
+    const msg=document.getElementById('recMsg');
+    if(msg){ if((d.total||0)>0){ msg.textContent='AURA ha recuperado y generado '+eur(d.total)+' que probablemente se habrían perdido sin seguimiento automático.'; } else { msg.textContent='Cuando AURA recupere no-shows, reactive leads o cierre recalls, verás aquí el dinero generado.'; } }
+  }catch(e){}
+}
 async function loadKPIs(){
+  loadRecovered();
   try{
     const lr=await fetch(WORKER+'/api/leads?tenant='+T); const ld=await lr.json(); const arr=ld.leads||[];
     const ar=await fetch(WORKER+'/api/appointments?tenant='+T); const ad=await ar.json(); const appts=ad.appointments||[];

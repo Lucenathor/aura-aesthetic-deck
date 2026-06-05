@@ -1,0 +1,45 @@
+flowchart TD
+    A[Llega paciente<br/>por el embudo o anuncios] --> B{Reserva cita?}
+
+    B -->|No reserva| R1[REACTIVACION<br/>SMS dia 3 y dia 7<br/>apunta al proximo dia abierto]
+    R1 --> RV{Reserva?}
+    RV -->|Si| OK1[Cita reservada<br/>+valor recuperado]
+    RV -->|No| LOST1[Lead frio]
+
+    B -->|Si reserva| C[CITA RESERVADA]
+    C --> D{Confirma la cita?}
+
+    D -->|No confirma 18h antes| NC[FLUJO NO CONFIRMA<br/>2o SMS directo<br/>+ columna POR CONFIRMAR<br/>+ Llamar urgente con guion]
+    NC --> NCR{Confirma o reagenda?}
+    NCR -->|Si| C2[Cita asegurada<br/>+valor rescatado]
+    NCR -->|No| E
+
+    D -->|Confirma| E[Dia de la cita]
+    E --> F{Viene a la clinica?}
+
+    F -->|Si viene| G[Cierre de visita<br/>cobro + tratamiento]
+    F -->|No vino NO-SHOW| NS1[FLUJO NO-SHOW paso 1<br/>SMS empatico a las 2h<br/>+ columna RECUPERAR NO VINO<br/>+ contador de faltas + guion]
+    NS1 --> NS2{Reagenda en 48h?}
+    NS2 -->|No| NS3[FLUJO NO-SHOW paso 2<br/>2o SMS con urgencia a las 48h]
+    NS3 --> NSR{Reagenda?}
+    NS2 -->|Si| OK2[Cita recuperada<br/>+valor recuperado]
+    NSR -->|Si| OK2
+    NSR -->|No| LOST2[Llamada recepcion<br/>con guion de recuperacion]
+
+    G --> H[CLIENTE]
+    H --> RC[RECALL nueva venta<br/>SMS a los X meses<br/>apunta al proximo dia abierto]
+    RC --> RCR{Vuelve?}
+    RCR -->|Si| OK3[Nueva venta<br/>+valor generado]
+    RCR -->|No| RC
+
+    OK1 --> VAL[[RECUPERADO GRACIAS A AURA<br/>suma en euros de todo<br/>lo rescatado este mes]]
+    C2 --> VAL
+    OK2 --> VAL
+    OK3 --> VAL
+
+    classDef rec fill:#fde8e4,stroke:#e0392b,color:#b0432e;
+    classDef ok fill:#e8f5ee,stroke:#1f9d63,color:#0f6b3f;
+    classDef val fill:#2A211C,stroke:#C9A86A,color:#fff;
+    class NC,NS1,NS3,R1,LOST2 rec;
+    class OK1,OK2,OK3,C2,G,H ok;
+    class VAL val;

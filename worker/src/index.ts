@@ -1124,6 +1124,42 @@ export default {
         return json({ day, total: totalDay, cost, margin: totalDay-cost, tickets: paid.length, by_method: byMethod, total_prev: totalPrev, items: list });
       }
 
+      // ===== RECUPERADO GRACIAS A AURA (atribución de valor) =====
+      if (p === '/api/recovered' && req.method === 'GET') {
+        const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
+        const period = url.searchParams.get('period')||'month';
+        const ref = url.searchParams.get('day') || new Date().toISOString().slice(0,10);
+        const refD = new Date(ref+'T12:00:00Z');
+        let start = ref, end = ref;
+        if (period==='week'){ const wd=(refD.getUTCDay()+6)%7; const s=new Date(refD); s.setUTCDate(refD.getUTCDate()-wd); const e=new Date(s); e.setUTCDate(s.getUTCDate()+6); start=s.toISOString().slice(0,10); end=e.toISOString().slice(0,10); }
+        else if (period==='month'){ start=ref.slice(0,8)+'01'; const e=new Date(Date.UTC(refD.getUTCFullYear(), refD.getUTCMonth()+1, 0)); end=e.toISOString().slice(0,10); }
+        else if (period==='year'){ start=ref.slice(0,4)+'-01-01'; end=ref.slice(0,4)+'-12-31'; }
+        // visitas pagadas del periodo, con datos del lead para atribuir origen
+        const rows:any = await env.aura_db.prepare(
+          `SELECT t.amount, t.lead_id, l.recover_state, l.noshow_count, l.react_d3, l.react_d7, l.recall_type, l.funnel_id, l.source
+           FROM treatments_log t LEFT JOIN leads l ON l.id=t.lead_id
+           WHERE t.tenant_id=? AND t.pay_status='paid' AND substr(t.date_iso,1,10) BETWEEN ? AND ?`
+        ).bind(tenant, start, end).all();
+        const buckets:any = { noshow:{n:0,v:0}, recall:{n:0,v:0}, reactivation:{n:0,v:0}, funnel:{n:0,v:0} };
+        for (const r of (rows.results||[])){
+          const amt = Number(r.amount)||0; if(amt<=0) continue;
+          // prioridad de atribución (una sola causa por visita)
+          if (r.recover_state==='noshow' || (r.noshow_count&&r.noshow_count>0)) { buckets.noshow.n++; buckets.noshow.v+=amt; }
+          else if (r.recall_type==='venta') { buckets.recall.n++; buckets.recall.v+=amt; }
+          else if (r.react_d3 || r.react_d7) { buckets.reactivation.n++; buckets.reactivation.v+=amt; }
+          else if (r.funnel_id || (r.source && r.source!=='manual' && r.source!=='walkin')) { buckets.funnel.n++; buckets.funnel.v+=amt; } // entró por el embudo
+        }
+        const total = buckets.noshow.v + buckets.recall.v + buckets.reactivation.v + buckets.funnel.v;
+        const totalN = buckets.noshow.n + buckets.recall.n + buckets.reactivation.n + buckets.funnel.n;
+        return json({ period, start, end, total: Math.round(total*100)/100, count: totalN,
+          breakdown: [
+            { key:'noshow', label:'Citas recuperadas (no-show)', n:buckets.noshow.n, value:Math.round(buckets.noshow.v*100)/100 },
+            { key:'recall', label:'Nuevas ventas por recall', n:buckets.recall.n, value:Math.round(buckets.recall.v*100)/100 },
+            { key:'reactivation', label:'Leads reactivados', n:buckets.reactivation.n, value:Math.round(buckets.reactivation.v*100)/100 },
+            { key:'funnel', label:'Captados por el embudo', n:buckets.funnel.n, value:Math.round(buckets.funnel.v*100)/100 }
+          ] });
+      }
+
       // ===== GASTOS DEL NEGOCIO =====
       if (p === '/api/business-costs' && req.method === 'GET') {
         const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
