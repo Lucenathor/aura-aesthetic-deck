@@ -295,6 +295,11 @@ async function getScheduleByDay(env: Env, tenantId: string): Promise<any[]> {
   return list;
 }
 
+let __bcReady = false;
+async function ensureBusinessCosts(env: Env) {
+  if (__bcReady) return;
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS business_costs (tenant_id TEXT PRIMARY KEY, fixed_json TEXT, marketing_monthly REAL DEFAULT 0, commission_pct REAL DEFAULT 0, iva_pct REAL DEFAULT 21, price_includes_iva INTEGER DEFAULT 1, prorate_mode TEXT DEFAULT 'open_days', updated_at INTEGER)"); __bcReady = true; } catch(e){ console.error('ensureBusinessCosts', e); }
+}
 async function getVacations(env: Env, tenantId: string): Promise<any[]> {
   await ensureAvailabilitySchema(env);
   const rows: any = await env.aura_db.prepare('SELECT * FROM vacations WHERE tenant_id=? ORDER BY start_date').bind(tenantId).all();
@@ -1117,6 +1122,82 @@ export default {
         return json({ day, total: totalDay, cost, margin: totalDay-cost, tickets: paid.length, by_method: byMethod, total_prev: totalPrev, items: list });
       }
 
+      // ===== GASTOS DEL NEGOCIO =====
+      if (p === '/api/business-costs' && req.method === 'GET') {
+        const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
+        await ensureBusinessCosts(env);
+        const r:any = await env.aura_db.prepare('SELECT * FROM business_costs WHERE tenant_id=?').bind(tenant).first();
+        let fixed:any[] = []; try{ fixed = r?.fixed_json? JSON.parse(r.fixed_json): []; }catch(e){}
+        return json({ fixed, marketing_monthly: r?.marketing_monthly||0, commission_pct: r?.commission_pct||0, iva_pct: r?.iva_pct??21, price_includes_iva: r?.price_includes_iva??1, prorate_mode: r?.prorate_mode||'open_days' });
+      }
+      if (p === '/api/business-costs' && req.method === 'POST') {
+        const b:any = await req.json(); await ensureBusinessCosts(env);
+        if(!b.tenant_id) return json({error:'missing tenant'},400);
+        await env.aura_db.prepare(
+          `INSERT INTO business_costs (tenant_id,fixed_json,marketing_monthly,commission_pct,iva_pct,price_includes_iva,prorate_mode,updated_at) VALUES (?,?,?,?,?,?,?,?)
+           ON CONFLICT(tenant_id) DO UPDATE SET fixed_json=excluded.fixed_json,marketing_monthly=excluded.marketing_monthly,commission_pct=excluded.commission_pct,iva_pct=excluded.iva_pct,price_includes_iva=excluded.price_includes_iva,prorate_mode=excluded.prorate_mode,updated_at=excluded.updated_at`
+        ).bind(b.tenant_id, JSON.stringify(b.fixed||[]), Number(b.marketing_monthly)||0, Number(b.commission_pct)||0, b.iva_pct!=null?Number(b.iva_pct):21, b.price_includes_iva?1:0, b.prorate_mode||'open_days', Date.now()).run();
+        return json({ ok:true });
+      }
+
+      // ===== BENEFICIO REAL (día/semana/mes) =====
+      if (p === '/api/profit' && req.method === 'GET') {
+        const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
+        const period = url.searchParams.get('period')||'day';
+        const ref = url.searchParams.get('day') || new Date().toISOString().slice(0,10);
+        await ensureBusinessCosts(env);
+        const bc:any = await env.aura_db.prepare('SELECT * FROM business_costs WHERE tenant_id=?').bind(tenant).first() || {};
+        let fixedArr:any[]=[]; try{ fixedArr = bc.fixed_json? JSON.parse(bc.fixed_json): []; }catch(e){}
+        const fixedMonthly = fixedArr.reduce((s:number,x:any)=>s+(Number(x.amount)||0),0);
+        // coste de personal mensual: salarios brutos + Seguridad Social de empleados activos
+        const empRows:any = await env.aura_db.prepare('SELECT salary_gross, ss_pct FROM professionals WHERE tenant_id=? AND active=1').bind(tenant).all();
+        const personnelMonthly = (empRows.results||[]).reduce((s:number,e:any)=>{ const sal=Number(e.salary_gross)||0; const ss=e.ss_pct!=null?Number(e.ss_pct):30; return s + sal*(1+ss/100); }, 0);
+        const marketingMonthly = Number(bc.marketing_monthly)||0;
+        const commissionPct = Number(bc.commission_pct)||0;
+        const ivaPct = bc.iva_pct!=null? Number(bc.iva_pct): 21;
+        const priceInclIva = bc.price_includes_iva!=null? bc.price_includes_iva: 1;
+        const prorateMode = bc.prorate_mode||'open_days';
+        const refD = new Date(ref+'T12:00:00Z');
+        let start = ref, end = ref;
+        if (period==='week'){ const wd=(refD.getUTCDay()+6)%7; const s=new Date(refD); s.setUTCDate(refD.getUTCDate()-wd); const e=new Date(s); e.setUTCDate(s.getUTCDate()+6); start=s.toISOString().slice(0,10); end=e.toISOString().slice(0,10); }
+        else if (period==='month'){ start=ref.slice(0,8)+'01'; const e=new Date(Date.UTC(refD.getUTCFullYear(), refD.getUTCMonth()+1, 0)); end=e.toISOString().slice(0,10); }
+        const rows:any = await env.aura_db.prepare("SELECT amount,cost,date_iso FROM treatments_log WHERE tenant_id=? AND pay_status='paid' AND substr(date_iso,1,10) BETWEEN ? AND ?").bind(tenant, start, end).all();
+        const list = rows.results||[];
+        const cobrado = list.reduce((s:number,x:any)=>s+(x.amount||0),0);
+        const prodCost = list.reduce((s:number,x:any)=>s+(x.cost||0),0);
+        const base = priceInclIva ? cobrado/(1+ivaPct/100) : cobrado;
+        const iva = priceInclIva ? cobrado - base : cobrado*(ivaPct/100);
+        const comisiones = base * (commissionPct/100);
+        const schedule = await getScheduleByDay(env, tenant); const vacs = await getVacations(env, tenant);
+        function daysBetween(a:string,b:string){ const arr=[]; let c=a; for(let i=0;i<400;i++){ arr.push(c); if(c===b)break; const d=new Date(c+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()+1); c=d.toISOString().slice(0,10);} return arr; }
+        const monthStart = ref.slice(0,8)+'01'; const monthEndD=new Date(Date.UTC(refD.getUTCFullYear(), refD.getUTCMonth()+1, 0)); const monthEnd=monthEndD.toISOString().slice(0,10);
+        const monthDays = daysBetween(monthStart, monthEnd);
+        const openDaysMonth = monthDays.filter(d=>!isDateClosed(d, schedule, vacs).closed).length || monthDays.length;
+        const periodDays = daysBetween(start, end);
+        const periodOpenDays = periodDays.filter(d=>!isDateClosed(d, schedule, vacs).closed).length;
+        const fixedDaily = prorateMode==='linear' ? (fixedMonthly/monthDays.length) : (fixedMonthly/openDaysMonth);
+        const personnelDaily = prorateMode==='linear' ? (personnelMonthly/monthDays.length) : (personnelMonthly/openDaysMonth);
+        const marketingDaily = prorateMode==='linear' ? (marketingMonthly/monthDays.length) : (marketingMonthly/openDaysMonth);
+        const daysForCost = prorateMode==='linear' ? periodDays.length : periodOpenDays;
+        const fixedShare = fixedDaily * daysForCost;
+        const personnelShare = personnelDaily * daysForCost;
+        const marketingShare = marketingDaily * daysForCost;
+        const beneficio = base - prodCost - comisiones - personnelShare - fixedShare - marketingShare;
+        return json({ period, start, end,
+          cobrado: Math.round(cobrado*100)/100,
+          iva: Math.round(iva*100)/100,
+          base: Math.round(base*100)/100,
+          coste_producto: Math.round(prodCost*100)/100,
+          comisiones: Math.round(comisiones*100)/100,
+          personal: Math.round(personnelShare*100)/100,
+          gastos_fijos: Math.round(fixedShare*100)/100,
+          marketing: Math.round(marketingShare*100)/100,
+          beneficio: Math.round(beneficio*100)/100,
+          iva_apartar: Math.round(iva*100)/100,
+          detalle: { iva_pct: ivaPct, commission_pct: commissionPct, prorate_mode: prorateMode, open_days_month: openDaysMonth, period_open_days: periodOpenDays, personal_mensual: Math.round(personnelMonthly*100)/100 }
+        });
+      }
+
       // CITA por link mágico: ver y confirmar/cambiar (valida token)
       if (p === '/api/appt-status' && req.method === 'GET') {
         const lead = url.searchParams.get('lead'); const tok = url.searchParams.get('k')||'';
@@ -1277,9 +1358,16 @@ export default {
       if (p === '/api/professionals' && req.method === 'POST') {
         const b:any = await req.json();
         if (b.delete) { await env.aura_db.prepare('DELETE FROM professionals WHERE id=?').bind(b.delete).run(); return json({ok:true}); }
+        // actualizar empleado existente (datos + compensación)
+        if (b.id) {
+          await env.aura_db.prepare('UPDATE professionals SET name=?, role=?, salary_gross=?, ss_pct=?, commission_pct=?, active=? WHERE id=? AND tenant_id=?')
+            .bind(b.name||'Profesional', b.role||'pro', Number(b.salary_gross)||0, b.ss_pct!=null?Number(b.ss_pct):30, Number(b.commission_pct)||0, b.active!=null?(b.active?1:0):1, b.id, b.tenant_id).run();
+          return json({ ok:true, id: b.id });
+        }
         const id = 'pr_'+uid();
         const colors=['#9B7BFF','#FF6B5A','#34a877','#d9a23a','#3a8fd9','#c0568f'];
-        await env.aura_db.prepare('INSERT INTO professionals (id,tenant_id,name,color,created_at) VALUES (?,?,?,?,?)').bind(id, b.tenant_id, b.name||'Profesional', b.color||colors[Math.floor(Math.random()*colors.length)], Date.now()).run();
+        await env.aura_db.prepare('INSERT INTO professionals (id,tenant_id,name,color,role,salary_gross,ss_pct,commission_pct,active,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+          .bind(id, b.tenant_id, b.name||'Profesional', b.color||colors[Math.floor(Math.random()*colors.length)], b.role||'pro', Number(b.salary_gross)||0, b.ss_pct!=null?Number(b.ss_pct):30, Number(b.commission_pct)||0, 1, Date.now()).run();
         return json({ ok:true, id });
       }
 

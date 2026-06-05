@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 200" width="640" height="200" role="img" aria-label="AURA">
+  <defs>
+    <!-- Órbita fina diagonal alrededor de la A (centro ~108,112) -->
+    <path id="auraOrbit" d="M 112 108 m -82 10 a 86 25 -18 1 1 164 -18 a 86 25 -18 1 1 -164 18 Z"/>
+  </defs>
+  <rect width="640" height="200" fill="none"/>
+
+  <g fill="none" stroke="#ffffff" stroke-width="15" stroke-linejoin="round" stroke-linecap="butt">
+    <!-- A abierta: dos diagonales que se juntan arriba -->
+    <path d="M 60 170 L 108 40 L 156 170"/>
+    <!-- trazo interior corto (la "barra" alta, como en la imagen) -->
+    <path d="M 88 118 L 128 118" stroke-width="14"/>
+  </g>
+  <!-- Órbita (terracota) -->
+  <use href="#auraOrbit" fill="none" stroke="#c8745a" stroke-width="2.6"/>
+  <!-- EASTER EGG: microtexto latino sobre la órbita -->
+  <text font-family="Georgia, 'Times New Roman', serif" font-size="2.4" font-weight="400" fill="#b35e44" letter-spacing="0.15" textLength="560" lengthAdjust="spacingAndGlyphs">
+    <textPath href="#auraOrbit" startOffset="0">· TANDEM ADEPTI SUMUS · TANDEM ADEPTI SUMUS · TANDEM ADEPTI SUMUS · TANDEM ADEPTI SUMUS ·</textPath>
+  </text>
+
+  <text x="212" y="138" font-family="'Poppins','Montserrat',Arial,sans-serif" font-size="108" font-weight="600" letter-spacing="5" fill="#ffffff">AURA</text>
+</svg>

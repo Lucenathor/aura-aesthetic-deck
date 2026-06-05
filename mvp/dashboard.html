@@ -689,12 +689,14 @@ function goSection(v,push){
   const sec=document.getElementById('v-'+v); if(sec)sec.classList.add('on');
   try{ localStorage.setItem('aura_section',v); }catch(e){}
   if(push!==false){ try{ history.replaceState(null,'', '?t='+T+'#'+v); }catch(e){} }
+  if(v==='resumen')loadKPIs();
+  if(v==='pacientes')loadLeads();
   if(v==='pipeline')loadPipeline();
   if(v==='equipo')loadTeam();
   if(v==='embudo')loadEditor();
   if(v==='agenda')loadAgendaCal();
   if(v==='caja')loadCaja();
-  if(v==='ajustes'){loadSmsTpl();loadSmsCredits();buildSmsTimeline&&buildSmsTimeline();}
+  if(v==='ajustes'){loadSmsTpl();loadSmsCredits();try{ if(typeof buildTimeline==='function')buildTimeline(); }catch(e){}}
 }
 document.querySelectorAll('.nav-item').forEach(n=>{ n.onclick=()=>goSection(n.dataset.v); });
 // Controles del calendario interactivo
@@ -1762,13 +1764,18 @@ async function buySms(){
 }
 // al volver de Stripe con ?sms=ok
 (function(){ if(new URLSearchParams(location.search).get('sms')==='ok'){ setTimeout(()=>{ const m=document.getElementById('smsMsg'); if(m){m.style.color='#1f8c69';m.textContent='Pago confirmado. Tus 1.000 SMS se han añadido.';} loadSmsCredits&&loadSmsCredits(); }, 800); } })();
-(async function init(){
+async function __auraInit(){
   const ok=await guard(); if(!ok)return;
-  document.getElementById('funnelLink').href='/c/'+T;
-  document.getElementById('funnelOpen').href='/c/'+T;
-  loadTenant();loadAll();loadFunnelMetrics();fillHours();loadCal();
-  restoreSection();
-})();
+  try{ const fl=document.getElementById('funnelLink'); if(fl)fl.href='/c/'+T; }catch(e){}
+  try{ const fo=document.getElementById('funnelOpen'); if(fo)fo.href='/c/'+T; }catch(e){}
+  try{ loadTenant(); }catch(e){console.error('loadTenant',e);}
+  try{ loadFunnelMetrics(); }catch(e){console.error('loadFunnelMetrics',e);}
+  try{ fillHours(); }catch(e){}
+  try{ loadCal(); }catch(e){console.error('loadCal',e);}
+  try{ restoreSection(); }catch(e){console.error('restoreSection',e);}
+  try{ loadAll(); }catch(e){console.error('loadAll',e);}
+}
+if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded',__auraInit); } else { __auraInit(); }
 </script>
 </body>
 </html>

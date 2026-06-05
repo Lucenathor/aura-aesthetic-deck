@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 216 210" width="216" height="210" role="img" aria-label="AURA">
+  <defs>
+    <path id="auraOrbitIcon" d="M 112 108 m -82 10 a 86 25 -18 1 1 164 -18 a 86 25 -18 1 1 -164 18 Z"/>
+  </defs>
+  <rect width="216" height="210" fill="none"/>
+  <g fill="none" stroke="#222222" stroke-width="15" stroke-linejoin="round">
+    <path d="M 60 170 L 108 40 L 156 170"/>
+    <path d="M 88 118 L 128 118" stroke-width="14"/>
+  </g>
+  <use href="#auraOrbitIcon" fill="none" stroke="#c8745a" stroke-width="2.6"/>
+  <text font-family="Georgia, 'Times New Roman', serif" font-size="2.4" font-weight="400" fill="#b35e44" letter-spacing="0.15" textLength="560" lengthAdjust="spacingAndGlyphs">
+    <textPath href="#auraOrbitIcon" startOffset="0">· TANDEM ADEPTI SUMUS · TANDEM ADEPTI SUMUS · TANDEM ADEPTI SUMUS · TANDEM ADEPTI SUMUS ·</textPath>
+  </text>
+</svg>
