@@ -807,6 +807,8 @@ export default {
         reminder_24h: '{clinica}: tu cita es mañana {fecha} a las {hora}. Confírmala o cámbiala con un toque aquí: {link}',
         reminder_2h: '{clinica}: te esperamos hoy a las {hora} en {direccion}. Hasta ahora!',
         no_show: '{clinica}: {nombre}, hoy no pudimos verte. ¿Reprogramamos? Te guardo otro hueco: {link}',
+        confirm2: '{clinica}: {nombre}, ¿te esperamos {fecha} a las {hora}? Confírmame con un toque o cámbiala aquí: {link}',
+        noshow2: '{clinica}: {nombre}, aún tengo un hueco para ti esta semana. ¿Lo reservamos antes de que se ocupe? {link}',
         reactivation: '{clinica}: {nombre}, tu valoración sigue disponible. Tengo hueco {proximo_dia}, te lo guardo: {link}',
         recall_sale: '{clinica}: {nombre}, toca tu revisión para mantener el resultado. Tengo hueco {proximo_dia}, reserva aquí: {link}'
       };
@@ -1526,6 +1528,8 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
     reminder_24h: '{clinica}: tu cita es mañana {fecha} a las {hora}. Confírmala o cámbiala con un toque aquí: {link}',
     reminder_2h: '{clinica}: te esperamos hoy a las {hora} en {direccion}. Hasta ahora!',
     no_show: '{clinica}: {nombre}, hoy no pudimos verte. ¿Reprogramamos? Te guardo otro hueco: {link}',
+    confirm2: '{clinica}: {nombre}, ¿te esperamos {fecha} a las {hora}? Confírmame con un toque o cámbiala aquí: {link}',
+    noshow2: '{clinica}: {nombre}, aún tengo un hueco para ti esta semana. ¿Lo reservamos antes de que se ocupe? {link}',
     reactivation: '{clinica}: {nombre}, tu valoración sigue disponible. Tengo hueco {proximo_dia}, te lo guardo: {link}',
     recall_sale: '{clinica}: {nombre}, toca tu revisión para mantener el resultado. Tengo hueco {proximo_dia}, reserva aquí: {link}'
   };
@@ -1573,10 +1577,34 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
         else { const r = await sendSMS(env, a.lead_phone, fill(T.reminder_2h, vars), tn.name||'AURA', a.tenant_id);
           if (r.ok) { await env.aura_db.prepare('UPDATE appointments SET sms_2h=1 WHERE id=?').bind(a.id).run(); sent++; } }
       }
-      // no-show: 2h exactas después de la cita (ventana 2-3h), si sigue booked
+      // FLUJO NO CONFIRMA: ~18h antes sin confirmar (confirmed=0) -> 2o toque + Llamar urgente en pipeline
+      if (!a.sms_confirm2 && !apptClosed && (a.confirmed===0 || a.confirmed==null) && diffH <= 18 && diffH > 5) {
+        const r = await sendSMS(env, a.lead_phone, fill(T.confirm2, vars), tn.name||'AURA', a.tenant_id);
+        if (r.ok) {
+          await env.aura_db.prepare('UPDATE appointments SET sms_confirm2=1 WHERE id=?').bind(a.id).run();
+          await env.aura_db.prepare("UPDATE leads SET call_priority='urgent' WHERE id=?").bind(a.lead_id).run();
+          sent++;
+        }
+      }
+      // FLUJO NO-SHOW paso 1: 2h después de la cita, si sigue booked (no se cerro como atendida/no vino)
       if (!a.sms_noshow && diffH <= -2 && diffH > -3) {
         const r = await sendSMS(env, a.lead_phone, fill(T.no_show, vars), tn.name||'AURA', a.tenant_id);
-        if (r.ok) { await env.aura_db.prepare('UPDATE appointments SET sms_noshow=1 WHERE id=?').bind(a.id).run(); sent++; }
+        if (r.ok) {
+          await env.aura_db.prepare('UPDATE appointments SET sms_noshow=1, noshow_at=? WHERE id=?').bind(nowUTC.toISOString(), a.id).run();
+          // marcar lead como no-show recuperable: contador + estado + llamar urgente
+          await env.aura_db.prepare("UPDATE leads SET noshow_count=COALESCE(noshow_count,0)+1, recover_state='noshow', call_priority='urgent' WHERE id=?").bind(a.lead_id).run();
+          sent++;
+        }
+      }
+      // FLUJO NO-SHOW paso 2: 48h después del no-show, si no ha reservado nueva cita
+      if (a.sms_noshow && !a.sms_noshow2 && diffH <= -48 && diffH > -72) {
+        const futura: any = await env.aura_db.prepare("SELECT COUNT(*) c FROM appointments WHERE lead_id=? AND status='booked' AND date_iso > ?").bind(a.lead_id, nowUTC.toISOString()).first();
+        if ((futura?.c||0) === 0) {
+          const r = await sendSMS(env, a.lead_phone, fill(T.noshow2, vars), tn.name||'AURA', a.tenant_id);
+          if (r.ok) { await env.aura_db.prepare('UPDATE appointments SET sms_noshow2=1 WHERE id=?').bind(a.id).run(); sent++; }
+        } else {
+          await env.aura_db.prepare('UPDATE appointments SET sms_noshow2=1 WHERE id=?').bind(a.id).run();
+        }
       }
     }
     // 2) Reactivación de leads no reservados (día 3 y 7) — EXCLUYE clientes con recall (ya son clientes, no leads fríos)

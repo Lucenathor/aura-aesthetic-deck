@@ -1749,7 +1749,43 @@ async function moveStage(idx,dir){ const j=idx+dir; if(j<0||j>=STAGES.length)ret
 async function loadPipeline(){
   await loadStages();
   try{ const r=await fetch(WORKER+'/api/leads?tenant='+T); const d=await r.json(); kLeads=d.leads||[]; }catch(e){ kLeads=[]; }
+  // asociar a cada lead su próxima cita reservada (para la columna 'Por confirmar')
+  try{ const ar=await fetch(WORKER+'/api/appointments?tenant='+T); const ad=await ar.json(); const appts=ad.appointments||[]; const now=Date.now();
+    const byLead={}; appts.forEach(a=>{ if(a.status==='booked'&&a.date_iso&&new Date(a.date_iso).getTime()>now){ const cur=byLead[a.lead_id]; if(!cur||new Date(a.date_iso)<new Date(cur.date_iso))byLead[a.lead_id]=a; } });
+    kLeads.forEach(l=>{ l._appt=byLead[l.id]||null; });
+  }catch(e){}
   renderKanban();
+}
+// ===== GUIONES DE LLAMADA (recepción) =====
+function openScript(kind,leadId){
+  const l=(kLeads||[]).find(x=>x.id===leadId)||{}; const nombre=(l.name||'el paciente').split(' ')[0]; const trat=l.treatment||'tu tratamiento';
+  const cita=l._appt&&l._appt.date_iso? new Date(l._appt.date_iso).toLocaleString('es-ES',{weekday:'long',day:'2-digit',month:'long',hour:'2-digit',minute:'2-digit'}):'tu cita';
+  let title,color,steps,closing;
+  if(kind==='confirm'){
+    title='Guión: confirmar cita'; color='#9a6f12';
+    steps=['<b>Saluda y preséntate:</b> “Hola '+nombre+', soy [tu nombre] de la clínica. ¿Te pillo bien?”',
+      '<b>Confirma con naturalidad:</b> “Te llamo para confirmar tu cita de '+trat+' el '+cita+'. ¿Te viene bien?”',
+      '<b>Si duda o no puede:</b> ofrécele cambiarla en el momento — “Sin problema, ¿te busco otro hueco esta misma semana?” (no la dejes caer, reagenda).',
+      '<b>Refuerza el valor:</b> “Te guardo el hueco con [profesional], que tiene muy buena mano para esto.”',
+      '<b>Cierra y crea compromiso:</b> “Perfecto, te dejo confirmada. Te llega un SMS con los datos. ¡Te esperamos!”'];
+    closing='Objetivo: que confirme o reagende EN la llamada. Nunca colgar sin una fecha en firme.';
+  } else {
+    title='Guión: recuperar (no vino)'; color='#b0432e';
+    steps=['<b>Tono cálido, sin culpa:</b> “Hola '+nombre+', soy [tu nombre] de la clínica. Te echamos de menos el otro día, ¿va todo bien?”',
+      '<b>Quita hierro:</b> “No pasa nada, a veces surge algo. Lo importante es que no pierdas tu '+trat+'.”',
+      '<b>Reagenda ya:</b> “Tengo un par de huecos esta semana, ¿te va mejor por la mañana o por la tarde?” (da a elegir, no preguntes si quiere).',
+      '<b>Si pone pega de tiempo/precio:</b> recuérdale el beneficio y, si aplica, que la valoración/retoque sigue sin coste o que el resultado se mantiene mejor sin dejar pasar el tiempo.',
+      '<b>Cierra con compromiso:</b> “Te reservo el [día/hora] y te mando el recordatorio. Esta vez te guardo el hueco a tu nombre.”'];
+    closing='Objetivo: reagendar en la llamada. Si no contesta, deja SMS y vuelve a intentar mañana. Tras 2 intentos sin éxito, márcalo como no interesado.';
+  }
+  const ov=document.createElement('div'); ov.id='scOv'; ov.style='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:grid;place-items:center;padding:1rem;overflow:auto';
+  ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:430px;width:100%;padding:1.4rem;max-height:90vh;overflow:auto">'
+    +'<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem"><span style="width:10px;height:10px;border-radius:50%;background:'+color+'"></span><h3 class="serif" style="margin:0">'+title+'</h3></div>'
+    +'<p class="sub" style="margin:0 0 .9rem">'+nombre+' · '+trat+'</p>'
+    +'<ol style="margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.6rem;font-size:.9rem;line-height:1.45">'+steps.map(s=>'<li>'+s+'</li>').join('')+'</ol>'
+    +'<div style="margin-top:.9rem;background:var(--bg2);border-radius:10px;padding:.7rem .8rem;font-size:.82rem;color:var(--ink)">'+closing+'</div>'
+    +'<div style="display:flex;gap:.5rem;margin-top:1rem"><a href="tel:'+(l.phone||'')+'" style="flex:1;text-align:center;background:'+color+';color:#fff;font-weight:700;padding:.6rem;border-radius:9px;text-decoration:none">☎ Llamar a '+nombre+'</a><button class="btn" onclick="document.getElementById(\'scOv\').remove()">Cerrar</button></div></div>';
+  document.body.appendChild(ov);
 }
 // paleta por etapa (de frío/temprano a cálido/cerrado)
 const STAGE_COLORS=['#9B7BFF','#A4E5CD','#C9A86A','#C8745A','#1f9d63','#9C8C7E'];
@@ -1808,6 +1844,34 @@ function renderKanban(){
       c.onclick=()=>openDrawer(l);
       body.appendChild(c);
     });
+    col.appendChild(body); k.appendChild(col);
+  }
+  // COLUMNA VIRTUAL: POR CONFIRMAR (cita futura sin confirmar)
+  const porConfirmar = kLeads.filter(l=> l._appt && l._appt.status==='booked' && (l._appt.confirmed===0||l._appt.confirmed==null) && new Date(l._appt.date_iso) > new Date());
+  {
+    const col=document.createElement('div'); col.className='kcol'+(porConfirmar.length?' urgent':''); col.style.setProperty('--st','#d9a23a'); col.style.setProperty('--stbg','rgba(217,162,58,.12)');
+    col.innerHTML='<div class="kcol-bar" style="background:#d9a23a"></div><div class="kcol-h"><span class="nm" style="color:#9a6f12">⚠ POR CONFIRMAR</span><span class="cnt" style="background:#fbf0d6;color:#9a6f12">'+porConfirmar.length+'</span></div>';
+    const body=document.createElement('div'); body.className='kcol-body';
+    if(!porConfirmar.length){ body.innerHTML='<div class="kempty">Todas las citas confirmadas</div>'; }
+    porConfirmar.forEach(l=>{ const c=document.createElement('div'); c.className='kcard'; c.style.setProperty('--st','#d9a23a'); const initial=(l.name||'?').trim().charAt(0).toUpperCase();
+      const cita=l._appt&&l._appt.date_iso? new Date(l._appt.date_iso).toLocaleString('es-ES',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+      c.innerHTML='<div class="ktop"><span class="kav" style="background:#fbf0d6;color:#9a6f12">'+initial+'</span><div style="min-width:0"><b>'+(l.name||'—')+'</b><div class="ktr" style="font-size:.74rem;color:var(--muted)">'+(l.treatment||'—')+' · '+cita+'</div></div></div>'
+        +'<div style="display:flex;gap:.4rem;margin-top:.55rem"><a href="tel:'+(l.phone||'')+'" onclick="event.stopPropagation()" style="flex:1;text-align:center;background:#d9a23a;color:#fff;font-weight:700;font-size:.78rem;padding:.5rem;border-radius:8px;text-decoration:none">☎ Llamar</a><button onclick="event.stopPropagation();openScript(\'confirm\',\''+l.id+'\')" style="background:#fff;border:1px solid var(--line);border-radius:8px;font-size:.78rem;padding:.5rem .6rem;cursor:pointer">Guión</button></div>';
+      c.onclick=()=>openDrawer(l); body.appendChild(c); });
+    col.appendChild(body); k.appendChild(col);
+  }
+  // COLUMNA VIRTUAL: RECUPERAR (NO VINO)
+  const recuperar = kLeads.filter(l=> l.recover_state==='noshow' && l.status!=='booked' && l.call_result!=='no_interesado');
+  {
+    const col=document.createElement('div'); col.className='kcol'+(recuperar.length?' urgent':''); col.style.setProperty('--st','#e0392b'); col.style.setProperty('--stbg','rgba(224,57,43,.10)');
+    col.innerHTML='<div class="kcol-bar" style="background:#e0392b"></div><div class="kcol-h"><span class="nm" style="color:#b0432e">🔁 RECUPERAR (NO VINO)</span><span class="cnt" style="background:#fde8e4;color:#b0432e">'+recuperar.length+'</span></div>';
+    const body=document.createElement('div'); body.className='kcol-body';
+    if(!recuperar.length){ body.innerHTML='<div class="kempty">Nadie por recuperar</div>'; }
+    recuperar.forEach(l=>{ const c=document.createElement('div'); c.className='kcard'; c.style.setProperty('--st','#e0392b'); const initial=(l.name||'?').trim().charAt(0).toUpperCase();
+      const faltas=(l.noshow_count||1)>1? ' · '+l.noshow_count+' faltas':'';
+      c.innerHTML='<div class="ktop"><span class="kav" style="background:#fde8e4;color:#b0432e">'+initial+'</span><div style="min-width:0"><b>'+(l.name||'—')+'</b><div class="ktr" style="font-size:.74rem;color:var(--muted)">'+(l.treatment||'—')+' · no vino'+faltas+'</div></div></div>'
+        +'<div style="display:flex;gap:.4rem;margin-top:.55rem"><a href="tel:'+(l.phone||'')+'" onclick="event.stopPropagation()" style="flex:1;text-align:center;background:#e0392b;color:#fff;font-weight:700;font-size:.78rem;padding:.5rem;border-radius:8px;text-decoration:none">☎ Recuperar</a><button onclick="event.stopPropagation();openScript(\'recover\',\''+l.id+'\')" style="background:#fff;border:1px solid var(--line);border-radius:8px;font-size:.78rem;padding:.5rem .6rem;cursor:pointer">Guión</button></div>';
+      c.onclick=()=>openDrawer(l); body.appendChild(c); });
     col.appendChild(body); k.appendChild(col);
   }
   STAGES.forEach((st,idx)=>{
