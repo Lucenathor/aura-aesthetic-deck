@@ -371,6 +371,13 @@ const SYSTEM_BASE = `Eres un asesor real de la clínica. Hablas desde tu móvil:
 - NUNCA repitas frases anteriores. Si ya respondiste algo similar, varía.`;
 
 // ─── Routing ──────────────────────────────────────────────────────
+const CONSENT_DEFAULTS = [
+  { key:'labios', title:'Consentimiento · Aumento de labios (ácido hialurónico)', body:'Declaro que he sido informado/a del procedimiento de aumento de labios con ácido hialurónico, sus beneficios y sus posibles riesgos (inflamación, hematomas, asimetría, reacción al producto y, en casos raros, oclusión vascular). He podido preguntar mis dudas y entiendo los cuidados posteriores. Autorizo a la clínica a realizar el tratamiento y, salvo que indique lo contrario, al uso de fotos antes/después con fines clínicos.' },
+  { key:'botox', title:'Consentimiento · Tóxina botulínica (Botox)', body:'Declaro que he sido informado/a del tratamiento con tóxina botulínica, sus beneficios y posibles riesgos (hematoma, asimetría, caída temporal del párpado, dolor de cabeza). Confirmo no estar embarazada ni en lactancia y haber informado de mi medicación. Entiendo los cuidados posteriores y autorizo el tratamiento.' },
+  { key:'laser', title:'Consentimiento · Tratamiento láser', body:'Declaro que he sido informado/a del tratamiento láser, sus beneficios y posibles riesgos (enrojecimiento, quemaduras, cambios de pigmentación). Confirmo no haber tomado el sol recientemente ni medicación fotosensibilizante sin informarlo. Entiendo los cuidados posteriores y autorizo el tratamiento.' },
+  { key:'peeling', title:'Consentimiento · Peeling / tratamiento de piel', body:'Declaro que he sido informado/a del tratamiento de peeling, sus beneficios y posibles riesgos (enrojecimiento, descamación, cambios de pigmentación). He informado de mi medicación y condición de la piel. Entiendo los cuidados posteriores y autorizo el tratamiento.' },
+  { key:'generico', title:'Consentimiento informado · Tratamiento estético', body:'Declaro que he sido informado/a del tratamiento que voy a recibir, sus beneficios, alternativas y posibles riesgos. He podido resolver mis dudas, he facilitado mi historial y medicación relevantes, y entiendo los cuidados posteriores. Autorizo a la clínica a realizar el tratamiento.' }
+];
 export default {
   async fetch(req: Request, env: Env, ctx?: any): Promise<Response> {
     if (ctx) (globalThis as any).__execCtx = ctx;
@@ -392,7 +399,8 @@ export default {
         '/api/treatments','/api/close-visit','/api/professionals','/api/blocks',
         '/api/waitlist','/api/pipeline','/api/products','/api/bonos','/api/cashbox','/api/profit',
         '/api/recovered','/api/business-costs','/api/schedule-by-day','/api/vacations',
-        '/api/sms-templates','/api/team','/api/funnel-save','/api/funnel-edit'
+        '/api/sms-templates','/api/team','/api/funnel-save','/api/funnel-edit',
+        '/api/consent-templates','/api/consent-send','/api/consents'
       ]);
       // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
       const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar']);
@@ -1205,6 +1213,79 @@ export default {
           ] });
       }
 
+      // ===== CONSENTIMIENTOS: plantillas (panel) =====
+      if (p === '/api/consent-templates' && req.method === 'GET') {
+        const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
+        const r:any = await env.aura_db.prepare('SELECT * FROM consent_templates WHERE tenant_id=? ORDER BY created_at DESC').bind(tenant).all();
+        let list = r.results||[];
+        if (!list.length) list = CONSENT_DEFAULTS.map((t:any,i:number)=>({ id:'def_'+i, tenant_id:tenant, title:t.title, body:t.body, treatment_key:t.key, _default:true }));
+        return json({ templates: list });
+      }
+      if (p === '/api/consent-templates' && req.method === 'POST') {
+        const b:any = await req.json(); if(!b.tenant_id) return json({error:'missing tenant'},400);
+        if (b.delete) { await env.aura_db.prepare('DELETE FROM consent_templates WHERE id=? AND tenant_id=?').bind(b.delete,b.tenant_id).run(); return json({ok:true}); }
+        if (b.id && !String(b.id).startsWith('def_')) {
+          await env.aura_db.prepare('UPDATE consent_templates SET title=?, body=?, treatment_key=? WHERE id=? AND tenant_id=?').bind(b.title||'Consentimiento', b.body||'', b.treatment_key||'', b.id, b.tenant_id).run();
+          return json({ ok:true, id:b.id });
+        }
+        const id='ct_'+uid();
+        await env.aura_db.prepare('INSERT INTO consent_templates (id,tenant_id,title,body,treatment_key,created_at) VALUES (?,?,?,?,?,?)').bind(id,b.tenant_id,b.title||'Consentimiento',b.body||'',b.treatment_key||'',Date.now()).run();
+        return json({ ok:true, id });
+      }
+      // Crear+enviar consentimiento a un paciente (panel) -> genera doc pendiente y manda SMS con link
+      if (p === '/api/consent-send' && req.method === 'POST') {
+        const b:any = await req.json(); if(!b.tenant_id||!b.lead_id) return json({error:'missing'},400);
+        const lead:any = await env.aura_db.prepare('SELECT name,phone FROM leads WHERE id=? AND tenant_id=?').bind(b.lead_id,b.tenant_id).first();
+        if(!lead) return json({error:'lead not found'},404);
+        const id='cs_'+uid();
+        await env.aura_db.prepare('INSERT INTO consents_signed (id,tenant_id,lead_id,template_id,title,body,status,created_at) VALUES (?,?,?,?,?,?,?,?)')
+          .bind(id,b.tenant_id,b.lead_id,b.template_id||null,b.title||'Consentimiento',b.body||'','pending',Date.now()).run();
+        // link de firma (sirve para SMS, para QR y para firmar en tablet ahí mismo)
+        const tok = await signLead(env, b.lead_id);
+        const link = 'https://aura-mvp.pages.dev/firmar?consent='+id+'&lead='+encodeURIComponent(b.lead_id)+'&k='+tok;
+        let smsSent=false;
+        if (lead.phone && !b.no_sms) {
+          const tn:any = await tenant(b.tenant_id);
+          const msg = (tn?.name||'AURA')+': '+(lead.name||'')+', firma tu consentimiento para el tratamiento aqui (1 min, desde tu movil): '+link;
+          const r = await sendSMS(env, lead.phone, msg, (tn?.name||'AURA'), b.tenant_id); smsSent = r.ok;
+        }
+        return json({ ok:true, id, sms_sent: smsSent, sign_link: link });
+      }
+      // Ver un consentimiento para firmar (paciente, valida token del lead)
+      if (p === '/api/consent-get' && req.method === 'GET') {
+        const id=url.searchParams.get('id'); const lead=url.searchParams.get('lead'); const k=url.searchParams.get('k')||'';
+        if(!id||!lead||!(await verifyLead(env,lead,k))) return json({error:'invalid'},403);
+        const c:any = await env.aura_db.prepare('SELECT cs.*, l.name AS lead_name FROM consents_signed cs LEFT JOIN leads l ON l.id=cs.lead_id WHERE cs.id=? AND cs.lead_id=?').bind(id,lead).first();
+        if(!c) return json({error:'not found'},404);
+        const tn:any = await env.aura_db.prepare('SELECT name FROM tenants WHERE id=?').bind(c.tenant_id).first();
+        return json({ consent:c, clinic: tn?.name||'' });
+      }
+      // Firmar (paciente): recibe firma en dataURL, la guarda en R2 y sella fecha/hora
+      if (p === '/api/consent-sign' && req.method === 'POST') {
+        const b:any = await req.json();
+        if(!b.id||!b.lead||!(await verifyLead(env,b.lead,b.k||''))) return json({error:'invalid'},403);
+        const c:any = await env.aura_db.prepare('SELECT * FROM consents_signed WHERE id=? AND lead_id=?').bind(b.id,b.lead).first();
+        if(!c) return json({error:'not found'},404);
+        if(c.status==='signed') return json({ ok:true, already:true });
+        // guardar imagen de firma (dataURL base64) en R2
+        let sigKey='';
+        try{ const m=(b.signature||'').match(/^data:image\/png;base64,(.+)$/); if(m){ const bin=atob(m[1]); const bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i); sigKey='sig_'+b.id+'.png'; if(env.aura_r2){ try{ await env.aura_r2.put('img/'+sigKey, bytes.buffer, { httpMetadata:{contentType:'image/png'} }); }catch(e){ await env.AURA_IMG.put(sigKey, bytes.buffer, { metadata:{contentType:'image/png'} }); } } else { await env.AURA_IMG.put(sigKey, bytes.buffer, { metadata:{contentType:'image/png'} }); } } }catch(e){}
+        const ip = req.headers.get('cf-connecting-ip') || '';
+        await env.aura_db.prepare("UPDATE consents_signed SET status='signed', signature_key=?, signer_name=?, signed_at=?, signed_ip=? WHERE id=?")
+          .bind(sigKey||null, b.signer_name||c.signer_name||'', new Date().toISOString(), ip, b.id).run();
+        return json({ ok:true });
+      }
+      // Listar consentimientos de un paciente (panel)
+      if (p === '/api/consents' && req.method === 'GET') {
+        const tenant = url.searchParams.get('tenant'); const lead=url.searchParams.get('lead');
+        if(!tenant) return json({error:'missing tenant'},400);
+        let q='SELECT * FROM consents_signed WHERE tenant_id=?'; const args:any[]=[tenant];
+        if(lead){ q+=' AND lead_id=?'; args.push(lead); }
+        q+=' ORDER BY created_at DESC';
+        const r:any = await env.aura_db.prepare(q).bind(...args).all();
+        return json({ consents: r.results||[] });
+      }
+
       // ===== GASTOS DEL NEGOCIO =====
       if (p === '/api/business-costs' && req.method === 'GET') {
         const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
@@ -1791,7 +1872,7 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
 // ─── BACKUP: exporta todas las tablas D1 a JSON y lo guarda en KV con fecha + retención 30 días ───
 async function runBackup(env: Env): Promise<{ ok: boolean; key?: string; tables?: number; rows?: number; error?: string }> {
   try {
-    const tables = ['tenants','funnels','leads','messages','appointments','consultations','lead_analyses','users','team_members','sms_templates','pipeline_config','calendar_config','schedule_by_day','vacations','professionals','time_blocks','waitlist','treatments_log','owners','products','bonos'];
+    const tables = ['tenants','funnels','leads','messages','appointments','consultations','lead_analyses','users','team_members','sms_templates','pipeline_config','calendar_config','schedule_by_day','vacations','professionals','time_blocks','waitlist','treatments_log','owners','products','bonos','business_costs','consent_templates','consents_signed'];
     const dump: any = { created_at: new Date().toISOString(), tables: {} };
     let totalRows = 0;
     for (const t of tables) {

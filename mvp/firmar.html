@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>Firma tu consentimiento</title>
+<style>
+  :root{ --terra:#c8745a; --ink:#2a211c; --line:#e7ded6; --bg:#f6f4ee; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+  .wrap{max-width:620px;margin:0 auto;padding:1.1rem}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:1.2rem;box-shadow:0 10px 30px -20px rgba(42,33,28,.3)}
+  h1{font-size:1.25rem;margin:.2rem 0 .1rem}
+  .clinic{color:var(--terra);font-weight:700;font-size:.85rem;text-transform:uppercase;letter-spacing:.05em}
+  .body{white-space:pre-wrap;font-size:.95rem;color:#3a322c;margin:1rem 0;padding:1rem;background:var(--bg);border-radius:12px;max-height:38vh;overflow:auto}
+  .siglabel{font-weight:700;font-size:.9rem;margin:1.1rem 0 .4rem}
+  .sigbox{position:relative;border:2px dashed var(--terra);border-radius:14px;background:#fff;touch-action:none}
+  canvas{display:block;width:100%;height:200px;border-radius:12px}
+  .sighint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#c9bcae;font-size:1.1rem;pointer-events:none}
+  .row{display:flex;gap:.6rem;margin-top:.8rem}
+  .btn{flex:1;border:0;border-radius:11px;padding:.9rem;font-size:1rem;font-weight:700;cursor:pointer}
+  .btn.clear{background:#fff;border:1px solid var(--line);color:#7a6c5f;flex:0 0 auto;padding:.9rem 1.1rem}
+  .btn.sign{background:var(--terra);color:#fff}
+  .btn.sign:disabled{opacity:.5}
+  .field{margin:.6rem 0}
+  .field input{width:100%;padding:.8rem;border:1px solid var(--line);border-radius:11px;font-size:1rem}
+  .ok{text-align:center;padding:2rem 1rem}
+  .ok .check{width:70px;height:70px;border-radius:50%;background:#e8f5ee;color:#1f9d63;display:grid;place-items:center;margin:0 auto 1rem;font-size:2rem}
+  .meta{font-size:.78rem;color:#9b8e80;margin-top:.8rem;text-align:center}
+  .loading{text-align:center;padding:3rem 1rem;color:#9b8e80}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="loading" class="loading">Cargando tu consentimiento…</div>
+  <div id="card" class="card" style="display:none">
+    <div class="clinic" id="clinic">Clínica</div>
+    <h1 id="title">Consentimiento</h1>
+    <div class="body" id="docbody"></div>
+    <div class="field"><input id="signerName" placeholder="Tu nombre y apellidos"/></div>
+    <div class="siglabel">Firma aquí con el dedo</div>
+    <div class="sigbox"><canvas id="sig"></canvas><div class="sighint" id="sighint">✍️ Firma en este recuadro</div></div>
+    <div class="row">
+      <button class="btn clear" onclick="clearSig()">Borrar</button>
+      <button class="btn sign" id="signBtn" onclick="doSign()" disabled>Firmar y aceptar</button>
+    </div>
+    <div class="meta">Tu firma queda registrada con la fecha y hora. Documento seguro.</div>
+  </div>
+  <div id="done" class="card ok" style="display:none">
+    <div class="check">✓</div>
+    <h1>¡Consentimiento firmado!</h1>
+    <p style="color:#6b5d50">Gracias. Tu firma ha quedado registrada correctamente. Ya puedes cerrar esta página.</p>
+  </div>
+</div>
+<script>
+const WORKER='https://aura-chat-worker.adrian-7b9.workers.dev';
+const q=new URLSearchParams(location.search);
+const ID=q.get('consent'), LEAD=q.get('lead'), K=q.get('k');
+let signed=false, hasInk=false;
+async function load(){
+  if(!ID||!LEAD||!K){ document.getElementById('loading').textContent='Enlace no válido.'; return; }
+  try{
+    const r=await fetch(WORKER+'/api/consent-get?id='+encodeURIComponent(ID)+'&lead='+encodeURIComponent(LEAD)+'&k='+encodeURIComponent(K));
+    const d=await r.json();
+    if(d.error){ document.getElementById('loading').textContent='No pudimos cargar el documento.'; return; }
+    if(d.consent.status==='signed'){ document.getElementById('loading').style.display='none'; document.getElementById('done').style.display='block'; return; }
+    document.getElementById('clinic').textContent=d.clinic||'';
+    document.getElementById('title').textContent=d.consent.title||'Consentimiento';
+    document.getElementById('docbody').textContent=d.consent.body||'';
+    const sn=document.getElementById('signerName'); sn.value=d.consent.lead_name||'';
+    document.getElementById('loading').style.display='none';
+    document.getElementById('card').style.display='block';
+    initCanvas();
+  }catch(e){ document.getElementById('loading').textContent='Error de conexión.'; }
+}
+let ctx, canvas, drawing=false, last=null;
+function initCanvas(){
+  canvas=document.getElementById('sig');
+  const ratio=window.devicePixelRatio||1;
+  const rect=canvas.getBoundingClientRect();
+  canvas.width=rect.width*ratio; canvas.height=200*ratio;
+  ctx=canvas.getContext('2d'); ctx.scale(ratio,ratio);
+  ctx.lineWidth=2.5; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle='#1a1a1a';
+  const pos=e=>{ const r=canvas.getBoundingClientRect(); const t=e.touches?e.touches[0]:e; return {x:t.clientX-r.left, y:t.clientY-r.top}; };
+  const start=e=>{ e.preventDefault(); drawing=true; last=pos(e); if(!hasInk){ hasInk=true; document.getElementById('sighint').style.display='none'; document.getElementById('signBtn').disabled=false; } };
+  const move=e=>{ if(!drawing)return; e.preventDefault(); const p=pos(e); ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke(); last=p; };
+  const end=e=>{ drawing=false; };
+  canvas.addEventListener('mousedown',start); canvas.addEventListener('mousemove',move); window.addEventListener('mouseup',end);
+  canvas.addEventListener('touchstart',start,{passive:false}); canvas.addEventListener('touchmove',move,{passive:false}); canvas.addEventListener('touchend',end);
+}
+function clearSig(){ if(ctx){ ctx.clearRect(0,0,canvas.width,canvas.height); } hasInk=false; document.getElementById('sighint').style.display='flex'; document.getElementById('signBtn').disabled=true; }
+async function doSign(){
+  if(!hasInk||signed) return;
+  const name=document.getElementById('signerName').value.trim();
+  if(!name){ alert('Por favor, escribe tu nombre.'); return; }
+  signed=true; document.getElementById('signBtn').disabled=true; document.getElementById('signBtn').textContent='Guardando…';
+  const dataUrl=canvas.toDataURL('image/png');
+  try{
+    const r=await fetch(WORKER+'/api/consent-sign',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ id:ID, lead:LEAD, k:K, signer_name:name, signature:dataUrl })});
+    const d=await r.json();
+    if(d.ok){ document.getElementById('card').style.display='none'; document.getElementById('done').style.display='block'; }
+    else { signed=false; document.getElementById('signBtn').disabled=false; document.getElementById('signBtn').textContent='Firmar y aceptar'; alert('No se pudo guardar. Inténtalo de nuevo.'); }
+  }catch(e){ signed=false; document.getElementById('signBtn').disabled=false; document.getElementById('signBtn').textContent='Firmar y aceptar'; alert('Error de conexión.'); }
+}
+load();
+</script>
+</body>
+</html>
