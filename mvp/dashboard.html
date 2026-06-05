@@ -419,6 +419,25 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
         <div style="display:flex;align-items:center;justify-content:space-between"><div><h3 style="margin:0">Inventario</h3><p class="sub" style="margin:.2rem 0 0">Tu stock. Se descuenta solo al cerrar una visita con producto.</p></div><button class="btn prim" onclick="openNewProduct()">+ Producto</button></div>
         <div id="prodList" style="margin-top:.7rem"></div>
       </div>
+
+      <!-- BENEFICIO REAL -->
+      <div class="card" style="background:linear-gradient(135deg,#2A211C,#3a2e26);color:#fff">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
+          <div><h3 style="margin:0;color:#fff">Beneficio real</h3><p class="sub" style="margin:.2rem 0 0;color:rgba(255,255,255,.6)">Lo que ganas de verdad, después de gastos, nóminas e IVA.</p></div>
+          <div style="display:flex;gap:.3rem" id="profitTabs">
+            <button class="pbtn on" data-p="day" onclick="setProfitPeriod('day',this)">Día</button>
+            <button class="pbtn" data-p="week" onclick="setProfitPeriod('week',this)">Semana</button>
+            <button class="pbtn" data-p="month" onclick="setProfitPeriod('month',this)">Mes</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:.6rem;margin:1rem 0 .2rem">
+          <div id="profitMain" style="font-family:'Fraunces',serif;font-size:2.6rem;font-weight:600;color:#fff">—</div>
+          <div id="profitLabel" style="font-size:.8rem;color:rgba(255,255,255,.55)">beneficio neto</div>
+        </div>
+        <div id="profitBreakdown" style="margin-top:.8rem;font-size:.86rem"></div>
+        <div id="profitIva" style="margin-top:.8rem;background:rgba(212,165,116,.18);border:1px solid rgba(212,165,116,.4);border-radius:10px;padding:.6rem .8rem;font-size:.82rem;color:#f0dcc4"></div>
+        <div style="margin-top:.8rem"><button class="btn" style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#fff;font-size:.8rem" onclick="openCosts()">Configurar gastos e IVA</button> <span style="font-size:.74rem;color:rgba(255,255,255,.5)">Las nóminas se gestionan en Equipo.</span></div>
+      </div>
     </section>
 
     <!-- AJUSTES: horarios + SMS + saldo -->
@@ -548,8 +567,19 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
         <div id="tmMsg" style="font-size:.82rem;margin-top:.6rem;color:var(--muted)"></div>
       </div>
       <div class="card">
-        <h3>Miembros del equipo</h3>
+        <h3>Miembros del equipo (acceso al panel)</h3>
+        <p class="sub">Quién puede entrar al panel y qué ve cada uno.</p>
         <div id="teamList" style="margin-top:.6rem"></div>
+      </div>
+
+      <!-- EMPLEADOS / NÓMINAS -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
+          <div><h3 style="margin:0">Empleados y nóminas</h3><p class="sub" style="margin:.2rem 0 0">El equipo que cobra nómina. Su coste se descuenta automáticamente del beneficio real.</p></div>
+          <button class="btn prim" onclick="openEmployee()">+ Empleado</button>
+        </div>
+        <div id="empCost" style="display:flex;gap:1.4rem;flex-wrap:wrap;margin-top:.8rem;padding:.7rem .9rem;background:var(--bg2);border-radius:11px"></div>
+        <div id="empList" style="margin-top:.8rem"></div>
       </div>
     </section>
   </main>
@@ -662,7 +692,53 @@ async function loadTeam(){
       c.appendChild(row);
     });
   }catch(e){ c.innerHTML='<div style="color:#c0392b;font-size:.85rem">Error al cargar</div>'; }
+  loadEmployees();
 }
+// ===== EMPLEADOS / NÓMINAS =====
+const EMP_ROLES={pro:'Profesional',reception:'Recepción',manager:'Gerente',aux:'Auxiliar',other:'Otro'};
+async function loadEmployees(){
+  const c=document.getElementById('empList'); if(!c)return;
+  try{
+    const r=await fetch(WORKER+'/api/professionals?tenant='+T); const d=await r.json(); const list=(d.professionals||[]);
+    // coste total de personal (bruto + SS)
+    let totalBruto=0,totalCoste=0;
+    list.filter(e=>e.active!==0).forEach(e=>{ const sal=+e.salary_gross||0; const ss=e.ss_pct!=null?+e.ss_pct:30; totalBruto+=sal; totalCoste+=sal*(1+ss/100); });
+    const ec=document.getElementById('empCost');
+    if(ec) ec.innerHTML='<div><div class="sub" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em">Salarios brutos / mes</div><b style="font-size:1.15rem">'+eur(totalBruto)+'</b></div>'
+      +'<div><div class="sub" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em">Coste total con S.S.</div><b style="font-size:1.15rem;color:#b0432e">'+eur(totalCoste)+'</b></div>'
+      +'<div><div class="sub" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em">Empleados</div><b style="font-size:1.15rem">'+list.filter(e=>e.active!==0).length+'</b></div>';
+    if(!list.length){ c.innerHTML='<div style="color:var(--muted);font-size:.85rem">Aún no has añadido empleados. Añade tu equipo con su salario para ver tu beneficio real.</div>'; return; }
+    c.innerHTML=list.map(e=>{ const sal=+e.salary_gross||0; const ss=e.ss_pct!=null?+e.ss_pct:30; const coste=sal*(1+ss/100); const inactive=e.active===0;
+      return '<div style="display:flex;align-items:center;gap:.7rem;padding:.7rem 0;border-bottom:1px solid var(--line);'+(inactive?'opacity:.5':'')+'"><div style="width:34px;height:34px;border-radius:50%;background:'+(e.color||'#c8745a')+';color:#fff;display:grid;place-items:center;font-weight:700;flex:none">'+((e.name||'?').charAt(0).toUpperCase())+'</div>'
+        +'<div style="flex:1;min-width:0"><b style="font-size:.92rem">'+(e.name||'Empleado')+'</b> <span class="tag" style="background:var(--bg2);font-size:.68rem">'+(EMP_ROLES[e.role]||e.role||'Profesional')+'</span><div style="font-size:.76rem;color:var(--muted)">'+(sal>0?eur(sal)+' bruto/mes · +'+ss+'% S.S. = '+eur(coste):'sin salario')+(e.commission_pct>0?' · '+e.commission_pct+'% comisión':'')+'</div></div>'
+        +'<button class="btn" style="padding:.3rem .6rem;font-size:.75rem" onclick="editEmployee(\''+e.id+'\')">Editar</button>'
+        +'<button class="btn" style="padding:.3rem .45rem;font-size:.75rem" onclick="delEmployee(\''+e.id+'\',\''+(e.name||'').replace(/\x27/g,"")+'\')">✕</button></div>'; }).join('');
+    window._empCache=list;
+  }catch(e){}
+}
+function openEmployee(id){
+  const e=(window._empCache||[]).find(x=>x.id===id)||{};
+  const isEdit=!!id;
+  const ov=document.createElement('div'); ov.id='emOv'; ov.style='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:grid;place-items:center;padding:1rem;overflow:auto';
+  const roleOpts=Object.keys(EMP_ROLES).map(k=>'<option value="'+k+'"'+(e.role===k?' selected':'')+'>'+EMP_ROLES[k]+'</option>').join('');
+  ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:400px;width:100%;padding:1.4rem;max-height:90vh;overflow:auto"><h3 class="serif" style="margin:0 0 .8rem">'+(isEdit?'Editar empleado':'Nuevo empleado')+'</h3>'
+    +'<div class="field"><label>Nombre</label><input id="emName" value="'+(e.name||'')+'" placeholder="Nombre y apellido"/></div>'
+    +'<div class="field"><label>Rol</label><select id="emRole">'+roleOpts+'</select></div>'
+    +'<div class="row2"><div class="field"><label>Salario bruto / mes (€)</label><input id="emSalary" type="number" value="'+(e.salary_gross||'')+'" placeholder="1800"/></div><div class="field"><label>Seg. Social empresa (%)</label><input id="emSS" type="number" value="'+(e.ss_pct!=null?e.ss_pct:30)+'"/></div></div>'
+    +'<div class="field"><label>Comisión sobre sus ventas (%) · opcional</label><input id="emComm" type="number" value="'+(e.commission_pct||'')+'" placeholder="0"/></div>'
+    +(isEdit?'<div class="field"><label>Estado</label><select id="emActive"><option value="1"'+(e.active!==0?' selected':'')+'>Activo</option><option value="0"'+(e.active===0?' selected':'')+'>Inactivo (baja)</option></select></div>':'')
+    +'<div style="font-size:.74rem;color:var(--muted);margin:.3rem 0 .8rem">El coste real (bruto + S.S.) se descuenta del beneficio en la sección Caja.</div>'
+    +'<div style="display:flex;gap:.5rem"><button class="btn prim" style="flex:1" onclick="saveEmployee('+(isEdit?('\''+id+'\''):'null')+')">Guardar</button><button class="btn" onclick="document.getElementById(\'emOv\').remove()">Cancelar</button></div></div>';
+  document.body.appendChild(ov);
+}
+function editEmployee(id){ openEmployee(id); }
+async function saveEmployee(id){
+  const body={tenant_id:T,name:document.getElementById('emName').value||'Empleado',role:document.getElementById('emRole').value,salary_gross:+document.getElementById('emSalary').value||0,ss_pct:+document.getElementById('emSS').value||0,commission_pct:+document.getElementById('emComm').value||0};
+  if(id){ body.id=id; const a=document.getElementById('emActive'); body.active=a?+a.value:1; }
+  await fetch(WORKER+'/api/professionals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  document.getElementById('emOv').remove(); loadEmployees();
+}
+async function delEmployee(id,name){ if(!confirm('¿Eliminar a '+(name||'este empleado')+'? Sus citas pasadas se mantienen.'))return; await fetch(WORKER+'/api/professionals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({delete:id})}); loadEmployees(); }
 async function inviteMember(){
   const name=document.getElementById('tmName').value.trim();
   const email=document.getElementById('tmEmail').value.trim();
@@ -1336,7 +1412,51 @@ async function loadCaja(){
       tb.appendChild(tr);
     });
   }catch(e){}
-  loadBonos(); loadProducts();
+  loadBonos(); loadProducts(); loadProfit();
+}
+// ===== Beneficio real =====
+let _profitPeriod='day';
+function setProfitPeriod(p,btn){ _profitPeriod=p; document.querySelectorAll('#profitTabs .pbtn').forEach(b=>b.classList.remove('on')); if(btn)btn.classList.add('on'); loadProfit(); }
+async function loadProfit(){
+  try{
+    const r=await fetch(WORKER+'/api/profit?tenant='+T+'&period='+_profitPeriod+'&day='+cajaDayVal()); const d=await r.json();
+    const main=document.getElementById('profitMain'); if(main){ main.textContent=eur(d.beneficio); main.style.color=(d.beneficio>=0)?'#7be0b5':'#f0a08c'; }
+    const lbl=document.getElementById('profitLabel'); if(lbl)lbl.textContent='beneficio neto · '+(_profitPeriod==='day'?'hoy':_profitPeriod==='week'?'esta semana':'este mes');
+    const bd=document.getElementById('profitBreakdown');
+    if(bd){ const row=(k,v,neg)=>'<div style="display:flex;justify-content:space-between;padding:.25rem 0;border-bottom:1px solid rgba(255,255,255,.08)"><span style="color:rgba(255,255,255,.7)">'+k+'</span><span style="color:'+(neg?'#f0a08c':'#fff')+'">'+(neg?'−':'')+eur(Math.abs(v))+'</span></div>';
+      bd.innerHTML = row('Cobrado (con IVA)', d.cobrado, false)
+        + row('IVA ('+d.detalle.iva_pct+'%) → Hacienda', d.iva, true)
+        + '<div style="display:flex;justify-content:space-between;padding:.25rem 0;border-bottom:1px solid rgba(255,255,255,.08)"><span style="color:#fff;font-weight:700">Ingreso real (base)</span><span style="color:#fff;font-weight:700">'+eur(d.base)+'</span></div>'
+        + row('Coste de producto', d.coste_producto, true)
+        + row('Comisiones ('+d.detalle.commission_pct+'%)', d.comisiones, true)
+        + row('Personal (nóminas + S.S.)', d.personal||0, true)
+        + row('Gastos fijos (prorrateo)', d.gastos_fijos, true)
+        + row('Marketing', d.marketing, true);
+    }
+    const iv=document.getElementById('profitIva'); if(iv)iv.innerHTML='Aparta para Hacienda: <b>'+eur(d.iva_apartar)+'</b> de IVA ('+(_profitPeriod==='month'?'este mes':_profitPeriod==='week'?'esta semana':'hoy')+').';
+  }catch(e){}
+}
+function openCosts(){
+  const ov=document.createElement('div'); ov.id='coOv'; ov.style='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:grid;place-items:center;padding:1rem;overflow:auto';
+  ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:440px;width:100%;padding:1.4rem;max-height:90vh;overflow:auto"><h3 class="serif" style="margin:0 0 .2rem">Gastos del negocio</h3><p class="sub" style="margin:0 0 1rem">Para el beneficio real. Las nóminas se gestionan en Equipo.</p>'
+    +'<label style="font-size:.8rem;font-weight:700">Gastos fijos mensuales (sin nóminas)</label><div id="coFixed" style="margin:.4rem 0"></div><button class="btn" style="font-size:.78rem;padding:.35rem .7rem" onclick="addFixedRow()">+ Añadir gasto fijo</button>'
+    +'<div class="row2" style="margin-top:1rem"><div class="field"><label>Marketing al mes (€)</label><input id="coMkt" type="number" placeholder="600"/></div><div class="field"><label>Comisión general (%)</label><input id="coComm" type="number" placeholder="0"/></div></div>'
+    +'<div class="row2"><div class="field"><label>IVA (%)</label><input id="coIva" type="number" placeholder="21"/></div><div class="field"><label>Los precios incluyen IVA</label><select id="coInci"><option value="1">Sí (precio final)</option><option value="0">No (sin IVA)</option></select></div></div>'
+    +'<div class="field"><label>Reparto de gastos fijos</label><select id="coProrate"><option value="open_days">Solo días que abro (recomendado)</option><option value="linear">Todos los días del mes</option></select></div>'
+    +'<div style="display:flex;gap:.5rem;margin-top:1rem"><button class="btn prim" style="flex:1" onclick="saveCosts()">Guardar</button><button class="btn" onclick="document.getElementById(\'coOv\').remove()">Cancelar</button></div></div>';
+  document.body.appendChild(ov);
+  fetch(WORKER+'/api/business-costs?tenant='+T).then(r=>r.json()).then(d=>{
+    (d.fixed&&d.fixed.length?d.fixed:[{name:'',amount:''}]).forEach(f=>addFixedRow(f.name,f.amount));
+    document.getElementById('coMkt').value=d.marketing_monthly||''; document.getElementById('coComm').value=d.commission_pct||'';
+    document.getElementById('coIva').value=(d.iva_pct!=null?d.iva_pct:21); document.getElementById('coInci').value=String(d.price_includes_iva!=null?d.price_includes_iva:1); document.getElementById('coProrate').value=d.prorate_mode||'open_days';
+  }).catch(()=>addFixedRow());
+}
+function addFixedRow(name,amount){ const c=document.getElementById('coFixed'); if(!c)return; const row=document.createElement('div'); row.className='cofx'; row.style='display:flex;gap:.4rem;margin-bottom:.4rem'; row.innerHTML='<input class="cofx-n" placeholder="Concepto (ej: Alquiler)" value="'+(name||'')+'" style="flex:2;padding:.5rem;border:1px solid var(--line);border-radius:9px"/><input class="cofx-a" type="number" placeholder="€/mes" value="'+(amount!=null?amount:'')+'" style="flex:1;padding:.5rem;border:1px solid var(--line);border-radius:9px"/><button class="btn" style="padding:.3rem .5rem" onclick="this.parentNode.remove()">✕</button>'; c.appendChild(row); }
+async function saveCosts(){
+  const fixed=[]; document.querySelectorAll('#coFixed .cofx').forEach(r=>{ const n=r.querySelector('.cofx-n').value.trim(); const a=+r.querySelector('.cofx-a').value||0; if(n&&a>0)fixed.push({name:n,amount:a}); });
+  const body={tenant_id:T,fixed,marketing_monthly:+document.getElementById('coMkt').value||0,commission_pct:+document.getElementById('coComm').value||0,iva_pct:+document.getElementById('coIva').value||0,price_includes_iva:+document.getElementById('coInci').value,prorate_mode:document.getElementById('coProrate').value};
+  await fetch(WORKER+'/api/business-costs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  document.getElementById('coOv').remove(); loadProfit();
 }
 async function markPaid(id,amount,name){ await fetch(WORKER+'/api/treatments',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,amount,name,pay_status:'paid'})}); loadCaja(); }
 
