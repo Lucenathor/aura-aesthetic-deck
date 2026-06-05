@@ -810,7 +810,11 @@ export default {
         confirm2: '{clinica}: {nombre}, ¿te esperamos {fecha} a las {hora}? Confírmame con un toque o cámbiala aquí: {link}',
         noshow2: '{clinica}: {nombre}, aún tengo un hueco para ti esta semana. ¿Lo reservamos antes de que se ocupe? {link}',
         reactivation: '{clinica}: {nombre}, tu valoración sigue disponible. Tengo hueco {proximo_dia}, te lo guardo: {link}',
-        recall_sale: '{clinica}: {nombre}, toca tu revisión para mantener el resultado. Tengo hueco {proximo_dia}, reserva aquí: {link}'
+        recall_sale: '{clinica}: {nombre}, toca tu revisión para mantener el resultado. Tengo hueco {proximo_dia}, reserva aquí: {link}',
+        fast20: '{clinica}: {nombre}, vi que dejaste tus datos. ¿Te ayudo a reservar tu valoración? Es solo un momento: {link}',
+        fast5h: '{clinica}: {nombre}, te guardo tu hueco para la valoración. Tengo disponibilidad {proximo_dia}, ¿la cerramos? {link}',
+        react_last: '{clinica}: {nombre}, última oportunidad para tu valoración con la promo de este mes. Si te interesa, reserva aquí antes de que cierre: {link}',
+        birthday: '{clinica}: ¡Feliz cumpleaños, {nombre}! Te regalamos un detalle en tu próxima visita. Resérvala cuando quieras: {link}'
       };
       if (p === '/api/sms-templates' && req.method === 'GET') {
         const tenant = url.searchParams.get('tenant');
@@ -1249,8 +1253,10 @@ export default {
         if (!b.lead || !(await verifyLead(env, b.lead, b.k||''))) return json({ error:'invalid' }, 403);
         if (b.action === 'confirm') {
           await env.aura_db.prepare("UPDATE appointments SET confirmed=1 WHERE lead_id=? AND status='booked'").bind(b.lead).run();
-        } else if (b.action === 'change') {
-          await env.aura_db.prepare("UPDATE appointments SET confirmed=-1 WHERE lead_id=? AND status='booked'").bind(b.lead).run();
+        } else if (b.action === 'change' || b.action === 'cancel') {
+          // El paciente quiere cambiar/cancelar: tratarlo como recuperación inmediata (lead calentito que quería venir)
+          await env.aura_db.prepare("UPDATE appointments SET confirmed=-1"+(b.action==='cancel'?", status='cancelled'":'')+" WHERE lead_id=? AND status='booked'").bind(b.lead).run();
+          await env.aura_db.prepare("UPDATE leads SET recover_state='cancel', call_priority='urgent' WHERE id=?").bind(b.lead).run();
         }
         return json({ ok:true });
       }
@@ -1567,7 +1573,11 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
     confirm2: '{clinica}: {nombre}, ¿te esperamos {fecha} a las {hora}? Confírmame con un toque o cámbiala aquí: {link}',
     noshow2: '{clinica}: {nombre}, aún tengo un hueco para ti esta semana. ¿Lo reservamos antes de que se ocupe? {link}',
     reactivation: '{clinica}: {nombre}, tu valoración sigue disponible. Tengo hueco {proximo_dia}, te lo guardo: {link}',
-    recall_sale: '{clinica}: {nombre}, toca tu revisión para mantener el resultado. Tengo hueco {proximo_dia}, reserva aquí: {link}'
+    recall_sale: '{clinica}: {nombre}, toca tu revisión para mantener el resultado. Tengo hueco {proximo_dia}, reserva aquí: {link}',
+    fast20: '{clinica}: {nombre}, vi que dejaste tus datos. ¿Te ayudo a reservar tu valoración? Es solo un momento: {link}',
+    fast5h: '{clinica}: {nombre}, te guardo tu hueco para la valoración. Tengo disponibilidad {proximo_dia}, ¿la cerramos? {link}',
+    react_last: '{clinica}: {nombre}, última oportunidad para tu valoración con la promo de este mes. Si te interesa, reserva aquí antes de que cierre: {link}',
+    birthday: '{clinica}: ¡Feliz cumpleaños, {nombre}! Te regalamos un detalle en tu próxima visita. Resérvala cuando quieras: {link}'
   };
   async function tpl(tenantId: string){
     const row: any = await env.aura_db.prepare('SELECT templates FROM sms_templates WHERE tenant_id=?').bind(tenantId).first();
@@ -1653,7 +1663,17 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
       // Apuntamos SIEMPRE al próximo día abierto (anuncios 24/7: nunca dejamos enfriar al lead).
       const prox = await proximoDiaFor(l.tenant_id);
       const vars = { clinica: tn.name||'', nombre: l.name||'', link: mlink, tel:(tn.whatsapp||''), proximo_dia: prox || 'esta semana' };
-      if (!l.react_d3 && days >= 3 && days < 3.0417) {
+      const mins = (nowUTC.getTime()-created.getTime())/60000;
+      // TOQUE RÁPIDO: dejó datos y no reservó ni entró al chat. 20 min y 5h (lead caliente, no dejar enfriar)
+      if (!l.sms_fast20 && mins >= 20 && mins < 80 && !l.chatted) {
+        const r = await sendSMS(env, l.phone, fill(T.fast20, vars), tn.name||'AURA', l.tenant_id);
+        if (r.ok) { await env.aura_db.prepare('UPDATE leads SET sms_fast20=1 WHERE id=?').bind(l.id).run(); sent++; }
+      } else if (!l.sms_fast5h && mins >= 300 && mins < 360) {
+        if (!prox) { /* sin día abierto: espera */ } else {
+          const r = await sendSMS(env, l.phone, fill(T.fast5h, vars), tn.name||'AURA', l.tenant_id);
+          if (r.ok) { await env.aura_db.prepare('UPDATE leads SET sms_fast5h=1 WHERE id=?').bind(l.id).run(); sent++; }
+        }
+      } else if (!l.react_d3 && days >= 3 && days < 3.0417) {
         if (!prox) continue; // sin ningún día abierto en el horizonte: espera al siguiente cron
         const r = await sendSMS(env, l.phone, fill(T.reactivation, vars), tn.name||'AURA', l.tenant_id);
         if (r.ok) { await env.aura_db.prepare('UPDATE leads SET react_d3=1 WHERE id=?').bind(l.id).run(); sent++; }
@@ -1661,7 +1681,23 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
         if (!prox) continue;
         const r = await sendSMS(env, l.phone, fill(T.reactivation, vars), tn.name||'AURA', l.tenant_id);
         if (r.ok) { await env.aura_db.prepare('UPDATE leads SET react_d7=1 WHERE id=?').bind(l.id).run(); sent++; }
+      } else if (!l.react_d21 && days >= 21 && days < 21.0417) {
+        // Último intento antes de dejarlo ir
+        const r = await sendSMS(env, l.phone, fill(T.react_last, vars), tn.name||'AURA', l.tenant_id);
+        if (r.ok) { await env.aura_db.prepare('UPDATE leads SET react_d21=1 WHERE id=?').bind(l.id).run(); sent++; }
       }
+    }
+    // 2b) CUMPLEAÑOS: SMS de felicitación una vez al año a clientes con fecha de nacimiento (mes-día = hoy)
+    const md = (madridParts(nowUTC).dateStr).slice(5); // MM-DD
+    const yr = (madridParts(nowUTC).dateStr).slice(0,4);
+    const bdays: any = await env.aura_db.prepare("SELECT * FROM leads WHERE birthday IS NOT NULL AND substr(birthday,6,5)=? AND phone IS NOT NULL AND (bday_year_sent IS NULL OR bday_year_sent!=?)").bind(md, yr).all();
+    for (const l of (bdays.results||[])) {
+      const tn: any = await tenant(l.tenant_id); if(!tn) continue;
+      const T = await tpl(l.tenant_id);
+      const mlink = await magicLink(env, l.tenant_id, l.id);
+      const vars = { clinica: tn.name||'', nombre: l.name||'', link: mlink, tel:(tn.whatsapp||'') };
+      const r = await sendSMS(env, l.phone, fill(T.birthday, vars), tn.name||'AURA', l.tenant_id);
+      if (r.ok) { await env.aura_db.prepare('UPDATE leads SET bday_year_sent=? WHERE id=?').bind(yr, l.id).run(); sent++; }
     }
     // 3) Recall de nueva venta: recall_date vencido y tipo venta, SMS una vez
     const recalls: any = await env.aura_db.prepare("SELECT * FROM leads WHERE recall_type='venta' AND recall_date IS NOT NULL AND (recall_sms_sent IS NULL OR recall_sms_sent=0) AND phone IS NOT NULL").all();

@@ -1889,15 +1889,15 @@ function renderKanban(){
     col.appendChild(body); k.appendChild(col);
   }
   // COLUMNA VIRTUAL: RECUPERAR (NO VINO)
-  const recuperar = kLeads.filter(l=> l.recover_state==='noshow' && l.status!=='booked' && l.call_result!=='no_interesado');
+  const recuperar = kLeads.filter(l=> (l.recover_state==='noshow'||l.recover_state==='cancel') && l.status!=='booked' && l.call_result!=='no_interesado');
   {
     const col=document.createElement('div'); col.className='kcol'+(recuperar.length?' urgent':''); col.style.setProperty('--st','#e0392b'); col.style.setProperty('--stbg','rgba(224,57,43,.10)');
     col.innerHTML='<div class="kcol-bar" style="background:#e0392b"></div><div class="kcol-h"><span class="nm" style="color:#b0432e">🔁 RECUPERAR (NO VINO)</span><span class="cnt" style="background:#fde8e4;color:#b0432e">'+recuperar.length+'</span></div>';
     const body=document.createElement('div'); body.className='kcol-body';
     if(!recuperar.length){ body.innerHTML='<div class="kempty">Nadie por recuperar</div>'; }
     recuperar.forEach(l=>{ const c=document.createElement('div'); c.className='kcard'; c.style.setProperty('--st','#e0392b'); const initial=(l.name||'?').trim().charAt(0).toUpperCase();
-      const faltas=(l.noshow_count||1)>1? ' · '+l.noshow_count+' faltas':'';
-      c.innerHTML='<div class="ktop"><span class="kav" style="background:#fde8e4;color:#b0432e">'+initial+'</span><div style="min-width:0"><b>'+(l.name||'—')+'</b><div class="ktr" style="font-size:.74rem;color:var(--muted)">'+(l.treatment||'—')+' · no vino'+faltas+'</div></div></div>'
+      const motivo = l.recover_state==='cancel' ? 'canceló' : 'no vino'; const faltas=(l.noshow_count||1)>1? ' · '+l.noshow_count+' faltas':'';
+      c.innerHTML='<div class="ktop"><span class="kav" style="background:#fde8e4;color:#b0432e">'+initial+'</span><div style="min-width:0"><b>'+(l.name||'—')+'</b><div class="ktr" style="font-size:.74rem;color:var(--muted)">'+(l.treatment||'—')+' · '+motivo+faltas+'</div></div></div>'
         +'<div style="display:flex;gap:.4rem;margin-top:.55rem"><a href="tel:'+(l.phone||'')+'" onclick="event.stopPropagation()" style="flex:1;text-align:center;background:#e0392b;color:#fff;font-weight:700;font-size:.78rem;padding:.5rem;border-radius:8px;text-decoration:none">☎ Recuperar</a><button onclick="event.stopPropagation();openScript(\'recover\',\''+l.id+'\')" style="background:#fff;border:1px solid var(--line);border-radius:8px;font-size:.78rem;padding:.5rem .6rem;cursor:pointer">Guión</button></div>';
       c.onclick=()=>openDrawer(l); body.appendChild(c); });
     col.appendChild(body); k.appendChild(col);
