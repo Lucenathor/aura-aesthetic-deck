@@ -1245,7 +1245,7 @@ export default {
         const link = 'https://aura-mvp.pages.dev/firmar?consent='+id+'&lead='+encodeURIComponent(b.lead_id)+'&k='+tok;
         let smsSent=false;
         if (lead.phone && !b.no_sms) {
-          const tn:any = await tenant(b.tenant_id);
+          const tn:any = await env.aura_db.prepare('SELECT id,name,whatsapp,address FROM tenants WHERE id=?').bind(b.tenant_id).first();
           const msg = (tn?.name||'AURA')+': '+(lead.name||'')+', firma tu consentimiento para el tratamiento aqui (1 min, desde tu movil): '+link;
           const r = await sendSMS(env, lead.phone, msg, (tn?.name||'AURA'), b.tenant_id); smsSent = r.ok;
         }

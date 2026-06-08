@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.slide-container{width:1280px;min-height:720px;background:#0E1B2C;position:relative;font-family:'Inter',sans-serif}
+.inner{padding:64px 80px 0}
+.kicker{font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:#C9A86A;font-weight:600;margin-bottom:14px}
+h1{font-family:'Playfair Display',serif;font-size:40px;color:#fff;font-weight:600;line-height:1.12}
+.lead{font-size:18px;color:#C7D0DB;margin-top:16px;max-width:980px;line-height:1.5}
+.grid{display:grid;grid-template-columns:1.35fr 1fr;gap:28px;margin-top:20px;align-items:start}
+.chat{display:flex;flex-direction:column;gap:8px}
+.row{display:flex}
+.row.me{justify-content:flex-start}
+.row.ai{justify-content:flex-end}
+.bub{max-width:78%;font-size:16px;line-height:1.4;padding:8px 14px;border-radius:4px}
+.bub.me{background:#1c2f47;color:#C7D0DB}
+.bub.ai{background:linear-gradient(180deg,#C9A86A,#b9965a);color:#16263c;font-weight:500}
+.who{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#7d8b9b;margin-bottom:5px}
+.side{border-top:3px solid #C9A86A;background:#13243A;padding:22px 20px 22px}
+.side h2{font-family:'Playfair Display',serif;font-size:22px;color:#fff;margin-bottom:14px}
+.pt{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;font-size:15px;color:#C7D0DB;line-height:1.42}
+.pt i{color:#C9A86A;font-size:14px;margin-top:3px}
+.pill{display:inline-block;font-size:12px;letter-spacing:.05em;color:#C8745A;border:1px solid #C8745A;padding:3px 10px;border-radius:4px;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <img src="/home/ubuntu/aura-presentation/slides_embudo/focus_logo.png" style="position:absolute;top:34px;right:54px;height:30px;object-fit:contain;opacity:.9;z-index:3" alt="FOCUS">
+  <div class="inner">
+    <div class="kicker">Fase 3 · Cualificación con IA</div>
+    <h1>Rebaja la objeción y vuelve al cierre</h1>
+    <div class="lead">La IA usa lo que ya sabe del quiz —deseo y duda— para empujar con naturalidad hacia la valoración gratuita. Habla como el asesor de la clínica desde su móvil.</div>
+    <div class="grid">
+      <div class="chat">
+        <div class="row me"><div><div class="who">Paciente</div><div class="bub me">me da miedo que se note artificial</div></div></div>
+        <div class="row ai"><div><div class="who" style="text-align:right">AURA</div><div class="bub ai">te entiendo. trabajamos siempre resultados naturales.</div></div></div>
+        <div class="row ai"><div><div class="bub ai">la doctora te enseña antes cómo quedaría en ti.</div></div></div>
+        <div class="row me"><div><div class="bub me">¿y cuánto cuesta?</div></div></div>
+        <div class="row ai"><div><div class="bub ai">la valoración es sin coste. el precio te lo cierra ella.</div></div></div>
+        <div class="row ai"><div><div class="bub ai">te reservo el lunes a las 17:00, ¿te va bien?</div></div></div>
+      </div>
+      <div class="side">
+        <h2>Qué hace bien en cada turno</h2>
+        <div class="pt"><i class="fa-solid fa-heart"></i><span>Valida la emoción antes de responder.</span></div>
+        <div class="pt"><i class="fa-solid fa-shield-halved"></i><span>Desactiva la objeción concreta del quiz.</span></div>
+        <div class="pt"><i class="fa-solid fa-tag"></i><span>Reencuadra el precio: la valoración es gratis.</span></div>
+        <div class="pt"><i class="fa-solid fa-calendar-check"></i><span>Cierra con un hueco concreto, no genérico.</span></div>
+        <span class="pill">Sin presión · sin sonar a robot</span>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

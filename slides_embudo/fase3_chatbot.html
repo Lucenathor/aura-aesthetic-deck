@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.slide-container{width:1280px;min-height:720px;background:#0E1B2C;position:relative;font-family:'Inter',sans-serif;overflow:hidden}
+.logo{position:absolute;top:34px;right:54px;height:30px;object-fit:contain;opacity:.9;z-index:3}
+.inner{padding:58px 80px 0;display:grid;grid-template-columns:1.25fr .75fr;gap:40px;align-items:start}
+.kicker{font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:#C9A86A;font-weight:600;margin-bottom:12px}
+h1{font-family:'Playfair Display',serif;font-size:37px;color:#fff;font-weight:600;line-height:1.12;max-width:640px}
+.lead{font-size:16px;color:#C7D0DB;margin-top:14px;line-height:1.5;max-width:600px}
+.rules{margin-top:26px;display:flex;flex-direction:column;gap:16px}
+.li{display:flex;gap:13px;align-items:flex-start;font-size:16px;color:#C7D0DB;line-height:1.42}
+.li i{color:#C9A86A;font-size:15px;margin-top:3px;width:18px;text-align:center}
+.li b{color:#fff;font-weight:600}
+.goal{margin-top:24px;background:#15273f;border-left:4px solid #C8745A;padding:16px 20px;font-size:16px;color:#EAD9B8;line-height:1.4}
+.phone{display:flex;align-items:flex-start;justify-content:center}
+.phone img{height:560px;object-fit:contain}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <img src="/home/ubuntu/aura-presentation/slides_embudo/focus_logo.png" class="logo" alt="FOCUS">
+  <div class="inner">
+    <div>
+      <div class="kicker">Fase 3 · Cualificación con IA</div>
+      <h1>El chatbot cualifica como un asesor real, no como un bot</h1>
+      <div class="lead">Al terminar el quiz, la paciente entra en una conversación que parece escrita por el asesor de la clínica desde su móvil. Usa lo que ya sabe de ella para llevarla a la valoración.</div>
+      <div class="rules">
+        <div class="li"><i class="fa-solid fa-comment"></i><span><b>Tono humano:</b> minúsculas, frases de máximo 12 palabras.</span></div>
+        <div class="li"><i class="fa-solid fa-rotate"></i><span><b>Una respuesta por turno</b> y nunca repite frases.</span></div>
+        <div class="li"><i class="fa-solid fa-user-doctor"></i><span><b>Nunca da diagnóstico:</b> eso lo resuelve la doctora.</span></div>
+      </div>
+      <div class="goal"><i class="fa-solid fa-bullseye" style="color:#C9A86A;margin-right:8px"></i>Un único objetivo: <b>agendar la valoración gratuita</b>.</div>
+    </div>
+    <div class="phone"><img src="/home/ubuntu/aura-presentation/slides_embudo/mockup_chat.png" alt="Chat IA"></div>
+  </div>
+</div>
+</body>
+</html>

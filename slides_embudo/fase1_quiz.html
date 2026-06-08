@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.slide-container{width:1280px;min-height:720px;background:#0E1B2C;position:relative;font-family:'Inter',sans-serif;overflow:hidden}
+.logo{position:absolute;top:34px;right:54px;height:30px;object-fit:contain;opacity:.9;z-index:3}
+.inner{padding:58px 80px 0;display:grid;grid-template-columns:1.25fr .75fr;gap:40px}
+.kicker{font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:#C9A86A;font-weight:600;margin-bottom:12px}
+h1{font-family:'Playfair Display',serif;font-size:37px;color:#fff;font-weight:600;line-height:1.12;max-width:640px}
+.lead{font-size:16px;color:#C7D0DB;margin-top:14px;line-height:1.5;max-width:600px}
+.qs{margin-top:26px;display:flex;flex-direction:column;gap:14px}
+.qrow{display:flex;align-items:flex-start;gap:14px}
+.qn{width:34px;height:34px;flex-shrink:0;background:#15273f;border:1px solid #C9A86A;color:#C9A86A;font-family:'Playfair Display',serif;font-size:15px;display:flex;align-items:center;justify-content:center}
+.qt{font-size:16px;color:#fff;font-weight:600}
+.qd{font-size:14px;color:#9aa7b5;margin-top:1px}
+.qd b{color:#C8745A;font-weight:600}
+.phone{display:flex;align-items:center;justify-content:center}
+.phone img{height:560px;object-fit:contain}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <img src="/home/ubuntu/aura-presentation/slides_embudo/focus_logo.png" class="logo" alt="FOCUS">
+  <div class="inner">
+    <div>
+      <div class="kicker">Fase 1 · El quiz</div>
+      <h1>Cinco preguntas que entienden, no que interrogan</h1>
+      <div class="lead">Cada respuesta es a la vez un dato de venta y un "micro-sí" que compromete. Al terminar, sabemos su deseo, su urgencia y su objeción.</div>
+      <div class="qs">
+        <div class="qrow"><div class="qn">1</div><div><div class="qt">¿Qué te gustaría conseguir?</div><div class="qd">Hidratación · volumen · contorno · asimetría → <b>detecta el deseo</b></div></div></div>
+        <div class="qrow"><div class="qn">2</div><div><div class="qt">¿Cómo los quieres?</div><div class="qd">Naturales · marcados · no lo sé → <b>detecta el estilo</b></div></div></div>
+        <div class="qrow"><div class="qn">3</div><div><div class="qt">¿Para cuándo te gustaría?</div><div class="qd">Ya · tengo un evento · informándome → <b>detecta la urgencia</b></div></div></div>
+        <div class="qrow"><div class="qn">4</div><div><div class="qt">¿Cuál es tu mayor duda?</div><div class="qd">Que se note · que duela · el precio → <b>detecta la objeción</b></div></div></div>
+      </div>
+    </div>
+    <div class="phone"><img src="/home/ubuntu/aura-presentation/slides_embudo/mockup_quiz.png" alt="Quiz de labios"></div>
+  </div>
+</div>
+</body>
+</html>

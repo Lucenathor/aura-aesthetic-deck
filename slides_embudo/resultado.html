@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.slide-container{width:1280px;min-height:720px;background:#0E1B2C;position:relative;font-family:'Inter',sans-serif}
+.inner{padding:62px 80px 0}
+.kicker{font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:#C9A86A;font-weight:600;margin-bottom:14px}
+h1{font-family:'Playfair Display',serif;font-size:40px;color:#fff;font-weight:600;line-height:1.12;max-width:1000px}
+.lead{font-size:18px;color:#C7D0DB;margin-top:16px;max-width:1000px;line-height:1.5}
+.cols{display:grid;grid-template-columns:1.1fr .9fr;gap:46px;margin-top:40px;align-items:start}
+.li{display:flex;gap:14px;align-items:flex-start;margin-bottom:22px}
+.li .ic{width:40px;height:40px;background:#15273f;border:1px solid #C9A86A;display:flex;align-items:center;justify-content:center;color:#C9A86A;font-size:15px;flex-shrink:0}
+.li .tt{font-size:17px;color:#fff;font-weight:600;margin-bottom:3px}
+.li .ds{font-size:15px;color:#9aa7b5;line-height:1.4}
+.panel{background:linear-gradient(150deg,#1f9d63,#0f6b3f);padding:34px 32px 36px}
+.panel .lab{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.75);font-weight:600}
+.panel .big{font-family:'Playfair Display',serif;font-size:58px;color:#fff;margin:6px 0 2px}
+.panel .per{font-size:14px;color:rgba(255,255,255,.8);margin-bottom:22px}
+.brk{display:flex;justify-content:space-between;font-size:14px;color:rgba(255,255,255,.92);padding:9px 0;border-bottom:1px solid rgba(255,255,255,.18)}
+.brk span:last-child{font-weight:700}
+.panel .foot{font-size:13px;color:rgba(255,255,255,.85);font-style:italic;margin-top:16px;line-height:1.45}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <img src="/home/ubuntu/aura-presentation/slides_embudo/focus_logo.png" style="position:absolute;top:34px;right:54px;height:30px;object-fit:contain;opacity:.9;z-index:3" alt="FOCUS">
+  <div class="inner">
+    <div class="kicker">El resultado</div>
+    <h1>Ninguna venta se escapa, y se mide en euros</h1>
+    <div class="lead">La landing tradicional pierde a quien no reserva a la primera. AURA lo persigue, lo recupera y te enseña cuánto dinero te ha devuelto cada mes.</div>
+    <div class="cols">
+      <div>
+        <div class="li"><div class="ic"><i class="fa-solid fa-snowflake"></i></div><div><div class="tt">Lead frío del fin de semana</div><div class="ds">Reservado para el lunes, sin enfriarse.</div></div></div>
+        <div class="li"><div class="ic"><i class="fa-solid fa-phone-volume"></i></div><div><div class="tt">El que no confirma</div><div class="ds">Llamada con guión + 2º SMS automático.</div></div></div>
+        <div class="li"><div class="ic"><i class="fa-solid fa-rotate-left"></i></div><div><div class="tt">El que no vino</div><div class="ds">Secuencia de recuperación + cola en el panel.</div></div></div>
+        <div class="li"><div class="ic"><i class="fa-solid fa-gem"></i></div><div><div class="tt">El cliente de hace 6 meses</div><div class="ds">Recall automático de nueva venta.</div></div></div>
+      </div>
+      <div class="panel">
+        <div class="lab">Recuperado gracias a AURA</div>
+        <div class="big">3.450 €</div>
+        <div class="per">este mes</div>
+        <div class="brk"><span>Citas recuperadas (no-show)</span><span>980 €</span></div>
+        <div class="brk"><span>Nuevas ventas por recall</span><span>1.520 €</span></div>
+        <div class="brk"><span>Leads reactivados</span><span>950 €</span></div>
+        <div class="foot">El número que justifica el software: cuánto te ha hecho ganar, no solo lo que facturas.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

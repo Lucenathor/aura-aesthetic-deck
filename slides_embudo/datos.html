@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.slide-container{width:1280px;min-height:720px;background:#0E1B2C;position:relative;font-family:'Inter',sans-serif}
+.logo{position:absolute;top:34px;right:54px;height:30px;object-fit:contain;opacity:.9}
+.inner{padding:58px 80px 0}
+.kicker{font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:#C9A86A;font-weight:600;margin-bottom:12px}
+h1{font-family:'Playfair Display',serif;font-size:40px;color:#fff;font-weight:600;line-height:1.12;max-width:840px}
+.cols{display:grid;grid-template-columns:1.1fr .9fr;gap:46px;margin-top:34px;align-items:center}
+.chartbox{background:#13243A;border-top:3px solid #C9A86A;padding:24px 26px 26px}
+.chartbox h2{font-size:14px;color:#C7D0DB;letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
+.chartwrap{height:300px;position:relative}
+.stats{display:flex;flex-direction:column;gap:20px}
+.stat{border-left:3px solid #C8745A;padding-left:18px}
+.stat .n{font-family:'Playfair Display',serif;font-size:42px;color:#C9A86A;line-height:1}
+.stat .d{font-size:16px;color:#C7D0DB;margin-top:6px;line-height:1.4}
+.stat .src{font-size:12px;color:#6f7d8c;margin-top:5px}
+.foot{margin-top:18px;font-size:12px;color:#6f7d8c}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <img src="/home/ubuntu/aura-presentation/slides_embudo/focus_logo.png" class="logo" alt="FOCUS">
+  <div class="inner">
+    <div class="kicker">Los datos mandan</div>
+    <h1>El quiz convierte hasta el doble que una landing</h1>
+    <div class="cols">
+      <div class="chartbox">
+        <h2>Tasa de conversión media a lead</h2>
+        <div class="chartwrap"><canvas id="c"></canvas></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="n">40,1%</div><div class="d">de quienes empiezan un quiz se convierten en lead.</div><div class="src">Interact · Quiz Conversion Report 2026</div></div>
+        <div class="stat"><div class="n">2×</div><div class="d">más conversiones genera el contenido interactivo frente al estático.</div><div class="src">Upland Kapost · Demand Gen Report</div></div>
+        <div class="stat"><div class="n">+743%</div><div class="d">de conversiones al pasar de un formulario simple a un quiz multi-paso.</div><div class="src">Heyflow · caso real</div></div>
+      </div>
+    </div>
+    <div class="foot">Landing tradicional: ~23% de conversión media de registro (Involve.me / Unbounce benchmark). El quiz capta más y, además, cualifica.</div>
+  </div>
+</div>
+<script>
+const ctx=document.getElementById('c').getContext('2d');
+new Chart(ctx,{type:'bar',data:{labels:['Landing tradicional','Quiz Page'],datasets:[{data:[23,40.1],backgroundColor:['#5b6c80','#C9A86A'],borderRadius:6,barThickness:96}]},
+options:{plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{y:{beginAtZero:true,max:50,ticks:{color:'#9aa7b5',callback:v=>v+'%'},grid:{color:'#1d2f47'}},x:{ticks:{color:'#fff',font:{size:15,weight:'600'}},grid:{display:false}}},animation:{duration:1200}}});
+</script>
+</body>
+</html>

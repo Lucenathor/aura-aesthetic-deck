@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.slide-container{width:1280px;min-height:720px;background:#0E1B2C;position:relative;font-family:'Inter',sans-serif;overflow:hidden}
+.phase-num{position:absolute;top:40px;right:70px;font-family:'Playfair Display',serif;font-size:150px;color:rgba(201,168,106,.10);line-height:1}
+.inner{padding:64px 80px 0;position:relative;z-index:2}
+.kicker{font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:#C9A86A;font-weight:600;margin-bottom:14px}
+h1{font-family:'Playfair Display',serif;font-size:40px;color:#fff;font-weight:600;line-height:1.12;max-width:900px}
+.cols{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;margin-top:42px;align-items:start}
+.lead{font-size:18px;color:#C7D0DB;line-height:1.5;margin-bottom:26px}
+.li{display:flex;gap:14px;align-items:flex-start;margin-bottom:22px}
+.li .ic{width:40px;height:40px;background:#15273f;border:1px solid #C9A86A;display:flex;align-items:center;justify-content:center;color:#C9A86A;font-size:16px;flex-shrink:0}
+.li .tt{font-size:17px;color:#fff;font-weight:600;margin-bottom:3px}
+.li .ds{font-size:15px;color:#9aa7b5;line-height:1.4}
+.cal{background:#13243A;border-top:3px solid #C9A86A;padding:26px 28px 30px}
+.cal h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#C9A86A;margin-bottom:18px;font-weight:600}
+.days{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.day{text-align:center}
+.dname{font-size:12px;color:#7d8b9b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em}
+.slot{font-size:13px;padding:9px 0;margin-bottom:7px;border:1px solid #2b3e57;color:#C7D0DB;background:#0E1B2C}
+.slot.open{border-color:#C9A86A;color:#EAD9B8}
+.day.closed .slot{color:#54616f;border-color:#243span}
+.day.closed .dname{color:#54616f}
+.closedlbl{font-size:11px;color:#54616f;margin-top:4px;letter-spacing:.05em}
+.note{margin-top:20px;font-size:14px;color:#9aa7b5;display:flex;gap:9px;align-items:flex-start}
+.note i{color:#C8745A;margin-top:3px}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <img src="/home/ubuntu/aura-presentation/slides_embudo/focus_logo.png" style="position:absolute;top:34px;right:54px;height:30px;object-fit:contain;opacity:.9;z-index:4" alt="FOCUS">
+  <div class="phase-num">04</div>
+  <div class="inner">
+    <div class="kicker">Fase 4 · Reserva</div>
+    <h1>Solo ofrece huecos que la clínica tiene abiertos</h1>
+    <div class="cols">
+      <div>
+        <div class="lead">El chatbot agenda en el calendario real: respeta el horario por día y las vacaciones, y nunca propone un día cerrado.</div>
+        <div class="li"><div class="ic"><i class="fa-solid fa-calendar-day"></i></div><div><div class="tt">Solo días y horas abiertos</div><div class="ds">Lee el horario real; jamás propone un sábado cerrado.</div></div></div>
+        <div class="li"><div class="ic"><i class="fa-solid fa-user-lock"></i></div><div><div class="tt">Anti-doble reserva</div><div class="ds">Nunca ofrece un hueco que ya está ocupado.</div></div></div>
+        <div class="li"><div class="ic"><i class="fa-solid fa-forward"></i></div><div><div class="tt">Próximo día abierto</div><div class="ds">Lead del domingo: "mi primer hueco es el lunes".</div></div></div>
+      </div>
+      <div class="cal">
+        <h2>Disponibilidad ofrecida</h2>
+        <div class="days">
+          <div class="day"><div class="dname">Vie</div><div class="slot open">10:00</div><div class="slot open">12:30</div><div class="slot open">17:00</div></div>
+          <div class="day closed"><div class="dname">Sáb</div><div class="slot">—</div><div class="slot">—</div><div class="closedlbl">cerrado</div></div>
+          <div class="day closed"><div class="dname">Dom</div><div class="slot">—</div><div class="slot">—</div><div class="closedlbl">cerrado</div></div>
+          <div class="day"><div class="dname">Lun</div><div class="slot open">09:30</div><div class="slot open">11:00</div><div class="slot open">18:00</div></div>
+        </div>
+        <div class="note"><i class="fa-solid fa-circle-info"></i><span>La cita reservada entra directa en la agenda del panel.</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.slide-container{width:1280px;min-height:720px;background:#0E1B2C;position:relative;font-family:'Inter',sans-serif}
+.inner{padding:60px 80px 0}
+.kicker{font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:#C9A86A;font-weight:600;margin-bottom:14px}
+h1{font-family:'Playfair Display',serif;font-size:40px;color:#fff;font-weight:600;line-height:1.12}
+.lead{font-size:18px;color:#C7D0DB;margin-top:16px;max-width:980px;line-height:1.5}
+.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:0;margin-top:48px;position:relative}
+.connector{position:absolute;top:34px;left:9%;right:9%;height:2px;background:linear-gradient(90deg,#C9A86A,#C8745A)}
+.step{position:relative;padding:0 12px;text-align:center}
+.num{width:68px;height:68px;border-radius:50%;background:#15273f;border:2px solid #C9A86A;color:#C9A86A;font-family:'Playfair Display',serif;font-size:26px;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;position:relative;z-index:2}
+.step h3{font-size:17px;color:#fff;font-weight:600;margin-bottom:8px}
+.step p{font-size:13.5px;color:#9aa7b5;line-height:1.42}
+.cta{margin-top:52px;background:#15273f;border-left:4px solid #C9A86A;padding:22px 28px;display:flex;align-items:center;gap:18px}
+.cta i{color:#C9A86A;font-size:24px}
+.cta .t{font-size:14px;color:#8a97a6;letter-spacing:.04em;text-transform:uppercase;margin-bottom:4px}
+.cta .u{font-size:21px;color:#fff;font-family:'Playfair Display',serif}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <img src="/home/ubuntu/aura-presentation/slides_embudo/focus_logo.png" style="position:absolute;top:34px;right:54px;height:30px;object-fit:contain;opacity:.9;z-index:3" alt="FOCUS">
+  <div class="inner">
+    <div class="kicker">El embudo · visión global</div>
+    <h1>Del anuncio a la camilla, en cinco fases conectadas</h1>
+    <div class="lead">Cada fase nutre más al lead. Y si se enfría, el sistema lo recupera solo, sin que el equipo tenga que acordarse.</div>
+    <div class="flow">
+      <div class="connector"></div>
+      <div class="step"><div class="num">1</div><h3>Quiz</h3><p>Atrae y entiende el deseo de la paciente.</p></div>
+      <div class="step"><div class="num">2</div><h3>Lead magnet</h3><p>Captura el contacto a cambio de su plan gratis.</p></div>
+      <div class="step"><div class="num">3</div><h3>Chatbot IA</h3><p>Cualifica y empuja a reservar, como un asesor.</p></div>
+      <div class="step"><div class="num">4</div><h3>Reserva</h3><p>Agenda la valoración en el calendario real.</p></div>
+      <div class="step"><div class="num">5</div><h3>Recuperación</h3><p>SMS y avisos que rescatan cada venta.</p></div>
+    </div>
+    <div class="cta">
+      <i class="fa-solid fa-arrow-pointer"></i>
+      <div><div class="t">Pruébalo en vivo</div><a href="https://aura-mvp.pages.dev/c/clinica-elvira" target="_blank" style="text-decoration:none"><div class="u" style="color:#fff">aura-mvp.pages.dev/c/clinica-elvira</div></a></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

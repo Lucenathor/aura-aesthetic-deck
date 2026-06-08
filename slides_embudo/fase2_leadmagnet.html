@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.slide-container{width:1280px;min-height:720px;background:#0E1B2C;position:relative;font-family:'Inter',sans-serif;overflow:hidden}
+.phase-num{position:absolute;top:40px;right:70px;font-family:'Playfair Display',serif;font-size:150px;color:rgba(201,168,106,.10);line-height:1}
+.inner{padding:64px 80px 0;position:relative;z-index:2}
+.kicker{font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:#C9A86A;font-weight:600;margin-bottom:14px}
+h1{font-family:'Playfair Display',serif;font-size:40px;color:#fff;font-weight:600;line-height:1.12;max-width:900px}
+.cols{display:grid;grid-template-columns:1.05fr .95fr;gap:54px;margin-top:40px;align-items:start}
+.lead{font-size:18px;color:#C7D0DB;line-height:1.5;margin-bottom:28px}
+.li{display:flex;gap:14px;align-items:flex-start;margin-bottom:20px}
+.li .ic{width:38px;height:38px;background:#15273f;border:1px solid #C9A86A;display:flex;align-items:center;justify-content:center;color:#C9A86A;font-size:15px;flex-shrink:0}
+.li .tt{font-size:17px;color:#fff;font-weight:600;margin-bottom:3px}
+.li .ds{font-size:15px;color:#9aa7b5;line-height:1.4}
+.mock{background:#15273f;border-top:3px solid #C9A86A;padding:34px 32px 38px;min-height:340px}
+.mock .badge{display:inline-block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#0E1B2C;background:#C9A86A;padding:5px 12px;font-weight:700;margin-bottom:22px}
+.mock h2{font-family:'Playfair Display',serif;font-size:30px;color:#fff;margin-bottom:10px}
+.mock p{font-size:15px;color:#C7D0DB;line-height:1.5;margin-bottom:24px}
+.fieldln{height:46px;background:#0E1B2C;border:1px solid #2b3e57;margin-bottom:14px;display:flex;align-items:center;padding:0 16px;color:#6c7a8b;font-size:15px}
+.cta{height:50px;background:linear-gradient(90deg,#C9A86A,#C8745A);display:flex;align-items:center;justify-content:center;color:#0E1B2C;font-weight:700;font-size:16px}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <img src="/home/ubuntu/aura-presentation/slides_embudo/focus_logo.png" style="position:absolute;top:34px;right:54px;height:30px;object-fit:contain;opacity:.9;z-index:4" alt="FOCUS">
+  <div class="phase-num">02</div>
+  <div class="inner">
+    <div class="kicker">Fase 2 · Lead magnet</div>
+    <h1>El contacto se captura pronto, no al final</h1>
+    <div class="cols">
+      <div>
+        <div class="lead">Tras la segunda pregunta aparece el imán: a cambio del teléfono, le decimos qué técnica le conviene y el precio exacto antes de pisar la clínica.</div>
+        <div class="li"><div class="ic"><i class="fa-solid fa-gift"></i></div><div><div class="tt">Se percibe como un regalo</div><div class="ds">"Tu plan de labios, gratis", no un formulario frío.</div></div></div>
+        <div class="li"><div class="ic"><i class="fa-solid fa-bolt"></i></div><div><div class="tt">Captura temprana</div><div class="ds">Aunque abandone luego, ya es un lead recuperable.</div></div></div>
+        <div class="li"><div class="ic"><i class="fa-solid fa-route"></i></div><div><div class="tt">Nadie se pierde</div><div class="ds">Desde aquí, el sistema puede seguir a esa persona.</div></div></div>
+      </div>
+      <div class="mock">
+        <span class="badge">Tu resultado, gratis</span>
+        <h2>Tu plan de labios, gratis</h2>
+        <p>Te decimos qué técnica te va mejor y el precio exacto, antes de pisar la clínica.</p>
+        <div class="fieldln"><i class="fa-solid fa-user" style="margin-right:10px"></i>Tu nombre</div>
+        <div class="fieldln"><i class="fa-solid fa-mobile-screen" style="margin-right:10px"></i>Tu teléfono</div>
+        <div class="cta">Ver mi plan personalizado</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

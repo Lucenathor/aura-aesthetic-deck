@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.slide-container{width:1280px;min-height:720px;background:#0E1B2C;position:relative;font-family:'Inter',sans-serif}
+.inner{padding:56px 80px 0}
+.kicker{font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:#C9A86A;font-weight:600;margin-bottom:12px}
+h1{font-family:'Playfair Display',serif;font-size:38px;color:#fff;font-weight:600;line-height:1.12}
+.lead{font-size:17px;color:#C7D0DB;margin-top:14px;max-width:1000px;line-height:1.5}
+table{width:100%;border-collapse:collapse;margin-top:28px;font-size:16px}
+th,td{text-align:left;padding:13px 18px;border-bottom:1px solid #21344b;vertical-align:middle}
+thead th{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#8a97a6;border-bottom:2px solid #C9A86A}
+td.fase{width:20%}
+td.mom{width:26%;color:#fff;font-weight:600}
+td.sms{width:54%;color:#C7D0DB;font-style:italic}
+.lbl{display:inline-block;font-size:12px;letter-spacing:.04em;text-transform:uppercase;padding:4px 10px;font-weight:600}
+.l-cap{background:rgba(201,168,106,.16);color:#C9A86A}
+.l-rec{background:rgba(120,160,200,.16);color:#9fc0e0}
+.l-rescue{background:rgba(200,116,90,.18);color:#e0936f}
+.l-recall{background:rgba(160,200,160,.16);color:#9ed3a0}
+.quote{margin-top:22px;font-family:'Playfair Display',serif;font-size:19px;color:#C9A86A;font-style:italic}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <img src="/home/ubuntu/aura-presentation/slides_embudo/focus_logo.png" style="position:absolute;top:34px;right:54px;height:30px;object-fit:contain;opacity:.9;z-index:3" alt="FOCUS">
+  <div class="inner">
+    <div class="kicker">Fase 5 · Recuperación automática</div>
+    <h1>El motor de SMS persigue cada venta, en el momento exacto</h1>
+    <div class="lead">Mientras el equipo atiende, AURA contacta a cada lead sola. Todos los envíos respetan el horario de la clínica y apuntan al próximo día abierto.</div>
+    <table>
+      <thead><tr><th>Fase</th><th>Momento</th><th>SMS automático</th></tr></thead>
+      <tbody>
+        <tr><td class="fase"><span class="lbl l-cap">Captación</span></td><td class="mom">20 min sin reservar</td><td class="sms">"vi que dejaste tus datos, ¿te ayudo a reservar?"</td></tr>
+        <tr><td class="fase"><span class="lbl l-cap">Captación</span></td><td class="mom">5 horas después</td><td class="sms">"te guardo tu hueco, ¿la cerramos el lunes?"</td></tr>
+        <tr><td class="fase"><span class="lbl l-cap">Captación</span></td><td class="mom">Día 3 y día 7</td><td class="sms">"tu valoración sigue disponible, te la guardo"</td></tr>
+        <tr><td class="fase"><span class="lbl l-cap">Captación</span></td><td class="mom">Día 21 · último intento</td><td class="sms">"última oportunidad con la promo de este mes"</td></tr>
+        <tr><td class="fase"><span class="lbl l-rec">Recordatorio</span></td><td class="mom">24 h y 2 h antes</td><td class="sms">"tu cita es mañana, confírmala con un toque"</td></tr>
+        <tr><td class="fase"><span class="lbl l-rescue">Recuperación</span></td><td class="mom">2 h y 48 h tras no-show</td><td class="sms">"hoy no pudimos verte, ¿reprogramamos?"</td></tr>
+        <tr><td class="fase"><span class="lbl l-recall">Nueva venta</span></td><td class="mom">A los 6 meses</td><td class="sms">"toca tu revisión para mantener el resultado"</td></tr>
+      </tbody>
+    </table>
+    <div class="quote">Cada SMS llega en el minuto preciso. Así el lead nunca se enfría ni se olvida.</div>
+  </div>
+</div>
+</body>
+</html>

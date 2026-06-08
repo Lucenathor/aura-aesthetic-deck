@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.slide-container{width:1280px;min-height:720px;background:#0E1B2C;position:relative;font-family:'Inter',sans-serif}
+.inner{padding:64px 80px 0}
+.kicker{font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:#C9A86A;font-weight:600;margin-bottom:14px}
+h1{font-family:'Playfair Display',serif;font-size:40px;color:#fff;font-weight:600;line-height:1.12}
+.lead{font-size:18px;color:#C7D0DB;margin-top:16px;max-width:980px;line-height:1.5}
+table{width:100%;border-collapse:collapse;margin-top:36px;font-size:17px}
+th,td{text-align:left;padding:18px 18px;border-bottom:1px solid #21344b;color:#C7D0DB;vertical-align:middle}
+thead th{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:#8a97a6;border-bottom:2px solid #C9A86A}
+td.fase{color:#fff;font-weight:600;width:26%}
+td.know{width:48%;color:#C7D0DB}
+.temp{display:inline-flex;align-items:center;gap:10px;font-size:14px;font-weight:600;letter-spacing:.03em}
+.dot{width:12px;height:12px;border-radius:50%;display:inline-block}
+.t-fria .dot{background:#5b6c80}.t-fria{color:#8fa0b3}
+.t-tem .dot{background:#C9A86A}.t-tem{color:#C9A86A}
+.t-cal .dot{background:#C8745A}.t-cal{color:#d98a6e}
+.t-muy .dot{background:#e0392b}.t-muy{color:#ef6a5c}
+tr.hl td{background:#13243A}
+.quote{margin-top:24px;font-family:'Playfair Display',serif;font-size:19px;color:#C9A86A;font-style:italic}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <img src="/home/ubuntu/aura-presentation/slides_embudo/focus_logo.png" style="position:absolute;top:34px;right:54px;height:30px;object-fit:contain;opacity:.9;z-index:3" alt="FOCUS">
+  <div class="inner">
+    <div class="kicker">La temperatura del lead</div>
+    <h1>El lead se nutre más en cada fase</h1>
+    <div class="lead">Cuanto más avanza, más sabe AURA de la paciente y mejor la trata recepción. El sistema sube la temperatura solo y prioriza a quién atender antes.</div>
+    <table>
+      <thead><tr><th>Fase</th><th>Qué sabemos del lead</th><th>Temperatura</th></tr></thead>
+      <tbody>
+        <tr><td class="fase">Entra al quiz</td><td class="know">Solo que vino del anuncio</td><td><span class="temp t-fria"><span class="dot"></span>Fría</span></td></tr>
+        <tr><td class="fase">Completa el quiz</td><td class="know">Su deseo, estilo, plazo y duda</td><td><span class="temp t-tem"><span class="dot"></span>Templada</span></td></tr>
+        <tr><td class="fase">Deja el contacto</td><td class="know">+ Teléfono (ya es recuperable)</td><td><span class="temp t-tem"><span class="dot"></span>Templada +</span></td></tr>
+        <tr class="hl"><td class="fase">Conversa con la IA</td><td class="know">+ Objeción resuelta, interés real</td><td><span class="temp t-cal"><span class="dot"></span>Caliente</span></td></tr>
+        <tr><td class="fase">Reserva la cita</td><td class="know">Lista para la doctora</td><td><span class="temp t-muy"><span class="dot"></span>Muy caliente</span></td></tr>
+      </tbody>
+    </table>
+    <div class="quote">Cada paso adelante es más información y una venta más cerca.</div>
+  </div>
+</div>
+</body>
+</html>

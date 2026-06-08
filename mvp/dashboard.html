@@ -970,7 +970,7 @@ document.getElementById('leadSearch').addEventListener('keydown',e=>{if(e.key===
 async function loadConsents(leadId){
   const c=document.getElementById('dConsents'); if(!c)return; c.innerHTML='<span style="color:var(--muted)">cargando…</span>';
   try{
-    const r=await fetch(WORKER+'/api/consents?tenant='+T+'&lead='+leadId); const d=await r.json(); const list=d.consents||[];
+    const r=await fetch(WORKER+'/api/consents?tenant='+T+'&lead='+leadId,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}}); const d=await r.json(); const list=d.consents||[];
     if(!list.length){ c.innerHTML='<span style="color:var(--muted)">Sin consentimientos. Envía uno para que lo firme desde su móvil.</span>'; return; }
     c.innerHTML=list.map(x=>{ const signed=x.status==='signed';
       const when = signed && x.signed_at ? new Date(x.signed_at).toLocaleString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
@@ -989,13 +989,14 @@ function openConsentSend(){
     +'<div style="display:flex;gap:.5rem;margin-top:1rem"><button class="btn prim" style="flex:1" onclick="sendConsent()">Enviar por SMS</button><button class="btn" onclick="document.getElementById(\'csOv\').remove()">Cancelar</button></div>'
     +'<div id="csMsg" style="font-size:.8rem;text-align:center;margin-top:.6rem;color:var(--muted)"></div></div>';
   document.body.appendChild(ov);
-  fetch(WORKER+'/api/consent-templates?tenant='+T).then(r=>r.json()).then(d=>{ const s=document.getElementById('csTpl'); window._csTpls=d.templates||[]; s.innerHTML=(d.templates||[]).map(t=>'<option value="'+t.id+'">'+t.title+'</option>').join(''); });
+  fetch(WORKER+'/api/consent-templates?tenant='+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}}).then(r=>r.json()).then(d=>{ const s=document.getElementById('csTpl'); window._csTpls=d.templates||[]; s.innerHTML=(d.templates||[]).map(t=>'<option value="'+t.id+'">'+t.title+'</option>').join(''); });
 }
 async function sendConsent(){
   const sel=document.getElementById('csTpl'); const tpl=(window._csTpls||[]).find(t=>t.id===sel.value)||{};
   const msg=document.getElementById('csMsg'); msg.textContent='Enviando…';
   try{
-    const r=await fetch(WORKER+'/api/consent-send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ tenant_id:T, lead_id:_curLead.id, template_id:(tpl.id&&!String(tpl.id).startsWith('def_'))?tpl.id:null, title:tpl.title||'Consentimiento', body:tpl.body||'' })});
+    const _tk=localStorage.getItem('aura_token')||'';
+    const r=await fetch(WORKER+'/api/consent-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_tk},body:JSON.stringify({ tenant_id:T, lead_id:_curLead.id, template_id:(tpl.id&&!String(tpl.id).startsWith('def_'))?tpl.id:null, title:tpl.title||'Consentimiento', body:tpl.body||'' })});
     const d=await r.json();
     if(d.ok){ msg.style.color='#1f8c69'; msg.innerHTML=(d.sms_sent?'Enviado por SMS a su móvil ✓':'Consentimiento creado.')+(d.sign_link?'<br><a href="'+d.sign_link+'" target="_blank" style="display:inline-block;margin-top:.6rem;background:var(--terra);color:#fff;padding:.5rem .8rem;border-radius:9px;text-decoration:none;font-weight:700">Firmar aquí (tablet)</a>':''); setTimeout(()=>{ loadConsents(_curLead.id); }, 800); }
     else { msg.style.color='#c0392b'; msg.textContent='No se pudo enviar.'; }

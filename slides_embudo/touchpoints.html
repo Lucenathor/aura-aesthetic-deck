@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.slide-container{width:1280px;min-height:720px;background:#0E1B2C;position:relative;font-family:'Inter',sans-serif;overflow:hidden}
+.logo{position:absolute;top:34px;right:54px;height:30px;object-fit:contain;opacity:.9;z-index:3}
+.inner{padding:58px 80px 0}
+.kicker{font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:#C9A86A;font-weight:600;margin-bottom:12px}
+h1{font-family:'Playfair Display',serif;font-size:38px;color:#fff;font-weight:600;line-height:1.12;max-width:980px}
+.lead{font-size:16px;color:#C7D0DB;margin-top:12px;max-width:1000px;line-height:1.5}
+.cols{display:grid;grid-template-columns:1.5fr 1fr;gap:36px;margin-top:26px;align-items:center}
+.panel img{width:100%;object-fit:contain;border:1px solid #21344b}
+.legend{display:flex;flex-direction:column;gap:18px}
+.lg{display:flex;gap:13px;align-items:flex-start}
+.dot{width:14px;height:14px;border-radius:3px;flex-shrink:0;margin-top:4px}
+.lg .t{font-size:16px;color:#fff;font-weight:600}
+.lg .d{font-size:14px;color:#9aa7b5;line-height:1.4}
+.d-red{background:#e0392b}.d-amb{background:#d8a13a}.d-ter{background:#C8745A}.d-gld{background:#C9A86A}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <img src="/home/ubuntu/aura-presentation/slides_embudo/focus_logo.png" class="logo" alt="FOCUS">
+  <div class="inner">
+    <div class="kicker">Touchpoints · El panel</div>
+    <h1>El panel te dice a quién llamar ahora y por qué</h1>
+    <div class="lead">No es una lista pasiva: convierte el estado de cada lead en una acción concreta para el equipo, según la fase en la que esté.</div>
+    <div class="cols">
+      <div class="panel"><img src="/home/ubuntu/aura-presentation/slides_embudo/mockup_panel.png" alt="Panel pipeline"></div>
+      <div class="legend">
+        <div class="lg"><span class="dot d-red"></span><div><div class="t">Llamar urgente</div><div class="d">Conversó y no reservó, o no confirmó. Recepción llama con guión.</div></div></div>
+        <div class="lg"><span class="dot d-amb"></span><div><div class="t">Por confirmar</div><div class="d">Cita mañana sin confirmar: 2º aviso + tarea de llamada.</div></div></div>
+        <div class="lg"><span class="dot d-ter"></span><div><div class="t">Recuperar</div><div class="d">No vino o canceló: entra en cola con contador de faltas.</div></div></div>
+        <div class="lg"><span class="dot d-gld"></span><div><div class="t">Recuperado en €</div><div class="d">El banner suma lo que AURA te ha hecho ganar este mes.</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

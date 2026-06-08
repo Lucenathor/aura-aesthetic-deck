@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+.slide-container{width:1280px;min-height:720px;background:#0E1B2C;position:relative;font-family:'Inter',sans-serif}
+.logo{position:absolute;top:34px;right:54px;height:30px;object-fit:contain;opacity:.9}
+.inner{padding:58px 80px 0}
+.kicker{font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:#C9A86A;font-weight:600;margin-bottom:12px}
+h1{font-family:'Playfair Display',serif;font-size:40px;color:#fff;font-weight:600;line-height:1.12;max-width:900px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:46px;margin-top:30px;align-items:center}
+.big{font-family:'Playfair Display',serif;font-size:130px;color:#C9A86A;line-height:.9}
+.big span{font-size:60px}
+.bigd{font-size:20px;color:#fff;margin-top:8px;line-height:1.4;max-width:420px}
+.pts{margin-top:22px;display:flex;flex-direction:column;gap:13px}
+.pt{display:flex;gap:12px;align-items:flex-start;font-size:16px;color:#C7D0DB;line-height:1.4}
+.pt i{color:#C8745A;margin-top:3px;width:18px;text-align:center}
+.pt b{color:#fff}
+.chartbox{background:#13243A;border-top:3px solid #C9A86A;padding:22px 24px 24px}
+.chartbox h2{font-size:13px;color:#C7D0DB;letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px}
+.chartwrap{height:280px}
+.foot{margin-top:16px;font-size:12px;color:#6f7d8c}
+</style>
+</head>
+<body>
+<div class="slide-container">
+  <img src="/home/ubuntu/aura-presentation/slides_embudo/focus_logo.png" class="logo" alt="FOCUS">
+  <div class="inner">
+    <div class="kicker">Velocidad de respuesta</div>
+    <h1>El que responde primero, se lleva al paciente</h1>
+    <div class="cols">
+      <div>
+        <div class="big">21<span>×</span></div>
+        <div class="bigd">más probable cualificar un lead si respondes en menos de 5 minutos en vez de 30.</div>
+        <div class="pts">
+          <div class="pt"><i class="fa-solid fa-bolt"></i><span>La IA de AURA responde en <b>menos de 1 minuto</b>, siempre.</span></div>
+          <div class="pt"><i class="fa-solid fa-arrow-trend-down"></i><span>La conversión <b>cae 8×</b> pasados los 5 primeros minutos.</span></div>
+          <div class="pt"><i class="fa-solid fa-clock"></i><span>Un humano tarda horas; el lead ya se enfrió o reservó en otra clínica.</span></div>
+        </div>
+      </div>
+      <div class="chartbox">
+        <h2>Probabilidad relativa de cualificar el lead</h2>
+        <div class="chartwrap"><canvas id="c"></canvas></div>
+      </div>
+    </div>
+    <div class="foot">Fuentes: Lead Response Management · InsideSales · LeanData / Amplemarket (speed-to-lead).</div>
+  </div>
+</div>
+<script>
+new Chart(document.getElementById('c').getContext('2d'),{type:'bar',data:{labels:['IA · <1 min','Humano · 30 min'],datasets:[{data:[21,1],backgroundColor:['#C9A86A','#5b6c80'],borderRadius:6,barThickness:110}]},options:{indexAxis:'y',plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{beginAtZero:true,max:24,ticks:{color:'#9aa7b5',callback:v=>v+'×'},grid:{color:'#1d2f47'}},y:{ticks:{color:'#fff',font:{size:15,weight:'600'}},grid:{display:false}}},animation:{duration:1200}}});
+</script>
+</body>
+</html>
