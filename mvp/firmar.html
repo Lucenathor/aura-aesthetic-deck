@@ -37,7 +37,7 @@
     <div class="clinic" id="clinic">Clínica</div>
     <h1 id="title">Consentimiento</h1>
     <div class="body" id="docbody"></div>
-    <div class="field"><input id="signerName" placeholder="Tu nombre y apellidos"/></div>
+    <div class="field"><input id="signerName" placeholder="Tu nombre y apellidos"/><input id="signerDni" placeholder="DNI / Pasaporte" style="margin-top:10px"/></div>
     <div class="siglabel">Firma aquí con el dedo</div>
     <div class="sigbox"><canvas id="sig"></canvas><div class="sighint" id="sighint">✍️ Firma en este recuadro</div></div>
     <div class="row">
@@ -92,11 +92,13 @@ function clearSig(){ if(ctx){ ctx.clearRect(0,0,canvas.width,canvas.height); } h
 async function doSign(){
   if(!hasInk||signed) return;
   const name=document.getElementById('signerName').value.trim();
+  const dni=document.getElementById('signerDni').value.trim();
   if(!name){ alert('Por favor, escribe tu nombre.'); return; }
+  if(!dni){ alert('Por favor, escribe tu DNI o Pasaporte.'); return; }
   signed=true; document.getElementById('signBtn').disabled=true; document.getElementById('signBtn').textContent='Guardando…';
   const dataUrl=canvas.toDataURL('image/png');
   try{
-    const r=await fetch(WORKER+'/api/consent-sign',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ id:ID, lead:LEAD, k:K, signer_name:name, signature:dataUrl })});
+    const r=await fetch(WORKER+'/api/consent-sign',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ id:ID, lead:LEAD, k:K, signer_name:name, signer_dni:dni, signature:dataUrl })});
     const d=await r.json();
     if(d.ok){ document.getElementById('card').style.display='none'; document.getElementById('done').style.display='block'; }
     else { signed=false; document.getElementById('signBtn').disabled=false; document.getElementById('signBtn').textContent='Firmar y aceptar'; alert('No se pudo guardar. Inténtalo de nuevo.'); }

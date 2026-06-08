@@ -1311,8 +1311,8 @@ export default {
         let sigKey='';
         try{ const m=(b.signature||'').match(/^data:image\/png;base64,(.+)$/); if(m){ const bin=atob(m[1]); const bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i); sigKey='sig_'+b.id+'_'+b64url(crypto.getRandomValues(new Uint8Array(12)).buffer)+'.png'; if(env.aura_r2){ try{ await env.aura_r2.put('img/'+sigKey, bytes.buffer, { httpMetadata:{contentType:'image/png'} }); }catch(e){ await env.AURA_IMG.put(sigKey, bytes.buffer, { metadata:{contentType:'image/png'} }); } } else { await env.AURA_IMG.put(sigKey, bytes.buffer, { metadata:{contentType:'image/png'} }); } } }catch(e){}
         const ip = req.headers.get('cf-connecting-ip') || '';
-        await env.aura_db.prepare("UPDATE consents_signed SET status='signed', signature_key=?, signer_name=?, signed_at=?, signed_ip=? WHERE id=?")
-          .bind(sigKey||null, b.signer_name||c.signer_name||'', new Date().toISOString(), ip, b.id).run();
+        await env.aura_db.prepare("UPDATE consents_signed SET status='signed', signature_key=?, signer_name=?, signer_dni=?, signed_at=?, signed_ip=? WHERE id=?")
+          .bind(sigKey||null, b.signer_name||c.signer_name||'', b.signer_dni||'', new Date().toISOString(), ip, b.id).run();
         return json({ ok:true });
       }
       // Listar consentimientos de un paciente (panel)
