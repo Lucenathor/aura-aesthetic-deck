@@ -89,6 +89,17 @@ async function signLead(env: Env, leadId: string){
 async function verifyLead(env: Env, leadId: string, token: string){
   try{ const expected=await signLead(env,leadId); return expected===token; }catch(e){ return false; }
 }
+// Token FUERTE atado a un consentimiento concreto (no reutilizable entre documentos).
+async function signConsent(env: Env, consentId: string, leadId: string){
+  const secret=env.JWT_SECRET||'aura-default-secret';
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const sig=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode('consent:'+consentId+':'+leadId));
+  return b64url(sig).slice(0,32);
+}
+async function verifyConsent(env: Env, consentId: string, leadId: string, token: string){
+  try{ if(!token) return false; const expected=await signConsent(env,consentId,leadId); // comparacion en tiempo constante
+    if(expected.length!==token.length) return false; let diff=0; for(let i=0;i<expected.length;i++) diff |= expected.charCodeAt(i)^token.charCodeAt(i); return diff===0; }catch(e){ return false; }
+}
 // Guardia multi-tenant: el token de sesion (cookie/header/query) debe pertenecer al tenant solicitado.
 // Devuelve null si OK; o un objeto error para responder 403. Asi una clinica NUNCA toca datos de otra.
 async function requireTenant(env: Env, req: Request, url: URL, tenantSolicitado: string|null): Promise<string|null> {
@@ -418,6 +429,29 @@ export default {
       // Servir imágenes: primero R2, fallback a KV (compatibilidad con imágenes antiguas)
       if (p.startsWith('/img/')) {
         const k = p.slice(5);
+        // PROTECCION: las firmas de consentimiento (sig_*) son datos sensibles.
+        // Solo se sirven con el token del consentimiento (k= o consent=) o con sesion valida del propietario.
+        if (k.startsWith('sig_')) {
+          const consentId = url.searchParams.get('consent') || '';
+          const leadId = url.searchParams.get('lead') || '';
+          const ktok = url.searchParams.get('k') || '';
+          let allowed = false;
+          if (consentId && leadId && (await verifyConsent(env, consentId, leadId, ktok))) allowed = true;
+          if (!allowed) {
+            // sesion del duenno: el token debe pertenecer a la clinica duena de esta firma
+            const stok = (req.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'') || url.searchParams.get('token') || '';
+            if (stok) {
+              try {
+                const sess:any = await env.aura_db.prepare('SELECT tenant_id FROM sessions WHERE token=?').bind(stok).first();
+                if (sess?.tenant_id) {
+                  const owner:any = await env.aura_db.prepare('SELECT tenant_id FROM consents_signed WHERE signature_key=?').bind(k).first();
+                  if (owner && owner.tenant_id === sess.tenant_id) allowed = true;
+                }
+              } catch(e) {}
+            }
+          }
+          if (!allowed) return new Response('forbidden', { status: 403, headers: CORS });
+        }
         if (env.aura_r2) {
           try {
             const obj: any = await env.aura_r2.get('img/'+k);
@@ -1240,8 +1274,8 @@ export default {
         const id='cs_'+uid();
         await env.aura_db.prepare('INSERT INTO consents_signed (id,tenant_id,lead_id,template_id,title,body,status,created_at) VALUES (?,?,?,?,?,?,?,?)')
           .bind(id,b.tenant_id,b.lead_id,b.template_id||null,b.title||'Consentimiento',b.body||'','pending',Date.now()).run();
-        // link de firma (sirve para SMS, para QR y para firmar en tablet ahí mismo)
-        const tok = await signLead(env, b.lead_id);
+        // link de firma con token FUERTE atado a ESTE consentimiento (no reutilizable en otros documentos)
+        const tok = await signConsent(env, id, b.lead_id);
         const link = 'https://aura-mvp.pages.dev/firmar?consent='+id+'&lead='+encodeURIComponent(b.lead_id)+'&k='+tok;
         let smsSent=false;
         if (lead.phone && !b.no_sms) {
@@ -1254,7 +1288,9 @@ export default {
       // Ver un consentimiento para firmar (paciente, valida token del lead)
       if (p === '/api/consent-get' && req.method === 'GET') {
         const id=url.searchParams.get('id'); const lead=url.searchParams.get('lead'); const k=url.searchParams.get('k')||'';
-        if(!id||!lead||!(await verifyLead(env,lead,k))) return json({error:'invalid'},403);
+        if(!id||!lead) return json({error:'invalid'},403);
+        const okTok = (await verifyConsent(env,id,lead,k)) || (await verifyLead(env,lead,k)); // compat con links antiguos
+        if(!okTok) return json({error:'invalid'},403);
         const c:any = await env.aura_db.prepare('SELECT cs.*, l.name AS lead_name FROM consents_signed cs LEFT JOIN leads l ON l.id=cs.lead_id WHERE cs.id=? AND cs.lead_id=?').bind(id,lead).first();
         if(!c) return json({error:'not found'},404);
         const tn:any = await env.aura_db.prepare('SELECT name FROM tenants WHERE id=?').bind(c.tenant_id).first();
@@ -1263,13 +1299,17 @@ export default {
       // Firmar (paciente): recibe firma en dataURL, la guarda en R2 y sella fecha/hora
       if (p === '/api/consent-sign' && req.method === 'POST') {
         const b:any = await req.json();
-        if(!b.id||!b.lead||!(await verifyLead(env,b.lead,b.k||''))) return json({error:'invalid'},403);
+        if(!b.id||!b.lead) return json({error:'invalid'},403);
+        const okSign = (await verifyConsent(env,b.id,b.lead,b.k||'')) || (await verifyLead(env,b.lead,b.k||''));
+        if(!okSign) return json({error:'invalid'},403);
         const c:any = await env.aura_db.prepare('SELECT * FROM consents_signed WHERE id=? AND lead_id=?').bind(b.id,b.lead).first();
         if(!c) return json({error:'not found'},404);
-        if(c.status==='signed') return json({ ok:true, already:true });
+        if(c.status==='signed') return json({ ok:true, already:true }); // nunca se re-firma
+        // validar payload de firma (tamano razonable, formato png base64)
+        if(typeof b.signature!=='string' || b.signature.length>400000) return json({error:'bad_signature'},400);
         // guardar imagen de firma (dataURL base64) en R2
         let sigKey='';
-        try{ const m=(b.signature||'').match(/^data:image\/png;base64,(.+)$/); if(m){ const bin=atob(m[1]); const bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i); sigKey='sig_'+b.id+'.png'; if(env.aura_r2){ try{ await env.aura_r2.put('img/'+sigKey, bytes.buffer, { httpMetadata:{contentType:'image/png'} }); }catch(e){ await env.AURA_IMG.put(sigKey, bytes.buffer, { metadata:{contentType:'image/png'} }); } } else { await env.AURA_IMG.put(sigKey, bytes.buffer, { metadata:{contentType:'image/png'} }); } } }catch(e){}
+        try{ const m=(b.signature||'').match(/^data:image\/png;base64,(.+)$/); if(m){ const bin=atob(m[1]); const bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i); sigKey='sig_'+b.id+'_'+b64url(crypto.getRandomValues(new Uint8Array(12)).buffer)+'.png'; if(env.aura_r2){ try{ await env.aura_r2.put('img/'+sigKey, bytes.buffer, { httpMetadata:{contentType:'image/png'} }); }catch(e){ await env.AURA_IMG.put(sigKey, bytes.buffer, { metadata:{contentType:'image/png'} }); } } else { await env.AURA_IMG.put(sigKey, bytes.buffer, { metadata:{contentType:'image/png'} }); } } }catch(e){}
         const ip = req.headers.get('cf-connecting-ip') || '';
         await env.aura_db.prepare("UPDATE consents_signed SET status='signed', signature_key=?, signer_name=?, signed_at=?, signed_ip=? WHERE id=?")
           .bind(sigKey||null, b.signer_name||c.signer_name||'', new Date().toISOString(), ip, b.id).run();
