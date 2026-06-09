@@ -610,8 +610,20 @@ function buildResult(){
       if(t.hero_image_url){ document.querySelectorAll('[data-img="hero"]').forEach(el=>{ if(el.tagName==='IMG')el.src=t.hero_image_url; else el.style.backgroundImage='url('+t.hero_image_url+')'; }); }
       if(t.doctor_image_url){ document.querySelectorAll('[data-img="doctor"]').forEach(el=>{ if(el.tagName==='IMG')el.src=t.doctor_image_url; }); }
       if(t.room_image_url){ document.querySelectorAll('[data-img="room"]').forEach(el=>{ if(el.tagName==='IMG')el.src=t.room_image_url; }); }
+      // reseñas personalizadas con el nombre de la clínica + nº dinámico
+      try{
+        const cl = t.name || 'la clínica';
+        const nrev = t.google_reviews || 312;
+        const gsub = document.querySelector('.gc-sub'); if(gsub) gsub.innerHTML='Excelente · <u>'+nrev+' reseñas en Google</u>';
+        const gname = document.querySelector('.gc-name, .gcard b'); if(gname) gname.textContent=cl;
+        const revs = document.querySelectorAll('.rev p');
+        if(revs[0]) revs[0].innerHTML='“Fui a '+cl+' con miedo de que se notara artificial y es justo lo contrario. Naturales, me encantan.”';
+        if(revs[1]) revs[1].innerHTML='“En '+cl+' me respondieron en 2 minutos por WhatsApp y reservé al momento. Trato exquisito.”';
+      }catch(e){}
       // modo demo: mostrar badge de activación si el tenant no ha pagado
       if(t.status==='demo' || t.plan==='trial'){
+        window.DEMO_SALES = true;
+        window.DEMO_CLINIC_NAME = t.name || 'tu clínica';
         const badge=document.getElementById('demoBadge');
         if(badge){ badge.style.display='flex'; document.getElementById('demoBadgeName').textContent=t.name||'tu clínica'; document.body.style.paddingTop='2.4rem'; }
       }
@@ -747,11 +759,12 @@ async function sendMsg(){
 async function showCal(){
   if(document.querySelector('.cal'))return;
   let slots=[];
-  try{ const r=await fetch(WORKER+'/api/slots?tenant='+TENANT_ID); const d=await r.json(); slots=d.slots||[]; }catch(e){}
+  const slotTenant = window.DEMO_SALES ? 'focus-ventas' : TENANT_ID;
+  try{ const r=await fetch(WORKER+'/api/slots?tenant='+slotTenant); const d=await r.json(); slots=d.slots||[]; }catch(e){}
   if(!slots.length){ slots=[{label:'Jue 12:00'},{label:'Jue 17:30'},{label:'Vie 10:00'},{label:'Vie 18:00'}]; }
-  const btns=slots.slice(0,4).map(s=>`<button class="slot" onclick="book(this,'${s.label}')">${s.label}</button>`).join('');
+  const btns=slots.slice(0,4).map(s=>`<button class="slot" onclick="book(this,'${s.label}','${s.iso||''}')">${s.label}</button>`).join('');
   // Encabezado dinámico: si el primer hueco no es hoy/mañana, lo enmarcamos como exclusividad (agenda muy demandada), nunca como 'cerrado'.
-  let titulo='Te abro hueco esta semana';
+  let titulo = window.DEMO_SALES ? 'Elige hueco para tu consultoría gratuita (1h) con el equipo' : 'Te abro hueco esta semana';
   try{
     const fd=slots[0]&&slots[0].date; if(fd){
       const hoy=new Date(); const hoyStr=hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-'+String(hoy.getDate()).padStart(2,'0');
@@ -763,17 +776,22 @@ async function showCal(){
   }catch(e){}
   addRaw(`<div class="cal"><h5>${titulo}</h5><div class="slots">${btns}</div></div>`);
 }
-async function book(el,slot){
+async function book(el,slot,iso){
   el.parentNode.querySelectorAll('.slot').forEach(s=>s.classList.remove('sel')); el.classList.add('sel');
   const fc=document.getElementById('fixCta'); if(fc)fc.remove();
   addMe('me viene bien el '+slot.toLowerCase());
   await wait(400); typing(); await wait(900); unType();
   const esRecall = state._bookMode;
+  if(window.DEMO_SALES){
+    addThem('genial, te he reservado la consultoría el '+slot.toLowerCase()+'. nuestro equipo te llamará para enseñarte aura con los números de tu clínica. te llega un sms de confirmación',true);
+    try{ await fetch(WORKER+'/api/appointments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:'focus-ventas',lead_id:state.lead_id,treatment:'Consultoría AURA · '+(window.DEMO_CLINIC_NAME||''),date_iso:iso||undefined,duration_min:60,slot,ref:state.ref})}); }catch(e){}
+    return;
+  }
   addThem('hecho, te he reservado el '+slot.toLowerCase()+(esRecall?' para tu revisión':'')+'. te acaba de llegar un sms de confirmación',true);
   await wait(500); typing(); await wait(800); unType();
   const waText=encodeURIComponent('Hola, soy '+(state.name||'')+'. Acabo de reservar mi '+(esRecall?'revisión':'cita')+' el '+slot.toLowerCase()+' (ref '+state.ref+')');
   addThem('si prefieres que te lo confirme por whatsapp, toca aquí: <a href="https://wa.me/'+CFG.whatsapp+'?text='+waText+'" onclick="markWa()" style="color:#7ee0c2">abrir whatsapp</a>',true);
-  try{ await fetch(WORKER+'/api/appointments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:TENANT_ID,lead_id:state.lead_id,treatment:(esRecall?'Revisión / retoque':'Aumento de labios'),slot,ref:state.ref})}); }catch(e){}
+  try{ await fetch(WORKER+'/api/appointments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:TENANT_ID,lead_id:state.lead_id,treatment:(esRecall?'Revisión / retoque':'Aumento de labios'),date_iso:iso||undefined,slot,ref:state.ref})}); }catch(e){}
 }
 function markWa(){
   try{ fetch(WORKER+'/api/lead-event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:TENANT_ID,lead_id:state.lead_id,ref:state.ref,event:'whatsapp_opened'})}); }catch(e){}

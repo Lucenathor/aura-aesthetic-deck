@@ -1,0 +1,8 @@
+{
+  "reminder_24h": "AURA: {nombre}, mañana {fecha} a las {hora} tu consultoria. En 20 min te enseñamos como llenar tu agenda de pacientes. Confirma aqui: {link}",
+  "reminder_2h": "AURA: {nombre}, en 2h tu consultoria ({hora}). Trae los numeros de tu clinica y te enseñamos cuanto puedes ganar. Te esperamos.",
+  "confirm2": "AURA: {nombre}, ¿confirmas tu consultoria {fecha} {hora}? Es gratis y sin compromiso, pero solo guardo el hueco si me confirmas: {link}",
+  "no_show": "AURA: {nombre}, hoy no pudimos verte. Cada dia sin AURA es dinero que tu clinica deja escapar. ¿Reagendamos ya? {link}",
+  "noshow2": "AURA: {nombre}, te guardo un ultimo hueco esta semana para enseñarte AURA. Despues lo doy a otra clinica. ¿Lo coges? {link}",
+  "reactivation": "AURA: {nombre}, sigues perdiendo pacientes que no se hace seguimiento. Te enseño como recuperarlos {proximo_dia}: {link}"
+}

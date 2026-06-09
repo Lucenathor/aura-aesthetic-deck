@@ -595,9 +595,18 @@ export default {
         const wa = (b.whatsapp||'').replace(/[^0-9]/g,'');
         const email = (b.email||'').trim();
         const owner = (b.owner_name||'').trim();
+        // Si dan URL, intentar extraer logo (favicon hi-res como respaldo fiable)
+        let logoUrl = '';
+        const rawUrl = (b.url||'').trim();
+        if (rawUrl) {
+          try {
+            const u = new URL(rawUrl.startsWith('http') ? rawUrl : 'https://' + rawUrl);
+            logoUrl = 'https://www.google.com/s2/favicons?sz=128&domain=' + u.hostname;
+          } catch(e){}
+        }
         // Crear el tenant en modo demo (su embudo de labios queda vivo en /c/{slug})
-        await env.aura_db.prepare(`INSERT INTO tenants (id,name,city,whatsapp,email,owner_name,advisor_name,brand_primary,brand_accent,status,plan,google_rating,google_reviews,treatments_done,sms_credits) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-          .bind(slug, rawName, city, wa, email, owner, 'Adrián', '#5e1a2a', '#D4A574', 'demo', 'trial', 4.9, 120, 5000, 100).run();
+        await env.aura_db.prepare(`INSERT INTO tenants (id,name,city,whatsapp,email,owner_name,advisor_name,brand_primary,brand_accent,status,plan,google_rating,google_reviews,treatments_done,sms_credits,logo_url,url) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+          .bind(slug, rawName, city, wa, email, owner, 'Adrián', '#5e1a2a', '#D4A574', 'demo', 'trial', 4.9, 120, 5000, 100, logoUrl, rawUrl).run();
         // Registrar la clínica como LEAD en el tenant interno de ventas (trazabilidad)
         try {
           const lid = 'l_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -1554,12 +1563,14 @@ export default {
           .prepare(
             `INSERT INTO appointments (id,tenant_id,lead_id,treatment,date_iso,duration_min,status) VALUES (?,?,?,?,?,?,?)`
           )
-          .bind(id, b.tenant_id, b.lead_id, b.treatment || null, b.date_iso, b.duration_min || 30, 'booked')
+          .bind(id, b.tenant_id, b.lead_id || null, b.treatment || null, b.date_iso, b.duration_min || 30, 'booked')
           .run();
-        await env.aura_db
-          .prepare(`UPDATE leads SET status='booked',temperature='hot' WHERE id=?`)
-          .bind(b.lead_id)
-          .run();
+        if (b.lead_id) {
+          await env.aura_db
+            .prepare(`UPDATE leads SET status='booked',temperature='hot' WHERE id=?`)
+            .bind(b.lead_id)
+            .run();
+        }
         // SMS al lead con confirmación + link de WhatsApp (lo inicia el lead, sin baneo)
         try {
           const lead: any = await env.aura_db.prepare('SELECT * FROM leads WHERE id=?').bind(b.lead_id).first();
@@ -2112,6 +2123,8 @@ async function handleGenerate(req: Request, env: Env) {
       const logoImg = html.match(/<img[^>]+(?:src|data-src)=["']([^"']+)["'][^>]*(?:alt|class)=["'][^"']*logo[^"']*["']/i) || html.match(/<img[^>]+(?:alt|class)=["'][^"']*logo[^"']*["'][^>]*(?:src|data-src)=["']([^"']+)["']/i);
       const logoCand = abs(logoImg?.[1] || appleIcon?.[1] || icon?.[1] || '');
       detectedLogo = /\.(png|jpe?g|webp|svg)(\?|$)/i.test(logoCand) ? logoCand : '';
+      // respaldo fiable: favicon de alta resolucion via Google si no hay logo claro
+      if(!detectedLogo){ try{ detectedLogo = 'https://www.google.com/s2/favicons?sz=128&domain=' + u.hostname; }catch(e){} }
       // fotos og:image + primeras imagenes grandes
       const ogImg = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
       if (ogImg) detectedPhotos.push(abs(ogImg[1]));
