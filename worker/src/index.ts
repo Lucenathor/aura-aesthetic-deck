@@ -755,8 +755,9 @@ export default {
           } catch(e){}
         }
         // Crear el tenant en modo demo (su embudo de labios queda vivo en /c/{slug})
-        await env.aura_db.prepare(`INSERT INTO tenants (id,name,city,whatsapp,email,owner_name,advisor_name,brand_primary,brand_accent,status,plan,google_rating,google_reviews,treatments_done,sms_credits,logo_url,url) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-          .bind(slug, rawName, city, wa, email, owner, 'Adrián', '#5e1a2a', '#D4A574', 'demo', 'trial', 4.9, 120, 5000, 100, logoUrl, rawUrl).run();
+        const trialEnds = new Date(Date.now()+30*86400000).toISOString();
+        await env.aura_db.prepare(`INSERT INTO tenants (id,name,city,whatsapp,email,owner_name,advisor_name,brand_primary,brand_accent,status,plan,trial_ends_at,google_rating,google_reviews,treatments_done,sms_credits,logo_url,url) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+          .bind(slug, rawName, city, wa, email, owner, 'Adrián', '#5e1a2a', '#D4A574', 'demo', 'trial', trialEnds, 4.9, 120, 5000, 100, logoUrl, rawUrl).run();
         // Registrar la clínica como LEAD en el tenant interno de ventas (trazabilidad)
         try {
           const lid = 'l_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);

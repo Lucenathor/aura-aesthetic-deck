@@ -23,19 +23,26 @@
   .btn:active{transform:scale(.97)}
   .btn.ghost{background:transparent;color:var(--brand);border:1px solid var(--line)}
   /* HEADER */
-  header{background:linear-gradient(150deg,var(--brand),#2a0f16);color:#fff;padding:1.5rem 1.3rem 2.4rem;border-radius:0 0 26px 26px}
+  header{background:linear-gradient(150deg,var(--brand),#2a0f16);color:#fff;padding:1.5rem 1.3rem 2.4rem;border-radius:0 0 26px 26px;position:relative;overflow:hidden}
+  header::after{content:'';position:absolute;top:-40%;right:-20%;width:240px;height:240px;background:radial-gradient(circle,rgba(212,165,116,.35),transparent 70%);pointer-events:none}
   .hello{font-size:.85rem;opacity:.85}
   .clinicTtl{font-size:1.45rem;font-weight:700;margin-top:.15rem}
   /* PTS CARD */
-  .pts{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:18px;padding:1.1rem 1.2rem;margin-top:1rem;backdrop-filter:blur(6px)}
+  .pts{position:relative;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:18px;padding:1.1rem 1.2rem;margin-top:1rem;backdrop-filter:blur(6px);overflow:hidden}
+  .pts::before{content:'';position:absolute;top:0;left:-60%;width:50%;height:100%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.25),transparent);animation:shine 4.5s ease-in-out infinite}
+  @keyframes shine{0%,60%{left:-60%}100%{left:130%}}
   .pts .n{font-size:2.6rem;font-weight:700;line-height:1}
   .pts .lbl{font-size:.72rem;opacity:.8;text-transform:uppercase;letter-spacing:.06em}
   .tier{display:inline-block;font-size:.7rem;font-weight:700;padding:.2rem .6rem;border-radius:20px;background:var(--accent);color:#2a0f16;margin-top:.5rem}
   .prog{height:7px;background:rgba(255,255,255,.2);border-radius:5px;margin-top:.6rem;overflow:hidden}
   .prog>div{height:100%;background:var(--accent);border-radius:5px;transition:width .8s cubic-bezier(.23,1,.32,1)}
   .content{padding:1.1rem 1.1rem 1.5rem}
-  .sec{display:none}.sec.on{display:block;animation:fade .35s ease}
-  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .sec{display:none}.sec.on{display:block;animation:fade .4s cubic-bezier(.23,1,.32,1)}
+  @keyframes fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+  @keyframes pop{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+  .sec.on .tile,.sec.on .card{animation:pop .45s cubic-bezier(.23,1,.32,1) both}
+  .sec.on .tile:nth-child(2){animation-delay:.05s}.sec.on .tile:nth-child(3){animation-delay:.1s}.sec.on .tile:nth-child(4){animation-delay:.15s}.sec.on .tile:nth-child(5){animation-delay:.2s}.sec.on .tile:nth-child(6){animation-delay:.25s}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
   h2.t{font-size:1.15rem;font-weight:700;margin:.2rem 0 .8rem}
   .tile{background:#fff;border-radius:16px;padding:1rem 1.1rem;margin-bottom:.7rem;box-shadow:0 4px 14px rgba(0,0,0,.04)}
   .pack{display:flex;flex-direction:column;gap:.3rem}
@@ -45,7 +52,13 @@
   .pack .pr b{font-size:1.3rem;color:var(--brand)}
   .pack .pr s{font-size:.85rem;color:var(--muted)}
   .pack .badge{font-size:.66rem;font-weight:700;background:#f0e6ee;color:var(--brand);padding:.15rem .5rem;border-radius:6px;align-self:flex-start}
-  .pkbtn{margin-top:.7rem;padding:.7rem;border-radius:11px;background:var(--brand);color:#fff;font-weight:700;font-size:.92rem}
+  .pkbtn{margin-top:.7rem;padding:.7rem;border-radius:11px;background:var(--brand);color:#fff;font-weight:700;font-size:.92rem;transition:transform .16s cubic-bezier(.23,1,.32,1),filter .16s}
+  .pkbtn:active{transform:scale(.97);filter:brightness(1.1)}
+  .tile{transition:transform .2s cubic-bezier(.23,1,.32,1),box-shadow .2s}
+  .tile:active{transform:scale(.99)}
+  .nav-i{transition:color .2s,transform .15s}.nav-i:active{transform:scale(.9)}
+  .nav-i.on .ic{animation:bounce .4s cubic-bezier(.23,1,.32,1)}
+  @keyframes bounce{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
   .appt{display:flex;justify-content:space-between;align-items:center}
   .appt .st{font-size:.7rem;font-weight:700;padding:.15rem .5rem;border-radius:6px}
   .st.booked{background:#fff4e0;color:#b8860b}.st.attended{background:#e6f6ee;color:#1f8c69}.st.noshow{background:#fde8e8;color:#c0392b}

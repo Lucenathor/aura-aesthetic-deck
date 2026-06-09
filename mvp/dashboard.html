@@ -979,9 +979,20 @@ function parseTS(t){ if(t==null||t==='')return null; let d; if(typeof t==='numbe
 function fmtTime(t){ const d=parseTS(t); if(!d)return''; return d.toLocaleDateString('es-ES',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}); }
 
 async function loadTenant(){
-  try{ const r=await fetch(WORKER+'/api/tenant/'+T); if(r.ok){ const d=await r.json(); const t=d.tenant||d; document.getElementById('tName').textContent=t.name||T; document.getElementById('bInit').textContent=(t.name||'E').trim()[0].toUpperCase(); const h=document.getElementById('helloH'); if(h){ const hr=new Date().getHours(); const greet=hr<13?'Buenos días':hr<21?'Buenas tardes':'Buenas noches'; h.textContent=greet+', '+(t.name||T); } } }catch(e){}
+  try{ const r=await fetch(WORKER+'/api/tenant/'+T); if(r.ok){ const d=await r.json(); const t=d.tenant||d; document.getElementById('tName').textContent=t.name||T; document.getElementById('bInit').textContent=(t.name||'E').trim()[0].toUpperCase(); const h=document.getElementById('helloH'); if(h){ const hr=new Date().getHours(); const greet=hr<13?'Buenos días':hr<21?'Buenas tardes':'Buenas noches'; h.textContent=greet+', '+(t.name||T); } showTrialBanner(t); } }catch(e){}
   const url=location.origin+'/c/'+T;
   document.getElementById('funnelUrl').value=url;
+}
+function showTrialBanner(t){
+  try{ if(!t||t.plan!=='trial'||!t.trial_ends_at) { const ex=document.getElementById('trialBanner'); if(ex)ex.remove(); return; }
+    const end=new Date(t.trial_ends_at.replace(' ','T')+(t.trial_ends_at.includes('Z')?'':'Z'));
+    const days=Math.ceil((end-new Date())/86400000);
+    let el=document.getElementById('trialBanner');
+    if(!el){el=document.createElement('div');el.id='trialBanner';el.style.cssText='position:sticky;top:0;z-index:50;padding:.55rem 1rem;font-size:.85rem;font-weight:600;text-align:center';document.body.prepend(el);}
+    if(days>3){el.style.background='#eaf6ef';el.style.color='#1f8c69';el.innerHTML='✨ Prueba gratuita de AURA · te quedan <b>'+days+' días</b>';}
+    else if(days>=0){el.style.background='#fff4e0';el.style.color='#b45309';el.innerHTML='⏳ Tu prueba termina en <b>'+days+' día'+(days===1?'':'s')+'</b> · contacta para activar tu plan';}
+    else {el.style.background='#fde8e8';el.style.color='#c0392b';el.innerHTML='Tu prueba ha terminado · contacta para reactivar tu clínica';}
+  }catch(e){}
 }
 let _recPeriod='month';
 function setRecPeriod(p,btn){ _recPeriod=p; document.querySelectorAll('#recTabs .pbtn').forEach(b=>{b.classList.remove('on');b.style.background='transparent';}); if(btn){btn.classList.add('on');btn.style.background='rgba(255,255,255,.16)';} loadRecovered(); }
