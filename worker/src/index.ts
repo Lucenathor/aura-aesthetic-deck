@@ -153,7 +153,9 @@ async function sendSMS(env: Env, number: string, message: string, sender?: strin
     if (credits <= 0) return { ok: false, detail: 'sin_saldo_sms', credits: 0 };
   }
   const msisdn = cleaned.length === 9 ? '34' + cleaned : cleaned; // asume España si 9 dígitos
-  const body: any = { message, tpoa: (sender || 'AURA').slice(0, 11), recipient: [{ msisdn }] };
+  // Si el emisor es el sistema de ventas (clientes de la plataforma), firmar siempre como AURA
+  const senderName = (tenantId === 'focus-ventas') ? 'AURA' : (sender || 'AURA');
+  const body: any = { message, tpoa: senderName.slice(0, 11), recipient: [{ msisdn }] };
   try {
     const auth = 'Basic ' + btoa(env.LABSMOBILE_USER + ':' + env.LABSMOBILE_TOKEN);
     const r = await fetch('https://api.labsmobile.com/json/send', {
