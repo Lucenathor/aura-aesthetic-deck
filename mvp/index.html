@@ -736,7 +736,11 @@ img{max-width:100%;display:block}
         <!-- COMPOSER -->
         <div class="composer" id="composer">
           <div class="tabs" role="tablist">
-            <button class="tab on" data-mode="url">
+            <button class="tab on" data-mode="name">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Mi clínica
+            </button>
+            <button class="tab" data-mode="url">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 1 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 1 0 7 7l1-1"/></svg>
               URL
             </button>
@@ -751,7 +755,14 @@ img{max-width:100%;display:block}
           </div>
 
           <div class="box" id="box">
-            <div class="row" id="rowUrl">
+            <div class="row" id="rowName">
+              <input id="nameIn" type="text" placeholder="Nombre de tu clínica" autocomplete="off"/>
+              <button class="submit" id="goNameBtn">
+                Crear mi embudo
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              </button>
+            </div>
+            <div class="row" id="rowUrl" style="display:none">
               <input id="urlIn" type="url" inputmode="url" placeholder="https://tuclinica.com" autocomplete="off"/>
               <button class="submit" id="goBtn">
                 Crear embudo
@@ -1204,21 +1215,41 @@ const WORKER='https://aura-chat-worker.adrian-7b9.workers.dev';
 const tabs = document.querySelectorAll('.tab');
 const rowUrl = document.getElementById('rowUrl');
 const rowPrompt = document.getElementById('rowPrompt');
+const rowName = document.getElementById('rowName');
 const dropzone = document.getElementById('dropzone');
-let mode = 'url';
+let mode = 'name';
 
 tabs.forEach(t => t.onclick = () => {
   tabs.forEach(x=>x.classList.remove('on'));
   t.classList.add('on');
   mode = t.dataset.mode;
+  if(rowName) rowName.style.display = mode==='name' ? 'flex' : 'none';
   rowUrl.style.display = mode==='url' ? 'flex' : 'none';
   rowPrompt.style.display = mode==='prompt' ? 'flex' : 'none';
   dropzone.classList.toggle('show', mode==='logo');
 });
 
+(function(){
+  const btn=document.getElementById('goNameBtn'); const inp=document.getElementById('nameIn');
+  if(!btn||!inp) return;
+  async function crear(){
+    const name=inp.value.trim();
+    if(!name){ inp.focus(); return; }
+    btn.disabled=true; const orig=btn.innerHTML; btn.innerHTML='Creando tu embudo...';
+    try{
+      const r=await fetch(WORKER+'/api/clinic-signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clinic_name:name})});
+      const d=await r.json();
+      if(d&&d.ok&&d.slug){ window.location.href='/c/'+d.slug+'?demo=1'; return; }
+      btn.innerHTML=orig; btn.disabled=false; alert('No se pudo crear el embudo. Intenta de nuevo.');
+    }catch(e){ btn.innerHTML=orig; btn.disabled=false; alert('Error de conexion.'); }
+  }
+  btn.onclick=crear;
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter') crear(); });
+})();
+
 /* Examples */
 document.querySelectorAll('.examples button').forEach(b=>b.onclick=()=>{
-  if(mode!=='url'){tabs[0].click();}
+  if(mode!=='url'){ const ut=document.querySelector('.tab[data-mode="url"]'); if(ut) ut.click(); }
   document.getElementById('urlIn').value = b.dataset.u;
   document.getElementById('urlIn').focus();
 });

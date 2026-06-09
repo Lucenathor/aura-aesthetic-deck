@@ -389,6 +389,27 @@ function proximoDiaTexto(dateStr: string, todayStr: string): string {
   return 'el ' + nombre + ' ' + d.getUTCDate();
 }
 
+const SALES_DEMO_PROMPT = `Eres el asistente de IA de AURA, el sistema operativo para clínicas estéticas. Estás hablando con la DUEÑA o GERENTE de una clínica que acaba de probar el embudo en su propia piel (el mismo que verían sus pacientes). Tu objetivo NO es venderle un tratamiento: es enseñarle lo que AURA puede hacer por su clínica y que agende una consultoría gratuita con el equipo de AURA.
+
+ESTILO: cercano, profesional, en minúsculas, frases cortas, sin signos de apertura (¿¡), sin emojis decorativos. Hablas como un comercial experto y humano por mensaje.
+
+PRIMER MENSAJE (preséntate así): "buenas, soy el asistente que verían tus pacientes. acabas de vivir el embudo igual que lo viviría una clienta tuya. pero en vez de agendarte un aumento de labios, deja que te enseñe lo que este sistema puede hacer por tu clínica. ¿te enseño cómo te llenaría la agenda?"
+
+QUÉ VENDER (beneficios de AURA, mencionar según la conversación):
+- capta pacientes con un embudo + chat de ia 24/7 que responde en menos de 1 minuto
+- recupera a los que no reservan, no confirman o no vienen (sms automáticos por fases: 20min, 5h, día 3, 7, 21)
+- agenda con horarios, vacaciones y recordatorios automáticos
+- caja, bonos, inventario y BENEFICIO REAL (lo que ganas de verdad tras gastos, nóminas e iva)
+- panel "recuperado gracias a aura": le enseña en euros lo que el sistema le ha hecho ganar
+- consentimientos firmados en el móvil con validez legal
+
+REBATE OBJECIONES con naturalidad:
+- "ya tengo fresha/flowww": perfecto, aura no te quita tu agenda; te trae pacientes nuevos y persigue a los que se escapan, que es lo que ese software no hace
+- "es caro": una sola paciente recuperada al mes ya lo paga; te enseñamos el roi en euros dentro del panel
+- "no tengo tiempo": justo por eso, aura trabaja solo 24/7, también sábados y domingos
+
+OBJETIVO FINAL: que agende una CONSULTORÍA GRATUITA con el equipo de aura. cuando muestre interés, dile: "te va genial una llamada de 20 min con nuestro equipo para enseñártelo con tus números. te paso el calendario para que elijas hueco". Sé persuasiva pero nunca agresiva. Mantén los mensajes breves y haz una pregunta cada vez para avanzar la conversación.`;
+
 const SYSTEM_BASE = `Eres un asesor real de la clínica. Hablas desde tu móvil:
 - TODO en minúsculas. Sin signos de apertura (¿¡).
 - Frases de máximo 12 palabras.
@@ -556,6 +577,34 @@ export default {
           .bind(id)
           .all();
         return json({ tenant: t, funnels: funnels.results });
+      }
+
+      // ===== ALTA DE CLINICA (self-service desde la homepage) =====
+      if (p === '/api/clinic-signup' && req.method === 'POST') {
+        const b:any = await req.json();
+        const rawName = (b.clinic_name||'').trim();
+        if (!rawName) return json({ error:'missing_name' }, 400);
+        // slug a partir del nombre
+        let base = rawName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40) || 'clinica';
+        let slug = base; let n=1;
+        while (true) {
+          const ex:any = await env.aura_db.prepare('SELECT id FROM tenants WHERE id=?').bind(slug).first();
+          if (!ex) break; n++; slug = base+'-'+n;
+        }
+        const city = (b.city||'').trim();
+        const wa = (b.whatsapp||'').replace(/[^0-9]/g,'');
+        const email = (b.email||'').trim();
+        const owner = (b.owner_name||'').trim();
+        // Crear el tenant en modo demo (su embudo de labios queda vivo en /c/{slug})
+        await env.aura_db.prepare(`INSERT INTO tenants (id,name,city,whatsapp,email,owner_name,advisor_name,brand_primary,brand_accent,status,plan,google_rating,google_reviews,treatments_done,sms_credits) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+          .bind(slug, rawName, city, wa, email, owner, 'Adrián', '#5e1a2a', '#D4A574', 'demo', 'trial', 4.9, 120, 5000, 100).run();
+        // Registrar la clínica como LEAD en el tenant interno de ventas (trazabilidad)
+        try {
+          const lid = 'l_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+          await env.aura_db.prepare(`INSERT INTO leads (id,tenant_id,name,phone,email,treatment,temperature,status,source,notes,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)`)
+            .bind(lid, 'focus-ventas', rawName+(city?' ('+city+')':''), wa, email, 'Demo AURA', 'hot', 'new', 'embudo-demo', 'Alta automática desde homepage. Slug: '+slug+(owner?' · Dueño: '+owner:'')).run();
+        } catch(e){ console.error('lead focus-ventas', e); }
+        return json({ ok:true, slug, funnel_url:'/c/'+slug });
       }
 
       // Generador IA desde URL
@@ -2013,9 +2062,16 @@ async function handleChat(req: Request, env: Env) {
     .prepare('SELECT * FROM tenants WHERE id=?')
     .bind(tenantId)
     .first<any>();
-  const prompt =
-    (t?.ai_system_prompt || SYSTEM_BASE) +
-    `\nContexto del lead: nombre=${body.context?.name || '-'}, tratamiento=${body.context?.treatment || '-'}, plazo=${body.context?.plazo || '-'}, objecion=${body.context?.objecion || '-'}`;
+  // Modo DEMO de ventas: el agente vende AURA a la dueña de la clínica (no asesora de labios)
+  const isDemo = (t?.status === 'demo' || t?.plan === 'trial');
+  let prompt;
+  if (isDemo) {
+    prompt = SALES_DEMO_PROMPT +
+      `\nNombre de la clínica que está probando: ${t?.name || 'tu clínica'}.`;
+  } else {
+    prompt = (t?.ai_system_prompt || SYSTEM_BASE) +
+      `\nContexto del lead: nombre=${body.context?.name || '-'}, tratamiento=${body.context?.treatment || '-'}, plazo=${body.context?.plazo || '-'}, objecion=${body.context?.objecion || '-'}`;
+  }
 
   const messages = [{ role: 'system', content: prompt }, ...(body.messages || []).slice(-12)];
   const content = await runAI(env, messages, false);
