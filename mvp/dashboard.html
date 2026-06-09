@@ -14,7 +14,7 @@
   --ease:cubic-bezier(.2,.8,.2,1);
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 .serif{font-family:'Fraunces',serif}
 a{color:inherit;text-decoration:none}
 
@@ -256,8 +256,8 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 .sms-tl .tx b{font-size:.84rem;display:block}
 .sms-tl .tx span{font-size:.72rem;color:var(--muted)}
 /* drawer */
-.drawer{position:fixed;top:0;right:0;width:min(440px,92vw);height:100vh;background:var(--card);box-shadow:-20px 0 60px -30px rgba(42,33,28,.4);transform:translateX(105%);transition:transform .35s var(--ease);z-index:50;padding:1.6rem;overflow-y:auto}
-.drawer.on{transform:none}
+.drawer{position:fixed;top:0;right:0;width:min(440px,92vw);height:100vh;background:var(--card);box-shadow:-20px 0 60px -30px rgba(42,33,28,.4);transform:translateX(105%);transition:transform .35s var(--ease),visibility .35s;z-index:50;padding:1.6rem;overflow-y:auto;visibility:hidden}
+.drawer.on{transform:none;visibility:visible}
 .drawer .x{position:absolute;top:1.2rem;right:1.2rem;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:1rem}
 .drawer h2{font-family:'Fraunces',serif;font-weight:600;font-size:1.5rem}
 .drawer .dmeta{color:var(--muted);font-size:.85rem;margin-top:.2rem}
@@ -288,6 +288,25 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
   #resGrid{grid-template-columns:1fr !important}
   .top h1{font-size:1.7rem}
   .top{flex-direction:column;align-items:flex-start}
+  /* ===== Agenda responsive ===== */
+  #calGridWrap{-webkit-overflow-scrolling:touch}
+  .agenda-time-col{width:46px}
+  .agenda-time-slot{font-size:.6rem}
+  .agenda-pro-col{min-width:120px}
+  .agenda-pro-header{font-size:.72rem;padding:0 .2rem;text-align:center;line-height:1.1}
+  .agenda-appt{font-size:.66rem;padding:3px 4px;left:2px;right:2px}
+  .agenda-appt-sub{font-size:.58rem}
+  /* Panel lateral de cita a pantalla completa en móvil */
+  #apPanel{width:100%!important;max-width:100%!important;border-radius:18px 18px 0 0;top:auto!important;bottom:0;height:auto!important;max-height:85vh;transform:translateY(100%)!important}
+  #apOverlay.ap-open #apPanel{transform:translateY(0)!important}
+  /* Vista mes: celdas algo más compactas */
+  .cal-month-cell{min-height:62px!important;font-size:.7rem}
+  /* Ficha del paciente a pantalla completa en móvil */
+  .drawer{width:100vw!important;padding:1.2rem}
+}
+@media(max-width:480px){
+  .agenda-pro-col{min-width:100px}
+  .agenda-appt-sub{display:none}
 }
 .mobile-head{display:none;align-items:center;justify-content:space-between;padding:.9rem .2rem 1rem;border-bottom:1px solid var(--line);margin-bottom:1rem}
 .mobile-head .wm{font-family:'Fraunces',serif;font-weight:500;font-size:1.5rem;letter-spacing:.2em;color:var(--terra-d)}
@@ -390,7 +409,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
           <button class="pacTab" data-f="client" onclick="setPacFilter('client',this)">Pacientes (clientes)</button>
         </div>
         <p class="sub">Click en una fila para abrir la ficha completa.</p>
-        <table id="leadsTbl"><thead><tr><th>Paciente</th><th>Tratamiento</th><th style="cursor:pointer" onclick="sortLeads('spent')">Gastado ⇅</th><th>Estado</th><th style="cursor:pointer" onclick="sortLeads('date')">Cuándo ⇅</th></tr></thead><tbody id="leadsBody"></tbody></table>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table id="leadsTbl" style="min-width:540px"><thead><tr><th>Paciente</th><th>Tratamiento</th><th style="cursor:pointer" onclick="sortLeads('spent')">Gastado ⇅</th><th>Estado</th><th style="cursor:pointer" onclick="sortLeads('date')">Cuándo ⇅</th></tr></thead><tbody id="leadsBody"></tbody></table></div>
         <div class="empty" id="leadsEmpty" style="display:none"><b>Aún no hay pacientes</b>Lanza tu embudo a un anuncio de Meta y empezarán a entrar aquí.</div>
       </div>
     </section>
@@ -426,7 +445,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
       <div class="card">
         <h3>Próximas citas</h3>
         <p class="sub">Las reservas que entran por tu embudo aparecen aquí.</p>
-        <table><thead><tr><th>Paciente</th><th>Tratamiento</th><th>Cuándo</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="apptBody"></tbody></table>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="min-width:520px"><thead><tr><th>Paciente</th><th>Tratamiento</th><th>Cuándo</th><th>Estado</th><th>Acción</th></tr></thead><tbody id="apptBody"></tbody></table></div>
         <div class="empty" id="apptEmpty" style="display:none"><b>Sin citas todavía</b>En cuanto un lead reserve en el embudo, lo verás aquí.</div>
       </div>
     </section>
@@ -1591,9 +1610,9 @@ function openApptCard(id){
   h+='</div>';
   ov.innerHTML=h;
   document.body.appendChild(ov);
-  requestAnimationFrame(()=>{ ov.style.opacity='1'; const pn=document.getElementById('apPanel'); if(pn)pn.style.transform='translateX(0)'; });
+  requestAnimationFrame(()=>{ ov.style.opacity='1'; ov.classList.add('ap-open'); const pn=document.getElementById('apPanel'); if(pn&&window.innerWidth>860)pn.style.transform='translateX(0)'; });
 }
-function closeApptCard(){ const ov=document.getElementById('apOverlay'); if(!ov)return; const pn=document.getElementById('apPanel'); if(pn)pn.style.transform='translateX(100%)'; ov.style.opacity='0'; setTimeout(()=>ov.remove(),280); }
+function closeApptCard(){ const ov=document.getElementById('apOverlay'); if(!ov)return; ov.classList.remove('ap-open'); const pn=document.getElementById('apPanel'); if(pn&&window.innerWidth>860)pn.style.transform='translateX(100%)'; ov.style.opacity='0'; setTimeout(()=>ov.remove(),280); }
 // Crear cita manual (walk-in)
 function openNewAppt(iso, proId){
   const ov=document.createElement('div'); ov.id='naOverlay'; ov.style='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:grid;place-items:center;padding:1rem;overflow-y:auto';
