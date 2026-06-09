@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>Mis puntos</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter',sans-serif;background:#f4efe8;color:#1f1a17;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.2rem}
+  .wrap{width:100%;max-width:420px}
+  .serif{font-family:'Playfair Display',serif}
+  .card{background:#fff;border-radius:22px;padding:1.6rem;box-shadow:0 18px 50px rgba(0,0,0,.10)}
+  .pts-card{background:linear-gradient(135deg,var(--brand,#5e1a2a),#2a0f16);color:#fff;border-radius:20px;padding:1.6rem;text-align:center;position:relative;overflow:hidden}
+  .pts-card .big{font-size:3.4rem;font-weight:700;line-height:1;margin:.3rem 0}
+  .pts-card .lbl{font-size:.8rem;opacity:.85;letter-spacing:.05em;text-transform:uppercase}
+  .pts-card .eur{font-size:1rem;opacity:.95;margin-top:.4rem}
+  .rew{display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.8rem 1rem;border:1px solid #ece5da;border-radius:12px;margin-top:.6rem}
+  .rew.ok{border-color:#cdbef5;background:#f6f2ff}
+  .rew b{font-size:.92rem}.rew .c{font-size:.78rem;color:#8a7f73}
+  .badge{font-size:.7rem;font-weight:700;padding:.2rem .55rem;border-radius:20px;background:#eee;color:#666;white-space:nowrap}
+  .badge.ok{background:#5b3fc4;color:#fff}
+  input{width:100%;padding:.85rem;border:1px solid #e0d8cc;border-radius:12px;font-size:1rem;margin-top:.5rem}
+  button{width:100%;padding:.9rem;border:none;border-radius:12px;background:#5e1a2a;color:#fff;font-weight:700;font-size:1rem;margin-top:.8rem;cursor:pointer}
+  .muted{color:#8a7f73;font-size:.85rem}
+  .center{text-align:center}
+  .toast{position:fixed;top:1rem;left:50%;transform:translateX(-50%);background:#1f8c69;color:#fff;padding:.7rem 1.2rem;border-radius:30px;font-weight:600;font-size:.9rem;opacity:0;transition:opacity .3s;z-index:99}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- Paso 1: identificarse -->
+  <div class="card" id="step1">
+    <div class="center">
+      <div class="serif" id="clinicName" style="font-size:1.5rem;font-weight:700">Programa de puntos</div>
+      <p class="muted" style="margin-top:.4rem">Introduce tu móvil para ver tus puntos y recompensas.</p>
+    </div>
+    <input id="phone" type="tel" inputmode="numeric" placeholder="Tu número de móvil"/>
+    <input id="name" type="text" placeholder="Tu nombre (si es tu primera vez)"/>
+    <button onclick="findCard()">Ver mis puntos</button>
+    <p class="muted center" style="margin-top:.7rem;font-size:.75rem">Al continuar aceptas recibir comunicaciones de la clínica.</p>
+  </div>
+
+  <!-- Paso 2: tarjeta -->
+  <div id="step2" style="display:none">
+    <div class="pts-card" id="ptsCard">
+      <div class="lbl">Hola <span id="uName"></span></div>
+      <div class="big" id="uPts">0</div>
+      <div class="lbl">puntos</div>
+      <div class="eur" id="uEur"></div>
+    </div>
+    <button id="checkinBtn" onclick="doCheckin()" style="margin-top:1rem">He llegado a la clínica (sumar puntos)</button>
+    <div class="card" style="margin-top:1rem">
+      <div style="font-weight:700;margin-bottom:.3rem">Tus recompensas</div>
+      <p class="muted" style="font-size:.78rem;margin-bottom:.6rem">Canjéalas en recepción en tu próxima visita.</p>
+      <div id="rewards"></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const WORKER='https://aura-chat-worker.adrian-7b9.workers.dev';
+const params=new URLSearchParams(location.search);
+const T=params.get('t')||'';
+let LEAD=null, CFG=null;
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+async function loadClinic(){
+  try{const r=await fetch(WORKER+'/api/loyalty-card?tenant='+T+'&lead=__none__');const d=await r.json();
+    if(d.clinic)document.getElementById('clinicName').textContent=d.clinic;
+    if(d.brand)document.documentElement.style.setProperty('--brand',d.brand);
+    CFG=d.config;
+  }catch(e){}
+}
+async function findCard(){
+  const phone=document.getElementById('phone').value.trim();
+  const name=document.getElementById('name').value.trim();
+  if(phone.replace(/[^0-9]/g,'').length<9){toast('Pon un móvil válido');return;}
+  try{
+    const r=await fetch(WORKER+'/api/loyalty-find',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,phone,name})});
+    const d=await r.json();
+    if(!d.ok){toast('No se pudo cargar');return;}
+    LEAD=d.lead_id;
+    localStorage.setItem('pts_lead_'+T,LEAD);
+    if(d.welcome)toast('+'+d.welcome+' puntos de bienvenida');
+    showCard();
+  }catch(e){toast('Error de conexión');}
+}
+async function showCard(){
+  const r=await fetch(WORKER+'/api/loyalty-card?tenant='+T+'&lead='+LEAD);const d=await r.json();
+  CFG=d.config||CFG;
+  document.getElementById('step1').style.display='none';
+  document.getElementById('step2').style.display='block';
+  document.getElementById('uName').textContent=(d.name||'').split(' ')[0]||'';
+  if(d.brand)document.documentElement.style.setProperty('--brand',d.brand);
+  animatePts(d.points||0);
+  const eurPer100=(CFG&&CFG.eur_per_100pts)||10;
+  document.getElementById('uEur').textContent='≈ '+((d.points||0)/100*eurPer100).toFixed(0)+'€ en descuentos';
+  renderRewards(d.points||0,eurPer100);
+}
+function animatePts(target){
+  const el=document.getElementById('uPts');let cur=0;const step=Math.max(1,Math.ceil(target/30));
+  const iv=setInterval(()=>{cur+=step;if(cur>=target){cur=target;clearInterval(iv);}el.textContent=cur;},25);
+}
+function renderRewards(pts,eurPer100){
+  let rewards=[];try{rewards=CFG&&CFG.rewards?(typeof CFG.rewards==='string'?JSON.parse(CFG.rewards):CFG.rewards):[];}catch(e){}
+  if(!rewards.length)rewards=[{name:'Descuento '+eurPer100+'€',pts:100},{name:'Producto de regalo',pts:250},{name:'Limpieza facial',pts:500}];
+  const box=document.getElementById('rewards');
+  box.innerHTML=rewards.map(rw=>{const ok=pts>=rw.pts;return '<div class="rew '+(ok?'ok':'')+'"><div><b>'+rw.name+'</b><div class="c">'+rw.pts+' puntos</div></div><span class="badge '+(ok?'ok':'')+'">'+(ok?'Disponible':'Te faltan '+(rw.pts-pts))+'</span></div>';}).join('');
+}
+async function doCheckin(){
+  if(!LEAD)return;
+  try{const r=await fetch(WORKER+'/api/loyalty-checkin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,lead_id:LEAD})});const d=await r.json();
+    if(d.already){toast('Ya sumaste puntos hoy');}
+    else if(d.earned){toast('+'+d.earned+' puntos por venir');}
+    showCard();
+  }catch(e){toast('Error');}
+}
+(function init(){
+  if(!T){document.getElementById('clinicName').textContent='Enlace no válido';return;}
+  loadClinic();
+  const saved=localStorage.getItem('pts_lead_'+T);
+  if(saved){LEAD=saved;showCard();}
+})();
+</script>
+</body>
+</html>

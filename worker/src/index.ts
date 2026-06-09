@@ -452,7 +452,8 @@ export default {
         '/api/waitlist','/api/pipeline','/api/products','/api/bonos','/api/cashbox','/api/profit',
         '/api/recovered','/api/business-costs','/api/schedule-by-day','/api/vacations',
         '/api/sms-templates','/api/team','/api/funnel-save','/api/funnel-edit',
-        '/api/consent-templates','/api/consent-send','/api/consents','/api/treatment-catalog','/api/tenant-meta'
+        '/api/consent-templates','/api/consent-send','/api/consents','/api/treatment-catalog','/api/tenant-meta',
+        '/api/loyalty-adjust','/api/loyalty-balance'
       ]);
       // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
       const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar']);
@@ -594,6 +595,77 @@ export default {
         const tid = url.searchParams.get('tenant');
         const r:any = await env.aura_db.prepare('SELECT google_review_url FROM tenants WHERE id=?').bind(tid).first();
         return json({ google_review_url: r?.google_review_url || '' });
+      }
+      // ===== FIDELIZACIÓN (puntos / recompensas) =====
+      // Config (GET público para la tarjeta del paciente; POST protegido por guardia)
+      if (p === '/api/loyalty-config' && req.method === 'GET') {
+        const tid = url.searchParams.get('tenant');
+        let c:any = await env.aura_db.prepare('SELECT * FROM loyalty_config WHERE tenant_id=?').bind(tid).first();
+        if (!c) c = { tenant_id: tid, enabled:1, pts_per_eur:1, pts_checkin:25, pts_welcome:100, pts_birthday:200, pts_referral:250, eur_per_100pts:10, rewards: JSON.stringify([{name:'Descuento 10€',pts:100},{name:'Producto de regalo',pts:250},{name:'Limpieza facial',pts:500}]) };
+        return json({ config: c });
+      }
+      if (p === '/api/loyalty-config' && req.method === 'POST') {
+        const b:any = await req.json();
+        const tid = b.tenant_id; if(!tid) return json({error:'missing_tenant'},400);
+        const rw = b.rewards ? (typeof b.rewards==='string'? b.rewards : JSON.stringify(b.rewards)) : null;
+        await env.aura_db.prepare(`INSERT INTO loyalty_config (tenant_id,enabled,pts_per_eur,pts_checkin,pts_welcome,pts_birthday,pts_referral,eur_per_100pts,rewards) VALUES (?,?,?,?,?,?,?,?,?)
+          ON CONFLICT(tenant_id) DO UPDATE SET enabled=excluded.enabled,pts_per_eur=excluded.pts_per_eur,pts_checkin=excluded.pts_checkin,pts_welcome=excluded.pts_welcome,pts_birthday=excluded.pts_birthday,pts_referral=excluded.pts_referral,eur_per_100pts=excluded.eur_per_100pts,rewards=COALESCE(excluded.rewards,loyalty_config.rewards)`)
+          .bind(tid, b.enabled?1:0, Number(b.pts_per_eur)||1, Number(b.pts_checkin)||0, Number(b.pts_welcome)||0, Number(b.pts_birthday)||0, Number(b.pts_referral)||0, Number(b.eur_per_100pts)||10, rw).run();
+        return json({ ok:true });
+      }
+      // Saldo de un lead (protegido vía guardia cuando lleva tenant del panel; el paciente usa loyalty-card)
+      if (p === '/api/loyalty-balance' && req.method === 'GET') {
+        const lid = url.searchParams.get('lead');
+        const bal:any = await env.aura_db.prepare('SELECT COALESCE(SUM(delta),0) as b FROM points_ledger WHERE lead_id=?').bind(lid).first();
+        return json({ points: Number(bal?.b)||0 });
+      }
+      // Tarjeta pública del paciente (al escanear QR): saldo + config, identificado por lead
+      if (p === '/api/loyalty-card' && req.method === 'GET') {
+        const lid = url.searchParams.get('lead'); const tid = url.searchParams.get('tenant');
+        const bal:any = await env.aura_db.prepare('SELECT COALESCE(SUM(delta),0) as b FROM points_ledger WHERE lead_id=?').bind(lid).first();
+        const ld:any = await env.aura_db.prepare('SELECT name FROM leads WHERE id=?').bind(lid).first();
+        const tn:any = await env.aura_db.prepare('SELECT name,brand_primary FROM tenants WHERE id=?').bind(tid).first();
+        let c:any = await env.aura_db.prepare('SELECT * FROM loyalty_config WHERE tenant_id=?').bind(tid).first();
+        return json({ points: Number(bal?.b)||0, name: ld?.name||'', clinic: tn?.name||'', brand: tn?.brand_primary||'#5e1a2a', config: c||null });
+      }
+      // Check-in público (escaneo del QR): suma puntos por venir, máx 1/día
+      if (p === '/api/loyalty-checkin' && req.method === 'POST') {
+        const b:any = await req.json(); const lid=b.lead_id; const tid=b.tenant_id;
+        if(!lid||!tid) return json({error:'missing'},400);
+        const lc:any = await env.aura_db.prepare('SELECT * FROM loyalty_config WHERE tenant_id=?').bind(tid).first();
+        if(!lc||!lc.enabled) return json({error:'disabled'},400);
+        const today = new Date().toISOString().slice(0,10);
+        const dup:any = await env.aura_db.prepare("SELECT id FROM points_ledger WHERE lead_id=? AND reason='checkin' AND substr(created_at,1,10)=?").bind(lid,today).first();
+        if(dup) { const bal:any = await env.aura_db.prepare('SELECT COALESCE(SUM(delta),0) as b FROM points_ledger WHERE lead_id=?').bind(lid).first(); return json({ ok:true, already:true, points:Number(bal?.b)||0 }); }
+        const pts = Number(lc.pts_checkin)||0;
+        if(pts>0) await env.aura_db.prepare("INSERT INTO points_ledger (id,tenant_id,lead_id,delta,reason,created_at) VALUES (?,?,?,?,?,?)").bind('pt_'+uid(),tid,lid,pts,'checkin',new Date().toISOString()).run();
+        const bal:any = await env.aura_db.prepare('SELECT COALESCE(SUM(delta),0) as b FROM points_ledger WHERE lead_id=?').bind(lid).first();
+        return json({ ok:true, earned:pts, points:Number(bal?.b)||0 });
+      }
+      // Buscar tarjeta del paciente por teléfono (público, al escanear QR e identificarse)
+      if (p === '/api/loyalty-find' && req.method === 'POST') {
+        const b:any = await req.json(); const tid=b.tenant_id; const phone=(b.phone||'').replace(/[^0-9]/g,'');
+        if(!tid||phone.length<9) return json({error:'missing'},400);
+        const ld:any = await env.aura_db.prepare("SELECT id,name FROM leads WHERE tenant_id=? AND replace(replace(phone,' ',''),'+','') LIKE ? LIMIT 1").bind(tid,'%'+phone.slice(-9)).first();
+        if(!ld){
+          // crear lead nuevo (cliente que se da de alta en el programa) + puntos de bienvenida
+          const lc:any = await env.aura_db.prepare('SELECT * FROM loyalty_config WHERE tenant_id=?').bind(tid).first();
+          const nid=uid();
+          await env.aura_db.prepare("INSERT INTO leads (id,tenant_id,name,phone,temperature,status,source,created_at) VALUES (?,?,?,?,?,?,?,?)").bind(nid,tid,(b.name||'Cliente'),phone,'warm','client','programa-puntos',new Date().toISOString()).run();
+          const w=Number(lc?.pts_welcome)||0;
+          if(w>0) await env.aura_db.prepare("INSERT INTO points_ledger (id,tenant_id,lead_id,delta,reason,created_at) VALUES (?,?,?,?,?,?)").bind('pt_'+uid(),tid,nid,w,'bienvenida',new Date().toISOString()).run();
+          return json({ ok:true, lead_id:nid, name:(b.name||'Cliente'), welcome:w });
+        }
+        return json({ ok:true, lead_id:ld.id, name:ld.name });
+      }
+      // Ajuste manual de puntos desde el panel (protegido)
+      if (p === '/api/loyalty-adjust' && req.method === 'POST') {
+        const b:any = await req.json();
+        if(!b.lead_id||!b.tenant_id) return json({error:'missing'},400);
+        const d = Math.round(Number(b.delta)||0);
+        if(d!==0) await env.aura_db.prepare("INSERT INTO points_ledger (id,tenant_id,lead_id,delta,reason,created_at) VALUES (?,?,?,?,?,?)").bind('pt_'+uid(),b.tenant_id,b.lead_id,d,(b.reason||'ajuste'),new Date().toISOString()).run();
+        const bal:any = await env.aura_db.prepare('SELECT COALESCE(SUM(delta),0) as b FROM points_ledger WHERE lead_id=?').bind(b.lead_id).first();
+        return json({ ok:true, points:Number(bal?.b)||0 });
       }
       if (p === '/api/clinic-signup' && req.method === 'POST') {
         const b:any = await req.json();
@@ -1654,7 +1726,23 @@ export default {
         } catch(e){}
         // Registrar tratamiento/pago si viene
         const tname = b.treatment || 'Tratamiento';
-        const amount = Number(b.amount)||0;
+        let amount = Number(b.amount)||0;
+        // Canje de puntos como descuento (recepción indica redeem_points)
+        const redeemPts = Math.max(0, Math.round(Number(b.redeem_points)||0));
+        if (redeemPts > 0) {
+          try {
+            const lc:any = await env.aura_db.prepare('SELECT * FROM loyalty_config WHERE tenant_id=?').bind(tenantId).first();
+            const bal:any = await env.aura_db.prepare('SELECT COALESCE(SUM(delta),0) as b FROM points_ledger WHERE lead_id=?').bind(leadId).first();
+            const have = Number(bal?.b)||0;
+            const use = Math.min(redeemPts, have);
+            if (use > 0 && lc) {
+              const eurPer100 = Number(lc.eur_per_100pts)||10;
+              const discount = (use/100)*eurPer100;
+              amount = Math.max(0, amount - discount);
+              await env.aura_db.prepare("INSERT INTO points_ledger (id,tenant_id,lead_id,delta,reason,created_at) VALUES (?,?,?,?,?,?)").bind('pt_'+uid(), tenantId, leadId, -use, 'canje:'+discount.toFixed(2)+'EUR', new Date().toISOString()).run();
+            }
+          } catch(e){}
+        }
         // Inventario ligero: descontar producto usado y calcular coste para el margen
         let prodCost = 0;
         if (b.product_id && b.product_qty) {
@@ -1699,6 +1787,14 @@ export default {
         else if (nm.includes('hidrat') || nm.includes('peel') || nm.includes('piel')) recallMsg = '{clinica}: {nombre}, tu piel necesita su sesión de mantenimiento para seguir luminosa. Te guardo hueco esta semana: {link}';
         else if (nm.includes('rino') || nm.includes('mand') || nm.includes('ojera') || nm.includes('relleno')) recallMsg = '{clinica}: {nombre}, tu resultado empieza a reabsorberse. Una revisión ahora lo mantiene impecable. Reserva aquí: {link}';
         await env.aura_db.prepare("UPDATE leads SET recall_date=?, recall_type='venta', recall_msg=?, recall_sms_sent=0 WHERE id=?").bind(rd.toISOString().slice(0,10), recallMsg, leadId).run();
+        // Fidelización: sumar puntos por el importe gastado (si está activo)
+        try {
+          const lc:any = await env.aura_db.prepare('SELECT * FROM loyalty_config WHERE tenant_id=?').bind(tenantId).first();
+          if (lc && lc.enabled && amount > 0) {
+            const pts = Math.round(amount * (Number(lc.pts_per_eur)||1));
+            if (pts>0) await env.aura_db.prepare("INSERT INTO points_ledger (id,tenant_id,lead_id,delta,reason,created_at) VALUES (?,?,?,?,?,?)").bind('pt_'+uid(), tenantId, leadId, pts, 'compra', new Date().toISOString()).run();
+          }
+        } catch(e){}
         return json({ ok:true, result:'client', recall_date: rd.toISOString().slice(0,10) });
       }
 

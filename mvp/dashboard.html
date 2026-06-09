@@ -558,6 +558,32 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
         <button class="btn prim" style="margin-top:.6rem" onclick="saveReviewUrl()">Guardar enlace</button>
         <span id="gRevMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
       </div>
+      <div class="card" id="loyaltyCard">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
+          <h3 style="margin:0">Programa de puntos y recompensas</h3>
+          <label style="display:flex;align-items:center;gap:.5rem;font-size:.9rem"><input type="checkbox" id="loyEnabled"/> Activado</label>
+        </div>
+        <p class="sub">Tus pacientes acumulan puntos por gastar y por venir. Al cobrar, puedes canjearlos como descuento. Tú decides los valores.</p>
+        <div class="row2" style="align-items:end">
+          <div class="field"><label>Puntos por cada 1€ gastado</label><input type="number" id="loyPerEur" step="0.5" min="0" placeholder="1"/></div>
+          <div class="field"><label>Valor al canjear: 100 puntos = €</label><input type="number" id="loyEurPer100" step="1" min="0" placeholder="10"/></div>
+        </div>
+        <div class="row2" style="align-items:end">
+          <div class="field"><label>Puntos por venir (check-in QR, máx 1/día)</label><input type="number" id="loyCheckin" min="0" placeholder="25"/></div>
+          <div class="field"><label>Puntos de cumpleaños</label><input type="number" id="loyBirthday" min="0" placeholder="200"/></div>
+        </div>
+        <div class="row2" style="align-items:end">
+          <div class="field"><label>Puntos de bienvenida</label><input type="number" id="loyWelcome" min="0" placeholder="100"/></div>
+          <div class="field"><label>Puntos por referir a alguien</label><input type="number" id="loyReferral" min="0" placeholder="250"/></div>
+        </div>
+        <button class="btn prim" style="margin-top:.6rem" onclick="saveLoyalty()">Guardar programa</button>
+        <span id="loyMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
+        <div style="margin-top:1.2rem;border-top:1px solid var(--line);padding-top:1rem">
+          <h4 style="margin:0 0 .4rem">QR de tu clínica</h4>
+          <p class="sub" style="margin:0 0 .6rem">Imprime este QR y colócalo en recepción. Tus pacientes lo escanean al llegar para sumar puntos y ver su tarjeta.</p>
+          <div id="loyQrBox" style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap"></div>
+        </div>
+      </div>
       <div class="card" id="smsPrevCard">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
           <div><h3 style="margin:0">Así lo recibe tu paciente</h3><p class="sub" style="margin:.2rem 0 0">Previsualización del recorrido de SMS, fase por fase.</p></div>
@@ -1280,11 +1306,14 @@ function openCloseVisit(apptId,leadId,treatment,name){
       +'<label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;margin-bottom:.35rem;cursor:pointer;font-weight:600;color:var(--ink)"><input type="radio" name="cvNext" value="book" checked onchange="document.getElementById(\'cvNextDate\').style.display=\'block\'"> Reservar ya la siguiente cita <span style="background:var(--accent);color:#fff;font-size:.62rem;font-weight:700;padding:.1rem .4rem;border-radius:6px">RECOMENDADO</span></label>'
       +'<input id="cvNextDate" type="datetime-local" style="display:block;width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px;margin:.2rem 0 .5rem"/>'
       +'<label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;cursor:pointer;color:var(--muted)"><input type="radio" name="cvNext" value="recall" onchange="document.getElementById(\'cvNextDate\').style.display=\'none\'"> No la reserva ahora · avisar por SMS cuando toque</label></div>'
+    +'<div id="cvLoyBox" style="display:none;background:#f0ebff;border-radius:10px;padding:.7rem;margin-bottom:.9rem"></div>'
     +'<div style="display:flex;gap:.5rem"><button class="btn" style="flex:1;background:var(--mint);border-color:var(--mint)" onclick="doCloseVisit(\''+apptId+'\',\''+leadId+'\',true)">Vino y pagó</button><button class="btn" style="flex:1" onclick="doCloseVisit(\''+apptId+'\',\''+leadId+'\',false)">No vino</button></div>'
     +'<button onclick="document.getElementById(\'cvOverlay\').remove()" style="width:100%;background:none;border:none;color:var(--muted);font-size:.8rem;margin-top:.7rem;cursor:pointer">Cancelar</button></div>';
   document.body.appendChild(ov);
   // rellenar selector de productos del inventario
   (async()=>{ try{ const r=await fetch(WORKER+'/api/products?tenant='+T); const d=await r.json(); const sel=document.getElementById('cvProduct'); if(sel&&d.products){ d.products.forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=p.name+' ('+(p.stock||0)+' '+(p.unit||'ud')+')'; sel.appendChild(o); }); } }catch(e){} })();
+  // cargar saldo de puntos del paciente para ofrecer canje
+  (async()=>{ try{ const tk=localStorage.getItem('aura_token')||''; const r=await fetch(WORKER+'/api/loyalty-balance?tenant='+T+'&lead='+leadId,{headers:{'Authorization':'Bearer '+tk}}); const d=await r.json(); const pts=d.points||0; const box=document.getElementById('cvLoyBox'); if(box && pts>0 && LOYCFG && LOYCFG.enabled!=0){ const eurPer100=Number(LOYCFG.eur_per_100pts)||10; const maxEur=(pts/100*eurPer100); box.style.display='block'; box.innerHTML='<label style="font-size:.8rem;font-weight:700;color:#5b3fc4;display:block;margin-bottom:.3rem">★ Tiene '+pts+' puntos ('+maxEur.toFixed(0)+'€ disponibles)</label><label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;cursor:pointer"><input type="checkbox" id="cvRedeem" onchange="document.getElementById(\'cvRedeemPts\').style.display=this.checked?\'block\':\'none\'"> Canjear puntos como descuento</label><input id="cvRedeemPts" type="number" value="'+pts+'" max="'+pts+'" style="display:none;width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px;margin-top:.4rem" placeholder="puntos a usar"/><div class="sub" style="margin:.3rem 0 0;font-size:.72rem">100 puntos = '+eurPer100+'€ de descuento</div>'; } }catch(e){} })();
 }
 async function doCloseVisit(apptId,leadId,attended){
   const treat=document.getElementById('cvTreat')?document.getElementById('cvTreat').value:'';
@@ -1293,10 +1322,11 @@ async function doCloseVisit(apptId,leadId,attended){
   const method=document.getElementById('cvMethod')?document.getElementById('cvMethod').value:null;
   const product_id=document.getElementById('cvProduct')?document.getElementById('cvProduct').value:'';
   const product_qty=document.getElementById('cvProductQty')?(+document.getElementById('cvProductQty').value||0):0;
+  let redeemPts=0; const rc=document.getElementById('cvRedeem'); if(rc&&rc.checked){ redeemPts=+document.getElementById('cvRedeemPts').value||0; }
   let nextDate=null;
   const sel=document.querySelector('input[name="cvNext"]:checked');
   if(attended && sel && sel.value==='book'){ const nd=document.getElementById('cvNextDate'); if(nd&&nd.value){ nextDate=nd.value; } }
-  try{ await fetch(WORKER+'/api/close-visit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,lead_id:leadId,appointment_id:apptId,attended:attended,treatment:treat,amount:amount,pay_status:'paid',method:method,product_id:product_id||null,product_qty:product_qty,next_date:nextDate})}); }catch(e){}
+  try{ await fetch(WORKER+'/api/close-visit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,lead_id:leadId,appointment_id:apptId,attended:attended,treatment:treat,amount:amount,pay_status:'paid',method:method,product_id:product_id||null,product_qty:product_qty,next_date:nextDate,redeem_points:redeemPts})}); }catch(e){}
   const ov=document.getElementById('cvOverlay'); if(ov)ov.remove();
   loadAppts(); loadAgendaCal(); if(typeof loadLeads==='function')loadLeads();
 }
@@ -1829,7 +1859,37 @@ async function saveReviewUrl(){
   try{await fetch(WORKER+'/api/tenant-meta',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,google_review_url:i.value.trim()})});
     m.style.color='#1f8c69';m.textContent='Guardado ✓';setTimeout(()=>m.textContent='',2000);}catch(e){m.style.color='#b45309';m.textContent='Error al guardar';}
 }
-async function loadCal(){await loadSchedule();await loadVacations();await loadCatalog();await loadReviewUrl();}
+let LOYCFG=null;
+async function loadLoyalty(){
+  try{const r=await fetch(WORKER+'/api/loyalty-config?tenant='+T);const d=await r.json();LOYCFG=d.config||{};
+    const c=LOYCFG; const g=id=>document.getElementById(id);
+    if(g('loyEnabled'))g('loyEnabled').checked = c.enabled!=0;
+    if(g('loyPerEur'))g('loyPerEur').value = c.pts_per_eur!=null?c.pts_per_eur:1;
+    if(g('loyEurPer100'))g('loyEurPer100').value = c.eur_per_100pts!=null?c.eur_per_100pts:10;
+    if(g('loyCheckin'))g('loyCheckin').value = c.pts_checkin!=null?c.pts_checkin:25;
+    if(g('loyBirthday'))g('loyBirthday').value = c.pts_birthday!=null?c.pts_birthday:200;
+    if(g('loyWelcome'))g('loyWelcome').value = c.pts_welcome!=null?c.pts_welcome:100;
+    if(g('loyReferral'))g('loyReferral').value = c.pts_referral!=null?c.pts_referral:250;
+    renderLoyQR();
+  }catch(e){}
+}
+function renderLoyQR(){
+  const box=document.getElementById('loyQrBox'); if(!box)return;
+  const cardUrl=location.origin+'/puntos?t='+encodeURIComponent(T);
+  const qr='https://api.qrserver.com/v1/create-qr-code/?size=180x180&data='+encodeURIComponent(cardUrl);
+  box.innerHTML='<img src="'+qr+'" alt="QR" style="width:180px;height:180px;border:1px solid var(--line);border-radius:12px;background:#fff;padding:6px"/>'+
+    '<div style="flex:1;min-width:200px"><div class="sub" style="margin:0 0 .4rem">Enlace de la tarjeta de puntos:</div>'+
+    '<div style="display:flex;gap:.4rem;flex-wrap:wrap"><input readonly value="'+cardUrl+'" style="flex:1;min-width:160px;padding:.5rem;border:1px solid var(--line);border-radius:8px;font-size:.8rem"/>'+
+    '<button class="btn" onclick="navigator.clipboard.writeText(\''+cardUrl+'\');this.textContent=\'Copiado\'">Copiar</button>'+
+    '<a class="btn" href="'+qr+'" download="qr-puntos.png" target="_blank">Descargar QR</a></div></div>';
+}
+async function saveLoyalty(){
+  const g=id=>document.getElementById(id); const m=g('loyMsg');
+  const body={tenant_id:T, enabled:g('loyEnabled').checked, pts_per_eur:+g('loyPerEur').value||0, eur_per_100pts:+g('loyEurPer100').value||0, pts_checkin:+g('loyCheckin').value||0, pts_birthday:+g('loyBirthday').value||0, pts_welcome:+g('loyWelcome').value||0, pts_referral:+g('loyReferral').value||0};
+  try{await fetch(WORKER+'/api/loyalty-config',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify(body)});
+    m.style.color='#1f8c69';m.textContent='Programa guardado ✓';setTimeout(()=>m.textContent='',2000);loadLoyalty();}catch(e){m.style.color='#b45309';m.textContent='Error al guardar';}
+}
+async function loadCal(){await loadSchedule();await loadVacations();await loadCatalog();await loadReviewUrl();await loadLoyalty();}
 // ===== CLINIC OS lite: Caja, Bonos, Inventario =====
 const METODOS=['efectivo','tarjeta','bizum','transferencia','link'];
 function eur(n){ return (Math.round((n||0)*100)/100).toLocaleString('es-ES')+'€'; }
