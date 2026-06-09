@@ -457,7 +457,7 @@ export default {
       ]);
       // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
       const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar']);
-      const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p));
+      const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p)) || (p==='/api/packs' && req.method==='POST');
       if (mustGuard) {
         // tenant solicitado: de query (?tenant=) o del body para POST
         let tenantReq = url.searchParams.get('tenant') || url.searchParams.get('tenant_id');
@@ -658,6 +658,69 @@ export default {
         }
         return json({ ok:true, lead_id:ld.id, name:ld.name });
       }
+
+      // ===== PORTAL DEL CLIENTE (web app) =====
+      // Catálogo de packs (GET público para el portal; POST protegido para el panel)
+      if (p === '/api/packs' && req.method === 'GET') {
+        const tid = url.searchParams.get('tenant');
+        const r = await env.aura_db.prepare("SELECT * FROM packs WHERE tenant_id=? AND active=1 ORDER BY sort_order, created_at").bind(tid).all();
+        return json({ packs: r.results||[] });
+      }
+      if (p === '/api/packs' && req.method === 'POST') {
+        const b:any = await req.json(); const tid=b.tenant_id; if(!tid) return json({error:'missing_tenant'},400);
+        if (b.delete && b.id) { await env.aura_db.prepare('DELETE FROM packs WHERE id=? AND tenant_id=?').bind(b.id,tid).run(); return json({ok:true}); }
+        const id = b.id || ('pk_'+uid());
+        await env.aura_db.prepare(`INSERT INTO packs (id,tenant_id,name,description,sessions,price,original_price,kind,recurring,active,sort_order,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+          ON CONFLICT(id) DO UPDATE SET name=excluded.name,description=excluded.description,sessions=excluded.sessions,price=excluded.price,original_price=excluded.original_price,kind=excluded.kind,recurring=excluded.recurring,active=excluded.active,sort_order=excluded.sort_order`)
+          .bind(id,tid,b.name||'Pack',b.description||'',Number(b.sessions)||1,Number(b.price)||0,Number(b.original_price)||0,b.kind||'pack',b.recurring?1:0,b.active===0?0:1,Number(b.sort_order)||0,new Date().toISOString()).run();
+        return json({ ok:true, id });
+      }
+      // Comprar/reservar un pack desde el portal (público, identificado por lead). Sin Stripe => queda 'reserved' y entra al CRM.
+      if (p === '/api/pack-buy' && req.method === 'POST') {
+        const b:any = await req.json(); const tid=b.tenant_id; const lid=b.lead_id; const pid=b.pack_id;
+        if(!tid||!lid||!pid) return json({error:'missing'},400);
+        const pk:any = await env.aura_db.prepare('SELECT * FROM packs WHERE id=? AND tenant_id=?').bind(pid,tid).first();
+        if(!pk) return json({error:'pack_not_found'},404);
+        const oid='po_'+uid(); const ts=new Date().toISOString();
+        await env.aura_db.prepare("INSERT INTO pack_orders (id,tenant_id,lead_id,pack_id,pack_name,amount,status,method,created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(oid,tid,lid,pid,pk.name,pk.price,'reserved','portal',ts).run();
+        // CRM: si es bono con sesiones, crear bono activo; subir temperatura del lead; marcar interes
+        if ((pk.sessions||1) > 1) {
+          await env.aura_db.prepare("INSERT INTO bonos (id,tenant_id,lead_id,name,total_sessions,used_sessions,amount,status,created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind('b_'+uid(),tid,lid,pk.name,pk.sessions,0,pk.price,'active',ts).run();
+        }
+        await env.aura_db.prepare("UPDATE leads SET temperature='hot', call_priority='urgent', notes=COALESCE(notes,'')||? WHERE id=?").bind('\n[Portal] Reservó '+pk.name+' ('+pk.price+'€) - pendiente de cobro en clínica', lid).run();
+        // aviso al dueño
+        try { const tn:any = await env.aura_db.prepare('SELECT name FROM tenants WHERE id=?').bind(tid).first(); } catch(e){}
+        return json({ ok:true, order_id:oid, pack:pk.name, amount:pk.price, status:'reserved' });
+      }
+      // Mis citas (del lead) para el portal
+      if (p === '/api/my-appointments' && req.method === 'GET') {
+        const tid=url.searchParams.get('tenant'); const lid=url.searchParams.get('lead');
+        if(!tid||!lid) return json({error:'missing'},400);
+        const r = await env.aura_db.prepare("SELECT id,treatment,date_iso,status,duration_min FROM appointments WHERE tenant_id=? AND lead_id=? ORDER BY date_iso DESC LIMIT 20").bind(tid,lid).all();
+        return json({ appointments: r.results||[] });
+      }
+      // Mis bonos (del lead) para el portal
+      if (p === '/api/my-bonos' && req.method === 'GET') {
+        const tid=url.searchParams.get('tenant'); const lid=url.searchParams.get('lead');
+        if(!tid||!lid) return json({error:'missing'},400);
+        const r = await env.aura_db.prepare("SELECT id,name,total_sessions,used_sessions,status FROM bonos WHERE tenant_id=? AND lead_id=? ORDER BY created_at DESC").bind(tid,lid).all();
+        return json({ bonos: r.results||[] });
+      }
+      // Referir a una amiga desde el portal (crea lead nuevo + puntos al que refiere)
+      if (p === '/api/refer' && req.method === 'POST') {
+        const b:any = await req.json(); const tid=b.tenant_id; const lid=b.lead_id;
+        const fname=(b.friend_name||'').trim(); const fphone=(b.friend_phone||'').replace(/[^0-9]/g,'');
+        if(!tid||!lid||fphone.length<9) return json({error:'missing'},400);
+        const exist:any = await env.aura_db.prepare("SELECT id FROM leads WHERE tenant_id=? AND replace(replace(phone,' ',''),'+','') LIKE ? LIMIT 1").bind(tid,'%'+fphone.slice(-9)).first();
+        if(exist) return json({ ok:true, already:true });
+        const nid=uid(); const ts=new Date().toISOString();
+        await env.aura_db.prepare("INSERT INTO leads (id,tenant_id,name,phone,temperature,status,source,notes,created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(nid,tid,(fname||'Referida'),fphone,'warm','new','referido','Referida por un cliente del portal',ts).run();
+        const lc:any = await env.aura_db.prepare('SELECT pts_referral FROM loyalty_config WHERE tenant_id=?').bind(tid).first();
+        const rp=Number(lc?.pts_referral)||0;
+        if(rp>0) await env.aura_db.prepare("INSERT INTO points_ledger (id,tenant_id,lead_id,delta,reason,created_at) VALUES (?,?,?,?,?,?)").bind('pt_'+uid(),tid,lid,rp,'referido',ts).run();
+        return json({ ok:true, earned:rp });
+      }
+
       // Ajuste manual de puntos desde el panel (protegido)
       if (p === '/api/loyalty-adjust' && req.method === 'POST') {
         const b:any = await req.json();

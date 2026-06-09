@@ -584,6 +584,24 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
           <div id="loyQrBox" style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap"></div>
         </div>
       </div>
+      <div class="card" id="portalCard">
+        <h3 style="margin:0">Portal del cliente (web app)</h3>
+        <p class="sub">Tus pacientes acceden a su propia app: puntos, citas, bonos y tu tienda de packs. Aquí defines los packs que verán y compran.</p>
+        <div id="packsAdmin" style="margin:.6rem 0"></div>
+        <div style="border-top:1px solid var(--line);padding-top:.8rem;margin-top:.4rem">
+          <h4 style="margin:0 0 .5rem">Añadir / editar pack</h4>
+          <div class="row2"><div class="field"><label>Nombre</label><input id="pkName" placeholder="Bono 3 sesiones de láser"/></div><div class="field"><label>Descripción corta</label><input id="pkDesc" placeholder="3 sesiones de láser facial"/></div></div>
+          <div class="row2"><div class="field"><label>Precio (€)</label><input id="pkPrice" type="number" placeholder="480"/></div><div class="field"><label>Precio tachado (opcional)</label><input id="pkOrig" type="number" placeholder="540"/></div></div>
+          <div class="row2"><div class="field"><label>Sesiones (1 = no es bono)</label><input id="pkSess" type="number" value="1"/></div><div class="field"><label>¿Membresía mensual?</label><select id="pkRec"><option value="0">No</option><option value="1">Sí (cuota/mes)</option></select></div></div>
+          <button class="btn prim" style="margin-top:.6rem" onclick="savePack()">Guardar pack</button>
+          <span id="pkMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
+        </div>
+        <div style="margin-top:1.2rem;border-top:1px solid var(--line);padding-top:1rem">
+          <h4 style="margin:0 0 .4rem">QR del portal</h4>
+          <p class="sub" style="margin:0 0 .6rem">El paciente lo escanea para abrir su app, ver sus puntos y comprar. Imprime y colócalo en recepción.</p>
+          <div id="portalQrBox" style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap"></div>
+        </div>
+      </div>
       <div class="card" id="smsPrevCard">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
           <div><h3 style="margin:0">Así lo recibe tu paciente</h3><p class="sub" style="margin:.2rem 0 0">Previsualización del recorrido de SMS, fase por fase.</p></div>
@@ -1875,7 +1893,7 @@ async function loadLoyalty(){
 }
 function renderLoyQR(){
   const box=document.getElementById('loyQrBox'); if(!box)return;
-  const cardUrl=location.origin+'/puntos?t='+encodeURIComponent(T);
+  const cardUrl=location.origin+'/portal?t='+encodeURIComponent(T);
   const qr='https://api.qrserver.com/v1/create-qr-code/?size=180x180&data='+encodeURIComponent(cardUrl);
   box.innerHTML='<img src="'+qr+'" alt="QR" style="width:180px;height:180px;border:1px solid var(--line);border-radius:12px;background:#fff;padding:6px"/>'+
     '<div style="flex:1;min-width:200px"><div class="sub" style="margin:0 0 .4rem">Enlace de la tarjeta de puntos:</div>'+
@@ -1889,7 +1907,36 @@ async function saveLoyalty(){
   try{await fetch(WORKER+'/api/loyalty-config',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify(body)});
     m.style.color='#1f8c69';m.textContent='Programa guardado ✓';setTimeout(()=>m.textContent='',2000);loadLoyalty();}catch(e){m.style.color='#b45309';m.textContent='Error al guardar';}
 }
-async function loadCal(){await loadSchedule();await loadVacations();await loadCatalog();await loadReviewUrl();await loadLoyalty();}
+function renderPortalQR(){
+  const box=document.getElementById('portalQrBox'); if(!box)return;
+  const u=location.origin+'/portal?t='+encodeURIComponent(T);
+  const qr='https://api.qrserver.com/v1/create-qr-code/?size=180x180&data='+encodeURIComponent(u);
+  box.innerHTML='<img src="'+qr+'" alt="QR" style="width:180px;height:180px;border:1px solid var(--line);border-radius:12px;background:#fff;padding:6px"/>'+
+    '<div style="flex:1;min-width:200px"><div class="sub" style="margin:0 0 .4rem">Enlace del portal del cliente:</div>'+
+    '<div style="display:flex;gap:.4rem;flex-wrap:wrap"><input readonly value="'+u+'" style="flex:1;min-width:160px;padding:.5rem;border:1px solid var(--line);border-radius:8px;font-size:.8rem"/>'+
+    '<button class="btn" onclick="navigator.clipboard.writeText(\''+u+'\');this.textContent=\'Copiado\'">Copiar</button>'+
+    '<a class="btn" href="'+u+'" target="_blank">Abrir</a>'+
+    '<a class="btn" href="'+qr+'" download="qr-portal.png" target="_blank">Descargar QR</a></div></div>';
+}
+async function loadPacks(){
+  const box=document.getElementById('packsAdmin'); if(!box)return;
+  try{const d=await (await fetch(WORKER+'/api/packs?tenant='+T)).json();
+    if(!d.packs||!d.packs.length){box.innerHTML='<div class="sub">Aún no has creado packs. Añade el primero abajo.</div>';return;}
+    box.innerHTML=d.packs.map(p=>'<div style="display:flex;justify-content:space-between;align-items:center;padding:.55rem .7rem;border:1px solid var(--line);border-radius:10px;margin-bottom:.4rem"><div><b>'+p.name+'</b> <span style="color:var(--muted);font-size:.82rem">'+(p.price||0)+'€'+(p.recurring?'/mes':'')+(p.sessions>1?(' · '+p.sessions+' ses.'):'')+'</span></div><button class="btn" style="padding:.3rem .6rem;font-size:.78rem" onclick="delPack(\''+p.id+'\')">Eliminar</button></div>').join('');
+  }catch(e){}
+}
+async function savePack(){
+  const g=id=>document.getElementById(id); const m=g('pkMsg');
+  const body={tenant_id:T,name:g('pkName').value.trim(),description:g('pkDesc').value.trim(),price:+g('pkPrice').value||0,original_price:+g('pkOrig').value||0,sessions:+g('pkSess').value||1,recurring:g('pkRec').value==='1'};
+  if(!body.name){m.style.color='#b45309';m.textContent='Pon un nombre';return;}
+  try{await fetch(WORKER+'/api/packs',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify(body)});
+    m.style.color='#1f8c69';m.textContent='Pack guardado ✓';setTimeout(()=>m.textContent='',2000);
+    ['pkName','pkDesc','pkPrice','pkOrig'].forEach(i=>g(i).value='');g('pkSess').value='1';loadPacks();}catch(e){m.style.color='#b45309';m.textContent='Error';}
+}
+async function delPack(id){ if(!confirm('¿Eliminar este pack?'))return;
+  await fetch(WORKER+'/api/packs',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,id,delete:true})});loadPacks();
+}
+async function loadCal(){await loadSchedule();await loadVacations();await loadCatalog();await loadReviewUrl();await loadLoyalty();renderPortalQR();loadPacks();}
 // ===== CLINIC OS lite: Caja, Bonos, Inventario =====
 const METODOS=['efectivo','tarjeta','bizum','transferencia','link'];
 function eur(n){ return (Math.round((n||0)*100)/100).toLocaleString('es-ES')+'€'; }

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover"/>
+<meta name="theme-color" content="#5e1a2a"/>
+<title>Mi clínica</title>
+<link rel="manifest" href="/portal-manifest.json"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--brand:#5e1a2a;--accent:#D4A574;--bg:#f4efe8;--ink:#1f1a17;--muted:#8a7f73;--line:#ece5da;}
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;padding-bottom:78px}
+  .serif{font-family:'Playfair Display',serif}
+  .wrap{max-width:480px;margin:0 auto;min-height:100vh}
+  .hidden{display:none!important}
+  /* LOGIN */
+  #login{display:flex;flex-direction:column;justify-content:center;min-height:100vh;padding:1.5rem}
+  .card{background:#fff;border-radius:22px;padding:1.6rem;box-shadow:0 14px 40px rgba(0,0,0,.08)}
+  input{width:100%;padding:.9rem;border:1px solid var(--line);border-radius:13px;font-size:1rem;margin-top:.55rem;font-family:inherit}
+  button{font-family:inherit;cursor:pointer;border:none}
+  .btn{width:100%;padding:.95rem;border-radius:13px;background:var(--brand);color:#fff;font-weight:700;font-size:1rem;margin-top:.9rem;transition:transform .15s cubic-bezier(.23,1,.32,1)}
+  .btn:active{transform:scale(.97)}
+  .btn.ghost{background:transparent;color:var(--brand);border:1px solid var(--line)}
+  /* HEADER */
+  header{background:linear-gradient(150deg,var(--brand),#2a0f16);color:#fff;padding:1.5rem 1.3rem 2.4rem;border-radius:0 0 26px 26px}
+  .hello{font-size:.85rem;opacity:.85}
+  .clinicTtl{font-size:1.45rem;font-weight:700;margin-top:.15rem}
+  /* PTS CARD */
+  .pts{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:18px;padding:1.1rem 1.2rem;margin-top:1rem;backdrop-filter:blur(6px)}
+  .pts .n{font-size:2.6rem;font-weight:700;line-height:1}
+  .pts .lbl{font-size:.72rem;opacity:.8;text-transform:uppercase;letter-spacing:.06em}
+  .tier{display:inline-block;font-size:.7rem;font-weight:700;padding:.2rem .6rem;border-radius:20px;background:var(--accent);color:#2a0f16;margin-top:.5rem}
+  .prog{height:7px;background:rgba(255,255,255,.2);border-radius:5px;margin-top:.6rem;overflow:hidden}
+  .prog>div{height:100%;background:var(--accent);border-radius:5px;transition:width .8s cubic-bezier(.23,1,.32,1)}
+  .content{padding:1.1rem 1.1rem 1.5rem}
+  .sec{display:none}.sec.on{display:block;animation:fade .35s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  h2.t{font-size:1.15rem;font-weight:700;margin:.2rem 0 .8rem}
+  .tile{background:#fff;border-radius:16px;padding:1rem 1.1rem;margin-bottom:.7rem;box-shadow:0 4px 14px rgba(0,0,0,.04)}
+  .pack{display:flex;flex-direction:column;gap:.3rem}
+  .pack .nm{font-weight:700;font-size:1.02rem}
+  .pack .ds{font-size:.82rem;color:var(--muted)}
+  .pack .pr{display:flex;align-items:baseline;gap:.5rem;margin-top:.3rem}
+  .pack .pr b{font-size:1.3rem;color:var(--brand)}
+  .pack .pr s{font-size:.85rem;color:var(--muted)}
+  .pack .badge{font-size:.66rem;font-weight:700;background:#f0e6ee;color:var(--brand);padding:.15rem .5rem;border-radius:6px;align-self:flex-start}
+  .pkbtn{margin-top:.7rem;padding:.7rem;border-radius:11px;background:var(--brand);color:#fff;font-weight:700;font-size:.92rem}
+  .appt{display:flex;justify-content:space-between;align-items:center}
+  .appt .st{font-size:.7rem;font-weight:700;padding:.15rem .5rem;border-radius:6px}
+  .st.booked{background:#fff4e0;color:#b8860b}.st.attended{background:#e6f6ee;color:#1f8c69}.st.noshow{background:#fde8e8;color:#c0392b}
+  .reward{display:flex;justify-content:space-between;align-items:center;padding:.7rem 0;border-bottom:1px solid var(--line)}
+  .reward:last-child{border:none}
+  .rbadge{font-size:.7rem;font-weight:700;padding:.2rem .55rem;border-radius:20px;background:#eee;color:#888}
+  .rbadge.ok{background:var(--brand);color:#fff}
+  /* NAV */
+  nav{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:.5rem .3rem calc(.5rem + env(safe-area-inset-bottom));box-shadow:0 -4px 20px rgba(0,0,0,.05)}
+  .nav-i{flex:1;text-align:center;font-size:.66rem;color:var(--muted);padding:.3rem 0;font-weight:600}
+  .nav-i.on{color:var(--brand)}
+  .nav-i .ic{font-size:1.25rem;display:block;margin-bottom:.1rem}
+  .toast{position:fixed;top:1rem;left:50%;transform:translateX(-50%);background:#1f8c69;color:#fff;padding:.7rem 1.2rem;border-radius:30px;font-weight:600;font-size:.88rem;opacity:0;transition:opacity .3s;z-index:99;max-width:90%}
+  .toast.show{opacity:1}
+  .empty{text-align:center;color:var(--muted);font-size:.88rem;padding:1.5rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- LOGIN -->
+  <div id="login">
+    <div style="text-align:center;margin-bottom:1.2rem">
+      <div class="serif" id="loginClinic" style="font-size:1.8rem;font-weight:700;color:var(--brand)">Tu clínica</div>
+      <p style="color:var(--muted);margin-top:.3rem;font-size:.9rem">Tu espacio de clienta: puntos, citas y ofertas.</p>
+    </div>
+    <div class="card">
+      <label style="font-size:.85rem;font-weight:600">Tu móvil</label>
+      <input id="phone" type="tel" inputmode="numeric" placeholder="600 000 000"/>
+      <input id="name" type="text" placeholder="Tu nombre (primera vez)"/>
+      <button class="btn" onclick="doLogin()">Entrar</button>
+      <p style="color:var(--muted);font-size:.72rem;text-align:center;margin-top:.7rem">Sin contraseñas. Te reconoceremos en este teléfono.</p>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="app" class="hidden">
+    <header>
+      <div class="hello">Hola <span id="uName"></span> 👋</div>
+      <div class="clinicTtl serif" id="appClinic"></div>
+      <div class="pts">
+        <div class="lbl">Tus puntos</div>
+        <div class="n" id="uPts">0</div>
+        <div id="uTier" class="tier">Bronce</div>
+        <div class="prog"><div id="uProg" style="width:0%"></div></div>
+        <div class="lbl" id="uNext" style="margin-top:.4rem;text-transform:none;letter-spacing:0;opacity:.9"></div>
+      </div>
+    </header>
+    <div class="content">
+      <!-- INICIO -->
+      <section class="sec on" id="s-home">
+        <h2 class="t">Para ti</h2>
+        <div class="tile" onclick="go('tienda')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+          <div><b>Comprar un pack</b><div style="font-size:.82rem;color:var(--muted)">Ahorra reservando tu tratamiento</div></div><span style="font-size:1.4rem">→</span>
+        </div>
+        <div class="tile" onclick="go('citas')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+          <div><b>Mis citas</b><div style="font-size:.82rem;color:var(--muted)">Ver y reservar</div></div><span style="font-size:1.4rem">→</span>
+        </div>
+        <div class="tile" onclick="go('referir')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+          <div><b>Invita a una amiga</b><div style="font-size:.82rem;color:var(--muted)">Gana puntos cuando venga</div></div><span style="font-size:1.4rem">→</span>
+        </div>
+        <button class="btn ghost" onclick="checkin()" style="margin-top:.4rem">He llegado a la clínica (sumar puntos)</button>
+      </section>
+
+      <!-- TIENDA -->
+      <section class="sec" id="s-tienda">
+        <h2 class="t">Tienda · packs y bonos</h2>
+        <div id="packsList"></div>
+      </section>
+
+      <!-- CITAS -->
+      <section class="sec" id="s-citas">
+        <h2 class="t">Mis citas</h2>
+        <a id="bookLink" href="#" target="_blank"><button class="btn" style="margin-top:0;margin-bottom:1rem">+ Reservar una cita</button></a>
+        <div id="apptsList"></div>
+      </section>
+
+      <!-- RECOMPENSAS -->
+      <section class="sec" id="s-prem">
+        <h2 class="t">Mis recompensas</h2>
+        <div class="tile"><div id="rewardsList"></div></div>
+        <h2 class="t" style="margin-top:1.2rem">Mis bonos</h2>
+        <div id="bonosList"></div>
+      </section>
+
+      <!-- REFERIR -->
+      <section class="sec" id="s-referir">
+        <h2 class="t">Invita a una amiga</h2>
+        <div class="card">
+          <p style="font-size:.88rem;color:var(--muted);margin-bottom:.3rem">Cuando venga por primera vez, ganas puntos. Es nuestra forma de daros las gracias.</p>
+          <input id="fName" type="text" placeholder="Nombre de tu amiga"/>
+          <input id="fPhone" type="tel" inputmode="numeric" placeholder="Su móvil"/>
+          <button class="btn" onclick="doRefer()">Invitar y ganar puntos</button>
+        </div>
+      </section>
+    </div>
+
+    <nav>
+      <div class="nav-i on" id="n-home" onclick="go('home')"><span class="ic">✦</span>Inicio</div>
+      <div class="nav-i" id="n-tienda" onclick="go('tienda')"><span class="ic">🛍️</span>Tienda</div>
+      <div class="nav-i" id="n-citas" onclick="go('citas')"><span class="ic">📅</span>Citas</div>
+      <div class="nav-i" id="n-prem" onclick="go('prem')"><span class="ic">★</span>Premios</div>
+      <div class="nav-i" id="n-referir" onclick="go('referir')"><span class="ic">💜</span>Invitar</div>
+    </nav>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const WORKER='https://aura-chat-worker.adrian-7b9.workers.dev';
+const params=new URLSearchParams(location.search);
+const T=params.get('t')||params.get('clinica')||'';
+let LEAD=null, CFG=null, CLINIC='';
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2300);}
+function eur(n){return (Math.round((n||0)*100)/100).toLocaleString('es-ES')+'€';}
+
+async function loadClinicMeta(){
+  try{const d=await (await fetch(WORKER+'/api/loyalty-card?tenant='+T+'&lead=__none__')).json();
+    CLINIC=d.clinic||'Tu clínica'; CFG=d.config;
+    document.getElementById('loginClinic').textContent=CLINIC;
+    if(d.brand){document.documentElement.style.setProperty('--brand',d.brand);document.querySelector('meta[name=theme-color]').content=d.brand;}
+  }catch(e){}
+}
+async function doLogin(){
+  const phone=document.getElementById('phone').value.trim();
+  const name=document.getElementById('name').value.trim();
+  if(phone.replace(/[^0-9]/g,'').length<9){toast('Pon un móvil válido');return;}
+  try{const d=await (await fetch(WORKER+'/api/loyalty-find',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,phone,name})})).json();
+    if(!d.ok){toast('No se pudo entrar');return;}
+    LEAD=d.lead_id; localStorage.setItem('portal_lead_'+T,LEAD);
+    if(d.welcome)toast('+'+d.welcome+' puntos de bienvenida');
+    enterApp();
+  }catch(e){toast('Error de conexión');}
+}
+async function enterApp(){
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('appClinic').textContent=CLINIC;
+  document.getElementById('bookLink').href='/c/'+T;
+  await refreshCard(); loadPacks(); loadAppts(); loadBonos();
+}
+async function refreshCard(){
+  const d=await (await fetch(WORKER+'/api/loyalty-card?tenant='+T+'&lead='+LEAD)).json();
+  CFG=d.config||CFG;
+  document.getElementById('uName').textContent=(d.name||'').split(' ')[0]||'';
+  const pts=d.points||0; animate('uPts',pts);
+  const eurPer100=(CFG&&CFG.eur_per_100pts)||10;
+  // nivel
+  let tier='Bronce',min=0,max=500; if(pts>=1500){tier='Oro';min=1500;max=3000;}else if(pts>=500){tier='Plata';min=500;max=1500;}
+  document.getElementById('uTier').textContent=tier;
+  document.getElementById('uProg').style.width=Math.min(100,((pts-min)/(max-min)*100))+'%';
+  document.getElementById('uNext').textContent=tier==='Oro'?('Eres nuestra clienta VIP · '+eur(pts/100*eurPer100)+' en premios'):('Te faltan '+(max-pts)+' pts para '+(tier==='Bronce'?'Plata':'Oro'));
+  renderRewards(pts,eurPer100);
+}
+function animate(id,target){const el=document.getElementById(id);let c=0;const s=Math.max(1,Math.ceil(target/30));const iv=setInterval(()=>{c+=s;if(c>=target){c=target;clearInterval(iv);}el.textContent=c;},22);}
+function renderRewards(pts,eurPer100){
+  let rw=[];try{rw=CFG&&CFG.rewards?(typeof CFG.rewards==='string'?JSON.parse(CFG.rewards):CFG.rewards):[];}catch(e){}
+  if(!rw.length)rw=[{name:'Descuento '+eurPer100+'€',pts:100},{name:'Producto de regalo',pts:250},{name:'Limpieza facial gratis',pts:500}];
+  document.getElementById('rewardsList').innerHTML=rw.map(r=>{const ok=pts>=r.pts;return '<div class="reward"><div><b>'+r.name+'</b><div style="font-size:.76rem;color:var(--muted)">'+r.pts+' puntos</div></div><span class="rbadge '+(ok?'ok':'')+'">'+(ok?'Disponible':'-'+(r.pts-pts))+'</span></div>';}).join('');
+}
+async function loadPacks(){
+  const d=await (await fetch(WORKER+'/api/packs?tenant='+T)).json();
+  const box=document.getElementById('packsList');
+  if(!d.packs||!d.packs.length){box.innerHTML='<div class="empty">Pronto tendrás packs disponibles aquí.</div>';return;}
+  box.innerHTML=d.packs.map(p=>{const off=p.original_price&&p.original_price>p.price;return '<div class="tile pack">'+(off?'<span class="badge">Ahorras '+eur(p.original_price-p.price)+'</span>':'')+'<div class="nm">'+p.name+'</div><div class="ds">'+(p.description||'')+'</div><div class="pr"><b>'+eur(p.price)+'</b>'+(off?'<s>'+eur(p.original_price)+'</s>':'')+(p.recurring?'<span style="font-size:.8rem;color:var(--muted)">/mes</span>':'')+'</div><button class="pkbtn" onclick="buyPack(\''+p.id+'\',\''+p.name.replace(/\x27/g,'')+'\')">Reservar este pack</button></div>';}).join('');
+}
+async function buyPack(pid,name){
+  if(!confirm('¿Reservar "'+name+'"? Te lo guardamos y lo pagas en tu próxima visita.'))return;
+  try{const d=await (await fetch(WORKER+'/api/pack-buy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,lead_id:LEAD,pack_id:pid})})).json();
+    if(d.ok){toast('¡Reservado! Te esperamos en la clínica.');loadBonos();}else toast('No se pudo reservar');
+  }catch(e){toast('Error');}
+}
+async function loadAppts(){
+  const d=await (await fetch(WORKER+'/api/my-appointments?tenant='+T+'&lead='+LEAD)).json();
+  const box=document.getElementById('apptsList');
+  if(!d.appointments||!d.appointments.length){box.innerHTML='<div class="empty">No tienes citas todavía. ¡Reserva la primera!</div>';return;}
+  const stx={booked:'Reservada',attended:'Atendida',noshow:'No asististe',cancelled:'Cancelada'};
+  box.innerHTML=d.appointments.map(a=>{const dt=new Date(a.date_iso);const f=dt.toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'})+' · '+dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});return '<div class="tile appt"><div><b>'+(a.treatment||'Cita')+'</b><div style="font-size:.8rem;color:var(--muted)">'+f+'</div></div><span class="st '+(a.status||'booked')+'">'+(stx[a.status]||a.status)+'</span></div>';}).join('');
+}
+async function loadBonos(){
+  const d=await (await fetch(WORKER+'/api/my-bonos?tenant='+T+'&lead='+LEAD)).json();
+  const box=document.getElementById('bonosList');
+  if(!d.bonos||!d.bonos.length){box.innerHTML='<div class="empty">Aún no tienes bonos.</div>';return;}
+  box.innerHTML=d.bonos.map(b=>{const left=(b.total_sessions||0)-(b.used_sessions||0);const pct=b.total_sessions?(b.used_sessions/b.total_sessions*100):0;return '<div class="tile"><div style="display:flex;justify-content:space-between"><b>'+b.name+'</b><span style="font-size:.82rem;color:var(--brand);font-weight:700">'+left+' restantes</span></div><div class="prog" style="background:var(--line);margin-top:.5rem"><div style="width:'+pct+'%;background:var(--brand)"></div></div></div>';}).join('');
+}
+async function checkin(){
+  try{const d=await (await fetch(WORKER+'/api/loyalty-checkin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,lead_id:LEAD})})).json();
+    if(d.already)toast('Ya sumaste puntos hoy');else if(d.earned)toast('+'+d.earned+' puntos por venir');
+    refreshCard();
+  }catch(e){toast('Error');}
+}
+async function doRefer(){
+  const fn=document.getElementById('fName').value.trim();const fp=document.getElementById('fPhone').value.trim();
+  if(fp.replace(/[^0-9]/g,'').length<9){toast('Pon el móvil de tu amiga');return;}
+  try{const d=await (await fetch(WORKER+'/api/refer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,lead_id:LEAD,friend_name:fn,friend_phone:fp})})).json();
+    if(d.already){toast('Esa persona ya es clienta');}
+    else if(d.ok){toast('¡Invitación enviada! Ganarás puntos cuando venga.');document.getElementById('fName').value='';document.getElementById('fPhone').value='';refreshCard();}
+  }catch(e){toast('Error');}
+}
+function go(s){
+  ['home','tienda','citas','prem','referir'].forEach(x=>{document.getElementById('s-'+x).classList.toggle('on',x===s);document.getElementById('n-'+x).classList.toggle('on',x===s);});
+  window.scrollTo(0,0);
+}
+(function init(){
+  if(!T){document.getElementById('loginClinic').textContent='Enlace no válido';return;}
+  loadClinicMeta();
+  const saved=localStorage.getItem('portal_lead_'+T);
+  if(saved){LEAD=saved;enterApp();}
+})();
+</script>
+</body>
+</html>

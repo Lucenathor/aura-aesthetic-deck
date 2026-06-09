@@ -1,0 +1,16 @@
+{
+  "name": "Mi Clínica · Portal",
+  "short_name": "Mi Clínica",
+  "description": "Tus puntos, citas y ofertas de tu clínica de estética.",
+  "start_url": "/portal",
+  "display": "standalone",
+  "background_color": "#f4efe8",
+  "theme_color": "#5e1a2a",
+  "icons": [
+    {
+      "src": "https://api.iconify.design/ph/sparkle-fill.svg?color=%235e1a2a&width=192&height=192",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}
