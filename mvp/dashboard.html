@@ -46,18 +46,18 @@ a{color:inherit;text-decoration:none}
 .btn:active{transform:scale(.97)}
 .btn.prim{background:linear-gradient(135deg,var(--terra),var(--terra-d));color:#fff;border:0;box-shadow:0 10px 22px -12px rgba(176,93,68,.6)}
 
-/* Agenda Interactiva */
-.agenda-grid { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; position: relative; min-width: 600px; }
-.agenda-time-col { width: 60px; flex-shrink: 0; border-right: 1px solid var(--line); background: #fafafa; }
-.agenda-time-slot { height: 60px; border-bottom: 1px solid var(--line); box-sizing: border-box; display: flex; align-items: flex-start; justify-content: center; padding-top: 4px; font-size: 0.7rem; color: var(--muted); font-weight: 600; }
-.agenda-pro-col { flex: 1; min-width: 150px; border-right: 1px solid var(--line); position: relative; }
+/* Agenda Interactiva (Escala ampliada y Sticky) */
+.agenda-grid { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; position: relative; min-width: 100%; }
+.agenda-time-col { width: 60px; flex-shrink: 0; border-right: 1px solid var(--line); background: #fafafa; position: sticky; left: 0; z-index: 20; }
+.agenda-time-slot { height: 120px; border-bottom: 1px solid var(--line); box-sizing: border-box; display: flex; align-items: flex-start; justify-content: center; padding-top: 4px; font-size: 0.7rem; color: var(--muted); font-weight: 600; }
+.agenda-pro-col { flex: 1; min-width: 180px; border-right: 1px solid var(--line); position: relative; }
 .agenda-pro-col:last-child { border-right: none; }
 .agenda-pro-header { height: 40px; border-bottom: 1px solid var(--line); background: #f4f4f4; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.85rem; color: var(--ink); position: sticky; top: 0; z-index: 10; }
 .agenda-slots-container { position: relative; }
 .agenda-slot-bg { height: 30px; border-bottom: 1px dashed var(--line); box-sizing: border-box; transition: background 0.2s; }
-.agenda-slot-bg:nth-child(even) { border-bottom: 1px solid var(--line); }
+.agenda-slot-bg:nth-child(4n) { border-bottom: 1px solid var(--line); }
 .agenda-slot-bg.drag-over { background: rgba(176,93,68,0.1); }
-.agenda-appt { position: absolute; left: 4px; right: 4px; border-radius: 6px; padding: 4px 6px; font-size: 0.75rem; color: #fff; overflow: hidden; cursor: grab; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: transform 0.1s, box-shadow 0.1s; z-index: 5; }
+.agenda-appt { position: absolute; left: 4px; right: 4px; border-radius: 6px; padding: 4px 6px; font-size: 0.75rem; color: #fff; overflow: hidden; cursor: grab; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: transform 0.1s, box-shadow 0.1s; z-index: 5; display: flex; flex-direction: column; }
 .agenda-appt:active { cursor: grabbing; transform: scale(0.98); box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 100; }
 .agenda-appt.status-confirmed { background: linear-gradient(135deg, #34a877, #2c8f65); }
 .agenda-appt.status-pending { background: linear-gradient(135deg, #d9a23a, #b88a31); }
@@ -66,6 +66,8 @@ a{color:inherit;text-decoration:none}
 .agenda-appt.status-attended { background: linear-gradient(135deg, #2980b9, #2471a3); }
 .agenda-appt-title { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
 .agenda-appt-sub { font-size: 0.65rem; opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agenda-appt.short-appt { flex-direction: row; align-items: center; gap: 6px; padding: 2px 6px; }
+.agenda-appt.short-appt .agenda-appt-title { margin-bottom: 0; }
 .agenda-closed-bg { position: absolute; top: 0; bottom: 0; left: 0; right: 0; background: repeating-linear-gradient(45deg, rgba(0,0,0,0.03), rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.06) 10px, rgba(0,0,0,0.06) 20px); z-index: 1; pointer-events: none; }
 
 /* sections */
@@ -1320,12 +1322,16 @@ function renderAgendaCal(){
       h+='<div class="agenda-slots-container">';
       if(dayClosed.closed) h+='<div class="agenda-closed-bg"></div>';
       
-      // Rejilla de fondo y zonas de drop
+      // Rejilla de fondo y zonas de drop (Tramos de 15 min)
       for(let hr=8;hr<=21;hr++){
-        const hourIso = dayStr+'T'+String(hr).padStart(2,'0')+':00';
-        const halfIso = dayStr+'T'+String(hr).padStart(2,'0')+':30';
-        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+hourIso+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+hourIso+'\',\''+pro.id+'\')"></div>';
-        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+halfIso+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+halfIso+'\',\''+pro.id+'\')"></div>';
+        const h00 = dayStr+'T'+String(hr).padStart(2,'0')+':00';
+        const h15 = dayStr+'T'+String(hr).padStart(2,'0')+':15';
+        const h30 = dayStr+'T'+String(hr).padStart(2,'0')+':30';
+        const h45 = dayStr+'T'+String(hr).padStart(2,'0')+':45';
+        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h00+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+h00+'\',\''+pro.id+'\')"></div>';
+        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h15+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+h15+'\',\''+pro.id+'\')"></div>';
+        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h30+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+h30+'\',\''+pro.id+'\')"></div>';
+        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h45+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+h45+'\',\''+pro.id+'\')"></div>';
       }
       
       // Citas del profesional
@@ -1335,12 +1341,13 @@ function renderAgendaCal(){
         const startMins = (dt.getHours() - 8) * 60 + dt.getMinutes();
         if(startMins < 0 || startMins > 14*60) return; // fuera de rango 8-21
         const dur = a.duration_min || 30;
-        const top = startMins; // 1px por minuto (60px por hora)
-        const height = dur;
+        const top = startMins * 2; // 2px por minuto (120px por hora)
+        const height = dur * 2;
         const stClass = 'status-'+(a.status||'pending');
-        h+='<div class="agenda-appt '+stClass+'" draggable="true" ondragstart="agDragStart(event,\''+a.id+'\')" onclick="event.stopPropagation();openApptCard(\''+a.id+'\')" style="top:'+top+'px; height:'+height+'px;" title="'+(a.lead_name||'Cita')+' - '+(a.treatment||'')+'">';
+        const shortClass = dur <= 15 ? 'short-appt' : '';
+        h+='<div class="agenda-appt '+stClass+' '+shortClass+'" draggable="true" ondragstart="agDragStart(event,\''+a.id+'\')" onclick="event.stopPropagation();openApptCard(\''+a.id+'\')" style="top:'+top+'px; height:'+height+'px;" title="'+(a.lead_name||'Cita')+' - '+(a.treatment||'')+'">';
         h+='<div class="agenda-appt-title">'+(a.lead_name||'Cita')+'</div>';
-        if(dur >= 30) h+='<div class="agenda-appt-sub">'+(a.treatment||'')+'</div>';
+        if(dur > 15) h+='<div class="agenda-appt-sub">'+(a.treatment||'')+'</div>';
         h+='</div>';
       });
       
@@ -1390,12 +1397,16 @@ function renderAgendaCal(){
       h+='<div class="agenda-slots-container">';
       if(cl.closed) h+='<div class="agenda-closed-bg" title="'+cl.reason+'"></div>';
       
-      // Rejilla de fondo y zonas de drop
+      // Rejilla de fondo y zonas de drop (Tramos de 15 min)
       for(let hr=8;hr<=21;hr++){
-        const hourIso = ds+'T'+String(hr).padStart(2,'0')+':00';
-        const halfIso = ds+'T'+String(hr).padStart(2,'0')+':30';
-        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+hourIso+'\')" onclick="openNewAppt(\''+hourIso+'\')"></div>';
-        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+halfIso+'\')" onclick="openNewAppt(\''+halfIso+'\')"></div>';
+        const h00 = ds+'T'+String(hr).padStart(2,'0')+':00';
+        const h15 = ds+'T'+String(hr).padStart(2,'0')+':15';
+        const h30 = ds+'T'+String(hr).padStart(2,'0')+':30';
+        const h45 = ds+'T'+String(hr).padStart(2,'0')+':45';
+        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h00+'\')" onclick="openNewAppt(\''+h00+'\')"></div>';
+        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h15+'\')" onclick="openNewAppt(\''+h15+'\')"></div>';
+        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h30+'\')" onclick="openNewAppt(\''+h30+'\')"></div>';
+        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h45+'\')" onclick="openNewAppt(\''+h45+'\')"></div>';
       }
       
       // Citas del día
@@ -1404,12 +1415,13 @@ function renderAgendaCal(){
         const startMins = (dt.getHours() - 8) * 60 + dt.getMinutes();
         if(startMins < 0 || startMins > 14*60) return;
         const dur = a.duration_min || 30;
-        const top = startMins;
-        const height = dur;
+        const top = startMins * 2; // 2px por minuto (120px por hora)
+        const height = dur * 2;
         const stClass = 'status-'+(a.status||'pending');
-        h+='<div class="agenda-appt '+stClass+'" draggable="true" ondragstart="agDragStart(event,\''+a.id+'\')" onclick="event.stopPropagation();openApptCard(\''+a.id+'\')" style="top:'+top+'px; height:'+height+'px;" title="'+(a.lead_name||'Cita')+' - '+(a.treatment||'')+'">';
+        const shortClass = dur <= 15 ? 'short-appt' : '';
+        h+='<div class="agenda-appt '+stClass+' '+shortClass+'" draggable="true" ondragstart="agDragStart(event,\''+a.id+'\')" onclick="event.stopPropagation();openApptCard(\''+a.id+'\')" style="top:'+top+'px; height:'+height+'px;" title="'+(a.lead_name||'Cita')+' - '+(a.treatment||'')+'">';
         h+='<div class="agenda-appt-title">'+(a.lead_name||'Cita')+'</div>';
-        if(dur >= 30) h+='<div class="agenda-appt-sub">'+(a.treatment||'')+'</div>';
+        if(dur > 15) h+='<div class="agenda-appt-sub">'+(a.treatment||'')+'</div>';
         h+='</div>';
       });
       
