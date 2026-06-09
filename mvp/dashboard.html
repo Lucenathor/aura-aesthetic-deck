@@ -990,6 +990,7 @@ async function loadLeads(){
 }
 let _sortBy=''; let _sortDir=-1;
 function sortLeads(k){ if(_sortBy===k){_sortDir*=-1;}else{_sortBy=k;_sortDir=-1;} renderLeads(); }
+const ESTADO_ES={new:'Nuevo',whatsapp:'Nuevo',chatting:'En chat',booked:'Reservada',client:'Cliente',attended:'Atendió',noshow:'No vino',lost:'Perdido',cancel:'Canceló'};
 function renderLeads(){
   const tb=document.getElementById('leadsBody'); if(!tb)return; tb.innerHTML='';
   let arr=_allLeads.slice();
@@ -1005,7 +1006,7 @@ function renderLeads(){
     tr.innerHTML=`<td><b>${l.name||'—'}</b><br><small style="color:var(--muted)">${l.phone||''}</small></td>
       <td>${l.treatment||'—'}</td>
       <td><b style="color:${spent>0?'#1f8c69':'var(--muted)'}">${spent}€</b></td>
-      <td><span class="tag ${l.status==='whatsapp'?'new':(l.status||'new')}">${l.status==='whatsapp'?'nuevo':(l.status||'nuevo')}</span>${l.wa_opened?' <span title="pulsó WhatsApp" style="color:#1f8c69;font-size:.9rem">●</span>':''}</td>
+      <td><span class="tag ${l.status==='whatsapp'?'new':(l.status||'new')}">${ESTADO_ES[l.status]||'Nuevo'}</span>${l.wa_opened?' <span title="pulsó WhatsApp" style="color:#1f8c69;font-size:.9rem">●</span>':''}</td>
       <td><span style="color:var(--muted);font-size:.78rem">${fmtTime(l.created_at)}</span></td>`;
     tb.appendChild(tr);
   });
@@ -1595,7 +1596,7 @@ function openApptCard(id){
 function closeApptCard(){ const ov=document.getElementById('apOverlay'); if(!ov)return; const pn=document.getElementById('apPanel'); if(pn)pn.style.transform='translateX(100%)'; ov.style.opacity='0'; setTimeout(()=>ov.remove(),280); }
 // Crear cita manual (walk-in)
 function openNewAppt(iso, proId){
-  const ov=document.createElement('div'); ov.id='naOverlay'; ov.style='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:grid;place-items:center;padding:1rem';
+  const ov=document.createElement('div'); ov.id='naOverlay'; ov.style='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:grid;place-items:center;padding:1rem;overflow-y:auto';
   const proOpts=_pros.map(p=>'<option value="'+p.id+'" '+(p.id===proId?'selected':'')+'>'+p.name+'</option>').join('');
   // valor por defecto para el datetime-local: la hora recibida, pero saneada a rango 8-21h
   let dtVal=String(iso).slice(0,16);
@@ -1605,7 +1606,7 @@ function openNewAppt(iso, proId){
   const treatField = (CATALOG&&CATALOG.length)
     ? '<select id="naTreatSel" onchange="onTreatPick(this)" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"><option value="">Elige tratamiento…</option>'+catOpts+'<option value="__custom">Otro (escribir)…</option></select><input id="naTreat" placeholder="Tratamiento" style="display:none;width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/>'
     : '<input id="naTreat" placeholder="Tratamiento" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/>';
-  ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:360px;width:100%;padding:1.4rem"><h3 class="serif" style="margin:0 0 .8rem">Nueva cita</h3>'
+  ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:380px;width:100%;padding:1.4rem;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)"><h3 class="serif" style="margin:0 0 .8rem">Nueva cita</h3>'
     +'<label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.25rem">Día y hora</label>'
     +'<input id="naWhen" type="datetime-local" value="'+dtVal+'" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.6rem"/>'
     +'<input id="naName" placeholder="Nombre del paciente" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/>'
