@@ -492,8 +492,9 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
         <div id="schRows" style="margin:.6rem 0"></div>
         <button class="btn" style="margin-top:.4rem" onclick="applyToAll()">Aplicar el horario del primer día abierto a todos</button>
         <div class="row2" style="margin-top:.4rem">
-          <div class="field"><label>Duración de cada cita</label><select id="calSlot"><option value="20">20 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>60 min</option></select></div>
-          <div class="field"><label>Profesional principal (opcional)</label><input id="calPro" placeholder="Dra. Elvira"/></div>
+          <div class="field"><label>Duración de cada cita</label><select id="calSlot"><option value="15">15 min</option><option value="20">20 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>60 min</option></select></div>
+          <div class="field"><label>Intervalo de la agenda</label><select id="calInterval"><option value="15">15 min (Máxima precisión)</option><option value="30">30 min (Vista más limpia)</option></select></div>
+          <div class="field"><label>Profesional principal</label><input id="calPro" placeholder="Dra. Elvira"/></div>
         </div>
         <button class="btn prim" style="margin-top:1.1rem" onclick="saveSchedule()">Guardar horario</button>
         <span id="calMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
@@ -1309,10 +1310,14 @@ function renderAgendaCal(){
     const pros = _pros.filter(p=>p.active!==0);
     if(!pros.length) pros.push({id:'pro_1', name:'General', color:'#9B7BFF'});
     
+    const interval = parseInt(document.getElementById('calInterval')?.value || '15');
+    const pxPerMin = interval === 15 ? 2 : 1; // 120px/h para 15min, 60px/h para 30min
+    const slotHeight = interval === 15 ? 30 : 30; // Altura de cada celda de fondo
+    
     h+='<div class="agenda-grid" '+(dayClosed.closed?'style="opacity:.6"':'')+'>';
     // Columna de horas
     h+='<div class="agenda-time-col"><div class="agenda-pro-header"></div>';
-    for(let hr=8;hr<=21;hr++){ h+='<div class="agenda-time-slot">'+String(hr).padStart(2,'0')+':00</div>'; }
+    for(let hr=8;hr<=21;hr++){ h+='<div class="agenda-time-slot" style="height:'+(60*pxPerMin)+'px">'+String(hr).padStart(2,'0')+':00</div>'; }
     h+='</div>';
     
     // Columnas por profesional
@@ -1322,16 +1327,20 @@ function renderAgendaCal(){
       h+='<div class="agenda-slots-container">';
       if(dayClosed.closed) h+='<div class="agenda-closed-bg"></div>';
       
-      // Rejilla de fondo y zonas de drop (Tramos de 15 min)
+      // Rejilla de fondo y zonas de drop
       for(let hr=8;hr<=21;hr++){
         const h00 = dayStr+'T'+String(hr).padStart(2,'0')+':00';
-        const h15 = dayStr+'T'+String(hr).padStart(2,'0')+':15';
         const h30 = dayStr+'T'+String(hr).padStart(2,'0')+':30';
-        const h45 = dayStr+'T'+String(hr).padStart(2,'0')+':45';
-        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h00+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+h00+'\',\''+pro.id+'\')"></div>';
-        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h15+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+h15+'\',\''+pro.id+'\')"></div>';
-        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h30+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+h30+'\',\''+pro.id+'\')"></div>';
-        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h45+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+h45+'\',\''+pro.id+'\')"></div>';
+        h+='<div class="agenda-slot-bg" style="height:'+slotHeight+'px" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h00+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+h00+'\',\''+pro.id+'\')"></div>';
+        if(interval === 15) {
+          const h15 = dayStr+'T'+String(hr).padStart(2,'0')+':15';
+          h+='<div class="agenda-slot-bg" style="height:'+slotHeight+'px" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h15+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+h15+'\',\''+pro.id+'\')"></div>';
+        }
+        h+='<div class="agenda-slot-bg" style="height:'+slotHeight+'px" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h30+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+h30+'\',\''+pro.id+'\')"></div>';
+        if(interval === 15) {
+          const h45 = dayStr+'T'+String(hr).padStart(2,'0')+':45';
+          h+='<div class="agenda-slot-bg" style="height:'+slotHeight+'px" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h45+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+h45+'\',\''+pro.id+'\')"></div>';
+        }
       }
       
       // Citas del profesional
@@ -1341,13 +1350,13 @@ function renderAgendaCal(){
         const startMins = (dt.getHours() - 8) * 60 + dt.getMinutes();
         if(startMins < 0 || startMins > 14*60) return; // fuera de rango 8-21
         const dur = a.duration_min || 30;
-        const top = startMins * 2; // 2px por minuto (120px por hora)
-        const height = dur * 2;
+        const top = startMins * pxPerMin;
+        const height = dur * pxPerMin;
         const stClass = 'status-'+(a.status||'pending');
         const shortClass = dur <= 15 ? 'short-appt' : '';
         h+='<div class="agenda-appt '+stClass+' '+shortClass+'" draggable="true" ondragstart="agDragStart(event,\''+a.id+'\')" onclick="event.stopPropagation();openApptCard(\''+a.id+'\')" style="top:'+top+'px; height:'+height+'px;" title="'+(a.lead_name||'Cita')+' - '+(a.treatment||'')+'">';
         h+='<div class="agenda-appt-title">'+(a.lead_name||'Cita')+'</div>';
-        if(dur > 15) h+='<div class="agenda-appt-sub">'+(a.treatment||'')+'</div>';
+        if(dur > 15 || interval === 30) h+='<div class="agenda-appt-sub">'+(a.treatment||'')+'</div>';
         h+='</div>';
       });
       
@@ -1374,10 +1383,14 @@ function renderAgendaCal(){
     document.getElementById('calSummary').innerHTML='<span><b style="color:var(--ink)">'+tot+'</b> citas esta semana</span>';
     
     // Agenda Interactiva Semana (Cuadrícula 7 días x Horas)
+    const interval = parseInt(document.getElementById('calInterval')?.value || '15');
+    const pxPerMin = interval === 15 ? 2 : 1;
+    const slotHeight = interval === 15 ? 30 : 30;
+    
     let h='<div class="agenda-grid">';
     // Columna de horas
     h+='<div class="agenda-time-col"><div class="agenda-pro-header"></div>';
-    for(let hr=8;hr<=21;hr++){ h+='<div class="agenda-time-slot">'+String(hr).padStart(2,'0')+':00</div>'; }
+    for(let hr=8;hr<=21;hr++){ h+='<div class="agenda-time-slot" style="height:'+(60*pxPerMin)+'px">'+String(hr).padStart(2,'0')+':00</div>'; }
     h+='</div>';
     
     // Columnas por día
@@ -1397,16 +1410,20 @@ function renderAgendaCal(){
       h+='<div class="agenda-slots-container">';
       if(cl.closed) h+='<div class="agenda-closed-bg" title="'+cl.reason+'"></div>';
       
-      // Rejilla de fondo y zonas de drop (Tramos de 15 min)
+      // Rejilla de fondo y zonas de drop
       for(let hr=8;hr<=21;hr++){
         const h00 = ds+'T'+String(hr).padStart(2,'0')+':00';
-        const h15 = ds+'T'+String(hr).padStart(2,'0')+':15';
         const h30 = ds+'T'+String(hr).padStart(2,'0')+':30';
-        const h45 = ds+'T'+String(hr).padStart(2,'0')+':45';
-        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h00+'\')" onclick="openNewAppt(\''+h00+'\')"></div>';
-        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h15+'\')" onclick="openNewAppt(\''+h15+'\')"></div>';
-        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h30+'\')" onclick="openNewAppt(\''+h30+'\')"></div>';
-        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h45+'\')" onclick="openNewAppt(\''+h45+'\')"></div>';
+        h+='<div class="agenda-slot-bg" style="height:'+slotHeight+'px" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h00+'\')" onclick="openNewAppt(\''+h00+'\')"></div>';
+        if(interval === 15) {
+          const h15 = ds+'T'+String(hr).padStart(2,'0')+':15';
+          h+='<div class="agenda-slot-bg" style="height:'+slotHeight+'px" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h15+'\')" onclick="openNewAppt(\''+h15+'\')"></div>';
+        }
+        h+='<div class="agenda-slot-bg" style="height:'+slotHeight+'px" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h30+'\')" onclick="openNewAppt(\''+h30+'\')"></div>';
+        if(interval === 15) {
+          const h45 = ds+'T'+String(hr).padStart(2,'0')+':45';
+          h+='<div class="agenda-slot-bg" style="height:'+slotHeight+'px" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h45+'\')" onclick="openNewAppt(\''+h45+'\')"></div>';
+        }
       }
       
       // Citas del día
@@ -1415,13 +1432,13 @@ function renderAgendaCal(){
         const startMins = (dt.getHours() - 8) * 60 + dt.getMinutes();
         if(startMins < 0 || startMins > 14*60) return;
         const dur = a.duration_min || 30;
-        const top = startMins * 2; // 2px por minuto (120px por hora)
-        const height = dur * 2;
+        const top = startMins * pxPerMin;
+        const height = dur * pxPerMin;
         const stClass = 'status-'+(a.status||'pending');
         const shortClass = dur <= 15 ? 'short-appt' : '';
         h+='<div class="agenda-appt '+stClass+' '+shortClass+'" draggable="true" ondragstart="agDragStart(event,\''+a.id+'\')" onclick="event.stopPropagation();openApptCard(\''+a.id+'\')" style="top:'+top+'px; height:'+height+'px;" title="'+(a.lead_name||'Cita')+' - '+(a.treatment||'')+'">';
         h+='<div class="agenda-appt-title">'+(a.lead_name||'Cita')+'</div>';
-        if(dur > 15) h+='<div class="agenda-appt-sub">'+(a.treatment||'')+'</div>';
+        if(dur > 15 || interval === 30) h+='<div class="agenda-appt-sub">'+(a.treatment||'')+'</div>';
         h+='</div>';
       });
       
@@ -1639,13 +1656,14 @@ async function loadSchedule(){
   try{const r=await fetch(WORKER+'/api/schedule-by-day?tenant='+T);const d=await r.json();
     SCHED={};(d.schedule||[]).forEach(s=>{SCHED[s.dow]={is_open:s.is_open,t1_start:s.t1_start,t1_end:s.t1_end,t2_start:s.t2_start,t2_end:s.t2_end};});
     if(d.slot_min)document.getElementById('calSlot').value=d.slot_min;
+    if(d.slot_interval)document.getElementById('calInterval').value=d.slot_interval;
     if(d.professional)document.getElementById('calPro').value=d.professional;
   }catch(e){}
   renderSchedule();
 }
 async function saveSchedule(){
   const schedule=DOW_ORDER.concat([]).map(dow=>{const r=SCHED[dow]||{};return {dow,is_open:r.is_open?1:0,t1_start:r.t1_start||'10:00',t1_end:r.t1_end||'14:00',t2_start:r.t2_start||null,t2_end:r.t2_end||null};});
-  const body={tenant_id:T,schedule,slot_min:+document.getElementById('calSlot').value,professional:document.getElementById('calPro').value};
+  const body={tenant_id:T,schedule,slot_min:+document.getElementById('calSlot').value,slot_interval:+document.getElementById('calInterval').value,professional:document.getElementById('calPro').value};
   const m=document.getElementById('calMsg');
   try{await fetch(WORKER+'/api/schedule-by-day',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});m.style.color='#1f8c69';m.textContent='Horario guardado ✓';setTimeout(()=>m.textContent='',2500);if(typeof loadAgenda==='function'){try{loadAgenda();}catch(e){}}}catch(e){m.style.color='#b45309';m.textContent='Error al guardar';}
 }

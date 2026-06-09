@@ -685,17 +685,17 @@ export default {
       if (p === '/api/calendar' && req.method === 'GET') {
         const tenant = url.searchParams.get('tenant');
         if (!tenant) return json({ error: 'missing tenant' }, 400);
-        const r = await env.aura_db.prepare('SELECT * FROM calendar_config WHERE tenant_id=?').bind(tenant).first();
-        return json({ config: r || { tenant_id: tenant, days: '1,2,3,4,5', start_hour: 10, end_hour: 19, slot_min: 30, professional: '' } });
+        const r: any = await env.aura_db.prepare('SELECT * FROM calendar_config WHERE tenant_id=?').bind(tenant).first();
+        return json({ config: r || { tenant_id: tenant, days: '1,2,3,4,5', start_hour: 10, end_hour: 19, slot_min: 30, professional: '', slot_interval: 15 } });
       }
       // Calendario: guardar config
       if (p === '/api/calendar' && req.method === 'POST') {
         const b: any = await req.json();
         await env.aura_db.prepare(
-          `INSERT INTO calendar_config (tenant_id,days,start_hour,end_hour,slot_min,professional,updated_at)
-           VALUES (?,?,?,?,?,?,CURRENT_TIMESTAMP)
-           ON CONFLICT(tenant_id) DO UPDATE SET days=excluded.days,start_hour=excluded.start_hour,end_hour=excluded.end_hour,slot_min=excluded.slot_min,professional=excluded.professional,updated_at=CURRENT_TIMESTAMP`
-        ).bind(b.tenant_id, b.days||'1,2,3,4,5', b.start_hour||10, b.end_hour||19, b.slot_min||30, b.professional||'').run();
+          `INSERT INTO calendar_config (tenant_id,days,start_hour,end_hour,slot_min,professional,slot_interval,updated_at)
+           VALUES (?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+           ON CONFLICT(tenant_id) DO UPDATE SET days=excluded.days,start_hour=excluded.start_hour,end_hour=excluded.end_hour,slot_min=excluded.slot_min,professional=excluded.professional,slot_interval=excluded.slot_interval,updated_at=CURRENT_TIMESTAMP`
+        ).bind(b.tenant_id, b.days||'1,2,3,4,5', b.start_hour||10, b.end_hour||19, b.slot_min||30, b.professional||'', b.slot_interval||15).run();
         return json({ ok: true });
       }
       // Calendario: generar huecos reales para el embudo (respeta horario por día + vacaciones)
