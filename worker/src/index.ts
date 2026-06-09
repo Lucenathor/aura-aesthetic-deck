@@ -411,7 +411,7 @@ export default {
         '/api/waitlist','/api/pipeline','/api/products','/api/bonos','/api/cashbox','/api/profit',
         '/api/recovered','/api/business-costs','/api/schedule-by-day','/api/vacations',
         '/api/sms-templates','/api/team','/api/funnel-save','/api/funnel-edit',
-        '/api/consent-templates','/api/consent-send','/api/consents'
+        '/api/consent-templates','/api/consent-send','/api/consents','/api/treatment-catalog'
       ]);
       // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
       const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar']);
@@ -1174,6 +1174,27 @@ export default {
         const id = 'p_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
         await env.aura_db.prepare('INSERT INTO products (id,tenant_id,name,stock,unit,cost,low_alert,created_at) VALUES (?,?,?,?,?,?,?,?)')
           .bind(id, b.tenant_id, b.name||'Producto', Number(b.stock)||0, b.unit||'ud', Number(b.cost)||0, Number(b.low_alert)||3, Date.now()).run();
+        return json({ ok:true, id });
+      }
+
+      // ===== CATÁLOGO DE TRATAMIENTOS (duración + precio) =====
+      if (p === '/api/treatment-catalog' && req.method === 'GET') {
+        const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
+        const r = await env.aura_db.prepare('SELECT * FROM treatment_catalog WHERE tenant_id=? ORDER BY sort_order, name').bind(tenant).all();
+        return json({ catalog: r.results });
+      }
+      if (p === '/api/treatment-catalog' && req.method === 'POST') {
+        const b:any = await req.json();
+        if (b.delete) { await env.aura_db.prepare('DELETE FROM treatment_catalog WHERE id=? AND tenant_id=?').bind(b.delete, b.tenant_id).run(); return json({ok:true}); }
+        if (b.id) {
+          await env.aura_db.prepare('UPDATE treatment_catalog SET name=?, duration_min=?, price=?, color=? WHERE id=? AND tenant_id=?')
+            .bind(b.name||'Tratamiento', Number(b.duration_min)||30, Number(b.price)||0, b.color||'#9B7BFF', b.id, b.tenant_id).run();
+          return json({ ok:true, id:b.id });
+        }
+        const id = 'tc_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+        const colors=['#9B7BFF','#FF6B5A','#34a877','#d9a23a','#3a8fd9','#c0568f'];
+        await env.aura_db.prepare('INSERT INTO treatment_catalog (id,tenant_id,name,duration_min,price,color,created_at) VALUES (?,?,?,?,?,?,?)')
+          .bind(id, b.tenant_id, b.name||'Tratamiento', Number(b.duration_min)||30, Number(b.price)||0, b.color||colors[Math.floor(Math.random()*colors.length)], Date.now()).run();
         return json({ ok:true, id });
       }
 

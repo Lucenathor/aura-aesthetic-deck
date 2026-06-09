@@ -511,6 +511,18 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
         <span id="vacMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
         <div id="vacList" style="margin-top:1rem"></div>
       </div>
+      <div class="card">
+        <h3>Catálogo de tratamientos</h3>
+        <p class="sub">Define tus tratamientos con su duración y precio. Al crear una cita, se rellenan solos y el bloque de la agenda toma el tamaño exacto del tratamiento.</p>
+        <div class="row2" style="align-items:end">
+          <div class="field"><label>Tratamiento</label><input id="tcName" placeholder="Aumento de labios"/></div>
+          <div class="field"><label>Duración (min)</label><input type="number" id="tcDur" placeholder="30" min="5" step="5"/></div>
+          <div class="field"><label>Precio (€)</label><input type="number" id="tcPrice" placeholder="350" min="0"/></div>
+        </div>
+        <button class="btn prim" style="margin-top:.9rem" onclick="addTreatment()">Añadir tratamiento</button>
+        <span id="tcMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
+        <div id="tcList" style="margin-top:1rem"></div>
+      </div>
       <div class="card" id="smsPrevCard">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
           <div><h3 style="margin:0">Así lo recibe tu paciente</h3><p class="sub" style="margin:.2rem 0 0">Previsualización del recorrido de SMS, fase por fase.</p></div>
@@ -1545,9 +1557,42 @@ async function agDrop(e,iso,proId){
 }
 function openApptCard(id){
   const a=_agAppts.find(x=>x.id===id); if(!a)return;
-  if(a.status==='attended'||a.status==='noshow'){ openDrawer(a.lead_id); return; }
-  openCloseVisit(a.id,a.lead_id,a.treatment||'',a.lead_name||'');
+  const dt=new Date(a.date_iso);
+  const hora=dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+  const dur=a.duration_min||30;
+  const st=a.status||'pending';
+  const stMap={pending:{t:'Por confirmar',c:'#d9a23a'},confirmed:{t:'Confirmada',c:'#34a877'},booked:{t:'Reservada',c:'#d9a23a'},attended:{t:'Atendió',c:'#2980b9'},noshow:{t:'No vino',c:'#c0392b'},cancelled:{t:'Cancelada',c:'#7f8c8d'}};
+  const stInfo=stMap[st]||stMap.pending;
+  const phone=(a.lead_phone||'').replace(/[^0-9+]/g,'');
+  const pro=_pros.find(p=>p.id===a.professional_id);
+  // overlay + panel deslizante
+  const ov=document.createElement('div'); ov.id='apOverlay';
+  ov.style='position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:400;opacity:0;transition:opacity .2s';
+  ov.onclick=(e)=>{ if(e.target===ov) closeApptCard(); };
+  let h='<div id="apPanel" style="position:absolute;top:0;right:0;height:100%;width:380px;max-width:90vw;background:#fff;box-shadow:-10px 0 40px rgba(0,0,0,.15);padding:1.6rem;overflow-y:auto;transform:translateX(100%);transition:transform .28s cubic-bezier(0.23,1,0.32,1)">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem"><div><span style="display:inline-block;padding:.2rem .6rem;border-radius:20px;font-size:.7rem;font-weight:700;color:#fff;background:'+stInfo.c+'">'+stInfo.t+'</span></div><button onclick="closeApptCard()" style="background:none;border:0;font-size:1.4rem;cursor:pointer;color:var(--muted);line-height:1">×</button></div>';
+  h+='<h2 class="serif" style="margin:0 0 .2rem;font-size:1.5rem">'+(a.lead_name||'Cita')+'</h2>';
+  h+='<div style="color:var(--muted);font-size:.9rem;margin-bottom:1rem">'+(phone||'Sin teléfono')+'</div>';
+  h+='<div style="background:#faf8f5;border-radius:12px;padding:1rem;margin-bottom:1rem">';
+  h+='<div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--line)"><span style="color:var(--muted);font-size:.85rem">Tratamiento</span><b style="font-size:.9rem">'+(a.treatment||'—')+'</b></div>';
+  h+='<div style="display:flex;justify-content:space-between;padding:.3rem 0;border-bottom:1px solid var(--line)"><span style="color:var(--muted);font-size:.85rem">Hora</span><b style="font-size:.9rem">'+hora+' · '+dur+' min</b></div>';
+  if(pro) h+='<div style="display:flex;justify-content:space-between;padding:.3rem 0"><span style="color:var(--muted);font-size:.85rem">Profesional</span><b style="font-size:.9rem">'+pro.name+'</b></div>';
+  h+='</div>';
+  // Acciones rápidas
+  h+='<div style="display:flex;gap:.5rem;margin-bottom:.6rem">';
+  if(phone){ h+='<a href="https://wa.me/'+phone.replace(/^\+/,'')+'" target="_blank" style="flex:1;text-align:center;padding:.6rem;border-radius:10px;background:#25D366;color:#fff;font-weight:600;font-size:.85rem;text-decoration:none">WhatsApp</a>';
+    h+='<a href="tel:'+phone+'" style="flex:1;text-align:center;padding:.6rem;border-radius:10px;background:var(--ink);color:#fff;font-weight:600;font-size:.85rem;text-decoration:none">Llamar</a>'; }
+  h+='</div>';
+  h+='<button class="btn" style="width:100%;margin-bottom:.5rem" onclick="closeApptCard();openDrawer(\''+a.lead_id+'\')">Ver ficha completa del paciente</button>';
+  if(st!=='attended'&&st!=='noshow'){
+    h+='<button class="btn prim" style="width:100%" onclick="closeApptCard();openCloseVisit(\''+a.id+'\',\''+a.lead_id+'\',\''+(a.treatment||'').replace(/\x27/g,"")+'\',\''+(a.lead_name||'').replace(/\x27/g,"")+'\')">Cerrar visita / Cobrar</button>';
+  }
+  h+='</div>';
+  ov.innerHTML=h;
+  document.body.appendChild(ov);
+  requestAnimationFrame(()=>{ ov.style.opacity='1'; const pn=document.getElementById('apPanel'); if(pn)pn.style.transform='translateX(0)'; });
 }
+function closeApptCard(){ const ov=document.getElementById('apOverlay'); if(!ov)return; const pn=document.getElementById('apPanel'); if(pn)pn.style.transform='translateX(100%)'; ov.style.opacity='0'; setTimeout(()=>ov.remove(),280); }
 // Crear cita manual (walk-in)
 function openNewAppt(iso, proId){
   const ov=document.createElement('div'); ov.id='naOverlay'; ov.style='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:grid;place-items:center;padding:1rem';
@@ -1555,23 +1600,40 @@ function openNewAppt(iso, proId){
   // valor por defecto para el datetime-local: la hora recibida, pero saneada a rango 8-21h
   let dtVal=String(iso).slice(0,16);
   try{ const dd=new Date(iso); let hh=dd.getHours(); if(hh<8||hh>21){ dd.setHours(10,0,0,0); } dtVal=new Date(dd.getTime()-dd.getTimezoneOffset()*60000).toISOString().slice(0,16); }catch(e){}
+  // Selector de tratamientos del catálogo (rellena duración y precio)
+  const catOpts=(CATALOG||[]).map(t=>'<option value="'+t.id+'" data-dur="'+t.duration_min+'" data-price="'+(t.price||0)+'">'+t.name+' · '+t.duration_min+' min'+(t.price?' · '+t.price+'€':'')+'</option>').join('');
+  const treatField = (CATALOG&&CATALOG.length)
+    ? '<select id="naTreatSel" onchange="onTreatPick(this)" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"><option value="">Elige tratamiento…</option>'+catOpts+'<option value="__custom">Otro (escribir)…</option></select><input id="naTreat" placeholder="Tratamiento" style="display:none;width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/>'
+    : '<input id="naTreat" placeholder="Tratamiento" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/>';
   ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:360px;width:100%;padding:1.4rem"><h3 class="serif" style="margin:0 0 .8rem">Nueva cita</h3>'
     +'<label style="font-size:.8rem;font-weight:600;display:block;margin-bottom:.25rem">Día y hora</label>'
     +'<input id="naWhen" type="datetime-local" value="'+dtVal+'" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.6rem"/>'
     +'<input id="naName" placeholder="Nombre del paciente" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/>'
     +'<input id="naPhone" placeholder="Teléfono" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/>'
-    +'<input id="naTreat" placeholder="Tratamiento" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/>'
+    +treatField
+    +'<div style="display:flex;gap:.5rem;margin-bottom:.5rem"><div style="flex:1"><label style="font-size:.72rem;color:var(--muted)">Duración (min)</label><input id="naDur" type="number" value="30" min="5" step="5" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px"/></div><div style="flex:1"><label style="font-size:.72rem;color:var(--muted)">Precio (€)</label><input id="naPrice" type="number" min="0" placeholder="0" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px"/></div></div>'
     +(_pros.length?'<select id="naPro" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.8rem"><option value="">Sin profesional</option>'+proOpts+'</select>':'')
     +'<div style="display:flex;gap:.5rem"><button class="btn prim" style="flex:1" onclick="createAppt()">Crear cita</button><button class="btn" onclick="document.getElementById(\'naOverlay\').remove()">Cancelar</button></div></div>';
   document.body.appendChild(ov);
 }
+function onTreatPick(sel){
+  const opt=sel.options[sel.selectedIndex];
+  const customInput=document.getElementById('naTreat');
+  if(sel.value==='__custom'){ customInput.style.display='block'; customInput.value=''; customInput.focus(); return; }
+  if(sel.value===''){ customInput.style.display='none'; return; }
+  customInput.style.display='none'; customInput.value=opt.textContent.split(' · ')[0];
+  const dur=opt.getAttribute('data-dur'); const price=opt.getAttribute('data-price');
+  if(dur)document.getElementById('naDur').value=dur;
+  if(price)document.getElementById('naPrice').value=price;
+}
 async function createAppt(){
   const whenEl=document.getElementById('naWhen'); const iso=(whenEl&&whenEl.value)?whenEl.value:new Date().toISOString().slice(0,16);
   const name=document.getElementById('naName').value; const phone=document.getElementById('naPhone').value; const treat=document.getElementById('naTreat').value; const pro=document.getElementById('naPro')?document.getElementById('naPro').value:'';
+  const dur=+document.getElementById('naDur').value||30;
   if(!name){alert('Pon el nombre');return;}
   const ds=String(iso).slice(0,10); const cl=agClosed(ds);
   if(cl.closed){ if(!confirm('Ese día la clínica está marcada como "'+cl.reason+'". ¿Quieres crear la cita igualmente?')) return; }
-  try{ const r=await fetch(WORKER+'/api/appt-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,name,phone,treatment:treat,date_iso:iso,professional_id:pro||null})});
+  try{ const r=await fetch(WORKER+'/api/appt-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,name,phone,treatment:treat,date_iso:iso,duration_min:dur,professional_id:pro||null})});
     const d=await r.json(); if(!d.ok&&d.error==='clash'){ alert('Ese hueco ya está ocupado por ese profesional.'); return; } if(d.appointment_id)window._newApptId=d.appointment_id; }catch(e){}
   document.getElementById('naOverlay').remove(); loadAgendaCal();
 }
@@ -1681,6 +1743,29 @@ function renderVacations(){
     c.appendChild(el);});
   c.querySelectorAll('button[data-del]').forEach(b=>b.onclick=async e=>{const id=e.target.dataset.del;await fetch(WORKER+'/api/vacations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({delete:id})});loadVacations();if(typeof loadAgenda==='function'){try{loadAgenda();}catch(e){}}});
 }
+// ===== Catálogo de tratamientos =====
+let CATALOG=[];
+async function loadCatalog(){
+  try{const r=await fetch(WORKER+'/api/treatment-catalog?tenant='+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}});const d=await r.json();CATALOG=d.catalog||[];}catch(e){CATALOG=[];}
+  renderCatalog();
+}
+function renderCatalog(){
+  const c=document.getElementById('tcList');if(!c)return;
+  if(!CATALOG.length){c.innerHTML='<div class="sub" style="color:var(--muted)">Aún no has añadido tratamientos. Añade los más comunes para agilizar la agenda.</div>';return;}
+  c.innerHTML=CATALOG.map(t=>'<div style="display:flex;align-items:center;gap:.7rem;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;margin-bottom:.4rem"><span style="width:12px;height:12px;border-radius:50%;background:'+(t.color||'#9B7BFF')+';flex-shrink:0"></span><div style="flex:1"><b>'+t.name+'</b><div class="sub" style="margin:0">'+t.duration_min+' min · '+(t.price||0)+'€</div></div><button class="vac-del" onclick="delTreatment(\''+t.id+'\')">Eliminar</button></div>').join('');
+}
+async function addTreatment(){
+  const name=document.getElementById('tcName').value.trim();const dur=+document.getElementById('tcDur').value||30;const price=+document.getElementById('tcPrice').value||0;
+  const m=document.getElementById('tcMsg');
+  if(!name){m.style.color='#b45309';m.textContent='Indica el nombre del tratamiento';return;}
+  try{await fetch(WORKER+'/api/treatment-catalog',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,name,duration_min:dur,price})});
+    document.getElementById('tcName').value='';document.getElementById('tcDur').value='';document.getElementById('tcPrice').value='';
+    m.style.color='#1f8c69';m.textContent='Tratamiento añadido ✓';setTimeout(()=>m.textContent='',2000);loadCatalog();}catch(e){m.style.color='#b45309';m.textContent='Error al guardar';}
+}
+async function delTreatment(id){
+  if(!confirm('¿Eliminar este tratamiento del catálogo?'))return;
+  await fetch(WORKER+'/api/treatment-catalog',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,delete:id})});loadCatalog();
+}
 async function addVacation(){
   const s=document.getElementById('vacStart').value;const e2=document.getElementById('vacEnd').value;const reason=document.getElementById('vacReason').value;
   const m=document.getElementById('vacMsg');
@@ -1694,7 +1779,7 @@ async function addVacation(){
 }
 // compat: la inicialización antigua llamaba fillHours()/loadCal()
 function fillHours(){}
-async function loadCal(){await loadSchedule();await loadVacations();}
+async function loadCal(){await loadSchedule();await loadVacations();await loadCatalog();}
 // ===== CLINIC OS lite: Caja, Bonos, Inventario =====
 const METODOS=['efectivo','tarjeta','bizum','transferencia','link'];
 function eur(n){ return (Math.round((n||0)*100)/100).toLocaleString('es-ES')+'€'; }
