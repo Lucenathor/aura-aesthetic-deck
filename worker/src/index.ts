@@ -841,9 +841,21 @@ export default {
         if (!token) return json({ auth:false });
         const s: any = await env.aura_db.prepare('SELECT * FROM sessions WHERE token=?').bind(token).first();
         if (!s) return json({ auth:false });
+        const owner: any = await env.aura_db.prepare('SELECT role FROM owners WHERE email=?').bind(s.email).first();
         const mb: any = await env.aura_db.prepare("SELECT role,name FROM team_members WHERE email=? AND tenant_id=? AND status='active'").bind(s.email, s.tenant_id).first();
-        const role = mb?.role || 'owner';
-        return json({ auth:true, email: s.email, tenant_id: s.tenant_id, role, member_name: mb?.name || null });
+        const role = owner?.role === 'superadmin' ? 'superadmin' : (mb?.role || 'owner');
+        return json({ auth:true, email:s.email, tenant_id:s.tenant_id, role, name: mb?.name||null });
+      }
+      // Listar todos los tenants (solo para superadmin)
+      if (p === '/api/tenants' && req.method === 'GET') {
+        const token = url.searchParams.get('token') || (req.headers.get('authorization')||'').replace(/^Bearer\s+/i,'');
+        if (!token) return json({ error:'unauthorized' }, 401);
+        const s: any = await env.aura_db.prepare('SELECT email FROM sessions WHERE token=?').bind(token).first();
+        if (!s) return json({ error:'unauthorized' }, 401);
+        const owner: any = await env.aura_db.prepare('SELECT role FROM owners WHERE email=?').bind(s.email).first();
+        if (!owner || owner.role !== 'superadmin') return json({ error:'forbidden' }, 403);
+        const r = await env.aura_db.prepare('SELECT id, name FROM tenants ORDER BY name').all();
+        return json({ tenants: r.results || [] });
       }
 
       // EQUIPO: listar miembros

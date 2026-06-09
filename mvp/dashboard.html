@@ -46,6 +46,28 @@ a{color:inherit;text-decoration:none}
 .btn:active{transform:scale(.97)}
 .btn.prim{background:linear-gradient(135deg,var(--terra),var(--terra-d));color:#fff;border:0;box-shadow:0 10px 22px -12px rgba(176,93,68,.6)}
 
+/* Agenda Interactiva */
+.agenda-grid { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; position: relative; min-width: 600px; }
+.agenda-time-col { width: 60px; flex-shrink: 0; border-right: 1px solid var(--line); background: #fafafa; }
+.agenda-time-slot { height: 60px; border-bottom: 1px solid var(--line); box-sizing: border-box; display: flex; align-items: flex-start; justify-content: center; padding-top: 4px; font-size: 0.7rem; color: var(--muted); font-weight: 600; }
+.agenda-pro-col { flex: 1; min-width: 150px; border-right: 1px solid var(--line); position: relative; }
+.agenda-pro-col:last-child { border-right: none; }
+.agenda-pro-header { height: 40px; border-bottom: 1px solid var(--line); background: #f4f4f4; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.85rem; color: var(--ink); position: sticky; top: 0; z-index: 10; }
+.agenda-slots-container { position: relative; }
+.agenda-slot-bg { height: 30px; border-bottom: 1px dashed var(--line); box-sizing: border-box; transition: background 0.2s; }
+.agenda-slot-bg:nth-child(even) { border-bottom: 1px solid var(--line); }
+.agenda-slot-bg.drag-over { background: rgba(176,93,68,0.1); }
+.agenda-appt { position: absolute; left: 4px; right: 4px; border-radius: 6px; padding: 4px 6px; font-size: 0.75rem; color: #fff; overflow: hidden; cursor: grab; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: transform 0.1s, box-shadow 0.1s; z-index: 5; }
+.agenda-appt:active { cursor: grabbing; transform: scale(0.98); box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 100; }
+.agenda-appt.status-confirmed { background: linear-gradient(135deg, #34a877, #2c8f65); }
+.agenda-appt.status-pending { background: linear-gradient(135deg, #d9a23a, #b88a31); }
+.agenda-appt.status-noshow { background: linear-gradient(135deg, #c0392b, #a33024); }
+.agenda-appt.status-cancelled { background: linear-gradient(135deg, #7f8c8d, #6c7a7d); }
+.agenda-appt.status-attended { background: linear-gradient(135deg, #2980b9, #2471a3); }
+.agenda-appt-title { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+.agenda-appt-sub { font-size: 0.65rem; opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agenda-closed-bg { position: absolute; top: 0; bottom: 0; left: 0; right: 0; background: repeating-linear-gradient(45deg, rgba(0,0,0,0.03), rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.06) 10px, rgba(0,0,0,0.06) 20px); z-index: 1; pointer-events: none; }
+
 /* sections */
 .view{display:none;animation:fade .4s var(--ease)}
 .view.on{display:block}
@@ -283,7 +305,13 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
     <div class="nav-item" data-v="embudo"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18l-7 8v6l-4 2v-8z"/></svg></span> Embudo</div>
     <div class="nav-item" data-v="equipo"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="3.2"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg></span> Equipo</div>
     <div class="nav-item" data-v="ajustes"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Ajustes</div>
-    <div class="side-foot">Clínica: <b id="tName">—</b><br><span style="opacity:.7">Acceso: <b id="roleBadge">Propietario</b></span><br><button onclick="logout()" style="margin-top:.5rem;background:none;border:0;color:var(--terra-d);cursor:pointer;font-size:.78rem;font-weight:600;padding:0">Cerrar sesión</button></div>
+    <div class="side-foot">
+      <div id="saSelector" style="display:none;margin-bottom:.8rem">
+        <label style="font-size:.7rem;font-weight:700;color:var(--terra)">SUPER ADMIN</label>
+        <select id="saTenant" onchange="switchTenant(this.value)" style="width:100%;padding:.4rem;border:1px solid var(--terra);border-radius:6px;font-size:.75rem;margin-top:.2rem;background:rgba(255,255,255,.5)"></select>
+      </div>
+      Clínica: <b id="tName">—</b><br><span style="opacity:.7">Acceso: <b id="roleBadge">Propietario</b></span><br><button onclick="logout()" style="margin-top:.5rem;background:none;border:0;color:var(--terra-d);cursor:pointer;font-size:.78rem;font-weight:600;padding:0">Cerrar sesión</button>
+    </div>
   </aside>
 
   <main class="main">
@@ -687,9 +715,29 @@ let T=params.get('t')||'clinica-elvira';
 async function guard(){
   const tok=localStorage.getItem('aura_token');
   if(!tok){ location.href='/login'+(params.get('t')?('?t='+params.get('t')):''); return false; }
-  try{ const r=await fetch(WORKER+'/api/auth/me?token='+tok); const d=await r.json(); if(!d.auth){ localStorage.removeItem('aura_token'); location.href='/login'; return false; } if(d.tenant_id){ T=d.tenant_id; } ROLE=d.role||'owner'; }catch(e){}
+  try{ 
+    const r=await fetch(WORKER+'/api/auth/me?token='+tok); const d=await r.json(); 
+    if(!d.auth){ localStorage.removeItem('aura_token'); location.href='/login'; return false; } 
+    if(d.tenant_id){ T=d.tenant_id; } 
+    ROLE=d.role||'owner'; 
+    if(ROLE==='superadmin'){
+      document.getElementById('saSelector').style.display='block';
+      fetch(WORKER+'/api/tenants',{headers:{'Authorization':'Bearer '+tok}}).then(r=>r.json()).then(d=>{
+        if(d.tenants){
+          const sel=document.getElementById('saTenant');
+          sel.innerHTML=d.tenants.map(t=>'<option value="'+t.id+'" '+(t.id===T?'selected':'')+'>'+t.name+'</option>').join('');
+        }
+      });
+    }
+  }catch(e){}
   applyRolePerms();
   return true;
+}
+function switchTenant(newT){
+  if(!newT) return;
+  const url = new URL(location.href);
+  url.searchParams.set('t', newT);
+  location.href = url.toString();
 }
 let ROLE='owner';
 // permisos: qué pestañas ve cada rol
@@ -1254,23 +1302,59 @@ function renderAgendaCal(){
     const nowH=(dayStr===new Date().toISOString().slice(0,10))?new Date().getHours():-1;
     let h='';
     if(dayClosed.closed){ h+='<div style="background:#f3f0ea;border:1px dashed #d9cdbf;border-radius:11px;padding:.7rem 1rem;margin-bottom:.6rem;color:#8a7e6d;font-size:.85rem;text-align:center"><b style="color:#6b5d52">'+dayClosed.reason+'</b> · la clínica no atiende este día. El embudo no ofrece huecos.</div>'; }
-    h+='<div class="calday" style="display:flex;flex-direction:column;gap:0'+(dayClosed.closed?';opacity:.6':'')+'">';
-    for(let hr=8;hr<=21;hr++){
-      const slotApps=todays.filter(a=>new Date(a.date_iso).getHours()===hr);
-      const blk=_blocks.find(b=>{const s=new Date(b.start_iso),en=new Date(b.end_iso);const slot=new Date(dayStr+'T'+String(hr).padStart(2,'0')+':00');return slot>=s&&slot<en;});
-      const hourIso=dayStr+'T'+String(hr).padStart(2,'0')+':00';
-      const isNow=hr===nowH;
-      const isEmpty=!blk&&!slotApps.length;
-      h+='<div class="calrow"'+(isNow?' id="calNowRow"':'')+' ondragover="event.preventDefault()" ondrop="agDrop(event,\''+hourIso+'\')" style="--rd:'+((hr-8)*0.035)+'s;display:flex;border-top:1px solid var(--line);min-height:'+(isEmpty?'30px':'46px')+';'+(blk?'background:repeating-linear-gradient(45deg,#f3f0ea,#f3f0ea 8px,#ece7dd 8px,#ece7dd 16px)':(isNow?'background:#fdf3ef':''))+'"><div style="width:52px;flex:none;font-size:.72rem;color:'+(isNow?'var(--accent)':'var(--muted)')+';font-weight:'+(isNow?'700':'400')+';padding:.3rem .4rem">'+String(hr).padStart(2,'0')+':00</div><div style="flex:1;padding:.25rem;display:flex;flex-wrap:wrap;gap:.3rem;align-items:center">';
-      if(blk){ h+='<span style="font-size:.72rem;color:#9a8f7a">⛔ '+(blk.reason||'No disponible')+'</span>'; }
-      slotApps.forEach(a=>{ h+=apptCardHtml(a,false); });
-      if(!blk&&!slotApps.length){ h+='<button class="addslot" onclick="openNewAppt(\''+hourIso+'\')" style="opacity:0;transition:opacity .15s;background:none;border:1px dashed var(--line);border-radius:6px;color:var(--muted);font-size:.72rem;padding:.15rem .5rem;cursor:pointer">+ cita</button>'; }
+    
+    // Agenda Interactiva Multi-columna
+    const pros = _pros.filter(p=>p.active!==0);
+    if(!pros.length) pros.push({id:'pro_1', name:'General', color:'#9B7BFF'});
+    
+    h+='<div class="agenda-grid" '+(dayClosed.closed?'style="opacity:.6"':'')+'>';
+    // Columna de horas
+    h+='<div class="agenda-time-col"><div class="agenda-pro-header"></div>';
+    for(let hr=8;hr<=21;hr++){ h+='<div class="agenda-time-slot">'+String(hr).padStart(2,'0')+':00</div>'; }
+    h+='</div>';
+    
+    // Columnas por profesional
+    pros.forEach(pro => {
+      h+='<div class="agenda-pro-col">';
+      h+='<div class="agenda-pro-header" style="border-top:3px solid '+(pro.color||'var(--terra)')+'">'+pro.name+'</div>';
+      h+='<div class="agenda-slots-container">';
+      if(dayClosed.closed) h+='<div class="agenda-closed-bg"></div>';
+      
+      // Rejilla de fondo y zonas de drop
+      for(let hr=8;hr<=21;hr++){
+        const hourIso = dayStr+'T'+String(hr).padStart(2,'0')+':00';
+        const halfIso = dayStr+'T'+String(hr).padStart(2,'0')+':30';
+        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+hourIso+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+hourIso+'\',\''+pro.id+'\')"></div>';
+        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+halfIso+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+halfIso+'\',\''+pro.id+'\')"></div>';
+      }
+      
+      // Citas del profesional
+      const proAppts = todays.filter(a => (a.professional_id === pro.id) || (!a.professional_id && pro.id==='pro_1'));
+      proAppts.forEach(a => {
+        const dt = new Date(a.date_iso);
+        const startMins = (dt.getHours() - 8) * 60 + dt.getMinutes();
+        if(startMins < 0 || startMins > 14*60) return; // fuera de rango 8-21
+        const dur = a.duration_min || 30;
+        const top = startMins; // 1px por minuto (60px por hora)
+        const height = dur;
+        const stClass = 'status-'+(a.status||'pending');
+        h+='<div class="agenda-appt '+stClass+'" draggable="true" ondragstart="agDragStart(event,\''+a.id+'\')" onclick="event.stopPropagation();openApptCard(\''+a.id+'\')" style="top:'+top+'px; height:'+height+'px;" title="'+(a.lead_name||'Cita')+' - '+(a.treatment||'')+'">';
+        h+='<div class="agenda-appt-title">'+(a.lead_name||'Cita')+'</div>';
+        if(dur >= 30) h+='<div class="agenda-appt-sub">'+(a.treatment||'')+'</div>';
+        h+='</div>';
+      });
+      
       h+='</div></div>';
-    }
+    });
     h+='</div>';
     wrap.innerHTML=h;
-    const nowRow=document.getElementById('calNowRow'); if(nowRow&&!window._calScrolled){ window._calScrolled=true; try{ nowRow.scrollIntoView({block:'center',behavior:'smooth'}); }catch(e){} }
-    if(nowRow){ const ln=document.createElement('div'); ln.className='nowline'; nowRow.style.position='relative'; nowRow.appendChild(ln); }
+    
+    // Scroll a la hora actual
+    if(nowH >= 8 && !window._calScrolled){
+      window._calScrolled=true;
+      const grid = document.querySelector('.agenda-grid');
+      if(grid) grid.parentElement.scrollTop = (nowH - 8) * 60 - 40;
+    }
     // count-up del resumen
     Array.from(document.querySelectorAll('#calSummary b')).forEach(el=>{ const t=parseInt(el.textContent)||0; if(t<=0)return; let n=0; el.textContent='0'; const iv=setInterval(()=>{ n++; el.textContent=n; if(n>=t)clearInterval(iv); },70); });
     // resaltar cita recién creada
@@ -1312,13 +1396,22 @@ function renderAgendaCal(){
 }
 // Drag & drop
 let _dragAppt=null;
-function agDragStart(e,id){ _dragAppt=id; e.dataTransfer.effectAllowed='move'; }
-async function agDrop(e,iso){ e.preventDefault(); if(!_dragAppt)return; const id=_dragAppt; _dragAppt=null;
+function agDragStart(e,id){ _dragAppt=id; e.dataTransfer.effectAllowed='move'; e.target.style.opacity='0.5'; }
+function agDragOver(e){ e.preventDefault(); e.currentTarget.classList.add('drag-over'); }
+function agDragLeave(e){ e.currentTarget.classList.remove('drag-over'); }
+async function agDrop(e,iso,proId){ 
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+  if(!_dragAppt)return; const id=_dragAppt; _dragAppt=null;
   const a=_agAppts.find(x=>x.id===id); if(!a)return;
-  // si soltamos en vista día mantenemos la fecha del día actual + nueva hora; en semana/mes nueva fecha
-  let newIso=iso;
-  try{ const r=await fetch(WORKER+'/api/appt-move',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,appointment_id:id,date_iso:newIso,professional_id:a.professional_id||null})});
-    const d=await r.json(); if(!d.ok&&d.error==='clash'){ alert('Ese hueco ya está ocupado por ese profesional.'); return; } }catch(e){}
+  
+  // Si no se pasa proId (vistas semana/mes), mantenemos el actual
+  const newPro = proId || a.professional_id || null;
+  
+  try{ 
+    const r=await fetch(WORKER+'/api/appt-move',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,appointment_id:id,date_iso:iso,professional_id:newPro})});
+    const d=await r.json(); 
+    if(!d.ok&&d.error==='clash'){ alert('Ese hueco ya está ocupado por ese profesional.'); loadAgendaCal(); return; } 
+  }catch(e){}
   loadAgendaCal();
 }
 function openApptCard(id){
@@ -1327,9 +1420,9 @@ function openApptCard(id){
   openCloseVisit(a.id,a.lead_id,a.treatment||'',a.lead_name||'');
 }
 // Crear cita manual (walk-in)
-function openNewAppt(iso){
+function openNewAppt(iso, proId){
   const ov=document.createElement('div'); ov.id='naOverlay'; ov.style='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:grid;place-items:center;padding:1rem';
-  const proOpts=_pros.map(p=>'<option value="'+p.id+'">'+p.name+'</option>').join('');
+  const proOpts=_pros.map(p=>'<option value="'+p.id+'" '+(p.id===proId?'selected':'')+'>'+p.name+'</option>').join('');
   // valor por defecto para el datetime-local: la hora recibida, pero saneada a rango 8-21h
   let dtVal=String(iso).slice(0,16);
   try{ const dd=new Date(iso); let hh=dd.getHours(); if(hh<8||hh>21){ dd.setHours(10,0,0,0); } dtVal=new Date(dd.getTime()-dd.getTimezoneOffset()*60000).toISOString().slice(0,16); }catch(e){}

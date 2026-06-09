@@ -1,0 +1,12 @@
+UPDATE treatments_log SET created_at = 1780933702114 WHERE id='t_demo0';
+UPDATE treatments_log SET created_at = 1780930102114 WHERE id='t_demo1';
+UPDATE treatments_log SET created_at = 1780926502114 WHERE id='t_demo2';
+UPDATE treatments_log SET created_at = 1780922902114 WHERE id='t_demo3';
+UPDATE treatments_log SET created_at = 1780919302114 WHERE id='t_demo4';
+UPDATE treatments_log SET created_at = 1780915702114 WHERE id='t_demo5';
+UPDATE treatments_log SET created_at = 1780912102114 WHERE id='t_demo6';
+UPDATE treatments_log SET created_at = 1780908502114 WHERE id='t_demo7';
+UPDATE treatments_log SET created_at = 1780904902114 WHERE id='t_demo8';
+UPDATE treatments_log SET created_at = 1780901302114 WHERE id='t_demo9';
+UPDATE appointments SET created_at = 1780847302114, date_iso = '2026-06-08T15:48:22.114Z' WHERE id='a_demo0';
+UPDATE appointments SET created_at = 1780847302114, date_iso = '2026-06-09T15:48:22.114Z' WHERE id='a_demo1';
