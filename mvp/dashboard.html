@@ -303,6 +303,14 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
   .cal-month-cell{min-height:62px!important;font-size:.7rem}
   /* Ficha del paciente a pantalla completa en móvil */
   .drawer{width:100vw!important;padding:1.2rem}
+  /* Barra de profesionales: una sola línea con scroll lateral */
+  #calProBar{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:.3rem}
+  #calProBar .profx{flex-shrink:0;padding:.45rem .8rem!important;font-size:.8rem!important}
+  #calProBar #newApptBtn{flex-shrink:0}
+  #calProBar span[style*="flex:1"]{display:none}
+  /* Tap targets cómodos en controles de agenda */
+  #calPrev,#calNext,#calToday{min-height:38px;min-width:38px}
+  .agv{min-height:38px}
 }
 @media(max-width:480px){
   .agenda-pro-col{min-width:100px}
@@ -483,7 +491,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
       </div>
 
       <!-- BENEFICIO REAL -->
-      <div class="card" style="background:linear-gradient(135deg,#2A211C,#3a2e26);color:#fff">
+      <div class="card" id="profitCard" style="background:linear-gradient(135deg,#2A211C,#3a2e26);color:#fff">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
           <div><h3 style="margin:0;color:#fff">Beneficio real</h3><p class="sub" style="margin:.2rem 0 0;color:rgba(255,255,255,.6)">Lo que ganas de verdad, después de gastos, nóminas e IVA.</p></div>
           <div style="display:flex;gap:.3rem" id="profitTabs">
@@ -648,7 +656,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
       </div>
 
       <!-- EMPLEADOS / NÓMINAS -->
-      <div class="card">
+      <div class="card" id="empCard">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
           <div><h3 style="margin:0">Empleados y nóminas</h3><p class="sub" style="margin:.2rem 0 0">El equipo que cobra nómina. Su coste se descuenta automáticamente del beneficio real.</p></div>
           <button class="btn prim" onclick="openEmployee()">+ Empleado</button>
@@ -781,12 +789,17 @@ const PERMS={
   pro:      ['agenda','pacientes'],
   finance:  ['resumen','caja','facturacion','agenda','ajustes']
 };
+let CAN_FINANCE=true;
 function applyRolePerms(){
   const allow=PERMS[ROLE]||PERMS.owner;
   document.querySelectorAll('.nav-item').forEach(n=>{ if(!allow.includes(n.dataset.v)) n.style.display='none'; });
   // etiqueta de rol en el sidebar
-  const lbl={owner:'Propietario',reception:'Recepción',pro:'Profesional',finance:'Finanzas'}[ROLE]||'Propietario';
+  const lbl={owner:'Propietario',reception:'Recepción',pro:'Profesional',finance:'Finanzas',superadmin:'Super Admin'}[ROLE]||'Propietario';
   const rb=document.getElementById('roleBadge'); if(rb) rb.textContent=lbl;
+  // Datos financieros sensibles: solo owner / finance / superadmin
+  CAN_FINANCE = (ROLE==='owner'||ROLE==='finance'||ROLE==='superadmin');
+  const pc=document.getElementById('profitCard'); if(pc) pc.style.display=CAN_FINANCE?'':'none';
+  const ec=document.getElementById('empCard'); if(ec) ec.style.display=CAN_FINANCE?'':'none';
 }
 function logout(){ localStorage.removeItem('aura_token'); localStorage.removeItem('aura_tenant'); location.href='/login'; }
 
@@ -810,6 +823,7 @@ async function loadTeam(){
 // ===== EMPLEADOS / NÓMINAS =====
 const EMP_ROLES={pro:'Profesional',reception:'Recepción',manager:'Gerente',aux:'Auxiliar',other:'Otro'};
 async function loadEmployees(){
+  if(typeof CAN_FINANCE!=='undefined' && !CAN_FINANCE){ return; }
   const c=document.getElementById('empList'); if(!c)return;
   try{
     const r=await fetch(WORKER+'/api/professionals?tenant='+T); const d=await r.json(); const list=(d.professionals||[]);
@@ -1826,7 +1840,7 @@ async function loadCaja(){
       tb.appendChild(tr);
     });
   }catch(e){}
-  loadBonos(); loadProducts(); loadProfit();
+  loadBonos(); loadProducts(); if(CAN_FINANCE) loadProfit();
 }
 // ===== Beneficio real =====
 let _profitPeriod='day';

@@ -117,6 +117,24 @@ async function requireTenant(env: Env, req: Request, url: URL, tenantSolicitado:
   if (s.tenant_id !== tenantSolicitado) return 'tenant_mismatch';
   return null; // OK
 }
+// Devuelve el rol del usuario de la sesion: superadmin | owner | finance | reception | pro | null
+async function getSessionRole(env: Env, req: Request, url: URL): Promise<string|null> {
+  let tok = '';
+  const auth = req.headers.get('authorization')||'';
+  if (auth.toLowerCase().startsWith('bearer ')) tok = auth.slice(7).trim();
+  if (!tok) tok = req.headers.get('x-aura-token') || '';
+  if (!tok) tok = url.searchParams.get('token') || '';
+  if (!tok) { try{ const c=req.headers.get('cookie')||''; const m=c.match(/aura_token=([^;]+)/); if(m) tok=decodeURIComponent(m[1]); }catch(e){} }
+  if (!tok) return null;
+  const s: any = await env.aura_db.prepare('SELECT email, tenant_id FROM sessions WHERE token=?').bind(tok).first();
+  if (!s) return null;
+  const owner: any = await env.aura_db.prepare('SELECT role FROM owners WHERE email=?').bind(s.email).first();
+  if (owner?.role === 'superadmin') return 'superadmin';
+  const isOwner: any = await env.aura_db.prepare('SELECT 1 FROM owners WHERE email=? AND tenant_id=?').bind(s.email, s.tenant_id).first();
+  if (isOwner) return 'owner';
+  const mb: any = await env.aura_db.prepare('SELECT role FROM team_members WHERE email=? AND tenant_id=?').bind(s.email, s.tenant_id).first();
+  return mb?.role || 'owner';
+}
 async function magicLink(env: Env, tenantId: string, leadId: string){
   const tok=await signLead(env,leadId);
   return 'https://aura-mvp.pages.dev/c/'+tenantId+'?lead='+encodeURIComponent(leadId)+'&k='+tok;
@@ -424,6 +442,13 @@ export default {
         }
         const err = await requireTenant(env, req, url, tenantReq);
         if (err) return json({ error:'forbidden', reason: err }, 403);
+      }
+
+      // Restriccion por ROL: datos financieros sensibles solo owner/finance/superadmin
+      const FINANCE_ONLY = new Set<string>(['/api/profit','/api/business-costs','/api/recovered']);
+      if (FINANCE_ONLY.has(p)) {
+        const role = await getSessionRole(env, req, url);
+        if (!(role==='owner'||role==='finance'||role==='superadmin')) return json({ error:'forbidden', reason:'role' }, 403);
       }
 
       // Servir imágenes: primero R2, fallback a KV (compatibilidad con imágenes antiguas)
@@ -1592,7 +1617,11 @@ export default {
       if (p === '/api/professionals' && req.method === 'GET') {
         const tenant = url.searchParams.get('tenant');
         const r = await env.aura_db.prepare('SELECT * FROM professionals WHERE tenant_id=? ORDER BY created_at').bind(tenant).all();
-        return json({ professionals: r.results });
+        const role = await getSessionRole(env, req, url);
+        const canSeeSalary = (role==='owner'||role==='finance'||role==='superadmin');
+        let pros:any = r.results || [];
+        if (!canSeeSalary) pros = pros.map((p:any)=>{ const {salary_gross, ss_pct, commission_pct, ...rest} = p; return rest; });
+        return json({ professionals: pros });
       }
       if (p === '/api/professionals' && req.method === 'POST') {
         const b:any = await req.json();
