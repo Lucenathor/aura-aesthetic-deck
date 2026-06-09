@@ -8,7 +8,7 @@
 <link rel="manifest" href="/portal-manifest.json"/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{--brand:#5e1a2a;--accent:#D4A574;--bg:#f4efe8;--ink:#1f1a17;--muted:#8a7f73;--line:#ece5da;}
+  :root{--brand:#5e1a2a;--brand2:#2a0f16;--accent:#D4A574;--bg:#f4efe8;--ink:#1f1a17;--muted:#8a7f73;--line:#ece5da;}
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;padding-bottom:78px}
   .serif{font-family:'Playfair Display',serif}
@@ -23,10 +23,15 @@
   .btn:active{transform:scale(.97)}
   .btn.ghost{background:transparent;color:var(--brand);border:1px solid var(--line)}
   /* HEADER */
-  header{background:linear-gradient(150deg,var(--brand),#2a0f16);color:#fff;padding:1.5rem 1.3rem 2.4rem;border-radius:0 0 26px 26px;position:relative;overflow:hidden}
-  header::after{content:'';position:absolute;top:-40%;right:-20%;width:240px;height:240px;background:radial-gradient(circle,rgba(212,165,116,.35),transparent 70%);pointer-events:none}
-  .hello{font-size:.85rem;opacity:.85}
-  .clinicTtl{font-size:1.45rem;font-weight:700;margin-top:.15rem}
+  header{background:linear-gradient(150deg,var(--brand),var(--brand2));color:#fff;padding:1.4rem 1.3rem 2.4rem;border-radius:0 0 28px 28px;position:relative;overflow:hidden}
+  header::after{content:'';position:absolute;top:-40%;right:-20%;width:260px;height:260px;background:radial-gradient(circle,rgba(212,165,116,.40),transparent 70%);pointer-events:none;animation:floaty 9s ease-in-out infinite}
+  @keyframes floaty{0%,100%{transform:translate(0,0)}50%{transform:translate(-14px,12px)}}
+  .hdrTop{display:flex;align-items:center;gap:.7rem;position:relative;z-index:1}
+  .hlogo{width:46px;height:46px;border-radius:12px;background:#fff;object-fit:contain;padding:4px;box-shadow:0 6px 16px rgba(0,0,0,.18);flex-shrink:0}
+  .hlogoTxt{width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;font-size:1.4rem;flex-shrink:0}
+  .hello{font-size:.8rem;opacity:.85}
+  .clinicTtl{font-size:1.3rem;font-weight:700;line-height:1.1}
+  .clinicAddr{font-size:.74rem;opacity:.8;margin-top:.15rem;display:flex;align-items:center;gap:.3rem}
   /* PTS CARD */
   .pts{position:relative;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:18px;padding:1.1rem 1.2rem;margin-top:1rem;backdrop-filter:blur(6px);overflow:hidden}
   .pts::before{content:'';position:absolute;top:0;left:-60%;width:50%;height:100%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.25),transparent);animation:shine 4.5s ease-in-out infinite}
@@ -74,6 +79,11 @@
   .toast{position:fixed;top:1rem;left:50%;transform:translateX(-50%);background:#1f8c69;color:#fff;padding:.7rem 1.2rem;border-radius:30px;font-weight:600;font-size:.88rem;opacity:0;transition:opacity .3s;z-index:99;max-width:90%}
   .toast.show{opacity:1}
   .empty{text-align:center;color:var(--muted);font-size:.88rem;padding:1.5rem}
+  .clinicInfo{background:#fff;border-radius:16px;padding:1rem 1.1rem;margin-bottom:.7rem;box-shadow:0 4px 14px rgba(0,0,0,.04)}
+  .clinicInfo a{display:flex;align-items:center;gap:.6rem;padding:.55rem 0;color:var(--ink);text-decoration:none;font-size:.9rem;font-weight:500;border-bottom:1px solid var(--line)}
+  .clinicInfo a:last-child{border:none}
+  .clinicInfo .ci-ic{width:34px;height:34px;border-radius:9px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:1rem}
+  .loginLogo{width:72px;height:72px;border-radius:18px;object-fit:contain;background:#fff;padding:8px;box-shadow:0 10px 26px rgba(0,0,0,.1);margin:0 auto .8rem}
 </style>
 </head>
 <body>
@@ -81,6 +91,7 @@
   <!-- LOGIN -->
   <div id="login">
     <div style="text-align:center;margin-bottom:1.2rem">
+      <img id="loginLogo" class="loginLogo" style="display:none"/>
       <div class="serif" id="loginClinic" style="font-size:1.8rem;font-weight:700;color:var(--brand)">Tu clínica</div>
       <p style="color:var(--muted);margin-top:.3rem;font-size:.9rem">Tu espacio de clienta: puntos, citas y ofertas.</p>
     </div>
@@ -96,8 +107,15 @@
   <!-- APP -->
   <div id="app" class="hidden">
     <header>
-      <div class="hello">Hola <span id="uName"></span> 👋</div>
-      <div class="clinicTtl serif" id="appClinic"></div>
+      <div class="hdrTop">
+        <img id="hLogo" class="hlogo" style="display:none"/>
+        <div id="hLogoTxt" class="hlogoTxt serif"></div>
+        <div style="min-width:0">
+          <div class="hello">Hola <span id="uName"></span> 👋</div>
+          <div class="clinicTtl serif" id="appClinic"></div>
+          <div class="clinicAddr" id="appAddr" style="display:none"><span>📍</span><span id="appAddrTxt"></span></div>
+        </div>
+      </div>
       <div class="pts">
         <div class="lbl">Tus puntos</div>
         <div class="n" id="uPts">0</div>
@@ -120,6 +138,8 @@
           <div><b>Invita a una amiga</b><div style="font-size:.82rem;color:var(--muted)">Gana puntos cuando venga</div></div><span style="font-size:1.4rem">→</span>
         </div>
         <button class="btn ghost" onclick="checkin()" style="margin-top:.4rem">He llegado a la clínica (sumar puntos)</button>
+        <h2 class="t" style="margin-top:1.3rem">Tu clínica</h2>
+        <div class="clinicInfo" id="clinicInfoBox"></div>
       </section>
 
       <!-- TIENDA -->
@@ -169,16 +189,40 @@
 const WORKER='https://aura-chat-worker.adrian-7b9.workers.dev';
 const params=new URLSearchParams(location.search);
 const T=params.get('t')||params.get('clinica')||'';
-let LEAD=null, CFG=null, CLINIC='';
+let LEAD=null, CFG=null, CLINIC='', INFO={};
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2300);}
 function eur(n){return (Math.round((n||0)*100)/100).toLocaleString('es-ES')+'€';}
 
+function darken(hex,f){try{hex=hex.replace('#','');if(hex.length===3)hex=hex.split('').map(c=>c+c).join('');const n=parseInt(hex,16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;r=Math.round(r*(1-f));g=Math.round(g*(1-f));b=Math.round(b*(1-f));return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}catch(e){return hex;}}
 async function loadClinicMeta(){
-  try{const d=await (await fetch(WORKER+'/api/loyalty-card?tenant='+T+'&lead=__none__')).json();
-    CLINIC=d.clinic||'Tu clínica'; CFG=d.config;
+  try{const d=await (await fetch(WORKER+'/api/portal-info?tenant='+T)).json(); INFO=d||{};
+    CLINIC=d.name||'Tu clínica';
     document.getElementById('loginClinic').textContent=CLINIC;
-    if(d.brand){document.documentElement.style.setProperty('--brand',d.brand);document.querySelector('meta[name=theme-color]').content=d.brand;}
+    const brand=d.brand_primary||'#5e1a2a'; const acc=d.brand_accent||'#D4A574';
+    document.documentElement.style.setProperty('--brand',brand);
+    document.documentElement.style.setProperty('--brand2',darken(brand,.45));
+    document.documentElement.style.setProperty('--accent',acc);
+    document.querySelector('meta[name=theme-color]').content=brand;
+    if(d.logo_url){const ll=document.getElementById('loginLogo');ll.src=d.logo_url;ll.style.display='block';}
   }catch(e){}
+  // config de puntos (separado)
+  try{const c=await (await fetch(WORKER+'/api/loyalty-config?tenant='+T)).json(); CFG=c.config||c||null;}catch(e){}
+}
+function renderClinicInfo(){
+  // header logo / iniciales
+  const hl=document.getElementById('hLogo'), ht=document.getElementById('hLogoTxt');
+  if(INFO.logo_url){hl.src=INFO.logo_url;hl.style.display='block';ht.style.display='none';}
+  else{ht.textContent=(CLINIC||'C').trim()[0].toUpperCase();ht.style.display='flex';hl.style.display='none';}
+  // direccion en header
+  const addr=[INFO.address,INFO.city].filter(Boolean).join(', ');
+  if(addr){document.getElementById('appAddrTxt').textContent=addr;document.getElementById('appAddr').style.display='flex';}
+  // tarjeta info
+  const box=document.getElementById('clinicInfoBox'); if(!box)return; let h='';
+  if(addr){h+='<a href="https://maps.google.com/?q='+encodeURIComponent(addr+' '+CLINIC)+'" target="_blank"><span class="ci-ic">📍</span><span>'+addr+'</span></a>';}
+  const tel=(INFO.whatsapp||'').replace(/[^0-9+]/g,'');
+  if(tel){h+='<a href="https://wa.me/'+tel.replace('+','')+'" target="_blank"><span class="ci-ic">💬</span><span>Escríbenos por WhatsApp</span></a>';h+='<a href="tel:'+tel+'"><span class="ci-ic">📞</span><span>Llamar a la clínica</span></a>';}
+  if(INFO.email){h+='<a href="mailto:'+INFO.email+'"><span class="ci-ic">✉️</span><span>'+INFO.email+'</span></a>';}
+  box.innerHTML=h||'<div class="empty" style="padding:.6rem">Tu clínica añadirá sus datos pronto.</div>';
 }
 async function doLogin(){
   const phone=document.getElementById('phone').value.trim();
@@ -195,6 +239,7 @@ async function enterApp(){
   document.getElementById('login').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('appClinic').textContent=CLINIC;
+  renderClinicInfo();
   document.getElementById('bookLink').href='/c/'+T;
   await refreshCard(); loadPacks(); loadAppts(); loadBonos();
 }
@@ -260,9 +305,9 @@ function go(s){
   ['home','tienda','citas','prem','referir'].forEach(x=>{document.getElementById('s-'+x).classList.toggle('on',x===s);document.getElementById('n-'+x).classList.toggle('on',x===s);});
   window.scrollTo(0,0);
 }
-(function init(){
+(async function init(){
   if(!T){document.getElementById('loginClinic').textContent='Enlace no válido';return;}
-  loadClinicMeta();
+  await loadClinicMeta();
   const saved=localStorage.getItem('portal_lead_'+T);
   if(saved){LEAD=saved;enterApp();}
 })();

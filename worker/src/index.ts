@@ -586,15 +586,23 @@ export default {
       if (p === '/api/tenant-meta' && req.method === 'POST') {
         const b:any = await req.json();
         if (!b.tenant_id) return json({ error:'missing_tenant' }, 400);
-        if (b.google_review_url !== undefined) {
-          await env.aura_db.prepare('UPDATE tenants SET google_review_url=? WHERE id=?').bind((b.google_review_url||'').trim(), b.tenant_id).run();
-        }
+        const sets:string[]=[]; const vals:any[]=[];
+        const map:any={ google_review_url:'google_review_url', logo_url:'logo_url', address:'address', city:'city', whatsapp:'whatsapp', email:'email', brand_primary:'brand_primary', brand_accent:'brand_accent', name:'name' };
+        for(const k in map){ if(b[k]!==undefined){ sets.push(map[k]+'=?'); vals.push(typeof b[k]==='string'?b[k].trim():b[k]); } }
+        if(sets.length){ vals.push(b.tenant_id); await env.aura_db.prepare('UPDATE tenants SET '+sets.join(',')+' WHERE id=?').bind(...vals).run(); }
         return json({ ok:true });
       }
       if (p === '/api/tenant-meta' && req.method === 'GET') {
         const tid = url.searchParams.get('tenant');
-        const r:any = await env.aura_db.prepare('SELECT google_review_url FROM tenants WHERE id=?').bind(tid).first();
-        return json({ google_review_url: r?.google_review_url || '' });
+        const r:any = await env.aura_db.prepare('SELECT google_review_url,logo_url,address,city,whatsapp,email,brand_primary,brand_accent,name FROM tenants WHERE id=?').bind(tid).first();
+        return json(r||{});
+      }
+      // Datos de marca de la clinica para el portal del cliente (publico)
+      if (p === '/api/portal-info' && req.method === 'GET') {
+        const tid = url.searchParams.get('tenant');
+        const r:any = await env.aura_db.prepare('SELECT name,logo_url,address,city,whatsapp,email,brand_primary,brand_accent FROM tenants WHERE id=?').bind(tid).first();
+        if(!r) return json({ error:'not_found' },404);
+        return json({ name:r.name||'', logo_url:r.logo_url||'', address:r.address||'', city:r.city||'', whatsapp:r.whatsapp||'', email:r.email||'', brand_primary:r.brand_primary||'#b05d44', brand_accent:r.brand_accent||'#c8a86a' });
       }
       // ===== FIDELIZACIÓN (puntos / recompensas) =====
       // Config (GET público para la tarjeta del paciente; POST protegido por guardia)

@@ -604,6 +604,16 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
       <div class="card" id="portalCard">
         <h3 style="margin:0">Portal del cliente (web app)</h3>
         <p class="sub">Tus pacientes acceden a su propia app: puntos, citas, bonos y tu tienda de packs. Aquí defines los packs que verán y compran.</p>
+        <div style="border:1px solid var(--line);border-radius:12px;padding:1rem;margin:.6rem 0 1rem;background:#fbf8f4">
+          <h4 style="margin:0 0 .5rem">Datos de tu clínica (salen en el portal)</h4>
+          <p class="sub" style="margin:0 0 .7rem">El logo, la dirección y el teléfono que pongas aquí aparecen en la app de tus pacientes.</p>
+          <div class="row2"><div class="field"><label>Nombre de la clínica</label><input id="tmName" placeholder="Clínica Bella"/></div><div class="field"><label>Logo (URL de imagen)</label><input id="tmLogo" placeholder="https://..."/></div></div>
+          <div class="row2"><div class="field"><label>Dirección</label><input id="tmAddr" placeholder="Calle Serrano 45"/></div><div class="field"><label>Ciudad</label><input id="tmCity" placeholder="Madrid"/></div></div>
+          <div class="row2"><div class="field"><label>WhatsApp / Teléfono</label><input id="tmWa" placeholder="+34600112233"/></div><div class="field"><label>Email de contacto</label><input id="tmEmail" placeholder="hola@clinica.es"/></div></div>
+          <div class="row2"><div class="field"><label>Color principal</label><input id="tmBrand" type="color" value="#5e1a2a" style="height:42px;padding:.2rem"/></div><div class="field"><label>Color de acento</label><input id="tmAccent" type="color" value="#d4a574" style="height:42px;padding:.2rem"/></div></div>
+          <button class="btn prim" style="margin-top:.6rem" onclick="saveClinicMeta()">Guardar datos de la clínica</button>
+          <span id="tmMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
+        </div>
         <div id="packsAdmin" style="margin:.6rem 0"></div>
         <div style="border-top:1px solid var(--line);padding-top:.8rem;margin-top:.4rem">
           <h4 style="margin:0 0 .5rem">Añadir / editar pack</h4>
@@ -969,7 +979,7 @@ function goSection(v,push){
   if(v==='agenda')loadAgendaCal();
   if(v==='caja')loadCaja();
   if(v==='ajustes'){loadSmsTpl();loadSmsCredits();try{ if(typeof buildTimeline==='function')buildTimeline(); }catch(e){}}
-  if(v==='portal'){ mountPortalCards(); loadPortalClients(); try{ if(typeof loadLoyalty==='function')loadLoyalty(); if(typeof loadPacks==='function')loadPacks(); if(typeof renderPortalQR==='function')renderPortalQR(); }catch(e){} }
+  if(v==='portal'){ mountPortalCards(); loadPortalClients(); try{ loadClinicMeta(); if(typeof loadLoyalty==='function')loadLoyalty(); if(typeof loadPacks==='function')loadPacks(); if(typeof renderPortalQR==='function')renderPortalQR(); }catch(e){} }
 }
 // Mueve las cards de puntos y packs (definidas en Ajustes) a la seccion Portal del cliente
 function mountPortalCards(){
@@ -1914,6 +1924,19 @@ async function addVacation(){
 }
 // compat: la inicialización antigua llamaba fillHours()/loadCal()
 function fillHours(){}
+async function loadClinicMeta(){
+  try{const r=await fetch(WORKER+'/api/tenant-meta?tenant='+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}});const d=await r.json();
+    const set=(id,v)=>{const el=document.getElementById(id);if(el&&v!=null&&v!=='')el.value=v;};
+    set('tmName',d.name);set('tmLogo',d.logo_url);set('tmAddr',d.address);set('tmCity',d.city);set('tmWa',d.whatsapp);set('tmEmail',d.email);set('tmBrand',d.brand_primary);set('tmAccent',d.brand_accent);
+  }catch(e){}
+}
+async function saveClinicMeta(){
+  const m=document.getElementById('tmMsg');const g=id=>{const el=document.getElementById(id);return el?el.value.trim():'';};
+  const body={tenant_id:T,name:g('tmName'),logo_url:g('tmLogo'),address:g('tmAddr'),city:g('tmCity'),whatsapp:g('tmWa'),email:g('tmEmail'),brand_primary:g('tmBrand'),brand_accent:g('tmAccent')};
+  try{await fetch(WORKER+'/api/tenant-meta',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify(body)});
+    if(m){m.style.color='#1f8c69';m.textContent='Datos guardados ✓';setTimeout(()=>m.textContent='',2200);}
+  }catch(e){if(m){m.style.color='#b45309';m.textContent='Error al guardar';}}
+}
 async function loadReviewUrl(){
   try{const r=await fetch(WORKER+'/api/tenant-meta?tenant='+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}});const d=await r.json();const i=document.getElementById('gReviewUrl');if(i)i.value=d.google_review_url||'';}catch(e){}
 }
