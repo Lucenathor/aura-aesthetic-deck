@@ -456,7 +456,7 @@ export default {
         '/api/loyalty-adjust','/api/loyalty-balance'
       ]);
       // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
-      const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar']);
+      const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar','/api/portal-clients']);
       const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p)) || (p==='/api/packs' && req.method==='POST');
       if (mustGuard) {
         // tenant solicitado: de query (?tenant=) o del body para POST
@@ -719,6 +719,20 @@ export default {
         const rp=Number(lc?.pts_referral)||0;
         if(rp>0) await env.aura_db.prepare("INSERT INTO points_ledger (id,tenant_id,lead_id,delta,reason,created_at) VALUES (?,?,?,?,?,?)").bind('pt_'+uid(),tid,lid,rp,'referido',ts).run();
         return json({ ok:true, earned:rp });
+      }
+
+      // Clientes del portal (panel): registrados en el programa, con puntos y compras
+      if (p === '/api/portal-clients' && req.method === 'GET') {
+        const tid = url.searchParams.get('tenant'); if(!tid) return json({error:'missing_tenant'},400);
+        const r = await env.aura_db.prepare(`
+          SELECT l.id, l.name, l.phone, l.created_at,
+            COALESCE((SELECT SUM(delta) FROM points_ledger pl WHERE pl.lead_id=l.id),0) as points,
+            COALESCE((SELECT COUNT(*) FROM pack_orders po WHERE po.lead_id=l.id),0) as orders,
+            COALESCE((SELECT SUM(amount) FROM pack_orders po WHERE po.lead_id=l.id),0) as spent
+          FROM leads l
+          WHERE l.tenant_id=? AND (l.id IN (SELECT DISTINCT lead_id FROM points_ledger WHERE tenant_id=?) OR l.id IN (SELECT DISTINCT lead_id FROM pack_orders WHERE tenant_id=?))
+          ORDER BY points DESC LIMIT 200`).bind(tid,tid,tid).all();
+        return json({ clients: r.results||[] });
       }
 
       // Ajuste manual de puntos desde el panel (protegido)
