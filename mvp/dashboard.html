@@ -1365,33 +1365,133 @@ function renderAgendaCal(){
     title.textContent=monday.toLocaleDateString('es-ES',{day:'2-digit',month:'short'})+' – '+days[6].toLocaleDateString('es-ES',{day:'2-digit',month:'short'});
     const tot=days.reduce((n,d)=>n+agApptsFor(d.toISOString().slice(0,10)).length,0);
     document.getElementById('calSummary').innerHTML='<span><b style="color:var(--ink)">'+tot+'</b> citas esta semana</span>';
-    let h='<div style="display:flex;gap:.4rem;min-width:640px">';
-    days.forEach(d=>{const ds=d.toISOString().slice(0,10);const da=agApptsFor(ds);const isToday=ds===new Date().toISOString().slice(0,10);const cl=agClosed(ds);
-      const headStyle=isToday?'background:var(--accent);color:#fff':(cl.closed?'background:#efe9e0;color:#a89a88':'color:var(--muted)');
-      h+='<div ondragover="event.preventDefault()" ondrop="agDrop(event,\''+ds+'T10:00\')" style="flex:1;min-width:84px'+(cl.closed?';background:repeating-linear-gradient(45deg,#f6f3ee,#f6f3ee 7px,#efe9e0 7px,#efe9e0 14px);border-radius:8px':'')+'"><div title="'+(cl.closed?cl.reason:'')+'" style="text-align:center;font-size:.72rem;font-weight:700;padding:.3rem;border-radius:7px;'+headStyle+'">'+d.toLocaleDateString('es-ES',{weekday:'short'})+'<br>'+d.getDate()+(cl.closed?'<br><span style="font-size:.58rem;font-weight:600">cerrado</span>':'')+'</div><div style="display:flex;flex-direction:column;gap:.25rem;margin-top:.3rem">';
-      da.forEach(a=>{ h+=apptCardHtml(a,true); });
-      h+='</div></div>';});
+    
+    // Agenda Interactiva Semana (Cuadrícula 7 días x Horas)
+    let h='<div class="agenda-grid">';
+    // Columna de horas
+    h+='<div class="agenda-time-col"><div class="agenda-pro-header"></div>';
+    for(let hr=8;hr<=21;hr++){ h+='<div class="agenda-time-slot">'+String(hr).padStart(2,'0')+':00</div>'; }
+    h+='</div>';
+    
+    // Columnas por día
+    days.forEach(d => {
+      const ds=d.toISOString().slice(0,10);
+      const da=agApptsFor(ds);
+      const isToday=ds===new Date().toISOString().slice(0,10);
+      const cl=agClosed(ds);
+      
+      h+='<div class="agenda-pro-col" '+(cl.closed?'style="opacity:.6"':'')+'>';
+      const headStyle=isToday?'background:var(--accent);color:#fff':(cl.closed?'background:#efe9e0;color:#a89a88':'color:var(--ink)');
+      h+='<div class="agenda-pro-header" style="'+headStyle+'; flex-direction:column; line-height:1.2; height:40px;">';
+      h+='<span style="font-size:.7rem;text-transform:uppercase">'+d.toLocaleDateString('es-ES',{weekday:'short'})+'</span>';
+      h+='<span style="font-size:.85rem">'+d.getDate()+'</span>';
+      h+='</div>';
+      
+      h+='<div class="agenda-slots-container">';
+      if(cl.closed) h+='<div class="agenda-closed-bg" title="'+cl.reason+'"></div>';
+      
+      // Rejilla de fondo y zonas de drop
+      for(let hr=8;hr<=21;hr++){
+        const hourIso = ds+'T'+String(hr).padStart(2,'0')+':00';
+        const halfIso = ds+'T'+String(hr).padStart(2,'0')+':30';
+        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+hourIso+'\')" onclick="openNewAppt(\''+hourIso+'\')"></div>';
+        h+='<div class="agenda-slot-bg" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+halfIso+'\')" onclick="openNewAppt(\''+halfIso+'\')"></div>';
+      }
+      
+      // Citas del día
+      da.forEach(a => {
+        const dt = new Date(a.date_iso);
+        const startMins = (dt.getHours() - 8) * 60 + dt.getMinutes();
+        if(startMins < 0 || startMins > 14*60) return;
+        const dur = a.duration_min || 30;
+        const top = startMins;
+        const height = dur;
+        const stClass = 'status-'+(a.status||'pending');
+        h+='<div class="agenda-appt '+stClass+'" draggable="true" ondragstart="agDragStart(event,\''+a.id+'\')" onclick="event.stopPropagation();openApptCard(\''+a.id+'\')" style="top:'+top+'px; height:'+height+'px;" title="'+(a.lead_name||'Cita')+' - '+(a.treatment||'')+'">';
+        h+='<div class="agenda-appt-title">'+(a.lead_name||'Cita')+'</div>';
+        if(dur >= 30) h+='<div class="agenda-appt-sub">'+(a.treatment||'')+'</div>';
+        h+='</div>';
+      });
+      
+      h+='</div></div>';
+    });
     h+='</div>';
     wrap.innerHTML=h;
+    
+    // Scroll a la hora actual (si es la semana actual)
+    const nowH = new Date().getHours();
+    if(nowH >= 8 && !window._calScrolledWeek){
+      window._calScrolledWeek=true;
+      const grid = document.querySelector('.agenda-grid');
+      if(grid) grid.parentElement.scrollTop = (nowH - 8) * 60 - 40;
+    }
   } else {
-    // MES
+    // MES (Rediseño Premium)
     const first=new Date(calRef.getFullYear(),calRef.getMonth(),1);
     title.textContent=first.toLocaleDateString('es-ES',{month:'long',year:'numeric'}).replace(/^./,m=>m.toUpperCase());
     const startWd=(first.getDay()+6)%7; const dim=new Date(calRef.getFullYear(),calRef.getMonth()+1,0).getDate();
     const tot=_agAppts.filter(a=>a.date_iso&&a.date_iso.slice(0,7)===first.toISOString().slice(0,7)).length;
     document.getElementById('calSummary').innerHTML='<span><b style="color:var(--ink)">'+tot+'</b> citas este mes</span>';
-    let h='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;min-width:560px">';
-    ['L','M','X','J','V','S','D'].forEach(d=>h+='<div style="text-align:center;font-size:.68rem;color:var(--muted);font-weight:700;padding:.2rem">'+d+'</div>');
-    for(let i=0;i<startWd;i++)h+='<div></div>';
-    for(let dn=1;dn<=dim;dn++){ const d=new Date(calRef.getFullYear(),calRef.getMonth(),dn); const ds=d.toISOString().slice(0,10); const da=agApptsFor(ds); const isToday=ds===new Date().toISOString().slice(0,10); const cl=agClosed(ds);
-      const cellBg=isToday?'background:#fdeee9':(cl.closed?'background:repeating-linear-gradient(45deg,#f6f3ee,#f6f3ee 6px,#efe9e0 6px,#efe9e0 12px)':'');
-      h+='<div title="'+(cl.closed?cl.reason:'')+'" onclick="calRef=new Date(\''+ds+'T12:00\');calView=\'day\';document.querySelectorAll(\'.agv\').forEach(b=>b.classList.toggle(\'on\',b.dataset.v===\'day\'));renderAgendaCal()" style="cursor:pointer;min-height:62px;border:1px solid var(--line);border-radius:7px;padding:.25rem;'+cellBg+'"><div style="font-size:.72rem;font-weight:700;color:'+(isToday?'var(--accent)':(cl.closed?'#a89a88':'var(--ink)'))+'">'+dn+(cl.closed?' <span style="font-size:.52rem;font-weight:600">cerrado</span>':'')+'</div>';
-      da.slice(0,3).forEach(a=>{const pc=a.professional_id?proColor(a.professional_id):estadoCita(a).bar;h+='<div style="font-size:.6rem;background:'+estadoCita(a).bg+';border-left:2px solid '+pc+';border-radius:3px;padding:.05rem .2rem;margin-top:.12rem;overflow:hidden;white-space:nowrap">'+new Date(a.date_iso).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+' '+(a.lead_name||'').split(' ')[0]+'</div>';});
-      if(da.length>3)h+='<div style="font-size:.58rem;color:var(--muted);margin-top:.1rem">+'+(da.length-3)+' más</div>';
+    
+    let h='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;min-width:560px;padding:4px">';
+    ['LUN','MAR','MIE','JUE','VIE','SAB','DOM'].forEach(d=>h+='<div style="text-align:center;font-size:.7rem;color:var(--muted);font-weight:700;padding:.4rem 0;text-transform:uppercase;letter-spacing:1px">'+d+'</div>');
+    
+    for(let i=0;i<startWd;i++)h+='<div style="background:#fafafa;border-radius:10px;opacity:0.5"></div>';
+    
+    for(let dn=1;dn<=dim;dn++){ 
+      const d=new Date(calRef.getFullYear(),calRef.getMonth(),dn); 
+      const ds=d.toISOString().slice(0,10); 
+      const da=agApptsFor(ds); 
+      const isToday=ds===new Date().toISOString().slice(0,10); 
+      const cl=agClosed(ds);
+      
+      // Calcular carga del día (0 a 100%)
+      const maxCitasPorDia = 15; // Ajustable según la clínica
+      const carga = Math.min(100, (da.length / maxCitasPorDia) * 100);
+      let cargaColor = '#34a877'; // Verde (libre)
+      if(carga > 50) cargaColor = '#d9a23a'; // Naranja (medio)
+      if(carga > 80) cargaColor = '#c0392b'; // Rojo (lleno)
+      
+      const cellBg=isToday?'background:#fff;box-shadow:0 0 0 2px var(--accent) inset':(cl.closed?'background:repeating-linear-gradient(45deg,#f6f3ee,#f6f3ee 6px,#efe9e0 6px,#efe9e0 12px)':'background:#fff');
+      
+      h+='<div class="cal-month-cell" title="'+(cl.closed?cl.reason:(da.length+' citas'))+'" onclick="calRef=new Date(\''+ds+'T12:00\');calView=\'day\';document.querySelectorAll(\'.agv\').forEach(b=>b.classList.toggle(\'on\',b.dataset.v===\'day\'));renderAgendaCal()" style="cursor:pointer;min-height:80px;border:1px solid var(--line);border-radius:10px;padding:.4rem;display:flex;flex-direction:column;transition:all 0.2s ease;'+cellBg+'">';
+      
+      h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+      h+='<span style="font-size:.85rem;font-weight:700;color:'+(isToday?'var(--accent)':(cl.closed?'#a89a88':'var(--ink)'))+'">'+dn+'</span>';
+      if(da.length > 0) h+='<span style="font-size:.65rem;font-weight:600;color:#fff;background:var(--ink);padding:2px 6px;border-radius:10px">'+da.length+'</span>';
+      h+='</div>';
+      
+      if(cl.closed) {
+        h+='<div style="font-size:.65rem;font-weight:600;color:#a89a88;text-align:center;margin-top:auto">CERRADO</div>';
+      } else if(da.length > 0) {
+        // Indicador visual de carga (barra)
+        h+='<div style="margin-top:auto;width:100%;height:4px;background:#f0f0f0;border-radius:2px;overflow:hidden">';
+        h+='<div style="height:100%;width:'+carga+'%;background:'+cargaColor+';border-radius:2px"></div>';
+        h+='</div>';
+        
+        // Mini-lista de citas (solo las 2 primeras)
+        h+='<div style="margin-top:4px;display:flex;flex-direction:column;gap:2px">';
+        da.slice(0,2).forEach(a=>{
+          const pc=a.professional_id?proColor(a.professional_id):estadoCita(a).bar;
+          h+='<div style="font-size:.6rem;color:var(--ink-soft);display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">';
+          h+='<span style="width:6px;height:6px;border-radius:50%;background:'+pc+';flex-shrink:0"></span>';
+          h+=new Date(a.date_iso).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+' '+(a.lead_name||'').split(' ')[0];
+          h+='</div>';
+        });
+        h+='</div>';
+      }
+      
       h+='</div>';
     }
     h+='</div>';
     wrap.innerHTML=h;
+    
+    // Añadir hover effect por JS (ya que no podemos añadir CSS global fácilmente aquí)
+    const cells = wrap.querySelectorAll('.cal-month-cell');
+    cells.forEach(c => {
+      c.addEventListener('mouseenter', () => { c.style.transform = 'translateY(-2px)'; c.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; });
+      c.addEventListener('mouseleave', () => { c.style.transform = 'none'; c.style.boxShadow = c.style.boxShadow.includes('inset') ? c.style.boxShadow : 'none'; });
+    });
   }
 }
 // Drag & drop
