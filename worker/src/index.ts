@@ -450,7 +450,7 @@ export default {
         '/api/waitlist','/api/pipeline','/api/products','/api/bonos','/api/cashbox','/api/profit',
         '/api/recovered','/api/business-costs','/api/schedule-by-day','/api/vacations',
         '/api/sms-templates','/api/team','/api/funnel-save','/api/funnel-edit',
-        '/api/consent-templates','/api/consent-send','/api/consents','/api/treatment-catalog'
+        '/api/consent-templates','/api/consent-send','/api/consents','/api/treatment-catalog','/api/tenant-meta'
       ]);
       // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
       const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar']);
@@ -580,6 +580,19 @@ export default {
       }
 
       // ===== ALTA DE CLINICA (self-service desde la homepage) =====
+      if (p === '/api/tenant-meta' && req.method === 'POST') {
+        const b:any = await req.json();
+        if (!b.tenant_id) return json({ error:'missing_tenant' }, 400);
+        if (b.google_review_url !== undefined) {
+          await env.aura_db.prepare('UPDATE tenants SET google_review_url=? WHERE id=?').bind((b.google_review_url||'').trim(), b.tenant_id).run();
+        }
+        return json({ ok:true });
+      }
+      if (p === '/api/tenant-meta' && req.method === 'GET') {
+        const tid = url.searchParams.get('tenant');
+        const r:any = await env.aura_db.prepare('SELECT google_review_url FROM tenants WHERE id=?').bind(tid).first();
+        return json({ google_review_url: r?.google_review_url || '' });
+      }
       if (p === '/api/clinic-signup' && req.method === 'POST') {
         const b:any = await req.json();
         const rawName = (b.clinic_name||'').trim();
@@ -989,6 +1002,7 @@ export default {
         noshow2: '{clinica}: {nombre}, aún tengo un hueco para ti esta semana. ¿Lo reservamos antes de que se ocupe? {link}',
         reactivation: '{clinica}: {nombre}, tu valoración sigue disponible. Tengo hueco {proximo_dia}, te lo guardo: {link}',
         recall_sale: '{clinica}: {nombre}, toca tu revisión para mantener el resultado. Tengo hueco {proximo_dia}, reserva aquí: {link}',
+        review: '{clinica}: {nombre}, gracias por tu visita. ¿Nos dejas tu opinión? Te toma 20 segundos y nos ayuda muchísimo: {link}',
         fast20: '{clinica}: {nombre}, vi que dejaste tus datos. ¿Te ayudo a reservar tu valoración? Es solo un momento: {link}',
         fast5h: '{clinica}: {nombre}, te guardo tu hueco para la valoración. Tengo disponibilidad {proximo_dia}, ¿la cerramos? {link}',
         react_last: '{clinica}: {nombre}, última oportunidad para tu valoración con la promo de este mes. Si te interesa, reserva aquí antes de que cierre: {link}',
@@ -1623,6 +1637,19 @@ export default {
         // Vino: marcar cita atendida + lead cliente
         if (apptId) await env.aura_db.prepare("UPDATE appointments SET status='attended' WHERE id=?").bind(apptId).run();
         await env.aura_db.prepare("UPDATE leads SET status='client' WHERE id=?").bind(leadId).run();
+        // Reseña automática en Google: si la clínica tiene enlace, pedir reseña al paciente tras la visita
+        try {
+          const tn: any = await env.aura_db.prepare('SELECT name,whatsapp,google_review_url FROM tenants WHERE id=?').bind(tenantId).first();
+          const ld: any = await env.aura_db.prepare('SELECT name,phone FROM leads WHERE id=?').bind(leadId).first();
+          if (tn?.google_review_url && ld?.phone) {
+            const trow: any = await env.aura_db.prepare('SELECT templates FROM sms_templates WHERE tenant_id=?').bind(tenantId).first();
+            let tpl:any = {}; try { tpl = trow?.templates ? JSON.parse(trow.templates) : {}; } catch(e){}
+            const reviewTpl = tpl.review || '{clinica}: {nombre}, gracias por tu visita. ¿Nos dejas tu opinión? Te toma 20 segundos y nos ayuda muchísimo: {link}';
+            const firstName = (ld.name||'').split(' ')[0] || '';
+            const msg = reviewTpl.replace(/\{clinica\}/g, tn.name||'AURA').replace(/\{nombre\}/g, firstName).replace(/\{link\}/g, tn.google_review_url);
+            await sendSMS(env, ld.phone, msg, tn.name||'AURA', tenantId);
+          }
+        } catch(e){}
         // Registrar tratamiento/pago si viene
         const tname = b.treatment || 'Tratamiento';
         const amount = Number(b.amount)||0;

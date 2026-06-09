@@ -550,6 +550,14 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
         <span id="tcMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
         <div id="tcList" style="margin-top:1rem"></div>
       </div>
+      <div class="card">
+        <h3>Reseñas automáticas en Google</h3>
+        <p class="sub">Tras cada visita atendida, AURA envía un SMS al paciente pidiéndole una reseña con el enlace directo a tu Google. Más reseñas = más pacientes nuevos.</p>
+        <div class="field"><label>Enlace para dejar reseña en Google</label><input id="gReviewUrl" placeholder="https://g.page/r/...   o   https://search.google.com/local/writereview?placeid=..."/></div>
+        <p class="sub" style="margin-top:.4rem;font-size:.8rem">Cómo obtenerlo: en tu ficha de Google Business → "Pedir reseñas" → copia el enlace corto. Déjalo vacío para desactivar.</p>
+        <button class="btn prim" style="margin-top:.6rem" onclick="saveReviewUrl()">Guardar enlace</button>
+        <span id="gRevMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
+      </div>
       <div class="card" id="smsPrevCard">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
           <div><h3 style="margin:0">Así lo recibe tu paciente</h3><p class="sub" style="margin:.2rem 0 0">Previsualización del recorrido de SMS, fase por fase.</p></div>
@@ -1813,7 +1821,15 @@ async function addVacation(){
 }
 // compat: la inicialización antigua llamaba fillHours()/loadCal()
 function fillHours(){}
-async function loadCal(){await loadSchedule();await loadVacations();await loadCatalog();}
+async function loadReviewUrl(){
+  try{const r=await fetch(WORKER+'/api/tenant-meta?tenant='+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}});const d=await r.json();const i=document.getElementById('gReviewUrl');if(i)i.value=d.google_review_url||'';}catch(e){}
+}
+async function saveReviewUrl(){
+  const i=document.getElementById('gReviewUrl');const m=document.getElementById('gRevMsg');if(!i)return;
+  try{await fetch(WORKER+'/api/tenant-meta',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,google_review_url:i.value.trim()})});
+    m.style.color='#1f8c69';m.textContent='Guardado ✓';setTimeout(()=>m.textContent='',2000);}catch(e){m.style.color='#b45309';m.textContent='Error al guardar';}
+}
+async function loadCal(){await loadSchedule();await loadVacations();await loadCatalog();await loadReviewUrl();}
 // ===== CLINIC OS lite: Caja, Bonos, Inventario =====
 const METODOS=['efectivo','tarjeta','bizum','transferencia','link'];
 function eur(n){ return (Math.round((n||0)*100)/100).toLocaleString('es-ES')+'€'; }
