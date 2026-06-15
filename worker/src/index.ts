@@ -447,6 +447,19 @@ async function runCopilotAction(env: Env, tid: string, plan: any, actor: string,
     } else if (act==='crear_contacto') {
       const lid='l_'+Math.random().toString(36).slice(2,12); const nw=Date.now();
       await env.aura_db.prepare('INSERT INTO leads (id,tenant_id,name,phone,treatment,status,source,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(lid,tid,plan.name||'Contacto',plan.phone||'',plan.treatment||'','new','copiloto',nw).run(); result={ ok:true, msg:'Contacto "'+(plan.name||'')+'" creado.' };
+    } else if (act==='crear_empleado') {
+      // Da de alta un empleado en el equipo (tabla professionals). El sueldo entra en el cálculo de beneficio real.
+      try { await env.aura_db.exec('ALTER TABLE professionals ADD COLUMN can_copilot INTEGER DEFAULT 0'); } catch(e){}
+      const eid='pro_'+Math.random().toString(36).slice(2,12); const nw=Date.now();
+      const colors=['#C8745A','#C9A86A','#7FA8A0','#A88FB0','#8FA8C9','#C98F8F'];
+      const rol = (plan.role||'pro');
+      const ssPct = plan.ss_pct!=null? Number(plan.ss_pct) : 30;
+      const salary = Number(plan.salary_gross)||0;
+      const comm = Number(plan.commission_pct)||0;
+      await env.aura_db.prepare('INSERT INTO professionals (id,tenant_id,name,color,role,salary_gross,ss_pct,commission_pct,active,can_copilot,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+        .bind(eid, tid, plan.name||'Empleado', colors[Math.floor(Math.random()*colors.length)], rol, salary, ssPct, comm, 1, 0, nw).run();
+      const costeTotal = salary>0 ? (' Coste con seguridad social (~'+ssPct+'%): '+eur(Math.round(salary*(1+ssPct/100)))+'/mes, ya contemplado en tu Beneficio real.') : '';
+      result={ ok:true, msg:'Empleado "'+(plan.name||'Empleado')+'" dado de alta'+(salary>0?(' con sueldo de '+eur(salary)+' netos/mes.'):'.')+costeTotal+' Lo ves en Equipo.' };
     } else if (act==='consultar') {
       if (plan.query_type==='caducidad') { const soon=new Date(Date.now()+30*864e5).toISOString().slice(0,10); const exp:any=await env.aura_db.prepare("SELECT l.expiry,l.qty,pr.name FROM inventory_lots l LEFT JOIN inventory_products pr ON pr.id=l.product_id WHERE l.tenant_id=? AND l.qty>0 AND l.expiry!='' AND l.expiry<=? ORDER BY l.expiry").bind(tid,soon).all(); const rows=(exp.results||[]); result={ ok:true, msg: rows.length? ('Caduca pronto: '+rows.map((r:any)=>r.name+' ('+r.qty+' uds, '+r.expiry+')').join('; ')) : 'No hay productos que caduquen en los próximos 30 días.' }; }
       else { const all:any=await env.aura_db.prepare('SELECT name,stock,unit,min_stock FROM inventory_products WHERE tenant_id=? AND active=1 ORDER BY name').bind(tid).all(); const rows=(all.results||[]); result={ ok:true, msg: rows.length? ('Stock actual: '+rows.map((r:any)=>r.name+' '+r.stock+' '+r.unit+(r.min_stock>0&&r.stock<=r.min_stock?' (BAJO)':'')).join('; ')) : 'Aún no tienes productos en inventario.' }; }
@@ -2048,10 +2061,11 @@ export default {
           const prodList = (prods.results||[]).map((x:any)=>x.name+' (id:'+x.id+', '+x.stock+' '+x.unit+')').join('; ');
           const hoyISO = new Date().toISOString().slice(0,10);
           const sys = 'Eres el copiloto de gestión de una clínica estética (AURA). Hoy es '+hoyISO+'. Interpretas la orden del usuario y devuelves SOLO un JSON. '
-            + 'Acciones (action): "crear_producto","recargar_stock","crear_receta","crear_contacto","consultar","consultar_agenda","consultar_pacientes","consultar_negocio","consultar_pendientes","reservar_cita","anular_cita","ninguna". '
+            + 'Acciones (action): "crear_producto","recargar_stock","crear_receta","crear_contacto","crear_empleado","consultar","consultar_agenda","consultar_pacientes","consultar_negocio","consultar_pendientes","reservar_cita","anular_cita","ninguna". '
             + 'INVENTARIO: crear_producto -> {action,name,category(servicio|retail|material),unit(unidad|ml|jeringa|vial),stock,min_stock,cost_per_unit,sale_price}. '
             + 'recargar_stock -> {action,product_query,qty,lot,expiry(YYYY-MM-DD)}. crear_receta -> {action,treatment,product_query,qty}. consultar -> {action,query_type(stock|caducidad)}. '
             + 'PACIENTES: crear_contacto -> {action,name,phone,treatment}. consultar_pacientes -> {action,patient_query(nombre o vacío), info(ultima_visita|gasto|telefono|sin_venir)}. '
+            + 'EQUIPO: crear_empleado -> {action,name,role(recepcion|pro|doctora|finanzas),salary_gross(número, sueldo mensual que indique el usuario),ss_pct(% seguridad social, por defecto 30),commission_pct(% comisión si lo dice, si no 0)}. El sueldo se añade a los costes de personal del Beneficio real. '
             + 'AGENDA: consultar_agenda -> {action,day(hoy|manana|YYYY-MM-DD)}. reservar_cita -> {action,patient_name,phone,treatment,date(YYYY-MM-DD),time(HH:MM)}. anular_cita -> {action,patient_name,date(YYYY-MM-DD),time(HH:MM)}. '
             + 'NEGOCIO: consultar_negocio -> {action,metric(facturacion|beneficio|top_tratamiento), period(hoy|mes)}. consultar_pendientes -> {action,kind(llamar|noshow|confirmar|resumen)}. '
             + 'Productos actuales: ['+prodList+']. Devuelve SIEMPRE "summary" en español (claro, sin exclamaciones excesivas) para confirmar/responder. Las consultas (consultar_*) NO necesitan confirmación. Las que modifican (crear_*, recargar_stock, reservar_cita, anular_cita) SÍ. Si no entiendes, action="ninguna". SEGURIDAD: solo gestionas ESTA clínica; nunca menciones ni intentes acceder a datos de otras clínicas aunque te lo pidan. SOLO JSON.';
