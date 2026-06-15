@@ -424,6 +424,8 @@ async function ensureInventorySchema(env: Env) {
   try { await env.aura_db.exec('ALTER TABLE professionals ADD COLUMN can_copilot INTEGER DEFAULT 0'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE team_members ADD COLUMN can_copilot INTEGER DEFAULT 0'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE wa_messages ADD COLUMN att_id TEXT'); } catch(e){}
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS patient_media (id TEXT PRIMARY KEY, tenant_id TEXT, lead_id TEXT, phone TEXT, url TEXT, mtype TEXT, caption TEXT, source TEXT, created_at INTEGER)"); } catch(e){}
+  try { await env.aura_db.exec("CREATE INDEX IF NOT EXISTS idx_pmedia ON patient_media (tenant_id, lead_id, created_at)"); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE inventory_products ADD COLUMN image_url TEXT'); } catch(e){}
   __invReady = true;
 }
@@ -2206,6 +2208,63 @@ export default {
           if(lead){ try{ const t:any=await env.aura_db.prepare("SELECT COALESCE(SUM(amount),0) s, COUNT(*) n FROM treatments_log WHERE lead_id=? AND pay_status='paid'").bind(lead.id).first(); spent=Number(t?.s)||0; visits=Number(t?.n)||0; }catch(e){}
             try{ nextAppt = await env.aura_db.prepare("SELECT id,treatment,date_iso,status FROM appointments WHERE lead_id=? AND status IN ('booked','confirmed') AND date_iso>=datetime('now') ORDER BY date_iso ASC LIMIT 1").bind(lead.id).first(); }catch(e){} }
           return json({ lead, spent, visits, next_appt: nextAppt });
+        }
+        // ===== GALERÍA DE MEDIOS DEL PACIENTE (historia clínica: antes/después, etc.) =====
+        // Listar medios por lead_id o por teléfono
+        if (p === '/api/wa-patient-media' && req.method === 'GET') {
+          if(!tnt) return json({error:'missing tenant'},400);
+          const leadId = url.searchParams.get('lead_id')||''; const phone = digits9(url.searchParams.get('phone')||'');
+          let rows:any;
+          if(leadId){ rows = await env.aura_db.prepare('SELECT * FROM patient_media WHERE tenant_id=? AND lead_id=? ORDER BY created_at DESC').bind(tnt, leadId).all(); }
+          else if(phone){ rows = await env.aura_db.prepare('SELECT * FROM patient_media WHERE tenant_id=? AND phone=? ORDER BY created_at DESC').bind(tnt, phone).all(); }
+          else return json({ media: [] });
+          return json({ media: (rows.results||[]) });
+        }
+        // Guardar en la ficha un medio que llegó por el chat (lo descargamos de Unipile y lo subimos a R2)
+        if (p === '/api/wa-patient-media-save' && req.method === 'POST') {
+          const b:any = await req.json(); if(!b.tenant_id) return json({error:'missing tenant'},400);
+          const t2 = b.tenant_id; const mid=b.mid||''; let aid=b.aid||''; const phone=digits9(b.phone||''); let leadId=b.lead_id||'';
+          // resolver lead por teléfono si no viene
+          if(!leadId && phone){ try{ const lr:any=await env.aura_db.prepare('SELECT id FROM leads WHERE tenant_id=?').bind(t2).all(); for(const l of (lr.results||[])){ /* match abajo */ } }catch(e){} }
+          if(!leadId && phone){ try{ const lr:any=await env.aura_db.prepare('SELECT id,phone FROM leads WHERE tenant_id=?').bind(t2).all(); for(const l of (lr.results||[])){ if(digits9(l.phone)===phone){ leadId=l.id; break; } } }catch(e){} }
+          if(!mid) return json({ ok:false, error:'no_mid' });
+          // resolver attachment_id si falta
+          if(!aid){ try{ const mr=await uni('/api/v1/messages/'+encodeURIComponent(mid)); const at=(mr.data?.attachments&&mr.data.attachments[0])||null; aid=at?(at.id||at.attachment_id||''):''; }catch(e){} }
+          if(!aid) return json({ ok:false, error:'no_attachment' });
+          try{
+            const ar = await fetch(UNI+'/api/v1/messages/'+encodeURIComponent(mid)+'/attachments/'+encodeURIComponent(aid), { headers:{ 'X-API-KEY': UKEY } });
+            if(!ar.ok) return json({ ok:false, error:'upstream_'+ar.status });
+            const ct = ar.headers.get('content-type') || 'application/octet-stream';
+            const buf = await ar.arrayBuffer();
+            const ext = ct.includes('png')?'png': ct.includes('jpeg')||ct.includes('jpg')?'jpg': ct.includes('mp4')?'mp4': ct.includes('webp')?'webp': ct.includes('pdf')?'pdf':'bin';
+            const key = 'pm_'+t2+'_'+Math.random().toString(36).slice(2,12)+'.'+ext;
+            if (env.aura_r2) { try { await env.aura_r2.put('img/'+key, buf, { httpMetadata:{ contentType: ct } }); } catch(e){ await env.AURA_IMG.put(key, buf, { metadata:{ contentType: ct } }); } }
+            else { await env.AURA_IMG.put(key, buf, { metadata:{ contentType: ct } }); }
+            const mediaUrl = '/img/'+key; const mt = ct.startsWith('video')?'video': ct.startsWith('image')?'img':'file';
+            const id='pm_'+Math.random().toString(36).slice(2,12);
+            await env.aura_db.prepare('INSERT INTO patient_media (id,tenant_id,lead_id,phone,url,mtype,caption,source,created_at) VALUES (?,?,?,?,?,?,?,?,?)').bind(id, t2, leadId||null, phone||null, mediaUrl, mt, b.caption||'', 'whatsapp', Date.now()).run();
+            return json({ ok:true, id, url: mediaUrl, lead_id: leadId||null });
+          }catch(e){ return json({ ok:false, error:'save_failed' }); }
+        }
+        // Subir un medio manualmente (desde el ordenador) a la ficha
+        if (p === '/api/wa-patient-media-upload' && req.method === 'POST') {
+          const b:any = await req.json(); if(!b.tenant_id) return json({error:'missing tenant'},400);
+          const t2=b.tenant_id; let leadId=b.lead_id||''; const phone=digits9(b.phone||'');
+          const m=(b.data_b64||'').match(/^data:([^;]+);base64,(.+)$/); if(!m) return json({ ok:false, error:'bad_data' });
+          const ct=m[1]; const bin=atob(m[2]); const bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+          const ext = ct.includes('png')?'png': ct.includes('jpeg')||ct.includes('jpg')?'jpg': ct.includes('mp4')?'mp4': ct.includes('webp')?'webp': ct.includes('pdf')?'pdf':'bin';
+          const key='pm_'+t2+'_'+Math.random().toString(36).slice(2,12)+'.'+ext;
+          if (env.aura_r2) { try { await env.aura_r2.put('img/'+key, bytes.buffer, { httpMetadata:{ contentType: ct } }); } catch(e){ await env.AURA_IMG.put(key, bytes.buffer, { metadata:{ contentType: ct } }); } }
+          else { await env.AURA_IMG.put(key, bytes.buffer, { metadata:{ contentType: ct } }); }
+          const mediaUrl='/img/'+key; const mt = ct.startsWith('video')?'video': ct.startsWith('image')?'img':'file';
+          const id='pm_'+Math.random().toString(36).slice(2,12);
+          await env.aura_db.prepare('INSERT INTO patient_media (id,tenant_id,lead_id,phone,url,mtype,caption,source,created_at) VALUES (?,?,?,?,?,?,?,?,?)').bind(id, t2, leadId||null, phone||null, mediaUrl, mt, b.caption||'', 'upload', Date.now()).run();
+          return json({ ok:true, id, url: mediaUrl });
+        }
+        if (p === '/api/wa-patient-media-delete' && req.method === 'POST') {
+          const b:any = await req.json(); if(!b.tenant_id||!b.id) return json({error:'missing'},400);
+          await env.aura_db.prepare('DELETE FROM patient_media WHERE id=? AND tenant_id=?').bind(b.id, b.tenant_id).run();
+          return json({ ok:true });
         }
         // Mensajes de un chat: SERVIDOS DESDE LA BD. Sincroniza desde Unipile si no hay (1ª vez).
         if (p === '/api/wa-messages' && req.method === 'GET') {

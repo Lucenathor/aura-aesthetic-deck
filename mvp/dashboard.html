@@ -2947,7 +2947,7 @@ function waJidToNumber(jid){ return String(jid||'').replace(/@.*/,''); }
 function waIsPhone(s){ if(!s) return false; var d=String(s).replace(/\D/g,''); var raw=String(s).replace(/[^A-Za-z0-9]/g,''); return d.length>=7 && d.length<=15 && d.length>=raw.length*0.85; }
 function waFmtPhone(s){ var d=String(s||'').replace(/\D/g,''); if(!d) return ''; if(d.length>=11) return '+'+d.slice(0,d.length-9)+' '+d.slice(-9,-6)+' '+d.slice(-6,-3)+' '+d.slice(-3); if(d.length===9) return d.slice(0,3)+' '+d.slice(3,6)+' '+d.slice(6); return '+'+d; }
 // Nombre legible para mostrar: lead.name > pushName real > teléfono formateado > 'Contacto sin nombre'
-function waDisplayName(c){ if(!c) return 'Contacto'; var lead=c._lead; if(lead&&lead.name&&lead.name.trim()) return lead.name.trim(); var pn=(c.pushName||c.name||'').trim(); var phone=c.phone||waJidToNumber(c.id||c.chat_id||''); if(pn && !waIsPhone(pn) && pn!==waJidToNumber(c.id||'')) return pn; if(waIsPhone(phone)) return waFmtPhone(phone); if(waIsPhone(pn)) return waFmtPhone(pn); return 'Contacto sin nombre'; }
+function waDisplayName(c){ if(!c) return 'Contacto'; var lead=c._lead; if(lead&&lead.name&&lead.name.trim()) return lead.name.trim(); var pn=(c.pushName||c.name||'').trim(); var phone=c.phone||waJidToNumber(c.id||c.chat_id||''); if(pn && !waIsPhone(pn) && pn!==waJidToNumber(c.id||'')) return pn; if(waIsPhone(phone)) return waFmtPhone(phone); if(waIsPhone(pn)) return waFmtPhone(pn); var d=String(phone||'').replace(/\D/g,''); if(d.length>=7) return '+'+d; return 'Contacto sin nombre'; }
 function waSubLine(c){ var phone=c.phone||waJidToNumber(c.id||c.chat_id||''); if(waIsPhone(phone)) return waFmtPhone(phone); var pn=(c.pushName||c.name||''); if(waIsPhone(pn)) return waFmtPhone(pn); return 'WhatsApp'; }
 const WA_QUICK=[{label:'👋 Saludo',text:'¡Hola! Gracias por escribirnos 😊 ¿En qué podemos ayudarte?'},{label:'💰 Precios',text:'Te paso la información de precios. ¿Qué tratamiento te interesa?'},{label:'📅 Reservar',text:'¿Quieres que te reserve un hueco? Díme qué día y hora te viene mejor.'},{label:'✅ Confirmar cita',text:'Te confirmo tu cita. ¡Te esperamos!'},{label:'🙏 Gracias',text:'¡Gracias a ti! Cualquier cosa, aquí estamos.'}];
 function waQuickReply(i){ const q=WA_QUICK[i]; if(!q)return; const inp=document.getElementById('waInput'); if(inp){ inp.value=q.text; inp.focus(); } }
@@ -3027,8 +3027,19 @@ function waMsgBubble(m){
   else if(isDoc) inner='<span style="color:#667781">📄 '+escapeHtml(m.mname||'Documento')+'</span>';
   else inner='<span style="color:#8696a0;font-style:italic">Mensaje no compatible</span>';
   const mid=m.id||(m.key&&m.key.id)||''; const emojis=['👍','❤️','😂','😮','😢','🙏']; const picker = (!fromMe&&mid)?'<div class="wa-react-btn" style="position:absolute;top:-18px;'+(fromMe?'left':'right')+':4px;background:#fff;border:1px solid var(--line);border-radius:18px;display:none;gap:2px;padding:3px 6px;box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:5">'+emojis.map(e=>'<span onclick="waReact(event,\''+mid+'\',\''+e+'\')" style="cursor:pointer;font-size:1rem;transition:transform .1s" onmouseover="this.style.transform=\'scale(1.3)\'" onmouseout="this.style.transform=\'scale(1)\'">'+e+'</span>').join('')+'</div>':''; const reactBtn=picker;
-  return '<div onmouseover="this.querySelector(\'.wa-react-btn\')&&(this.querySelector(\'.wa-react-btn\').style.display=\'flex\')" onmouseout="this.querySelector(\'.wa-react-btn\')&&(this.querySelector(\'.wa-react-btn\').style.display=\'none\')" style="position:relative;align-self:'+(fromMe?'flex-end':'flex-start')+';max-width:70%;background:'+(fromMe?'#d9fdd3':'#fff')+';padding:.45rem .65rem .3rem;border-radius:'+(fromMe?'10px 10px 2px 10px':'10px 10px 10px 2px')+';font-size:.88rem;box-shadow:0 1px .5px rgba(0,0,0,.13);line-height:1.35;word-wrap:break-word">'+reactBtn+inner+'<div style="font-size:.62rem;color:#667781;text-align:right;margin-top:2px">'+t+(fromMe?' <span style="color:#53bdeb">✓✓</span>':'')+'</div></div>';
+  // Barra de acciones para medios: descargar + añadir a ficha
+  var actions='';
+  if(m.murl && (isImg||isVid||isDoc||isSticker)){
+    actions='<div style="display:flex;gap:.4rem;margin-top:5px;flex-wrap:wrap">'
+      +'<button onclick="waDownloadMedia(\''+encodeURIComponent(m.murl)+'\',\''+mid+'\')" style="border:0;cursor:pointer;background:rgba(0,0,0,.06);border-radius:8px;padding:.2rem .5rem;font-size:.7rem;color:#445;display:flex;align-items:center;gap:3px">⬇ Descargar</button>'
+      +'<button onclick="waSaveToPatient(\''+mid+'\')" style="border:0;cursor:pointer;background:#F3E7E1;color:#A85942;border-radius:8px;padding:.2rem .5rem;font-size:.7rem;font-weight:600;display:flex;align-items:center;gap:3px">＋ A la ficha</button>'
+      +'</div>';
+  }
+  return '<div onmouseover="this.querySelector(\'.wa-react-btn\')&&(this.querySelector(\'.wa-react-btn\').style.display=\'flex\')" onmouseout="this.querySelector(\'.wa-react-btn\')&&(this.querySelector(\'.wa-react-btn\').style.display=\'none\')" style="position:relative;align-self:'+(fromMe?'flex-end':'flex-start')+';max-width:70%;background:'+(fromMe?'#d9fdd3':'#fff')+';padding:.45rem .65rem .3rem;border-radius:'+(fromMe?'10px 10px 2px 10px':'10px 10px 10px 2px')+';font-size:.88rem;box-shadow:0 1px .5px rgba(0,0,0,.13);line-height:1.35;word-wrap:break-word">'+reactBtn+inner+actions+'<div style="font-size:.62rem;color:#667781;text-align:right;margin-top:2px">'+t+(fromMe?' <span style="color:#53bdeb">✓✓</span>':'')+'</div></div>';
 }
+function waDownloadMedia(encUrl, mid){ var url=decodeURIComponent(encUrl); var a=document.createElement('a'); a.href=url; a.download='aura-'+(mid||Date.now()); a.target='_blank'; document.body.appendChild(a); a.click(); a.remove(); if(typeof toast==='function')toast('Descargando…'); }
+async function waSaveToPatient(mid){ if(!_waActive){ return; } var phone=waJidToNumber(_waActive.jid); var leadId=(_waCtxLead&&_waCtxLead.id)||''; if(typeof toast==='function')toast('Guardando en la ficha…');
+  try{ var r=await waApi('/api/wa-patient-media-save',{method:'POST',body:JSON.stringify({tenant_id:T, mid:mid, phone:phone, lead_id:leadId})}); if(r&&r.ok){ if(typeof toast==='function')toast('✓ Añadido a la ficha del paciente'); try{ if(typeof loadPatientMedia==='function'&&_waCtxLead) loadPatientMedia(leadId, phone); }catch(e){} } else { if(typeof toast==='function')toast('No se pudo guardar','error'); } }catch(e){ if(typeof toast==='function')toast('Error al guardar','error'); } }
 function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 async function refreshWaMsgs(initial){
   if(!_waActive)return; const box=document.getElementById('waMsgs'); if(!box)return;
@@ -3040,7 +3051,13 @@ async function refreshWaMsgs(initial){
   let html='', lastDay='';
   msgs.forEach(m=>{ const day=waDateLabel(m.timestamp); if(day && day!==lastDay){ lastDay=day; html+='<div style="align-self:center;background:#e1f2fb;color:#54656f;font-size:.68rem;padding:.2rem .6rem;border-radius:8px;margin:.4rem 0">'+day+'</div>'; } html+=waMsgBubble(m); });
   box.innerHTML=html;
-  if(atBottom) box.scrollTop=box.scrollHeight;
+  if(atBottom){
+    var toBottom=function(){ box.scrollTop=box.scrollHeight; };
+    toBottom();
+    setTimeout(toBottom, 60); setTimeout(toBottom, 300); setTimeout(toBottom, 700);
+    // cuando cada imagen/vídeo carga, vuelve a bajar (las imágenes cambian la altura)
+    box.querySelectorAll('img,video').forEach(function(el){ el.addEventListener('load', toBottom); el.addEventListener('loadeddata', toBottom); }); 
+  }
 }
 async function loadWaCtx(num){
   const ctx=document.getElementById('waCtx'); if(!ctx)return;
@@ -3062,8 +3079,25 @@ async function loadWaCtx(num){
     +(na?'':'<button class="btn prim" style="width:100%" onclick="waBookVisit()">📅 Reservar visita</button>')
     +'<button class="btn" style="width:100%" onclick="waSendBookingLink()">🔗 Enviar enlace de reserva</button>'
     +'<button class="btn" style="width:100%" onclick="goSection(\'pacientes\');setTimeout(()=>{var s=document.getElementById(\'leadSearch\');if(s){s.value=\''+(l.name||'').replace(/\x27/g,"")+'\';doSearch();}},300)">👁 Ver ficha completa</button>'
+    +'</div>'
+    // GALERÍA DE MEDIOS (historia clínica: antes/después)
+    +'<div style="margin-top:1.2rem;border-top:1px solid var(--line);padding-top:.9rem">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem"><b style="font-size:.85rem">📸 Fotos del paciente</b>'
+      +'<label style="cursor:pointer;font-size:.72rem;color:#A85942;font-weight:600">＋ Subir<input type="file" accept="image/*,video/*" style="display:none" onchange="uploadPatientMedia(this)"/></label></div>'
+      +'<div id="pmGallery" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.35rem"><div class="sub" style="grid-column:1/-1;font-size:.74rem">Cargando…</div></div>'
     +'</div>';
+  loadPatientMedia(l.id, num);
 }
+async function loadPatientMedia(leadId, phone){ var g=document.getElementById('pmGallery'); if(!g)return;
+  try{ var qs = leadId?('lead_id='+encodeURIComponent(leadId)):('phone='+encodeURIComponent(phone||'')); var r=await waApi('/api/wa-patient-media?'+qs); var media=(r&&r.media)||[];
+    if(!media.length){ g.innerHTML='<div class="sub" style="grid-column:1/-1;font-size:.74rem;color:var(--muted)">Aún no hay fotos. Añade desde el chat con “＋ A la ficha” o sube una.</div>'; return; }
+    g.innerHTML=media.map(function(m){ var isVid=(m.mtype==='video'); var src=(m.url&&m.url.charAt(0)==='/')?(WORKER+m.url):m.url; return '<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#eee">'+(isVid?'<video src="'+src+'" style="width:100%;height:100%;object-fit:cover"></video>':'<img src="'+src+'" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="window.open(\''+src+'\',\'_blank\')"/>')+'<button onclick="delPatientMedia(\''+m.id+'\',\''+(leadId||'')+'\',\''+(phone||'')+'\')" style="position:absolute;top:2px;right:2px;border:0;cursor:pointer;background:rgba(0,0,0,.55);color:#fff;border-radius:50%;width:20px;height:20px;font-size:.7rem;line-height:1">×</button></div>'; }).join('');
+  }catch(e){ g.innerHTML='<div class="sub" style="grid-column:1/-1;font-size:.74rem;color:#c0392b">Error al cargar fotos</div>'; }
+}
+async function uploadPatientMedia(input){ var f=input.files&&input.files[0]; if(!f){return;} if(f.size>15*1024*1024){ alert('Máximo 15MB'); input.value=''; return; }
+  var leadId=(_waCtxLead&&_waCtxLead.id)||''; var phone=_waCtxPhone||''; if(typeof toast==='function')toast('Subiendo…');
+  var rd=new FileReader(); rd.onload=async()=>{ try{ var r=await waApi('/api/wa-patient-media-upload',{method:'POST',body:JSON.stringify({tenant_id:T, lead_id:leadId, phone:phone, data_b64:String(rd.result)})}); if(r&&r.ok){ if(typeof toast==='function')toast('✓ Foto añadida'); loadPatientMedia(leadId, phone); } else if(typeof toast==='function')toast('No se pudo subir','error'); }catch(e){ if(typeof toast==='function')toast('Error al subir','error'); } }; rd.readAsDataURL(f); input.value=''; }
+async function delPatientMedia(id, leadId, phone){ if(!confirm('¿Eliminar esta foto de la ficha?'))return; try{ await waApi('/api/wa-patient-media-delete',{method:'POST',body:JSON.stringify({tenant_id:T, id:id})}); loadPatientMedia(leadId, phone); }catch(e){} }
 async function waSend(){
   const inp=document.getElementById('waInput'); if(!inp||!_waActive)return; const text=inp.value.trim(); if(!text)return; inp.value='';
   const box=document.getElementById('waMsgs'); if(box){ if(box.querySelector('.sub'))box.innerHTML=''; box.innerHTML+=waMsgBubble({fromMe:true,text,timestamp:Date.now()}); box.scrollTop=box.scrollHeight; }
