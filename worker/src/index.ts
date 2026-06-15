@@ -426,6 +426,9 @@ async function ensureInventorySchema(env: Env) {
   try { await env.aura_db.exec('ALTER TABLE wa_messages ADD COLUMN att_id TEXT'); } catch(e){}
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS patient_media (id TEXT PRIMARY KEY, tenant_id TEXT, lead_id TEXT, phone TEXT, url TEXT, mtype TEXT, caption TEXT, source TEXT, created_at INTEGER)"); } catch(e){}
   try { await env.aura_db.exec("CREATE INDEX IF NOT EXISTS idx_pmedia ON patient_media (tenant_id, lead_id, created_at)"); } catch(e){}
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS patient_clinical (lead_id TEXT PRIMARY KEY, tenant_id TEXT, allergies TEXT, conditions TEXT, medications TEXT, skin_type TEXT, blood_type TEXT, notes TEXT, dob TEXT, updated_at INTEGER, updated_by TEXT)"); } catch(e){}
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS clinical_notes (id TEXT PRIMARY KEY, tenant_id TEXT, lead_id TEXT, visit_date TEXT, professional TEXT, treatment TEXT, areas TEXT, product TEXT, lot TEXT, units TEXT, note TEXT, photo_url TEXT, created_at INTEGER, created_by TEXT)"); } catch(e){}
+  try { await env.aura_db.exec("CREATE INDEX IF NOT EXISTS idx_cnotes ON clinical_notes (tenant_id, lead_id, visit_date)"); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE inventory_products ADD COLUMN image_url TEXT'); } catch(e){}
   __invReady = true;
 }
@@ -624,7 +627,8 @@ export default {
         '/api/recovered','/api/business-costs','/api/schedule-by-day','/api/vacations',
         '/api/sms-templates','/api/team','/api/funnel-save','/api/funnel-edit',
         '/api/consent-templates','/api/consent-send','/api/consents','/api/treatment-catalog','/api/tenant-meta',
-        '/api/loyalty-adjust','/api/loyalty-balance'
+        '/api/loyalty-adjust','/api/loyalty-balance',
+        '/api/clinical','/api/clinical-note'
       ]);
       // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
       const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar','/api/portal-clients']);
@@ -1779,6 +1783,37 @@ export default {
             .bind(b.notes||null, b.recall_date||null, b.recall_note||null, b.tags||null, b.lead_id).run();
         }
         return json({ ok:true });
+      }
+      // ===== HISTORIA CLÍNICA =====
+      // Ficha clínica + notas de evolución de un paciente
+      if (p === '/api/clinical' && req.method === 'GET') {
+        await ensureInventorySchema(env);
+        const lead = url.searchParams.get('lead')||''; if(!lead) return json({ clinical:null, notes:[] });
+        const clin:any = await env.aura_db.prepare('SELECT * FROM patient_clinical WHERE lead_id=?').bind(lead).first();
+        const nt:any = await env.aura_db.prepare('SELECT * FROM clinical_notes WHERE lead_id=? ORDER BY (visit_date||"") DESC, created_at DESC').bind(lead).all();
+        return json({ clinical: clin||null, notes: (nt.results||[]) });
+      }
+      // Guardar ficha clínica (alergias, antecedentes, medicación, tipo de piel, notas)
+      if (p === '/api/clinical' && req.method === 'POST') {
+        await ensureInventorySchema(env);
+        const b:any = await req.json(); const lead=b.lead_id; if(!lead||!b.tenant_id) return json({error:'missing'},400);
+        const actor = (await getSessionRole(env, req, url)) || '';
+        await env.aura_db.prepare('INSERT INTO patient_clinical (lead_id,tenant_id,allergies,conditions,medications,skin_type,blood_type,notes,dob,updated_at,updated_by) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(lead_id) DO UPDATE SET allergies=excluded.allergies, conditions=excluded.conditions, medications=excluded.medications, skin_type=excluded.skin_type, blood_type=excluded.blood_type, notes=excluded.notes, dob=excluded.dob, updated_at=excluded.updated_at, updated_by=excluded.updated_by')
+          .bind(lead, b.tenant_id, b.allergies||'', b.conditions||'', b.medications||'', b.skin_type||'', b.blood_type||'', b.notes||'', b.dob||'', Date.now(), actor).run();
+        return json({ ok:true });
+      }
+      // Añadir una nota de evolución / visita clínica
+      if (p === '/api/clinical-note' && req.method === 'POST') {
+        await ensureInventorySchema(env);
+        const b:any = await req.json(); if(!b.tenant_id) return json({error:'missing'},400);
+        if(b.delete){ await env.aura_db.prepare('DELETE FROM clinical_notes WHERE id=? AND tenant_id=?').bind(b.delete, b.tenant_id).run(); return json({ ok:true }); }
+        if(!b.lead_id) return json({error:'missing_lead'},400);
+        const actor = (await getSessionRole(env, req, url)) || '';
+        const id='cn_'+Math.random().toString(36).slice(2,12);
+        const vdate = b.visit_date || new Date().toISOString().slice(0,10);
+        await env.aura_db.prepare('INSERT INTO clinical_notes (id,tenant_id,lead_id,visit_date,professional,treatment,areas,product,lot,units,note,photo_url,created_at,created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+          .bind(id, b.tenant_id, b.lead_id, vdate, b.professional||'', b.treatment||'', b.areas||'', b.product||'', b.lot||'', b.units||'', b.note||'', b.photo_url||'', Date.now(), actor).run();
+        return json({ ok:true, id });
       }
       // TRATAMIENTOS / PAGOS por lead
       if (p === '/api/treatments' && req.method === 'GET') {

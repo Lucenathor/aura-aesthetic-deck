@@ -893,6 +893,29 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
   <!-- Consentimientos -->
   <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1.2rem;margin-bottom:.4rem"><h4 class="serif" style="font-size:1.05rem;margin:0">Consentimientos</h4><button class="btn" style="padding:.3rem .6rem;font-size:.78rem" onclick="openConsentSend()">+ Enviar a firmar</button></div>
   <div id="dConsents" style="font-size:.85rem"></div>
+  <!-- HISTORIA CLÍNICA -->
+  <div style="margin-top:1.3rem;border-top:2px solid var(--line);padding-top:1rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem"><h4 class="serif" style="font-size:1.08rem;margin:0">🩺 Historia clínica</h4><button class="btn prim" style="padding:.3rem .6rem;font-size:.78rem" onclick="addClinicalNote()">+ Nueva visita</button></div>
+    <!-- Ficha médica -->
+    <div style="background:var(--bg2);border-radius:12px;padding:.8rem .9rem;margin-bottom:.8rem">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">Ficha médica</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+        <div><label style="font-size:.7rem;color:var(--muted)">Alergias</label><input id="clAllergies" placeholder="Ninguna conocida" style="width:100%;padding:.45rem .55rem;border:1px solid var(--line);border-radius:8px;font-size:.82rem;background:#fff"/></div>
+        <div><label style="font-size:.7rem;color:var(--muted)">Tipo de piel (Fitzpatrick)</label><input id="clSkin" placeholder="I-VI" style="width:100%;padding:.45rem .55rem;border:1px solid var(--line);border-radius:8px;font-size:.82rem;background:#fff"/></div>
+        <div><label style="font-size:.7rem;color:var(--muted)">Antecedentes</label><input id="clConditions" placeholder="Patologías, cirugías…" style="width:100%;padding:.45rem .55rem;border:1px solid var(--line);border-radius:8px;font-size:.82rem;background:#fff"/></div>
+        <div><label style="font-size:.7rem;color:var(--muted)">Medicación actual</label><input id="clMeds" placeholder="Ninguna" style="width:100%;padding:.45rem .55rem;border:1px solid var(--line);border-radius:8px;font-size:.82rem;background:#fff"/></div>
+        <div style="grid-column:1/-1"><label style="font-size:.7rem;color:var(--muted)">Notas clínicas generales</label><textarea id="clNotes" rows="2" placeholder="Observaciones relevantes…" style="width:100%;padding:.45rem .55rem;border:1px solid var(--line);border-radius:8px;font-size:.82rem;background:#fff;resize:vertical"></textarea></div>
+      </div>
+      <button class="btn" style="margin-top:.6rem;padding:.35rem .7rem;font-size:.78rem" onclick="saveClinical()">Guardar ficha médica</button>
+      <span id="clMsg" style="font-size:.76rem;color:#1f8c69;margin-left:.5rem"></span>
+    </div>
+    <!-- Timeline de visitas -->
+    <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem">Evolución / visitas</div>
+    <div id="clTimeline" style="font-size:.85rem"></div>
+    <!-- Galería de fotos -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:.9rem 0 .4rem"><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">📸 Fotos (antes / después)</div><label style="cursor:pointer;font-size:.74rem;color:#A85942;font-weight:600">＋ Subir<input type="file" accept="image/*,video/*" style="display:none" onchange="uploadClinicalPhoto(this)"/></label></div>
+    <div id="clGallery" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.35rem"></div>
+  </div>
   <!-- Notas internas -->
   <h4 class="serif" style="font-size:1.05rem;margin-top:1.2rem;margin-bottom:.4rem">Notas internas</h4>
   <textarea id="dNotes" rows="3" placeholder="prefiere mañanas, vino recomendada por..." style="width:100%;padding:.6rem .7rem;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:.88rem"></textarea>
@@ -1479,8 +1502,57 @@ async function openDrawer(l){
   renderTags();
   document.getElementById('dMetaMsg').textContent='';
   loadTreatments(l.id);
+  loadClinical(l.id, l.phone);
   document.getElementById('drawer').classList.add('on');
 }
+// ===== HISTORIA CLÍNICA =====
+var _clLead=null, _clPhone=null;
+function clApi(path, opts){ opts=opts||{}; opts.headers=Object.assign({'Authorization':'Bearer '+(localStorage.getItem('aura_token')||''),'Content-Type':'application/json'}, opts.headers||{}); var sep=path.indexOf('?')>=0?'&':'?'; return fetch(WORKER+path+(path.indexOf('tenant=')>=0?'':(sep+'tenant='+T)), opts).then(function(r){return r.json();}); }
+async function loadClinical(leadId, phone){ _clLead=leadId; _clPhone=phone||''; 
+  try{ var r=await clApi('/api/clinical?lead='+encodeURIComponent(leadId)); var c=r.clinical||{};
+    var g=function(id){return document.getElementById(id);};
+    if(g('clAllergies'))g('clAllergies').value=c.allergies||''; if(g('clSkin'))g('clSkin').value=c.skin_type||''; if(g('clConditions'))g('clConditions').value=c.conditions||''; if(g('clMeds'))g('clMeds').value=c.medications||''; if(g('clNotes'))g('clNotes').value=c.notes||'';
+    renderClTimeline(r.notes||[]);
+  }catch(e){}
+  loadClinicalGallery(leadId, phone);
+}
+function renderClTimeline(notes){ var t=document.getElementById('clTimeline'); if(!t)return; if(!notes.length){ t.innerHTML='<div style="color:var(--muted);font-size:.8rem;padding:.3rem 0">Aún no hay visitas registradas. Pulsa “+ Nueva visita”.</div>'; return; }
+  t.innerHTML=notes.map(function(n){ var d=n.visit_date||''; var parts=[]; if(n.areas)parts.push('Zona: '+escapeHtml(n.areas)); if(n.product)parts.push('Producto: '+escapeHtml(n.product)); if(n.lot)parts.push('Lote: '+escapeHtml(n.lot)); if(n.units)parts.push('Cantidad: '+escapeHtml(n.units));
+    return '<div style="position:relative;padding:.6rem .7rem .6rem 1rem;border-left:2px solid var(--terra);background:#fff;border-radius:0 10px 10px 0;margin-bottom:.5rem;box-shadow:0 2px 8px -6px rgba(0,0,0,.2)">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:.86rem">'+escapeHtml(n.treatment||'Visita')+'</b><span style="font-size:.72rem;color:var(--muted)">'+escapeHtml(d)+'</span></div>'
+      +(parts.length?'<div style="font-size:.76rem;color:var(--ink-soft,#6B5D52);margin-top:.2rem">'+parts.join(' · ')+'</div>':'')
+      +(n.note?'<div style="font-size:.8rem;margin-top:.3rem;color:#3a342e">'+escapeHtml(n.note)+'</div>':'')
+      +(n.professional?'<div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">👤 '+escapeHtml(n.professional)+'</div>':'')
+      +'<button onclick="delClinicalNote(\''+n.id+'\')" style="position:absolute;top:.5rem;right:.5rem;border:0;background:none;color:#c0392b;cursor:pointer;font-size:.9rem;display:none" class="clDel">×</button>'
+      +'</div>'; }).join('');
+}
+async function saveClinical(){ if(!_clLead)return; var g=function(id){return (document.getElementById(id)||{}).value||'';};
+  try{ await clApi('/api/clinical',{method:'POST',body:JSON.stringify({tenant_id:T,lead_id:_clLead,allergies:g('clAllergies'),skin_type:g('clSkin'),conditions:g('clConditions'),medications:g('clMeds'),notes:g('clNotes')})}); var m=document.getElementById('clMsg'); if(m){m.textContent='Guardado ✓'; setTimeout(()=>{m.textContent='';},2000);} }catch(e){ if(typeof toast==='function')toast('Error al guardar','error'); }
+}
+function addClinicalNote(){ if(!_clLead)return; var pros=(typeof _pros!=='undefined'&&_pros)?_pros:[]; var proOpts='<option value="">—</option>'+pros.map(function(p){return '<option>'+escapeHtml(p.name)+'</option>';}).join(''); var cats=(typeof CATALOG!=='undefined'&&CATALOG)?CATALOG:[]; var trOpts=cats.length?('<option value="">—</option>'+cats.map(function(t){return '<option>'+escapeHtml(t.name)+'</option>';}).join('')):'';
+  waModal('🩺 Nueva visita',
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">'
+    +'<div><label style="font-size:.72rem;color:var(--muted)">Fecha</label><input id="cnDate" type="date" value="'+new Date().toISOString().slice(0,10)+'" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px"/></div>'
+    +'<div><label style="font-size:.72rem;color:var(--muted)">Profesional</label><select id="cnPro" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px">'+proOpts+'</select></div>'
+    +'<div style="grid-column:1/-1"><label style="font-size:.72rem;color:var(--muted)">Tratamiento</label>'+(trOpts?('<select id="cnTreat" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px">'+trOpts+'</select>'):'<input id="cnTreat" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px"/>')+'</div>'
+    +'<div><label style="font-size:.72rem;color:var(--muted)">Zonas</label><input id="cnAreas" placeholder="Labio, frente…" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px"/></div>'
+    +'<div><label style="font-size:.72rem;color:var(--muted)">Producto</label><input id="cnProduct" placeholder="Ác. hialurónico…" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px"/></div>'
+    +'<div><label style="font-size:.72rem;color:var(--muted)">Lote</label><input id="cnLot" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px"/></div>'
+    +'<div><label style="font-size:.72rem;color:var(--muted)">Cantidad / unidades</label><input id="cnUnits" placeholder="1 ml / 20 U" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px"/></div>'
+    +'<div style="grid-column:1/-1"><label style="font-size:.72rem;color:var(--muted)">Notas de la visita</label><textarea id="cnNote" rows="3" placeholder="Evolución, observaciones, plan…" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px;resize:vertical"></textarea></div>'
+    +'</div>',
+    'Guardar visita', async function(){ var g=function(id){return (document.getElementById(id)||{}).value||'';};
+      try{ var r=await clApi('/api/clinical-note',{method:'POST',body:JSON.stringify({tenant_id:T,lead_id:_clLead,visit_date:g('cnDate'),professional:g('cnPro'),treatment:g('cnTreat'),areas:g('cnAreas'),product:g('cnProduct'),lot:g('cnLot'),units:g('cnUnits'),note:g('cnNote')})}); if(r&&r.ok){ if(typeof toast==='function')toast('Visita registrada ✓'); loadClinical(_clLead,_clPhone); } else { if(typeof toast==='function')toast('No se pudo guardar','error'); return false; } }catch(e){ if(typeof toast==='function')toast('Error al guardar','error'); return false; } });
+}
+async function delClinicalNote(id){ if(!confirm('¿Eliminar esta visita del historial?'))return; try{ await clApi('/api/clinical-note',{method:'POST',body:JSON.stringify({tenant_id:T,delete:id})}); loadClinical(_clLead,_clPhone); }catch(e){} }
+async function loadClinicalGallery(leadId, phone){ var g=document.getElementById('clGallery'); if(!g)return; 
+  try{ var qs=leadId?('lead_id='+encodeURIComponent(leadId)):('phone='+encodeURIComponent(phone||'')); var r=await clApi('/api/wa-patient-media?'+qs); var media=(r&&r.media)||[];
+    if(!media.length){ g.innerHTML='<div style="grid-column:1/-1;color:var(--muted);font-size:.78rem">Sin fotos. Sube o guarda desde WhatsApp.</div>'; return; }
+    g.innerHTML=media.map(function(m){ var isVid=(m.mtype==='video'); var src=(m.url&&m.url.charAt(0)==='/')?(WORKER+m.url):m.url; return '<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#eee">'+(isVid?'<video src="'+src+'" style="width:100%;height:100%;object-fit:cover"></video>':'<img src="'+src+'" style="width:100%;height:100%;object-fit:cover;cursor:pointer" onclick="window.open(\''+src+'\',\'_blank\')"/>')+'</div>'; }).join('');
+  }catch(e){ g.innerHTML=''; }
+}
+async function uploadClinicalPhoto(input){ var f=input.files&&input.files[0]; if(!f||!_clLead){input.value='';return;} if(f.size>15*1024*1024){ alert('Máximo 15MB'); input.value=''; return; } if(typeof toast==='function')toast('Subiendo…');
+  var rd=new FileReader(); rd.onload=async()=>{ try{ var r=await clApi('/api/wa-patient-media-upload',{method:'POST',body:JSON.stringify({tenant_id:T,lead_id:_clLead,phone:_clPhone,data_b64:String(rd.result)})}); if(r&&r.ok){ if(typeof toast==='function')toast('Foto añadida ✓'); loadClinicalGallery(_clLead,_clPhone); } }catch(e){ if(typeof toast==='function')toast('Error al subir','error'); } }; rd.readAsDataURL(f); input.value=''; }
 let _curTags=[];
 const TAG_COLORS={VIP:'#C9A86A',Recurrente:'#9B7BFF',Recomendada:'#A4E5CD',Riesgo:'#e8a294'};
 function renderTags(){
