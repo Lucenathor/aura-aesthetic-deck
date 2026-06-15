@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Política de cookies · AURA</title>
+<meta name="robots" content="all" />
+<meta name="theme-color" content="#FBF8F2" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Inter+Tight:wght@600;700;800&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+:root{--bg:#FBF8F2;--ink:#0F1011;--ink-soft:#1F2024;--muted:#7C7872;--line:#EAE2D2;--accent:#FF6B5A;--ease:cubic-bezier(.23,1,.32,1)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+html,body{background:var(--bg);color:var(--ink-soft);font-family:'Inter',system-ui,sans-serif;line-height:1.65}
+.wrap{max-width:760px;margin:0 auto;padding:2.2rem 1.3rem 5rem}
+.top{display:flex;align-items:center;justify-content:space-between;padding:1.1rem 0;border-bottom:1px solid var(--line);margin-bottom:2.4rem}
+.brand{display:flex;align-items:center;gap:.5rem;font-family:'Inter Tight',sans-serif;font-size:1.15rem;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
+.brand a{color:inherit;text-decoration:none}
+.back{font-size:.85rem;color:var(--muted);text-decoration:none}
+.back:hover{color:var(--ink)}
+h1{font-family:'Inter Tight',sans-serif;font-weight:800;letter-spacing:-.024em;color:var(--ink);font-size:2.1rem;line-height:1.08;margin-bottom:.5rem}
+.updated{color:var(--muted);font-size:.85rem;margin-bottom:2.2rem}
+h2{font-family:'Inter Tight',sans-serif;font-weight:700;color:var(--ink);font-size:1.25rem;margin:2.2rem 0 .7rem;letter-spacing:-.01em}
+p{margin-bottom:1rem}
+ul{margin:0 0 1rem 1.2rem}
+li{margin-bottom:.45rem}
+a{color:var(--accent)}
+table{width:100%;border-collapse:collapse;margin:1rem 0 1.4rem;font-size:.9rem}
+th,td{text-align:left;padding:.6rem .7rem;border:1px solid var(--line);vertical-align:top}
+th{background:#fff;font-family:'Inter Tight',sans-serif;color:var(--ink);font-weight:700}
+button.cfg{background:var(--ink);color:#fff;font-family:inherit;font-weight:600;font-size:.9rem;border:0;border-radius:10px;padding:.7rem 1.2rem;cursor:pointer;transition:background .2s var(--ease)}
+button.cfg:hover{background:var(--accent)}
+strong{color:var(--ink)}
+.legal-foot{margin-top:3rem;padding-top:1.4rem;border-top:1px solid var(--line);font-size:.82rem;color:var(--muted);display:flex;gap:1.2rem;flex-wrap:wrap}
+.legal-foot a{color:var(--muted)}
+.legal-foot a:hover{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><a href="/">AURA</a></div>
+    <a class="back" href="/">&larr; Volver</a>
+  </div>
+
+  <h1>Política de cookies</h1>
+  <p class="updated">Última actualización: 15 de junio de 2026</p>
+
+  <p>Una cookie es un pequeño archivo que se descarga en tu dispositivo al visitar determinadas páginas web y que permite, entre otras cosas, recordar tus preferencias o medir el uso del sitio. Esta política explica qué cookies utiliza AURA y cómo puedes gestionarlas.</p>
+
+  <h2>1. Tipos de cookies que utilizamos</h2>
+  <table>
+    <tr><th>Cookie</th><th>Tipo</th><th>Finalidad</th><th>Duración</th></tr>
+    <tr><td>aura_token / sesión</td><td>Técnica (necesaria)</td><td>Mantener la sesión iniciada en el panel</td><td>Sesión</td></tr>
+    <tr><td>aura_cookie_consent</td><td>Técnica (necesaria)</td><td>Recordar tu elección sobre cookies</td><td>6 meses</td></tr>
+    <tr><td>Analítica (si la aceptas)</td><td>Analítica</td><td>Medir de forma agregada el uso del sitio para mejorarlo</td><td>Hasta 24 meses</td></tr>
+  </table>
+  <p>Las cookies <strong>técnicas o necesarias</strong> no requieren consentimiento, ya que son imprescindibles para el funcionamiento del servicio. El resto de cookies solo se activan si las aceptas.</p>
+
+  <h2>2. Gestión y revocación del consentimiento</h2>
+  <p>Puedes aceptar o rechazar las cookies no necesarias desde el banner que aparece al entrar en el sitio. También puedes cambiar tu elección en cualquier momento:</p>
+  <p><button class="cfg" onclick="if(window.auraCookies&&window.auraCookies.reset){window.auraCookies.reset()}else{try{localStorage.removeItem('aura_cookie_consent')}catch(e){};location.href='/'}">Cambiar mis preferencias de cookies</button></p>
+  <p>Además, puedes configurar tu navegador para bloquear o eliminar cookies. Ten en cuenta que desactivar las cookies técnicas puede afectar al funcionamiento del panel.</p>
+
+  <h2>3. Cookies de terceros</h2>
+  <p>Algunos servicios que integramos (por ejemplo, procesamiento de pagos o analítica) pueden instalar sus propias cookies. Te recomendamos consultar las políticas de cookies de dichos proveedores. Encontrarás el listado de proveedores en nuestra <a href="/legal/privacidad.html">Política de Privacidad</a>.</p>
+
+  <h2>4. Cambios</h2>
+  <p>Podemos actualizar esta política para reflejar cambios técnicos o normativos. La versión vigente estará siempre disponible en esta página.</p>
+
+  <div class="legal-foot">
+    <a href="/legal/aviso-legal.html">Aviso legal</a>
+    <a href="/legal/privacidad.html">Privacidad</a>
+    <a href="/legal/cookies.html">Cookies</a>
+    <a href="/legal/terminos.html">Términos</a>
+  </div>
+</div>
+</body>
+</html>

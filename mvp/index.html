@@ -1135,11 +1135,15 @@ img{max-width:100%;display:block}
 
   <!-- FOOTER -->
   <footer class="footer">
-    <div>AURA · embudos IA para clínica estética</div>
+    <div>AURA · embudos IA para clínica estética<br><span style="font-size:.74rem">&copy; 2026 THOR GROUP AL-FZCO</span></div>
     <div class="l">
       <a href="/dashboard?t=clinica-elvira">Dashboard demo</a>
       <a href="/c/clinica-elvira">Embudo demo</a>
-      <a href="mailto:hola@aura.app">hola@aura.app</a>
+      <a href="/legal/aviso-legal.html">Aviso legal</a>
+      <a href="/legal/privacidad.html">Privacidad</a>
+      <a href="/legal/cookies.html">Cookies</a>
+      <a href="/legal/terminos.html">Términos</a>
+      <a href="mailto:hola@auraos.io">hola@auraos.io</a>
     </div>
   </footer>
 </div>
@@ -1837,6 +1841,28 @@ document.getElementById('aSubmit').onclick = async ()=>{
     </div>
   `;
 };
+</script>
+
+<!-- BANNER DE COOKIES (RGPD/LSSI) -->
+<div id="auraCookieBanner" style="display:none;position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;width:min(680px,94vw);background:#fff;border:1px solid #EAE2D2;border-radius:16px;box-shadow:0 24px 60px -20px rgba(15,16,17,.35);padding:1.1rem 1.2rem;font-family:'Inter',system-ui,sans-serif;color:#1F2024">
+  <div style="font-size:.9rem;line-height:1.55">Usamos cookies necesarias para que el sitio funcione y, si lo aceptas, cookies analiticas para mejorarlo. Puedes leer mas en nuestra <a href="/legal/cookies.html" style="color:#FF6B5A">Politica de cookies</a>.</div>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.8rem;justify-content:flex-end">
+    <button onclick="window.auraCookies.set('rejected')" style="font-family:inherit;font-weight:600;font-size:.85rem;border:1px solid #EAE2D2;background:#fff;color:#1F2024;border-radius:10px;padding:.6rem 1.1rem;cursor:pointer">Solo necesarias</button>
+    <button onclick="window.auraCookies.set('accepted')" style="font-family:inherit;font-weight:600;font-size:.85rem;border:0;background:#0F1011;color:#fff;border-radius:10px;padding:.6rem 1.1rem;cursor:pointer">Aceptar todas</button>
+  </div>
+</div>
+<script>
+(function(){
+  var KEY='aura_cookie_consent';
+  function show(){ var b=document.getElementById('auraCookieBanner'); if(b) b.style.display='block'; }
+  function hide(){ var b=document.getElementById('auraCookieBanner'); if(b) b.style.display='none'; }
+  window.auraCookies={
+    set:function(v){ try{ localStorage.setItem(KEY, v); }catch(e){} hide(); /* aqui se activarian scripts analiticos si v==='accepted' */ },
+    reset:function(){ try{ localStorage.removeItem(KEY); }catch(e){} show(); }
+  };
+  var v=null; try{ v=localStorage.getItem(KEY); }catch(e){}
+  if(!v) show();
+})();
 </script>
 </body>
 </html>
