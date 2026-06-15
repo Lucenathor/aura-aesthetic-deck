@@ -391,6 +391,72 @@ async function ensureInventorySchema(env: Env) {
   try { await env.aura_db.exec('ALTER TABLE inventory_products ADD COLUMN image_url TEXT'); } catch(e){}
   __invReady = true;
 }
+
+// Ejecutor central del copiloto: aplica una acción (inventario, agenda, pacientes, negocio, pendientes)
+async function runCopilotAction(env: Env, tid: string, plan: any, actor: string, text: string): Promise<{ok:boolean,msg:string}> {
+  const act = plan && plan.action; let result:any = { ok:false, msg:'No entendí la orden.' };
+  const eur = (n:number)=> (Math.round((n||0)*100)/100).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+'\u20ac';
+  const findProd = async (q:string)=>{ if(!q) return null; const all:any = await env.aura_db.prepare('SELECT * FROM inventory_products WHERE tenant_id=? AND active=1').bind(tid).all(); const ql=String(q).toLowerCase(); return (all.results||[]).find((x:any)=> (x.name||'').toLowerCase().includes(ql) || ql.includes((x.name||'').toLowerCase())) || null; };
+  const findLead = async (q:string)=>{ if(!q) return null; const ql=String(q).toLowerCase(); const all:any = await env.aura_db.prepare('SELECT * FROM leads WHERE tenant_id=? ORDER BY created_at DESC').bind(tid).all(); return (all.results||[]).find((x:any)=> (x.name||'').toLowerCase().includes(ql)) || null; };
+  const dayToISO = (d:string)=>{ const t=new Date(); if(!d||d==='hoy') return t.toISOString().slice(0,10); if(d==='manana'||d==='ma\u00f1ana'){ t.setDate(t.getDate()+1); return t.toISOString().slice(0,10);} return d; };
+  try {
+    if (act==='crear_producto') {
+      const id='inv_'+Math.random().toString(36).slice(2,12); const nw=Date.now();
+      await env.aura_db.prepare('INSERT INTO inventory_products (id,tenant_id,name,category,unit,stock,min_stock,cost_per_unit,sale_price,track_lots,active,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,0,1,?,?)').bind(id,tid,plan.name||'Producto',plan.category||'servicio',plan.unit||'unidad',Number(plan.stock)||0,Number(plan.min_stock)||0,Number(plan.cost_per_unit)||0,Number(plan.sale_price)||0,nw,nw).run();
+      result={ ok:true, msg:'Producto "'+(plan.name||'')+'" creado con '+(Number(plan.stock)||0)+' '+(plan.unit||'unidad')+'.' };
+    } else if (act==='recargar_stock') {
+      const pr=await findProd(plan.product_query||plan.name); if(!pr){ result={ok:false,msg:'No encontré el producto "'+(plan.product_query||'')+'".'}; }
+      else { const qty=Number(plan.qty)||0; await env.aura_db.prepare('UPDATE inventory_products SET stock=stock+?, updated_at=? WHERE id=?').bind(qty,Date.now(),pr.id).run(); if(plan.lot||plan.expiry){ await env.aura_db.prepare('INSERT INTO inventory_lots (id,tenant_id,product_id,lot,qty,expiry,cost_per_unit,created_at) VALUES (?,?,?,?,?,?,?,?)').bind('lot_'+Math.random().toString(36).slice(2,10),tid,pr.id,plan.lot||'',qty,plan.expiry||'',pr.cost_per_unit||0,Date.now()).run(); } await env.aura_db.prepare('INSERT INTO inventory_moves (id,tenant_id,product_id,delta,reason,actor,created_at) VALUES (?,?,?,?,?,?,?)').bind('mv_'+Math.random().toString(36).slice(2,10),tid,pr.id,qty,'recarga-copiloto',actor,Date.now()).run(); result={ ok:true, msg:'Cargadas '+qty+' '+(pr.unit||'')+' de "'+pr.name+'". Stock ahora: '+((pr.stock||0)+qty)+'.' }; }
+    } else if (act==='crear_receta') {
+      const pr=await findProd(plan.product_query||plan.name); if(!pr){ result={ok:false,msg:'No encontré el producto para la receta.'}; }
+      else { await env.aura_db.prepare('INSERT INTO inventory_recipes (id,tenant_id,treatment,product_id,qty,created_at) VALUES (?,?,?,?,?,?)').bind('rcp_'+Math.random().toString(36).slice(2,10),tid,plan.treatment||'',pr.id,Number(plan.qty)||0,Date.now()).run(); result={ ok:true, msg:'Cuando se haga "'+(plan.treatment||'')+'" se descontarán '+(Number(plan.qty)||0)+' '+(pr.unit||'')+' de "'+pr.name+'".' }; }
+    } else if (act==='crear_contacto') {
+      const lid='l_'+Math.random().toString(36).slice(2,12); const nw=Date.now();
+      await env.aura_db.prepare('INSERT INTO leads (id,tenant_id,name,phone,treatment,status,source,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(lid,tid,plan.name||'Contacto',plan.phone||'',plan.treatment||'','new','copiloto',nw).run(); result={ ok:true, msg:'Contacto "'+(plan.name||'')+'" creado.' };
+    } else if (act==='consultar') {
+      if (plan.query_type==='caducidad') { const soon=new Date(Date.now()+30*864e5).toISOString().slice(0,10); const exp:any=await env.aura_db.prepare("SELECT l.expiry,l.qty,pr.name FROM inventory_lots l LEFT JOIN inventory_products pr ON pr.id=l.product_id WHERE l.tenant_id=? AND l.qty>0 AND l.expiry!='' AND l.expiry<=? ORDER BY l.expiry").bind(tid,soon).all(); const rows=(exp.results||[]); result={ ok:true, msg: rows.length? ('Caduca pronto: '+rows.map((r:any)=>r.name+' ('+r.qty+' uds, '+r.expiry+')').join('; ')) : 'No hay productos que caduquen en los próximos 30 días.' }; }
+      else { const all:any=await env.aura_db.prepare('SELECT name,stock,unit,min_stock FROM inventory_products WHERE tenant_id=? AND active=1 ORDER BY name').bind(tid).all(); const rows=(all.results||[]); result={ ok:true, msg: rows.length? ('Stock actual: '+rows.map((r:any)=>r.name+' '+r.stock+' '+r.unit+(r.min_stock>0&&r.stock<=r.min_stock?' (BAJO)':'')).join('; ')) : 'Aún no tienes productos en inventario.' }; }
+    } else if (act==='consultar_agenda') {
+      const iso=dayToISO(plan.day); const aps:any=await env.aura_db.prepare("SELECT a.date_iso d, a.treatment, a.status, l.name FROM appointments a LEFT JOIN leads l ON l.id=a.lead_id WHERE a.tenant_id=? AND substr(a.date_iso,1,10)=? AND a.status!='cancelled' ORDER BY a.date_iso").bind(tid,iso).all(); const hhmm=(x)=>{ const m=String(x||'').match(/T(\d{2}:\d{2})/); return m?m[1]:''; }; const rows=(aps.results||[]); const etiqueta = plan.day==='manana'||plan.day==='ma\u00f1ana'?'ma\u00f1ana':(plan.day&&plan.day!=='hoy'?('el '+iso):'hoy'); result={ ok:true, msg: rows.length? ('Tienes '+rows.length+' citas '+etiqueta+': '+rows.map((r:any)=>(hhmm(r.d)+' '+(r.name||'')+(r.treatment?(' · '+r.treatment):'')).trim()).join('; ')) : ('No hay citas '+etiqueta+'.') };
+    } else if (act==='consultar_pacientes') {
+      if (plan.info==='sin_venir' && !plan.patient_query) { const ini=new Date(); ini.setDate(1); const all:any=await env.aura_db.prepare("SELECT name FROM leads WHERE tenant_id=? AND status IN ('client','attended') ORDER BY name").bind(tid).all(); result={ ok:true, msg:'Para ver quién no ha venido, míralo en Pacientes/Pipeline. Clientes registrados: '+((all.results||[]).length)+'.' }; }
+      else { const ld:any=await findLead(plan.patient_query); if(!ld){ result={ok:false,msg:'No encontré a "'+(plan.patient_query||'')+'".'}; }
+        else if (plan.info==='telefono') { result={ ok:true, msg:(ld.name||'')+': '+(ld.phone||'sin teléfono')+'.' }; }
+        else if (plan.info==='gasto') { const sp:any=await env.aura_db.prepare("SELECT COALESCE(SUM(amount),0) g, COUNT(*) c FROM treatments_log WHERE tenant_id=? AND lead_id=? AND pay_status='paid'").bind(tid,ld.id).first(); result={ ok:true, msg:(ld.name||'')+' se ha gastado '+eur(sp?sp.g:0)+' en '+((sp&&sp.c)||0)+' visitas.' }; }
+        else if (plan.info==='ultima_visita') { const lv:any=await env.aura_db.prepare("SELECT date_iso FROM appointments WHERE tenant_id=? AND lead_id=? AND status='attended' ORDER BY date_iso DESC LIMIT 1").bind(tid,ld.id).first(); result={ ok:true, msg:(ld.name||'')+(lv?(' vino por \u00faltima vez el '+lv.date_iso+'.'):' a\u00fan no tiene visitas registradas.') }; }
+        else { result={ ok:true, msg:(ld.name||'')+' — tel\u00e9fono '+(ld.phone||'-')+', estado '+(ld.status||'-')+(ld.treatment?(', interesada en '+ld.treatment):'')+'.' }; }
+      }
+    } else if (act==='consultar_negocio') {
+      const per=plan.period||'hoy'; const t=new Date(); const hoyISO=t.toISOString().slice(0,10); const mesPrefix=hoyISO.slice(0,7);
+      const periodCond = per==='mes' ? "substr(date_iso,1,7)='"+mesPrefix+"'" : "substr(date_iso,1,10)='"+hoyISO+"'";
+      if (plan.metric==='top_tratamiento') { const tp:any=await env.aura_db.prepare("SELECT name, COUNT(*) c, COALESCE(SUM(amount),0) v FROM treatments_log WHERE tenant_id=? AND pay_status='paid' AND "+periodCond+" GROUP BY name ORDER BY v DESC LIMIT 1").bind(tid).first(); result={ ok:true, msg: tp&&tp.name? ('Lo que más factura ('+(per==='mes'?'este mes':'hoy')+'): '+tp.name+' con '+eur(tp.v)+' en '+tp.c+' ventas.') : 'Aún no hay ventas en el periodo.' }; }
+      else { const sm:any=await env.aura_db.prepare("SELECT COALESCE(SUM(amount),0) g, COUNT(*) c FROM treatments_log WHERE tenant_id=? AND pay_status='paid' AND "+periodCond).bind(tid).first(); result={ ok:true, msg:'Has facturado '+eur(sm?sm.g:0)+' en '+((sm&&sm.c)||0)+' cobros '+(per==='mes'?'este mes':'hoy')+'.'+(plan.metric==='beneficio'?' (El beneficio neto con gastos e IVA lo ves en Caja → Beneficio real.)':'') }; }
+    } else if (act==='consultar_pendientes') {
+      const leads:any=await env.aura_db.prepare("SELECT status, recover_state, chatted FROM leads WHERE tenant_id=?").bind(tid).all(); const L=(leads.results||[]);
+      const llamar=L.filter((l:any)=>l.chatted && l.status!=='client' && l.status!=='booked' && l.status!=='lost').length;
+      const noshow=L.filter((l:any)=>l.recover_state==='noshow').length;
+      const hoy=new Date().toISOString().slice(0,10);
+      const conf:any=await env.aura_db.prepare("SELECT COUNT(*) c FROM appointments WHERE tenant_id=? AND date_iso=? AND status='booked'").bind(tid,hoy).first();
+      const confirmar=conf?conf.c:0;
+      if (plan.kind==='noshow') result={ ok:true, msg: noshow? ('Tienes '+noshow+' personas que no vinieron por recuperar.') : 'No tienes no-shows pendientes.' };
+      else if (plan.kind==='confirmar') result={ ok:true, msg: confirmar? ('Hay '+confirmar+' citas de hoy sin confirmar.') : 'Todas las citas de hoy est\u00e1n confirmadas.' };
+      else if (plan.kind==='llamar') result={ ok:true, msg: llamar? ('Hoy toca llamar a '+llamar+' personas (hablaron y no reservaron).') : 'No tienes llamadas pendientes.' };
+      else result={ ok:true, msg:'Hoy: '+llamar+' por llamar, '+noshow+' por recuperar, '+confirmar+' citas por confirmar.' };
+    } else if (act==='reservar_cita') {
+      let ld:any=await findLead(plan.patient_name); const nw=Date.now();
+      if(!ld){ const lid='l_'+Math.random().toString(36).slice(2,12); await env.aura_db.prepare('INSERT INTO leads (id,tenant_id,name,phone,treatment,status,source,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(lid,tid,plan.patient_name||'Paciente',plan.phone||'',plan.treatment||'','booked','copiloto',nw).run(); ld={id:lid,name:plan.patient_name}; }
+      const iso=dayToISO(plan.date); const ap='ap_'+Math.random().toString(36).slice(2,12);
+      const hhmm=(plan.time||'10:00'); await env.aura_db.prepare('INSERT INTO appointments (id,tenant_id,lead_id,date_iso,treatment,status,created_at) VALUES (?,?,?,?,?,?,?)').bind(ap,tid,ld.id,iso+'T'+hhmm,plan.treatment||'','booked',nw).run();
+      await env.aura_db.prepare("UPDATE leads SET status='booked' WHERE id=?").bind(ld.id).run();
+      result={ ok:true, msg:'Cita reservada para '+(plan.patient_name||ld.name||'')+' el '+iso+' a las '+hhmm+(plan.treatment?(' ('+plan.treatment+')'):'')+'.' };
+    } else if (act==='anular_cita') {
+      const ld:any=await findLead(plan.patient_name); if(!ld){ result={ok:false,msg:'No encontré a "'+(plan.patient_name||'')+'".'}; }
+      else { const iso=dayToISO(plan.date); await env.aura_db.prepare("UPDATE appointments SET status='cancelled' WHERE tenant_id=? AND lead_id=? AND substr(date_iso,1,10)=?").bind(tid,ld.id,iso).run(); result={ ok:true, msg:'Cita de '+(plan.patient_name||'')+' del '+iso+' anulada.' }; }
+    } else { result={ ok:false, msg: (plan&&plan.summary)||'No entend\u00ed la orden.' }; }
+  } catch(e:any) { result={ ok:false, msg:'Hubo un problema al ejecutar la orden.' }; }
+  try { await env.aura_db.prepare('INSERT INTO copilot_log (id,tenant_id,actor,prompt,action,payload,result,created_at) VALUES (?,?,?,?,?,?,?,?)').bind('cl_'+Math.random().toString(36).slice(2,10),tid,actor,text,act||'',JSON.stringify(plan),JSON.stringify(result),Date.now()).run(); } catch(e){}
+  return result;
+}
 let __packsReady = false;
 async function ensurePacksSchema(env: Env) {
   if (__packsReady) return;
@@ -1727,35 +1793,27 @@ export default {
           if (!text) return json({ ok:false, error:'empty' });
           const prods:any = await env.aura_db.prepare('SELECT id,name,unit,stock FROM inventory_products WHERE tenant_id=? AND active=1').bind(tid).all();
           const prodList = (prods.results||[]).map((x:any)=>x.name+' (id:'+x.id+', '+x.stock+' '+x.unit+')').join('; ');
-          const sys = 'Eres el copiloto de gestión de una clínica estética (AURA). Interpretas la orden y devuelves SOLO un JSON. Acciones (action): "crear_producto","recargar_stock","crear_receta","crear_contacto","consultar","ninguna". '
-            + 'crear_producto -> {action,name,category(servicio|retail|material),unit(unidad|ml|jeringa|vial),stock,min_stock,cost_per_unit,sale_price}. '
-            + 'recargar_stock -> {action,product_query,qty,lot,expiry(YYYY-MM-DD)}. '
-            + 'crear_receta -> {action,treatment,product_query,qty}. crear_contacto -> {action,name,phone,treatment}. consultar -> {action,query_type(stock|caducidad|generico)}. '
-            + 'Productos actuales: ['+prodList+']. Devuelve SIEMPRE "summary" en español para confirmar. Si no entiendes, action="ninguna". SOLO JSON.';
+          const hoyISO = new Date().toISOString().slice(0,10);
+          const sys = 'Eres el copiloto de gestión de una clínica estética (AURA). Hoy es '+hoyISO+'. Interpretas la orden del usuario y devuelves SOLO un JSON. '
+            + 'Acciones (action): "crear_producto","recargar_stock","crear_receta","crear_contacto","consultar","consultar_agenda","consultar_pacientes","consultar_negocio","consultar_pendientes","reservar_cita","anular_cita","ninguna". '
+            + 'INVENTARIO: crear_producto -> {action,name,category(servicio|retail|material),unit(unidad|ml|jeringa|vial),stock,min_stock,cost_per_unit,sale_price}. '
+            + 'recargar_stock -> {action,product_query,qty,lot,expiry(YYYY-MM-DD)}. crear_receta -> {action,treatment,product_query,qty}. consultar -> {action,query_type(stock|caducidad)}. '
+            + 'PACIENTES: crear_contacto -> {action,name,phone,treatment}. consultar_pacientes -> {action,patient_query(nombre o vacío), info(ultima_visita|gasto|telefono|sin_venir)}. '
+            + 'AGENDA: consultar_agenda -> {action,day(hoy|manana|YYYY-MM-DD)}. reservar_cita -> {action,patient_name,phone,treatment,date(YYYY-MM-DD),time(HH:MM)}. anular_cita -> {action,patient_name,date(YYYY-MM-DD),time(HH:MM)}. '
+            + 'NEGOCIO: consultar_negocio -> {action,metric(facturacion|beneficio|top_tratamiento), period(hoy|mes)}. consultar_pendientes -> {action,kind(llamar|noshow|confirmar|resumen)}. '
+            + 'Productos actuales: ['+prodList+']. Devuelve SIEMPRE "summary" en español (claro, sin exclamaciones excesivas) para confirmar/responder. Las consultas (consultar_*) NO necesitan confirmación. Las que modifican (crear_*, recargar_stock, reservar_cita, anular_cita) SÍ. Si no entiendes, action="ninguna". SOLO JSON.';
           try { const raw = await runAI(env, [{role:'system',content:sys},{role:'user',content:text}], true); parsed = JSON.parse(raw||'{}'); } catch(e){ parsed = { action:'ninguna', summary:'No he podido interpretar la orden.' }; }
+          // Las CONSULTAS se responden al instante (no necesitan confirmación)
+          const readOnly = ['consultar','consultar_agenda','consultar_pacientes','consultar_negocio','consultar_pendientes'];
+          if (readOnly.includes(parsed.action)) {
+            const r = await runCopilotAction(env, tid, parsed, b.actor||'', text);
+            return json({ ok:r.ok, stage:'done', message:r.msg });
+          }
+          if (parsed.action==='ninguna') return json({ ok:true, stage:'done', message: parsed.summary||'No te he entendido. Prueba a decirlo de otra forma.' });
           return json({ ok:true, stage:'confirm', plan: parsed });
         }
-        const plan = b.plan || parsed; const act = plan.action; let result:any = { ok:false };
-        const findProd = async (q:string)=>{ if(!q) return null; const all:any = await env.aura_db.prepare('SELECT * FROM inventory_products WHERE tenant_id=? AND active=1').bind(tid).all(); const ql=q.toLowerCase(); return (all.results||[]).find((x:any)=> (x.name||'').toLowerCase().includes(ql) || ql.includes((x.name||'').toLowerCase())) || null; };
-        if (act==='crear_producto') {
-          const id='inv_'+Math.random().toString(36).slice(2,12); const nw=Date.now();
-          await env.aura_db.prepare('INSERT INTO inventory_products (id,tenant_id,name,category,unit,stock,min_stock,cost_per_unit,sale_price,track_lots,active,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,0,1,?,?)').bind(id,tid,plan.name||'Producto',plan.category||'servicio',plan.unit||'unidad',Number(plan.stock)||0,Number(plan.min_stock)||0,Number(plan.cost_per_unit)||0,Number(plan.sale_price)||0,nw,nw).run();
-          result={ ok:true, msg:'Producto "'+(plan.name||'')+'" creado con '+(Number(plan.stock)||0)+' '+(plan.unit||'unidad')+'.' };
-        } else if (act==='recargar_stock') {
-          const pr=await findProd(plan.product_query||plan.name); if(!pr){ result={ok:false,msg:'No encontré el producto "'+(plan.product_query||'')+'".'}; }
-          else { const qty=Number(plan.qty)||0; await env.aura_db.prepare('UPDATE inventory_products SET stock=stock+?, updated_at=? WHERE id=?').bind(qty,Date.now(),pr.id).run(); if(plan.lot||plan.expiry){ await env.aura_db.prepare('INSERT INTO inventory_lots (id,tenant_id,product_id,lot,qty,expiry,cost_per_unit,created_at) VALUES (?,?,?,?,?,?,?,?)').bind('lot_'+Math.random().toString(36).slice(2,10),tid,pr.id,plan.lot||'',qty,plan.expiry||'',pr.cost_per_unit||0,Date.now()).run(); } await env.aura_db.prepare('INSERT INTO inventory_moves (id,tenant_id,product_id,delta,reason,actor,created_at) VALUES (?,?,?,?,?,?,?)').bind('mv_'+Math.random().toString(36).slice(2,10),tid,pr.id,qty,'recarga-copiloto',b.actor||'copiloto',Date.now()).run(); result={ ok:true, msg:'Cargadas '+qty+' '+(pr.unit||'')+' de "'+pr.name+'". Stock ahora: '+((pr.stock||0)+qty)+'.' }; }
-        } else if (act==='crear_receta') {
-          const pr=await findProd(plan.product_query||plan.name); if(!pr){ result={ok:false,msg:'No encontré el producto para la receta.'}; }
-          else { await env.aura_db.prepare('INSERT INTO inventory_recipes (id,tenant_id,treatment,product_id,qty,created_at) VALUES (?,?,?,?,?,?)').bind('rcp_'+Math.random().toString(36).slice(2,10),tid,plan.treatment||'',pr.id,Number(plan.qty)||0,Date.now()).run(); result={ ok:true, msg:'Cuando se haga "'+(plan.treatment||'')+'" se descontarán '+(Number(plan.qty)||0)+' '+(pr.unit||'')+' de "'+pr.name+'".' }; }
-        } else if (act==='crear_contacto') {
-          const lid='l_'+Math.random().toString(36).slice(2,12); const nw=Date.now();
-          try { await env.aura_db.prepare('INSERT INTO leads (id,tenant_id,name,phone,treatment,status,source,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(lid,tid,plan.name||'Contacto',plan.phone||'',plan.treatment||'','new','copiloto',nw).run(); result={ ok:true, msg:'Contacto "'+(plan.name||'')+'" creado.' }; }
-          catch(e){ result={ ok:false, msg:'No pude crear el contacto.' }; }
-        } else if (act==='consultar') {
-          if (plan.query_type==='caducidad') { const soon=new Date(Date.now()+30*864e5).toISOString().slice(0,10); const exp:any=await env.aura_db.prepare("SELECT l.expiry,l.qty,pr.name FROM inventory_lots l LEFT JOIN inventory_products pr ON pr.id=l.product_id WHERE l.tenant_id=? AND l.qty>0 AND l.expiry!='' AND l.expiry<=? ORDER BY l.expiry").bind(tid,soon).all(); const rows=(exp.results||[]); result={ ok:true, msg: rows.length? ('Caduca pronto: '+rows.map((r:any)=>r.name+' ('+r.qty+' uds, '+r.expiry+')').join('; ')) : 'No hay productos que caduquen en los próximos 30 días.' }; }
-          else { const all:any=await env.aura_db.prepare('SELECT name,stock,unit,min_stock FROM inventory_products WHERE tenant_id=? AND active=1 ORDER BY name').bind(tid).all(); const rows=(all.results||[]); result={ ok:true, msg: rows.length? ('Stock actual: '+rows.map((r:any)=>r.name+' '+r.stock+' '+r.unit+(r.min_stock>0&&r.stock<=r.min_stock?' (BAJO)':'')).join('; ')) : 'Aún no tienes productos en inventario.' }; }
-        } else { result={ ok:false, msg: plan.summary||'No entendí la orden.' }; }
-        try { await env.aura_db.prepare('INSERT INTO copilot_log (id,tenant_id,actor,prompt,action,payload,result,created_at) VALUES (?,?,?,?,?,?,?,?)').bind('cl_'+Math.random().toString(36).slice(2,10),tid,b.actor||'',text,act||'',JSON.stringify(plan),JSON.stringify(result),Date.now()).run(); } catch(e){}
+        const plan = b.plan || parsed;
+        const result = await runCopilotAction(env, tid, plan, b.actor||'', text);
         return json({ ok: result.ok, stage:'done', message: result.msg });
       }
 

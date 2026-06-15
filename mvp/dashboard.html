@@ -950,6 +950,10 @@ function applyRolePerms(){
   CAN_FINANCE = (ROLE==='owner'||ROLE==='finance'||ROLE==='superadmin');
   const pc=document.getElementById('profitCard'); if(pc) pc.style.display=CAN_FINANCE?'':'none';
   const ec=document.getElementById('empCard'); if(ec) ec.style.display=CAN_FINANCE?'':'none';
+  // Copiloto IA global: visible para propietario, finanzas, recepción y super admin
+  const canCopilot = (ROLE==='owner'||ROLE==='finance'||ROLE==='reception'||ROLE==='superadmin');
+  const fab=document.getElementById('copilotFab'); if(fab) fab.style.display=canCopilot?'flex':'none';
+  if(fab){ fab.style.alignItems='center'; fab.style.justifyContent='center'; }
 }
 function logout(){ localStorage.removeItem('aura_token'); localStorage.removeItem('aura_tenant'); location.href='/login'; }
 
@@ -3085,8 +3089,8 @@ async function delRecipe(id){ if(!confirm('¿Eliminar esta regla de consumo?'))r
 let _coPlan=null;
 function openCopilot(){ let o=document.getElementById('coOv'); if(o)o.remove(); o=document.createElement('div'); o.id='coOv'; o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:flex;justify-content:center;align-items:flex-end;padding:0'; o.onclick=(e)=>{ if(e.target===o)o.remove(); };
   o.innerHTML='<div style="background:#fff;border-radius:18px 18px 0 0;width:min(560px,100%);max-height:86vh;display:flex;flex-direction:column;box-shadow:0 -10px 50px rgba(0,0,0,.3)">'
-    +'<div style="padding:1rem 1.2rem;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between"><div><b style="font-size:1.05rem">✦ Copiloto AURA</b><div class="sub" style="font-size:.74rem">Dime qué hacer: crear producto, recargar stock, definir consumo, crear contacto o consultar.</div></div><span onclick="document.getElementById(\'coOv\').remove()" style="cursor:pointer;font-size:1.3rem;color:#888">×</span></div>'
-    +'<div id="coMsgs" style="flex:1;overflow-y:auto;padding:1rem 1.2rem;display:flex;flex-direction:column;gap:.6rem;min-height:160px"><div style="background:var(--bg2);border-radius:12px;padding:.7rem .9rem;font-size:.88rem;align-self:flex-start;max-width:85%">Hola 👋 Soy tu copiloto. Prueba: <i>"recibí 30 viales de toxina, lote B2, caducan en marzo"</i> o <i>"¿qué me caduca pronto?"</i></div></div>'
+    +'<div style="padding:1rem 1.2rem;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between"><div><b style="font-size:1.05rem">✦ Copiloto AURA</b><div class="sub" style="font-size:.74rem">Pregúntame o pídeme: agenda, pacientes, facturación, llamadas pendientes, inventario… por texto o voz.</div></div><span onclick="document.getElementById(\'coOv\').remove()" style="cursor:pointer;font-size:1.3rem;color:#888">×</span></div>'
+    +'<div id="coMsgs" style="flex:1;overflow-y:auto;padding:1rem 1.2rem;display:flex;flex-direction:column;gap:.6rem;min-height:160px"><div style="background:var(--bg2);border-radius:12px;padding:.7rem .9rem;font-size:.88rem;align-self:flex-start;max-width:85%">Hola, soy tu copiloto. Puedes pedirme cosas como:<br><i>"¿Qué citas tengo hoy?"</i><br><i>"¿Cuánto he facturado este mes?"</i><br><i>"¿A quién tengo que llamar?"</i><br><i>"Recibí 30 viales de toxina, lote B2, caducan en marzo"</i><br><i>"¿Cuánto se ha gastado María?"</i></div></div>'
     +'<div style="padding:.7rem 1rem;border-top:1px solid var(--line);display:flex;gap:.5rem;align-items:center"><button id="coMic" onclick="coToggleVoice()" title="Hablar" class="btn" style="border-radius:50%;width:42px;height:42px;padding:0;font-size:1.1rem;flex:none">🎤</button><input id="coInput" placeholder="Escribe una orden…" style="flex:1;padding:.7rem 1rem;border:1px solid var(--line);border-radius:22px" onkeydown="if(event.key===\'Enter\')coSend()"/><button class="btn prim" onclick="coSend()" style="border-radius:50%;width:42px;height:42px;padding:0;font-size:1.1rem">➤</button></div></div>';
   document.body.appendChild(o); setTimeout(()=>{ const i=document.getElementById('coInput'); if(i)i.focus(); },100); }
 function coBubble(html,who){ const m=document.getElementById('coMsgs'); if(!m)return; const d=document.createElement('div'); d.style.cssText='border-radius:12px;padding:.7rem .9rem;font-size:.88rem;max-width:85%;'+(who==='me'?'background:var(--terra);color:#fff;align-self:flex-end':'background:var(--bg2);align-self:flex-start'); d.innerHTML=html; m.appendChild(d); m.scrollTop=m.scrollHeight; return d; }
@@ -3094,9 +3098,10 @@ async function coSend(){ const inp=document.getElementById('coInput'); const tex
   try{ const r=await invApi('/api/copilot',{method:'POST',body:JSON.stringify({tenant_id:T,text})}); wait.remove();
     if(r&&r.stage==='confirm'&&r.plan){ _coPlan=r.plan; if(r.plan.action==='ninguna'){ coBubble(escapeHtml(r.plan.summary||'No te he entendido. ¿Puedes reformularlo?'),'ai'); return; }
       const d=coBubble(escapeHtml(r.plan.summary||'¿Confirmas esta acción?')+'<div style="margin-top:.6rem;display:flex;gap:.5rem"><button class="btn prim" style="padding:.3rem .8rem;font-size:.8rem" onclick="coConfirm()">Sí, hazlo</button><button class="btn" style="padding:.3rem .8rem;font-size:.8rem" onclick="this.closest(\'div\').parentElement.remove()">Cancelar</button></div>','ai'); }
-    else { coBubble('No he podido procesar la orden.','ai'); } }catch(e){ wait.remove(); coBubble('Error de conexión.','ai'); } }
+    else if(r&&r.stage==='done'){ coBubble(escapeHtml(r.message||'Hecho.'),'ai'); try{ if(typeof loadInventory==='function'&&document.getElementById('v-inventario')&&document.getElementById('v-inventario').classList.contains('on'))loadInventory(); }catch(e){} }
+    else { coBubble(escapeHtml((r&&r.message)||'No he podido procesar la orden.'),'ai'); } }catch(e){ wait.remove(); coBubble('Error de conexión.','ai'); } }
 async function coConfirm(){ if(!_coPlan)return; const plan=_coPlan; _coPlan=null; const wait=coBubble('Hecho, aplicando…','ai');
-  try{ const r=await invApi('/api/copilot',{method:'POST',body:JSON.stringify({tenant_id:T,confirm:true,plan})}); wait.remove(); coBubble((r&&r.message)||'Listo.','ai'); if(typeof toast==='function'&&r&&r.ok)toast('✓ '+(r.message||'Hecho')); loadInventory(); }catch(e){ wait.remove(); coBubble('No se pudo aplicar.','ai'); } }
+  try{ const r=await invApi('/api/copilot',{method:'POST',body:JSON.stringify({tenant_id:T,confirm:true,plan})}); wait.remove(); coBubble((r&&r.message)||'Listo.','ai'); if(typeof toast==='function'&&r&&r.ok)toast('✓ '+(r.message||'Hecho')); try{ if(typeof loadInventory==='function')loadInventory(); }catch(e){} }catch(e){ wait.remove(); coBubble('No se pudo aplicar.','ai'); } }
 // Voz: graba y transcribe
 let _coRec=null,_coChunks=[];
 let _coTimer=null,_coT0=0,_coStream=null;
@@ -3172,5 +3177,6 @@ async function __auraInit(){
 }
 if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded',__auraInit); } else { __auraInit(); }
 </script>
+<button id="copilotFab" onclick="openCopilot()" title="Copiloto IA" style="display:none;position:fixed;right:18px;bottom:18px;z-index:9990;width:58px;height:58px;border:none;border-radius:50%;background:linear-gradient(135deg,var(--terra),#8a4533);color:#fff;font-size:1.5rem;box-shadow:0 6px 20px rgba(176,93,68,.45);cursor:pointer;transition:transform .15s ease" onmousedown="this.style.transform='scale(.94)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'">✦</button>
 </body>
 </html>
