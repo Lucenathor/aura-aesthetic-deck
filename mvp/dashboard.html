@@ -896,6 +896,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
   <!-- HISTORIA CLÍNICA -->
   <div style="margin-top:1.3rem;border-top:2px solid var(--line);padding-top:1rem">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem"><h4 class="serif" style="font-size:1.08rem;margin:0">🩺 Historia clínica</h4><button class="btn prim" style="padding:.3rem .6rem;font-size:.78rem" onclick="addClinicalNote()">+ Nueva visita</button></div>
+    <div id="clSummary"></div>
     <!-- Ficha médica -->
     <div style="background:var(--bg2);border-radius:12px;padding:.8rem .9rem;margin-bottom:.8rem">
       <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">Ficha médica</div>
@@ -1512,9 +1513,59 @@ async function loadClinical(leadId, phone){ _clLead=leadId; _clPhone=phone||'';
   try{ var r=await clApi('/api/clinical?lead='+encodeURIComponent(leadId)); var c=r.clinical||{};
     var g=function(id){return document.getElementById(id);};
     if(g('clAllergies'))g('clAllergies').value=c.allergies||''; if(g('clSkin'))g('clSkin').value=c.skin_type||''; if(g('clConditions'))g('clConditions').value=c.conditions||''; if(g('clMeds'))g('clMeds').value=c.medications||''; if(g('clNotes'))g('clNotes').value=c.notes||'';
+    renderClSummary(c, r.notes||[]);
     renderClTimeline(r.notes||[]);
   }catch(e){}
   loadClinicalGallery(leadId, phone);
+}
+// Cabecera clínica: banner de alergia + resumen (como los grandes muestran lo crítico arriba)
+function renderClSummary(c, notes){ var box=document.getElementById('clSummary'); if(!box)return; c=c||{};
+  var chips=[];
+  if(c.skin_type) chips.push('<span style="background:#eef3f0;color:#3a6b57;font-size:.72rem;font-weight:600;padding:.2rem .5rem;border-radius:999px">Piel '+escapeHtml(c.skin_type)+'</span>');
+  var lastV = (notes&&notes.length)?notes[0]:null;
+  if(lastV) chips.push('<span style="background:#f3eef9;color:#6b4fd0;font-size:.72rem;font-weight:600;padding:.2rem .5rem;border-radius:999px">Última: '+escapeHtml(lastV.treatment||'visita')+' · '+escapeHtml(lastV.visit_date||'')+'</span>');
+  if(notes&&notes.length) chips.push('<span style="background:#fdf3ea;color:#b06a2e;font-size:.72rem;font-weight:600;padding:.2rem .5rem;border-radius:999px">'+notes.length+' visita'+(notes.length>1?'s':'')+'</span>');
+  var allergyBanner = (c.allergies && c.allergies.trim() && !/^(ninguna|no|none|sin)/i.test(c.allergies.trim())) ? '<div style="display:flex;align-items:center;gap:.45rem;background:#fde8e4;border:1px solid #e8a294;color:#a8341f;font-size:.8rem;font-weight:700;padding:.5rem .65rem;border-radius:10px;margin-bottom:.5rem">⚠️ ALERGIAS: '+escapeHtml(c.allergies)+'</div>' : '';
+  box.innerHTML = allergyBanner + (chips.length?('<div style="display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.6rem">'+chips.join('')+'</div>'):'');
+}
+// ===== PLANTILLAS DE CHARTING POR TRATAMIENTO =====
+// Cada plantilla define campos específicos; al guardar se serializan a los campos estándar (areas/product/units/note)
+var CL_TEMPLATES={
+  botox:{ match:/botox|toxina|bótox|azzalure|bocouture|disport/i, label:'Toxina botulínica',
+    fields:[{k:'zonas',t:'checks',label:'Zonas tratadas',opts:['Entrecejo','Frente','Patas de gallo','Cejas','Bunny lines','Mentón','Masetero','Cuello']},{k:'unidades',t:'text',label:'Unidades totales',ph:'ej: 44 U'},{k:'marca',t:'text',label:'Marca',ph:'Botox / Azzalure…'},{k:'lot',t:'text',label:'Lote'}] },
+  relleno:{ match:/relleno|labio|filler|hialur|ácido|acido|surcos|ojeras|pómulo|pomulo|mentón|menton/i, label:'Relleno (ác. hialurónico)',
+    fields:[{k:'zonas',t:'checks',label:'Zonas',opts:['Labio superior','Labio inferior','Comisuras','Surco nasogeniano','Ojeras','Pómulos','Mentón','Mandíbula']},{k:'ml',t:'text',label:'Ml inyectados',ph:'ej: 1 ml'},{k:'producto',t:'text',label:'Producto',ph:'Juvederm / Restylane…'},{k:'lot',t:'text',label:'Lote'},{k:'tecnica',t:'text',label:'Técnica',ph:'Cánula / aguja'}] },
+  laser:{ match:/láser|laser|ipl|depilaci|fotodepil|rejuvene/i, label:'Láser',
+    fields:[{k:'zonas',t:'text',label:'Zona tratada',ph:'Cara, piernas…'},{k:'tipo',t:'text',label:'Tipo de láser',ph:'Alejandrita / Diódo / CO2'},{k:'parametros',t:'text',label:'Parámetros',ph:'Potencia, fluencia'},{k:'pasadas',t:'text',label:'Nº pasadas'}] },
+  peeling:{ match:/peeling|exfoli|químico|quimico/i, label:'Peeling químico',
+    fields:[{k:'zonas',t:'text',label:'Zona',ph:'Rostro completo…'},{k:'producto',t:'text',label:'Ácido/producto',ph:'Glicólico, salicílico…'},{k:'concentracion',t:'text',label:'Concentración %',ph:'ej: 30%'},{k:'tiempo',t:'text',label:'Tiempo de actuación'}] },
+  meso:{ match:/meso|vitamin|hidrataci|booster/i, label:'Mesoterapia',
+    fields:[{k:'zonas',t:'text',label:'Zona',ph:'Rostro, cuello…'},{k:'producto',t:'text',label:'Cóctel/producto'},{k:'ml',t:'text',label:'Ml',ph:'ej: 2 ml'},{k:'lot',t:'text',label:'Lote'}] },
+  hilos:{ match:/hilo|tensor|pdo/i, label:'Hilos tensores',
+    fields:[{k:'zonas',t:'text',label:'Zona',ph:'Mandíbula, cuello…'},{k:'tipo',t:'text',label:'Tipo de hilo',ph:'PDO, espiculado…'},{k:'cantidad',t:'text',label:'Nº de hilos'}] }
+};
+function clTemplateFor(treat){ treat=String(treat||''); for(var k in CL_TEMPLATES){ if(CL_TEMPLATES[k].match.test(treat)) return CL_TEMPLATES[k]; } return null; }
+function clRenderTemplateFields(tpl){ var box=document.getElementById('cnTplFields'); if(!box)return;
+  if(!tpl){ box.innerHTML='<div style="grid-column:1/-1"><label style="font-size:.72rem;color:var(--muted)">Zonas</label><input id="tf_zonas" placeholder="Labio, frente…" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px"/></div>'
+    +'<div><label style="font-size:.72rem;color:var(--muted)">Producto</label><input id="tf_producto" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px"/></div>'
+    +'<div><label style="font-size:.72rem;color:var(--muted)">Lote</label><input id="tf_lot" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px"/></div>'
+    +'<div><label style="font-size:.72rem;color:var(--muted)">Cantidad / unidades</label><input id="tf_unidades" placeholder="1 ml / 20 U" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px"/></div>'; return; }
+  box.innerHTML = tpl.fields.map(function(f){
+    if(f.t==='checks'){ return '<div style="grid-column:1/-1"><label style="font-size:.72rem;color:var(--muted)">'+f.label+'</label><div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.2rem">'+f.opts.map(function(o){return '<label style="display:inline-flex;align-items:center;gap:.25rem;background:#f7f4ee;border:1px solid var(--line);border-radius:999px;padding:.2rem .55rem;font-size:.76rem;cursor:pointer"><input type="checkbox" class="tf_chk" data-k="'+f.k+'" value="'+o+'"/> '+o+'</label>';}).join('')+'</div></div>'; }
+    return '<div'+(f.t==='area'?' style="grid-column:1/-1"':'')+'><label style="font-size:.72rem;color:var(--muted)">'+f.label+'</label><input id="tf_'+f.k+'" placeholder="'+(f.ph||'')+'" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px"/></div>';
+  }).join('');
+}
+function clCollectTemplate(tpl){ // devuelve {areas, product, lot, units, extra}
+  var get=function(k){var e=document.getElementById('tf_'+k);return e?e.value.trim():'';};
+  if(!tpl){ return { areas:get('zonas'), product:get('producto'), lot:get('lot'), units:get('unidades'), extra:'' }; }
+  var zonas=''; var chks=document.querySelectorAll('.tf_chk:checked'); if(chks.length){ var arr=[]; chks.forEach(function(c){arr.push(c.value);}); zonas=arr.join(', '); }
+  var areas = zonas || get('zonas') || '';
+  var product = get('producto')||get('marca')||get('tipo')||'';
+  var lot = get('lot')||'';
+  var units = get('unidades')||get('ml')||get('cantidad')||get('pasadas')||'';
+  // campos extra que no encajan en columnas estandar -> se anexan a la nota
+  var extraParts=[]; ['concentracion','tiempo','tecnica','parametros'].forEach(function(k){ var v=get(k); if(v) extraParts.push(k+': '+v); });
+  return { areas:areas, product:product, lot:lot, units:units, extra:extraParts.join(' · ') };
 }
 function renderClTimeline(notes){ var t=document.getElementById('clTimeline'); if(!t)return; if(!notes.length){ t.innerHTML='<div style="color:var(--muted);font-size:.8rem;padding:.3rem 0">Aún no hay visitas registradas. Pulsa “+ Nueva visita”.</div>'; return; }
   t.innerHTML=notes.map(function(n){ var d=n.visit_date||''; var parts=[]; if(n.areas)parts.push('Zona: '+escapeHtml(n.areas)); if(n.product)parts.push('Producto: '+escapeHtml(n.product)); if(n.lot)parts.push('Lote: '+escapeHtml(n.lot)); if(n.units)parts.push('Cantidad: '+escapeHtml(n.units));
@@ -1529,21 +1580,25 @@ function renderClTimeline(notes){ var t=document.getElementById('clTimeline'); i
 async function saveClinical(){ if(!_clLead)return; var g=function(id){return (document.getElementById(id)||{}).value||'';};
   try{ await clApi('/api/clinical',{method:'POST',body:JSON.stringify({tenant_id:T,lead_id:_clLead,allergies:g('clAllergies'),skin_type:g('clSkin'),conditions:g('clConditions'),medications:g('clMeds'),notes:g('clNotes')})}); var m=document.getElementById('clMsg'); if(m){m.textContent='Guardado ✓'; setTimeout(()=>{m.textContent='';},2000);} }catch(e){ if(typeof toast==='function')toast('Error al guardar','error'); }
 }
-function addClinicalNote(){ if(!_clLead)return; var pros=(typeof _pros!=='undefined'&&_pros)?_pros:[]; var proOpts='<option value="">—</option>'+pros.map(function(p){return '<option>'+escapeHtml(p.name)+'</option>';}).join(''); var cats=(typeof CATALOG!=='undefined'&&CATALOG)?CATALOG:[]; var trOpts=cats.length?('<option value="">—</option>'+cats.map(function(t){return '<option>'+escapeHtml(t.name)+'</option>';}).join('')):'';
+var _clCurTpl=null;
+function addClinicalNote(){ if(!_clLead)return; var pros=(typeof _pros!=='undefined'&&_pros)?_pros:[]; var proOpts='<option value="">—</option>'+pros.map(function(p){return '<option>'+escapeHtml(p.name)+'</option>';}).join(''); var cats=(typeof CATALOG!=='undefined'&&CATALOG)?CATALOG:[]; var trOpts=cats.length?('<option value="">— Elige tratamiento —</option>'+cats.map(function(t){return '<option>'+escapeHtml(t.name)+'</option>';}).join('')):'';
+  _clCurTpl=null;
   waModal('🩺 Nueva visita',
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">'
     +'<div><label style="font-size:.72rem;color:var(--muted)">Fecha</label><input id="cnDate" type="date" value="'+new Date().toISOString().slice(0,10)+'" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px"/></div>'
     +'<div><label style="font-size:.72rem;color:var(--muted)">Profesional</label><select id="cnPro" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px">'+proOpts+'</select></div>'
-    +'<div style="grid-column:1/-1"><label style="font-size:.72rem;color:var(--muted)">Tratamiento</label>'+(trOpts?('<select id="cnTreat" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px">'+trOpts+'</select>'):'<input id="cnTreat" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px"/>')+'</div>'
-    +'<div><label style="font-size:.72rem;color:var(--muted)">Zonas</label><input id="cnAreas" placeholder="Labio, frente…" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px"/></div>'
-    +'<div><label style="font-size:.72rem;color:var(--muted)">Producto</label><input id="cnProduct" placeholder="Ác. hialurónico…" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px"/></div>'
-    +'<div><label style="font-size:.72rem;color:var(--muted)">Lote</label><input id="cnLot" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px"/></div>'
-    +'<div><label style="font-size:.72rem;color:var(--muted)">Cantidad / unidades</label><input id="cnUnits" placeholder="1 ml / 20 U" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px"/></div>'
+    +'<div style="grid-column:1/-1"><label style="font-size:.72rem;color:var(--muted)">Tratamiento</label>'+(trOpts?('<select id="cnTreat" onchange="clOnTreatChange(this.value)" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px">'+trOpts+'</select>'):'<input id="cnTreat" oninput="clOnTreatChange(this.value)" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px"/>')+'</div>'
+    +'<div id="cnTplBadge" style="grid-column:1/-1;display:none"></div>'
+    +'<div id="cnTplFields" style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:.5rem"></div>'
     +'<div style="grid-column:1/-1"><label style="font-size:.72rem;color:var(--muted)">Notas de la visita</label><textarea id="cnNote" rows="3" placeholder="Evolución, observaciones, plan…" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px;resize:vertical"></textarea></div>'
     +'</div>',
     'Guardar visita', async function(){ var g=function(id){return (document.getElementById(id)||{}).value||'';};
-      try{ var r=await clApi('/api/clinical-note',{method:'POST',body:JSON.stringify({tenant_id:T,lead_id:_clLead,visit_date:g('cnDate'),professional:g('cnPro'),treatment:g('cnTreat'),areas:g('cnAreas'),product:g('cnProduct'),lot:g('cnLot'),units:g('cnUnits'),note:g('cnNote')})}); if(r&&r.ok){ if(typeof toast==='function')toast('Visita registrada ✓'); loadClinical(_clLead,_clPhone); } else { if(typeof toast==='function')toast('No se pudo guardar','error'); return false; } }catch(e){ if(typeof toast==='function')toast('Error al guardar','error'); return false; } });
+      var data=clCollectTemplate(_clCurTpl); var note=g('cnNote'); if(data.extra) note=(note?(note+' · '):'')+data.extra;
+      try{ var r=await clApi('/api/clinical-note',{method:'POST',body:JSON.stringify({tenant_id:T,lead_id:_clLead,visit_date:g('cnDate'),professional:g('cnPro'),treatment:g('cnTreat'),areas:data.areas,product:data.product,lot:data.lot,units:data.units,note:note})}); if(r&&r.ok){ if(typeof toast==='function')toast('Visita registrada ✓'); loadClinical(_clLead,_clPhone); } else { if(typeof toast==='function')toast('No se pudo guardar','error'); return false; } }catch(e){ if(typeof toast==='function')toast('Error al guardar','error'); return false; } });
+  // render inicial de campos (genérico) y, si el tratamiento del select ya matchea, su plantilla
+  setTimeout(function(){ var sel=document.getElementById('cnTreat'); clOnTreatChange(sel?sel.value:''); },30);
 }
+function clOnTreatChange(treat){ var tpl=clTemplateFor(treat); _clCurTpl=tpl; var badge=document.getElementById('cnTplBadge'); if(badge){ if(tpl){ badge.style.display='block'; badge.innerHTML='<div style="background:#F3E7E1;color:#A85942;font-size:.72rem;font-weight:700;padding:.3rem .6rem;border-radius:8px;display:inline-block">✦ Plantilla: '+tpl.label+'</div>'; } else { badge.style.display='none'; badge.innerHTML=''; } } clRenderTemplateFields(tpl); }
 async function delClinicalNote(id){ if(!confirm('¿Eliminar esta visita del historial?'))return; try{ await clApi('/api/clinical-note',{method:'POST',body:JSON.stringify({tenant_id:T,delete:id})}); loadClinical(_clLead,_clPhone); }catch(e){} }
 async function loadClinicalGallery(leadId, phone){ var g=document.getElementById('clGallery'); if(!g)return; 
   try{ var qs=leadId?('lead_id='+encodeURIComponent(leadId)):('phone='+encodeURIComponent(phone||'')); var r=await clApi('/api/wa-patient-media?'+qs); var media=(r&&r.media)||[];
