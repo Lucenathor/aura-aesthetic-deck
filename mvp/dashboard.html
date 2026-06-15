@@ -1163,7 +1163,7 @@ function goSection(v,push){
   if(v==='resumen')loadKPIs();
   if(v==='pacientes')loadLeads();
   if(v==='pipeline')loadPipeline();
-  if(v==='equipo')loadTeam();
+  if(v==='equipo'){ loadTeam(); try{ loadEmployees(); }catch(e){} }
   if(v==='embudo')loadEditor();
   if(v==='agenda')loadAgendaCal();
   if(v==='caja')loadCaja();
@@ -3235,7 +3235,12 @@ async function coSend(){ if(_coRec&&_coRec.state==='recording'){ try{_coRec.stop
     else if(r&&r.stage==='done'){ _coDraft=null; coBubble(escapeHtml(r.message||'Hecho.'),'ai'); _coHistory.push({role:'ai',content:r.message||''}); try{ if(typeof loadInventory==='function'&&document.getElementById('v-inventario')&&document.getElementById('v-inventario').classList.contains('on'))loadInventory(); }catch(e){} }
     else { coBubble(escapeHtml((r&&r.message)||'No he podido procesar la orden.'),'ai'); } }catch(e){ wait.remove(); coBubble('Error de conexión.','ai'); } }
 async function coConfirm(){ if(!_coPlan)return; const plan=_coPlan; _coPlan=null; const wait=coBubble('Hecho, aplicando…','ai');
-  try{ const r=await invApi('/api/copilot',{method:'POST',body:JSON.stringify({tenant_id:T,confirm:true,plan})}); wait.remove(); coBubble((r&&r.message)||'Listo.','ai'); if(typeof toast==='function'&&r&&r.ok)toast('✓ '+(r.message||'Hecho')); try{ if(typeof loadInventory==='function')loadInventory(); }catch(e){} }catch(e){ wait.remove(); coBubble('No se pudo aplicar.','ai'); } }
+  try{ const r=await invApi('/api/copilot',{method:'POST',body:JSON.stringify({tenant_id:T,confirm:true,plan})}); wait.remove(); coBubble((r&&r.message)||'Listo.','ai'); if(typeof toast==='function'&&r&&r.ok)toast('✓ '+(r.message||'Hecho'));
+    // Refresca la sección abierta según lo creado
+    try{ if(typeof loadInventory==='function')loadInventory(); }catch(e){}
+    try{ if((plan.action==='crear_empleado') && typeof loadEmployees==='function'){ loadEmployees(); } }catch(e){}
+    try{ if((plan.action==='crear_contacto'||plan.action==='reservar_cita'||plan.action==='anular_cita')){ if(typeof loadLeads==='function')loadLeads(); if(typeof loadPipeline==='function')loadPipeline(); if(typeof loadAgendaCal==='function')loadAgendaCal(); } }catch(e){}
+  }catch(e){ wait.remove(); coBubble('No se pudo aplicar.','ai'); } }
 // Voz: graba y transcribe
 let _coRec=null,_coChunks=[];
 let _coTimer=null,_coT0=0,_coStream=null,_coCancelled=false;
