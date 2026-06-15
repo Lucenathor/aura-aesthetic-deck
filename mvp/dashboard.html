@@ -3178,14 +3178,44 @@ async function delRecipe(id){ if(!confirm('¿Eliminar esta regla de consumo?'))r
 
 // ===== COPILOTO IA =====
 let _coPlan=null;
-function openCopilot(){ let o=document.getElementById('coOv'); if(o)o.remove(); o=document.createElement('div'); o.id='coOv'; o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:flex;justify-content:center;align-items:flex-end;padding:0'; o.onclick=(e)=>{ if(e.target===o)o.remove(); };
-  o.innerHTML='<div style="background:#fff;border-radius:18px 18px 0 0;width:min(560px,100%);max-height:86vh;display:flex;flex-direction:column;box-shadow:0 -10px 50px rgba(0,0,0,.3)">'
-    +'<div style="padding:1rem 1.2rem;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between"><div><b style="font-size:1.05rem">✦ Copiloto AURA</b><div class="sub" style="font-size:.74rem">Pregúntame o pídeme: agenda, pacientes, facturación, llamadas pendientes, inventario… por texto o voz.</div></div><span onclick="document.getElementById(\'coOv\').remove()" style="cursor:pointer;font-size:1.3rem;color:#888">×</span></div>'
-    +'<div id="coMsgs" style="flex:1;overflow-y:auto;padding:1rem 1.2rem;display:flex;flex-direction:column;gap:.6rem;min-height:160px"><div style="background:var(--bg2);border-radius:12px;padding:.7rem .9rem;font-size:.88rem;align-self:flex-start;max-width:85%">Hola, soy tu copiloto. Puedes pedirme cosas como:<br><i>"¿Qué citas tengo hoy?"</i><br><i>"¿Cuánto he facturado este mes?"</i><br><i>"¿A quién tengo que llamar?"</i><br><i>"Recibí 30 viales de toxina, lote B2, caducan en marzo"</i><br><i>"¿Cuánto se ha gastado María?"</i></div></div>'
-    +'<div style="padding:.7rem 1rem;border-top:1px solid var(--line);display:flex;gap:.5rem;align-items:center"><button id="coMic" onclick="coToggleVoice()" title="Hablar" class="btn" style="border-radius:50%;width:42px;height:42px;padding:0;font-size:1.1rem;flex:none">🎤</button><input id="coInput" placeholder="Escribe una orden…" style="flex:1;padding:.7rem 1rem;border:1px solid var(--line);border-radius:22px" onkeydown="if(event.key===\'Enter\')coSend()"/><button class="btn prim" onclick="coSend()" style="border-radius:50%;width:42px;height:42px;padding:0;font-size:1.1rem">➤</button></div></div>';
-  document.body.appendChild(o); setTimeout(()=>{ const i=document.getElementById('coInput'); if(i)i.focus(); },100); }
-function coBubble(html,who){ const m=document.getElementById('coMsgs'); if(!m)return; const d=document.createElement('div'); d.style.cssText='border-radius:12px;padding:.7rem .9rem;font-size:.88rem;max-width:85%;'+(who==='me'?'background:var(--terra);color:#fff;align-self:flex-end':'background:var(--bg2);align-self:flex-start'); d.innerHTML=html; m.appendChild(d); m.scrollTop=m.scrollHeight; return d; }
-async function coSend(){ const inp=document.getElementById('coInput'); const text=(inp.value||'').trim(); if(!text)return; inp.value=''; coBubble(escapeHtml(text),'me'); const wait=coBubble('Pensando…','ai');
+function ensureCopilotStyles(){ if(document.getElementById('coStyles'))return; var st=document.createElement('style'); st.id='coStyles'; st.textContent=''
+  +'@keyframes coOvIn{from{opacity:0}to{opacity:1}}'
+  +'@keyframes coCardIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}'
+  +'@keyframes coBub{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}'
+  +'@keyframes coDot{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}'
+  +'@keyframes coRing{0%{box-shadow:0 0 0 0 rgba(176,67,46,.5)}100%{box-shadow:0 0 0 14px rgba(176,67,46,0)}}'
+  +'@keyframes coStar{0%,100%{transform:rotate(0) scale(1)}50%{transform:rotate(18deg) scale(1.12)}}'
+  +'#coOv{animation:coOvIn .2s ease}'
+  +'#coCard{animation:coCardIn .28s cubic-bezier(.23,1,.32,1)}'
+  +'.coBubble{animation:coBub .26s cubic-bezier(.23,1,.32,1)}'
+  +'#coStar{display:inline-block;animation:coStar 3s ease-in-out infinite}'
+  +'.coTyping span{display:inline-block;width:7px;height:7px;border-radius:50%;background:#A85942;margin:0 2px;animation:coDot 1.2s infinite}'
+  +'.coTyping span:nth-child(2){animation-delay:.2s}.coTyping span:nth-child(3){animation-delay:.4s}'
+  +'.coChip{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:999px;padding:.35rem .7rem;font-size:.74rem;cursor:pointer;transition:background .2s,transform .15s;white-space:nowrap}'
+  +'.coChip:hover{background:rgba(255,255,255,.28);transform:translateY(-1px)}'
+  +'#coMic.rec{animation:coRing 1.2s infinite}'
+  +'#coSendBtn:active{transform:scale(.92)}#coMic:active{transform:scale(.92)}';
+  document.head.appendChild(st); }
+function openCopilot(){ ensureCopilotStyles(); let o=document.getElementById('coOv'); if(o)o.remove(); o=document.createElement('div'); o.id='coOv'; o.style.cssText='position:fixed;inset:0;background:rgba(15,12,10,.5);backdrop-filter:blur(4px);z-index:9998;display:flex;justify-content:center;align-items:center;padding:1rem'; o.onclick=(e)=>{ if(e.target===o)o.remove(); };
+  o.innerHTML='<div id="coCard" style="background:#fff;border-radius:22px;width:min(540px,100%);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 80px -20px rgba(0,0,0,.5)">'
+    +'<div style="background:linear-gradient(135deg,#C8745A,#A85942);color:#fff;padding:1.1rem 1.3rem;display:flex;align-items:flex-start;justify-content:space-between;gap:1rem">'
+      +'<div style="display:flex;gap:.7rem;align-items:flex-start"><div style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex:none"><span id="coStar">✦</span></div><div><b style="font-size:1.08rem;font-weight:800;letter-spacing:-.01em">Copiloto AURA</b><div style="font-size:.76rem;opacity:.9;margin-top:.1rem">Tu asistente de la clínica · por texto o voz</div></div></div>'
+      +'<span onclick="document.getElementById(\'coOv\').remove()" style="cursor:pointer;font-size:1.4rem;line-height:1;opacity:.9">×</span>'
+    +'</div>'
+    +'<div id="coMsgs" style="flex:1;overflow-y:auto;padding:1.2rem 1.2rem .6rem;display:flex;flex-direction:column;gap:.6rem;min-height:200px;background:linear-gradient(#FBF8F2,#fff)">'
+      +'<div class="coBubble" style="background:#fff;border:1px solid var(--line);border-radius:14px;padding:.85rem 1rem;font-size:.9rem;align-self:flex-start;max-width:88%;box-shadow:0 4px 14px -8px rgba(0,0,0,.12)">Hola, soy tu copiloto. Puedo ayudarte con la agenda, pacientes, facturación, llamadas pendientes e inventario. Prueba con uno de estos:</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:.4rem;align-self:flex-start;max-width:95%">'
+        +['¿Qué citas tengo hoy?','¿Cuánto he facturado este mes?','¿A quién tengo que llamar?','¿Cuánto se ha gastado María?'].map(function(q){ return '<button class="coChip" style="background:#F3E7E1;border-color:#EAD7CE;color:#A85942" onclick="coQuick(this.textContent)">'+q+'</button>'; }).join('')
+      +'</div>'
+    +'</div>'
+    +'<div id="coRecBar" style="display:none;align-items:center;gap:.7rem;padding:.5rem 1.2rem;background:#FFF3EE;border-top:1px solid #F6D9CF;font-size:.82rem;color:#A85942"><span style="width:9px;height:9px;border-radius:50%;background:#b0432e;display:inline-block;animation:coDot 1s infinite"></span> Grabando… <b id="coRecTime">0:00</b> <span style="flex:1"></span><button class="btn" style="font-size:.76rem;padding:.3rem .7rem" onclick="coCancelVoice()">Cancelar</button></div>'
+    +'<div style="padding:.8rem 1rem;border-top:1px solid var(--line);display:flex;gap:.5rem;align-items:center;background:#fff"><button id="coMic" onclick="coToggleVoice()" title="Hablar" style="border:0;cursor:pointer;border-radius:50%;width:44px;height:44px;padding:0;font-size:1.15rem;flex:none;background:#F3E7E1;color:#A85942;transition:transform .15s,background .2s">🎤</button><input id="coInput" placeholder="Escribe o dicta una orden…" style="flex:1;padding:.75rem 1rem;border:1px solid var(--line);border-radius:22px;font-size:.92rem;outline:none" onkeydown="if(event.key===\'Enter\')coSend()"/><button id="coSendBtn" onclick="coSend()" style="border:0;cursor:pointer;border-radius:50%;width:44px;height:44px;padding:0;font-size:1.1rem;flex:none;background:linear-gradient(135deg,#C8745A,#A85942);color:#fff;transition:transform .15s">➜</button></div>'
+  +'</div>';
+  document.body.appendChild(o); setTimeout(()=>{ const i=document.getElementById('coInput'); if(i)i.focus(); },120); }
+function coQuick(q){ var inp=document.getElementById('coInput'); if(inp){ inp.value=q; coSend(); } }
+function coBubble(html,who){ const m=document.getElementById('coMsgs'); if(!m)return; const d=document.createElement('div'); d.className='coBubble'; d.style.cssText='border-radius:14px;padding:.8rem 1rem;font-size:.9rem;line-height:1.5;max-width:88%;'+(who==='me'?'background:linear-gradient(135deg,#C8745A,#A85942);color:#fff;align-self:flex-end;box-shadow:0 6px 16px -8px rgba(168,89,66,.5)':'background:#fff;border:1px solid var(--line);align-self:flex-start;box-shadow:0 4px 14px -8px rgba(0,0,0,.12)'); d.innerHTML=html; m.appendChild(d); m.scrollTop=m.scrollHeight; return d; }
+function coTyping(){ const m=document.getElementById('coMsgs'); if(!m)return; const d=document.createElement('div'); d.className='coBubble'; d.style.cssText='border-radius:14px;padding:.85rem 1rem;align-self:flex-start;background:#fff;border:1px solid var(--line)'; d.innerHTML='<span class="coTyping"><span></span><span></span><span></span></span>'; m.appendChild(d); m.scrollTop=m.scrollHeight; return d; }
+async function coSend(){ const inp=document.getElementById('coInput'); const text=(inp.value||'').trim(); if(!text)return; inp.value=''; coBubble(escapeHtml(text),'me'); const wait=coTyping();
   try{ const r=await invApi('/api/copilot',{method:'POST',body:JSON.stringify({tenant_id:T,text})}); wait.remove();
     if(r&&r.stage==='confirm'&&r.plan){ _coPlan=r.plan; if(r.plan.action==='ninguna'){ coBubble(escapeHtml(r.plan.summary||'No te he entendido. ¿Puedes reformularlo?'),'ai'); return; }
       const d=coBubble(escapeHtml(r.plan.summary||'¿Confirmas esta acción?')+'<div style="margin-top:.6rem;display:flex;gap:.5rem"><button class="btn prim" style="padding:.3rem .8rem;font-size:.8rem" onclick="coConfirm()">Sí, hazlo</button><button class="btn" style="padding:.3rem .8rem;font-size:.8rem" onclick="this.closest(\'div\').parentElement.remove()">Cancelar</button></div>','ai'); }
@@ -3195,13 +3225,18 @@ async function coConfirm(){ if(!_coPlan)return; const plan=_coPlan; _coPlan=null
   try{ const r=await invApi('/api/copilot',{method:'POST',body:JSON.stringify({tenant_id:T,confirm:true,plan})}); wait.remove(); coBubble((r&&r.message)||'Listo.','ai'); if(typeof toast==='function'&&r&&r.ok)toast('✓ '+(r.message||'Hecho')); try{ if(typeof loadInventory==='function')loadInventory(); }catch(e){} }catch(e){ wait.remove(); coBubble('No se pudo aplicar.','ai'); } }
 // Voz: graba y transcribe
 let _coRec=null,_coChunks=[];
-let _coTimer=null,_coT0=0,_coStream=null;
+let _coTimer=null,_coT0=0,_coStream=null,_coCancelled=false;
 function _coPickMime(){ const opts=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus']; for(const m of opts){ try{ if(window.MediaRecorder&&MediaRecorder.isTypeSupported(m)) return m; }catch(e){} } return ''; }
-function _coSetMic(state){ const mic=document.getElementById('coMic'); if(!mic)return; if(state==='rec'){ mic.innerHTML='<span style="font-size:.7rem;font-weight:800">0:00</span>'; mic.style.background='#b0432e'; mic.style.color='#fff'; mic.title='Pulsa para parar'; } else { mic.textContent='🎤'; mic.style.background=''; mic.style.color=''; mic.title='Hablar'; } }
-async function coToggleVoice(){ const mic=document.getElementById('coMic');
-  // Si ya está grabando -> parar
+function _coSetMic(state){ const mic=document.getElementById('coMic'); var bar=document.getElementById('coRecBar'); if(!mic)return;
+  if(state==='rec'){ mic.innerHTML='&#9632;'; mic.style.background='#b0432e'; mic.style.color='#fff'; mic.title='Pulsa para enviar'; mic.classList.add('rec'); if(bar)bar.style.display='flex'; }
+  else { mic.innerHTML='🎤'; mic.style.background='#F3E7E1'; mic.style.color='#A85942'; mic.title='Hablar'; mic.classList.remove('rec'); if(bar)bar.style.display='none'; } }
+function _coStopTracks(){ try{ if(_coStream)_coStream.getTracks().forEach(t=>t.stop()); }catch(e){} }
+function coCancelVoice(){ _coCancelled=true; if(_coRec&&_coRec.state==='recording'){ try{_coRec.stop();}catch(e){} } if(_coTimer){clearInterval(_coTimer);_coTimer=null;} _coSetMic('idle'); _coStopTracks(); }
+async function coToggleVoice(){
+  // Si ya está grabando -> parar y enviar
   if(_coRec&&_coRec.state==='recording'){ try{_coRec.stop();}catch(e){} return; }
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ if(typeof toast==='function')toast('Tu navegador no permite grabar audio','error'); return; }
+  _coCancelled=false;
   try{
     _coStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
     const mime=_coPickMime();
@@ -3209,23 +3244,23 @@ async function coToggleVoice(){ const mic=document.getElementById('coMic');
     _coChunks=[]; _coT0=Date.now();
     _coRec.ondataavailable=e=>{ if(e.data&&e.data.size>0)_coChunks.push(e.data); };
     _coRec.onstop=async()=>{
-      if(_coTimer){clearInterval(_coTimer);_coTimer=null;} _coSetMic('idle');
-      try{ if(_coStream)_coStream.getTracks().forEach(t=>t.stop()); }catch(e){}
+      if(_coTimer){clearInterval(_coTimer);_coTimer=null;} _coSetMic('idle'); _coStopTracks();
+      if(_coCancelled){ _coCancelled=false; return; }
       const dur=(Date.now()-_coT0)/1000;
       const type=(_coRec&&_coRec.mimeType)||mime||'audio/webm';
       const blob=new Blob(_coChunks,{type});
-      if(dur<0.6||blob.size<1200){ coBubble('No te oí (muy corto). Mantén pulsado y habla un poco más.','ai'); return; }
-      const wait=coBubble('Transcribiendo…','me');
+      if(dur<0.6||blob.size<1200){ coBubble('No te oí bien. Pulsa el micro, habla y vuelve a pulsar para enviar.','ai'); return; }
+      const wait=coTyping();
       try{ const fd=new FormData(); fd.append('audio',blob,'voz.'+(type.includes('mp4')?'m4a':type.includes('ogg')?'ogg':'webm'));
         const r=await fetch(WORKER+'/api/transcribe?tenant='+T,{method:'POST',headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:fd});
         const d=await r.json(); wait.remove();
-        if(d&&d.text){ const inp=document.getElementById('coInput'); inp.value=d.text; inp.focus(); if(typeof toast==='function')toast('Te he entendido — revisa y envía ✓'); }
+        if(d&&d.text&&d.text.trim()){ const inp=document.getElementById('coInput'); if(inp){ inp.value=d.text.trim(); } coSend(); }
         else { coBubble('No te he oído bien. Prueba otra vez o escríbelo.','ai'); }
       }catch(e){ wait.remove(); coBubble('No pude transcribir, escríbelo.','ai'); }
     };
     _coRec.start();
     _coSetMic('rec');
-    _coTimer=setInterval(()=>{ const mic2=document.getElementById('coMic'); if(!mic2){return;} const s=Math.floor((Date.now()-_coT0)/1000); const mm=Math.floor(s/60), ss=s%60; mic2.innerHTML='<span style="font-size:.7rem;font-weight:800">'+mm+':'+(ss<10?'0':'')+ss+'</span>'; if(s>=120){ try{_coRec.stop();}catch(e){} } },300);
+    _coTimer=setInterval(()=>{ var tEl=document.getElementById('coRecTime'); const s=Math.floor((Date.now()-_coT0)/1000); const mm=Math.floor(s/60), ss=s%60; if(tEl)tEl.textContent=mm+':'+(ss<10?'0':'')+ss; if(s>=120){ try{_coRec.stop();}catch(e){} } },250);
   }catch(e){ if(typeof toast==='function')toast('No hay acceso al micrófono. Permite el micro en el navegador.','error'); } }
 
 // ===== ADMINISTRACIÓN (Super Admin): onboarding de clínicas =====
