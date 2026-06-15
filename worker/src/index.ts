@@ -2199,7 +2199,11 @@ export default {
             try {
               const r = await uni('/api/v1/chats/'+encodeURIComponent(chatId)+'/messages?limit=60');
               const items = (r.data?.items)||[];
-              for (const m of items){ const att=(m.attachments&&m.attachments[0])||null; const mtype=att?String(att.type||'file').toLowerCase():'text'; const murl=att?(att.url||null):null; const mname=att?(att.file_name||att.name||null):null; const ts=m.timestamp?Date.parse(m.timestamp):Date.now(); const fromMe=(m.is_sender===1||m.is_sender===true)?1:0;
+              for (const m of items){ const att=(m.attachments&&m.attachments[0])||null;
+                const mtype=att?String(att.type||att.mimetype||att.mime_type||'file').toLowerCase():'text';
+                const murl=att?(att.url||att.download_url||att.public_url||att.file_url||(att.data&&att.data.url)||null):null;
+                const mname=att?(att.file_name||att.name||att.filename||null):null;
+                const ts=m.timestamp?Date.parse(m.timestamp):Date.now(); const fromMe=(m.is_sender===1||m.is_sender===true)?1:0;
                 try{ await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(m.id||(chatId+'_'+ts), tnt, chatId, fromMe, m.text||'', mtype, murl, mname, ts, Date.now()).run(); }catch(e){}
               }
             } catch(e){}

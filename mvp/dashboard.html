@@ -2943,6 +2943,12 @@ async function waConnect(){
   } else { box.innerHTML='<p class="sub" style="color:#b0432e">No se pudo generar el QR. Pulsa para reintentar.</p><button class="btn prim" onclick="waConnect()" style="margin-top:.6rem">Reintentar</button>'; }
 }
 function waJidToNumber(jid){ return String(jid||'').replace(/@.*/,''); }
+// ¿El string es un teléfono real (mayoría dígitos) o un ID interno de WhatsApp (mezcla de letras/guiones)?
+function waIsPhone(s){ if(!s) return false; var d=String(s).replace(/\D/g,''); var raw=String(s).replace(/[^A-Za-z0-9]/g,''); return d.length>=7 && d.length<=15 && d.length>=raw.length*0.85; }
+function waFmtPhone(s){ var d=String(s||'').replace(/\D/g,''); if(!d) return ''; if(d.length>=11) return '+'+d.slice(0,d.length-9)+' '+d.slice(-9,-6)+' '+d.slice(-6,-3)+' '+d.slice(-3); if(d.length===9) return d.slice(0,3)+' '+d.slice(3,6)+' '+d.slice(6); return '+'+d; }
+// Nombre legible para mostrar: lead.name > pushName real > teléfono formateado > 'Contacto sin nombre'
+function waDisplayName(c){ if(!c) return 'Contacto'; var lead=c._lead; if(lead&&lead.name&&lead.name.trim()) return lead.name.trim(); var pn=(c.pushName||c.name||'').trim(); var phone=c.phone||waJidToNumber(c.id||c.chat_id||''); if(pn && !waIsPhone(pn) && pn!==waJidToNumber(c.id||'')) return pn; if(waIsPhone(phone)) return waFmtPhone(phone); if(waIsPhone(pn)) return waFmtPhone(pn); return 'Contacto sin nombre'; }
+function waSubLine(c){ var phone=c.phone||waJidToNumber(c.id||c.chat_id||''); return waIsPhone(phone)?waFmtPhone(phone):'WhatsApp'; }
 const WA_QUICK=[{label:'👋 Saludo',text:'¡Hola! Gracias por escribirnos 😊 ¿En qué podemos ayudarte?'},{label:'💰 Precios',text:'Te paso la información de precios. ¿Qué tratamiento te interesa?'},{label:'📅 Reservar',text:'¿Quieres que te reserve un hueco? Díme qué día y hora te viene mejor.'},{label:'✅ Confirmar cita',text:'Te confirmo tu cita. ¡Te esperamos!'},{label:'🙏 Gracias',text:'¡Gracias a ti! Cualquier cosa, aquí estamos.'}];
 function waQuickReply(i){ const q=WA_QUICK[i]; if(!q)return; const inp=document.getElementById('waInput'); if(inp){ inp.value=q.text; inp.focus(); } }
 function waInitials(n){ return (n||'?').trim().charAt(0).toUpperCase(); }
@@ -2972,11 +2978,11 @@ async function loadWaChats(silent){
   if(silent && JSON.stringify(next.map(c=>[c.id,(c.lastMessage&&c.lastMessage.message&&c.lastMessage.message.conversation)||'',c.unread]))===JSON.stringify(_waChats.map(c=>[c.id,(c.lastMessage&&c.lastMessage.message&&c.lastMessage.message.conversation)||'',c.unread]))) return;
   _waChats = next;
   if(!_waChats.length){ list.innerHTML='<div class="sub" style="padding:1.2rem;text-align:center">Aún no hay conversaciones.<br>Cuando un paciente te escriba, aparecerá aquí.</div>'; return; }
-  list.innerHTML=_waChats.map(c=>{ const jid=c.id; const num=waJidToNumber(jid); const lead=c._lead; const name=(lead&&lead.name)||c.pushName||c.name||num; const last=(c.lastMessage&&c.lastMessage.message&&c.lastMessage.message.conversation)||''; const known=!!lead; const t=waTime(c.timestamp); const un=c.unread||0;
-    return '<div class="wa-chat" data-search="'+((name+' '+num).toLowerCase())+'" onclick="openWaChat(\''+jid+'\',\''+(name||'').replace(/\x27/g,"")+'\')" style="display:flex;align-items:center;gap:.7rem;padding:.7rem .8rem;border-bottom:1px solid var(--line);cursor:pointer">'
-      +waAvatar(name,c.picture,46)
-      +'<div style="min-width:0;flex:1"><div style="display:flex;align-items:center;justify-content:space-between;gap:.35rem"><b style="font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+name+'</b><span style="font-size:.66rem;color:#667781;flex:none">'+t+'</span></div>'
-      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:.4rem"><span class="sub" style="font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(known?'<span style="color:#1f6b4f;font-weight:600">●</span> ':'')+(last||num)+'</span>'+(un>0?'<span style="background:#25d366;color:#fff;font-size:.62rem;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:grid;place-items:center;padding:0 5px;flex:none">'+un+'</span>':'')+'</div></div></div>';
+  list.innerHTML=_waChats.map(c=>{ const jid=c.id; const num=waJidToNumber(jid); const lead=c._lead; const name=waDisplayName(c); const lastRaw=(c.lastMessage&&c.lastMessage.message&&c.lastMessage.message.conversation)||''; const last=lastRaw||waSubLine(c); const known=!!lead; const t=waTime(c.timestamp); const un=c.unread||0;
+    return '<div class="wa-chat" data-search="'+((name+' '+num).toLowerCase())+'" onclick="openWaChat(\''+jid+'\',\''+(name||'').replace(/\x27/g,"")+'\')" style="display:flex;align-items:center;gap:.75rem;padding:.7rem .85rem;border-bottom:1px solid #f0ece4;cursor:pointer;transition:background .15s" onmouseover="this.style.background=\'#f7f4ee\'" onmouseout="this.style.background=\'transparent\'">'
+      +waAvatar(name,c.picture,48)
+      +'<div style="min-width:0;flex:1"><div style="display:flex;align-items:center;justify-content:space-between;gap:.35rem"><b style="font-size:.9rem;font-weight:700;color:#111b21;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(name)+'</b><span style="font-size:.66rem;color:#8696a0;flex:none">'+t+'</span></div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:.4rem;margin-top:.1rem"><span style="font-size:.79rem;color:#667781;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(known?'<span style="color:#1f8c69;font-weight:700">✓ paciente</span> · ':'')+escapeHtml(last)+'</span>'+(un>0?'<span style="background:#25d366;color:#fff;font-size:.62rem;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:grid;place-items:center;padding:0 5px;flex:none">'+un+'</span>':'')+'</div></div></div>';
   }).join('');
 }
 async function openWaChat(jid, name){
@@ -2984,7 +2990,8 @@ async function openWaChat(jid, name){
   const num=waJidToNumber(chat.phone||name||jid); _waActive={jid,name,num};
   const convo=document.getElementById('waConvo'); if(!convo)return;
   const grid=document.getElementById('waGrid'); if(grid){ grid.classList.add('show-chat'); }
-  convo.innerHTML='<div style="padding:.6rem 1rem;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:.5rem;background:#f0f2f5"><button class="wa-back-btn" onclick="waBackToList()" title="Volver" style="color:#54656f">‹</button>'+waAvatar((chat._lead&&chat._lead.name)||name,chat.picture,40)+'<div style="min-width:0;flex:1"><b style="font-size:.92rem">'+((chat._lead&&chat._lead.name)||name||num)+'</b><div class="sub" style="font-size:.72rem">'+num+'</div></div><button class="btn" onclick="waToggleCtx()" title="Ficha del paciente" style="padding:.3rem .5rem;font-size:.9rem">👤</button></div>'
+  var hdrName=waDisplayName(chat.id?chat:{_lead:chat._lead,pushName:name,name:name,phone:chat.phone,id:jid}); var hdrSub=waSubLine(chat.id?chat:{phone:chat.phone,id:jid});
+  convo.innerHTML='<div style="padding:.55rem 1rem;border-bottom:1px solid #e9e2d8;display:flex;align-items:center;gap:.65rem;background:#f7f4ee"><button class="wa-back-btn" onclick="waBackToList()" title="Volver" style="color:#54656f">‹</button>'+waAvatar(hdrName,chat.picture,42)+'<div style="min-width:0;flex:1"><b style="font-size:.95rem;color:#111b21">'+escapeHtml(hdrName)+'</b><div style="font-size:.72rem;color:#667781">'+escapeHtml(hdrSub)+'</div></div><button class="btn" onclick="waToggleCtx()" title="Ficha del paciente" style="padding:.3rem .5rem;font-size:.9rem">👤</button></div>'
     +'<div id="waMsgs" style="flex:1;overflow-y:auto;padding:1.2rem 8%;display:flex;flex-direction:column;gap:.25rem"><div class="sub" style="margin:auto">Cargando…</div></div>'
     +'<div id="waQuick" style="display:flex;gap:.4rem;padding:.4rem .8rem 0;background:#f0f2f5;overflow-x:auto;white-space:nowrap">'+WA_QUICK.map((q,i)=>'<button onclick="waQuickReply('+i+')" style="flex:none;background:#fff;border:1px solid var(--line);border-radius:16px;padding:.3rem .7rem;font-size:.75rem;cursor:pointer;color:#1f6b4f">'+q.label+'</button>').join('')+'</div>'
     +'<div style="padding:.6rem .8rem;border-top:1px solid var(--line);display:flex;gap:.5rem;align-items:center;background:#f0f2f5">'
@@ -3000,11 +3007,20 @@ function waBackToList(){ const grid=document.getElementById('waGrid'); if(grid){
 function waToggleCtx(){ const grid=document.getElementById('waGrid'); if(grid){ grid.classList.toggle('show-ctx'); } }
 function waMsgBubble(m){
   const fromMe=m.fromMe||(m.key&&m.key.fromMe); const t=waTime(m.timestamp);
-  let inner='';
-  if(m.murl && (m.mtype==='img'||m.mtype==='image'||m.mtype==='photo')) inner='<img src="'+m.murl+'" style="max-width:240px;border-radius:8px;display:block"/>'+(m.text?'<div style="margin-top:4px">'+escapeHtml(m.text)+'</div>':'');
-  else if(m.murl && (m.mtype==='audio'||m.mtype==='voice'||m.mtype==='ptt')) inner='<audio controls src="'+m.murl+'" style="max-width:230px"></audio>';
-  else if(m.murl) inner='<a href="'+m.murl+'" target="_blank" style="color:inherit;text-decoration:underline">📄 '+escapeHtml(m.mname||'Documento')+'</a>';
-  else inner=escapeHtml(m.text||'[mensaje]');
+  let inner=''; const mt=String(m.mtype||'text').toLowerCase();
+  const isImg=/img|image|photo/.test(mt), isVid=/vid|video/.test(mt), isAud=/audio|voice|ptt/.test(mt), isSticker=/sticker/.test(mt), isDoc=/doc|file|pdf|application/.test(mt);
+  if(m.murl && isImg) inner='<img src="'+m.murl+'" loading="lazy" style="max-width:240px;width:100%;border-radius:10px;display:block;cursor:pointer" onclick="window.open(this.src,\'_blank\')"/>'+(m.text?'<div style="margin-top:5px">'+escapeHtml(m.text)+'</div>':'');
+  else if(m.murl && isVid) inner='<video controls src="'+m.murl+'" style="max-width:240px;width:100%;border-radius:10px;display:block"></video>'+(m.text?'<div style="margin-top:5px">'+escapeHtml(m.text)+'</div>':'');
+  else if(m.murl && isAud) inner='<audio controls src="'+m.murl+'" style="max-width:230px"></audio>';
+  else if(m.murl && isSticker) inner='<img src="'+m.murl+'" style="width:120px;height:120px;object-fit:contain;display:block"/>';
+  else if(m.murl) inner='<a href="'+m.murl+'" target="_blank" style="color:inherit;display:flex;align-items:center;gap:6px;text-decoration:none"><span style="font-size:1.3rem">📄</span><span style="text-decoration:underline">'+escapeHtml(m.mname||'Documento')+'</span></a>';
+  else if(m.text) inner=escapeHtml(m.text);
+  else if(isImg) inner='<span style="color:#667781">📷 Foto</span>';
+  else if(isVid) inner='<span style="color:#667781">🎥 Vídeo</span>';
+  else if(isAud) inner='<span style="color:#667781">🎤 Audio</span>';
+  else if(isSticker) inner='<span style="color:#667781">⭐ Sticker</span>';
+  else if(isDoc) inner='<span style="color:#667781">📄 '+escapeHtml(m.mname||'Documento')+'</span>';
+  else inner='<span style="color:#8696a0;font-style:italic">Mensaje no compatible</span>';
   const mid=m.id||(m.key&&m.key.id)||''; const emojis=['👍','❤️','😂','😮','😢','🙏']; const picker = (!fromMe&&mid)?'<div class="wa-react-btn" style="position:absolute;top:-18px;'+(fromMe?'left':'right')+':4px;background:#fff;border:1px solid var(--line);border-radius:18px;display:none;gap:2px;padding:3px 6px;box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:5">'+emojis.map(e=>'<span onclick="waReact(event,\''+mid+'\',\''+e+'\')" style="cursor:pointer;font-size:1rem;transition:transform .1s" onmouseover="this.style.transform=\'scale(1.3)\'" onmouseout="this.style.transform=\'scale(1)\'">'+e+'</span>').join('')+'</div>':''; const reactBtn=picker;
   return '<div onmouseover="this.querySelector(\'.wa-react-btn\')&&(this.querySelector(\'.wa-react-btn\').style.display=\'flex\')" onmouseout="this.querySelector(\'.wa-react-btn\')&&(this.querySelector(\'.wa-react-btn\').style.display=\'none\')" style="position:relative;align-self:'+(fromMe?'flex-end':'flex-start')+';max-width:70%;background:'+(fromMe?'#d9fdd3':'#fff')+';padding:.45rem .65rem .3rem;border-radius:'+(fromMe?'10px 10px 2px 10px':'10px 10px 10px 2px')+';font-size:.88rem;box-shadow:0 1px .5px rgba(0,0,0,.13);line-height:1.35;word-wrap:break-word">'+reactBtn+inner+'<div style="font-size:.62rem;color:#667781;text-align:right;margin-top:2px">'+t+(fromMe?' <span style="color:#53bdeb">✓✓</span>':'')+'</div></div>';
 }
