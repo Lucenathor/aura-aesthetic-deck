@@ -1690,10 +1690,29 @@ export default {
           const inForm = await req.formData();
           const audio:any = inForm.get('audio');
           if (!audio) return json({ ok:false, error:'no_audio' });
-          const fd = new FormData(); fd.append('file', audio, 'voice.webm'); fd.append('model', 'whisper-1'); fd.append('language', 'es');
-          const wr = await fetch('https://api.openai.com/v1/audio/transcriptions', { method:'POST', headers:{ Authorization:`Bearer ${env.OPENAI_KEY}` }, body: fd });
+          // Nombre con extensión correcta según el tipo (mejora la detección del formato)
+          const ct = (audio.type||'').toLowerCase();
+          const ext = ct.includes('webm')?'webm': ct.includes('mp4')||ct.includes('m4a')?'m4a': ct.includes('mpeg')||ct.includes('mp3')?'mp3': ct.includes('wav')?'wav': ct.includes('ogg')?'ogg':'webm';
+          // Prompt de contexto: vocabulario de clínica estética -> mejora la precisión de los términos
+          const ctxPrompt = 'Transcripción para una clínica estética en español. Vocabulario habitual: toxina botulínica, bótox, ácido hialurónico, relleno, mesoterapia, peeling, láser, rinomodelación, hidratación facial, viales, jeringas, unidades, mililitros, lote, caducidad, stock, recargar, producto, paciente, cita.';
+          const callWhisper = async (model:string, withPrompt:boolean) => {
+            const fd = new FormData();
+            fd.append('file', audio, 'voice.'+ext);
+            fd.append('model', model);
+            fd.append('language', 'es');
+            fd.append('response_format', 'json');
+            if (withPrompt) fd.append('prompt', ctxPrompt);
+            const wr = await fetch('https://api.openai.com/v1/audio/transcriptions', { method:'POST', headers:{ Authorization:`Bearer ${env.OPENAI_KEY}` }, body: fd });
+            return wr;
+          };
+          // 1º intento: modelo de mayor calidad (gpt-4o-mini-transcribe) con prompt de contexto
+          let wr = await callWhisper('gpt-4o-mini-transcribe', true);
+          if (!wr.ok) {
+            // Fallback robusto a whisper-1 (siempre disponible)
+            wr = await callWhisper('whisper-1', true);
+          }
           const wd:any = await wr.json();
-          return json({ ok:true, text: wd.text || '' });
+          return json({ ok:true, text: (wd && wd.text) ? String(wd.text).trim() : '' });
         } catch(e:any){ return json({ ok:false, error:'transcribe_failed' }); }
       }
 

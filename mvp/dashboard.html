@@ -3099,9 +3099,38 @@ async function coConfirm(){ if(!_coPlan)return; const plan=_coPlan; _coPlan=null
   try{ const r=await invApi('/api/copilot',{method:'POST',body:JSON.stringify({tenant_id:T,confirm:true,plan})}); wait.remove(); coBubble((r&&r.message)||'Listo.','ai'); if(typeof toast==='function'&&r&&r.ok)toast('✓ '+(r.message||'Hecho')); loadInventory(); }catch(e){ wait.remove(); coBubble('No se pudo aplicar.','ai'); } }
 // Voz: graba y transcribe
 let _coRec=null,_coChunks=[];
-async function coToggleVoice(){ const mic=document.getElementById('coMic'); if(_coRec&&_coRec.state==='recording'){ _coRec.stop(); return; }
-  try{ const stream=await navigator.mediaDevices.getUserMedia({audio:true}); _coRec=new MediaRecorder(stream); _coChunks=[]; _coRec.ondataavailable=e=>_coChunks.push(e.data); _coRec.onstop=async()=>{ mic.textContent='🎤'; mic.style.background=''; stream.getTracks().forEach(t=>t.stop()); const blob=new Blob(_coChunks,{type:'audio/webm'}); const wait=coBubble('Transcribiendo…','me'); try{ const fd=new FormData(); fd.append('audio',blob,'v.webm'); const r=await fetch(WORKER+'/api/transcribe?tenant='+T,{method:'POST',headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:fd}); const d=await r.json(); wait.remove(); if(d&&d.text){ document.getElementById('coInput').value=d.text; coSend(); } else { coBubble('No te he oído bien, escríbelo.','ai'); } }catch(e){ wait.remove(); coBubble('No pude transcribir, escríbelo.','ai'); } }; _coRec.start(); mic.textContent='⏹'; mic.style.background='#b0432e'; mic.style.color='#fff'; }
-  catch(e){ if(typeof toast==='function')toast('No hay acceso al micrófono','error'); } }
+let _coTimer=null,_coT0=0,_coStream=null;
+function _coPickMime(){ const opts=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus']; for(const m of opts){ try{ if(window.MediaRecorder&&MediaRecorder.isTypeSupported(m)) return m; }catch(e){} } return ''; }
+function _coSetMic(state){ const mic=document.getElementById('coMic'); if(!mic)return; if(state==='rec'){ mic.innerHTML='<span style="font-size:.7rem;font-weight:800">0:00</span>'; mic.style.background='#b0432e'; mic.style.color='#fff'; mic.title='Pulsa para parar'; } else { mic.textContent='🎤'; mic.style.background=''; mic.style.color=''; mic.title='Hablar'; } }
+async function coToggleVoice(){ const mic=document.getElementById('coMic');
+  // Si ya está grabando -> parar
+  if(_coRec&&_coRec.state==='recording'){ try{_coRec.stop();}catch(e){} return; }
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ if(typeof toast==='function')toast('Tu navegador no permite grabar audio','error'); return; }
+  try{
+    _coStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+    const mime=_coPickMime();
+    _coRec=mime?new MediaRecorder(_coStream,{mimeType:mime,audioBitsPerSecond:128000}):new MediaRecorder(_coStream);
+    _coChunks=[]; _coT0=Date.now();
+    _coRec.ondataavailable=e=>{ if(e.data&&e.data.size>0)_coChunks.push(e.data); };
+    _coRec.onstop=async()=>{
+      if(_coTimer){clearInterval(_coTimer);_coTimer=null;} _coSetMic('idle');
+      try{ if(_coStream)_coStream.getTracks().forEach(t=>t.stop()); }catch(e){}
+      const dur=(Date.now()-_coT0)/1000;
+      const type=(_coRec&&_coRec.mimeType)||mime||'audio/webm';
+      const blob=new Blob(_coChunks,{type});
+      if(dur<0.6||blob.size<1200){ coBubble('No te oí (muy corto). Mantén pulsado y habla un poco más.','ai'); return; }
+      const wait=coBubble('Transcribiendo…','me');
+      try{ const fd=new FormData(); fd.append('audio',blob,'voz.'+(type.includes('mp4')?'m4a':type.includes('ogg')?'ogg':'webm'));
+        const r=await fetch(WORKER+'/api/transcribe?tenant='+T,{method:'POST',headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:fd});
+        const d=await r.json(); wait.remove();
+        if(d&&d.text){ const inp=document.getElementById('coInput'); inp.value=d.text; inp.focus(); if(typeof toast==='function')toast('Te he entendido — revisa y envía ✓'); }
+        else { coBubble('No te he oído bien. Prueba otra vez o escríbelo.','ai'); }
+      }catch(e){ wait.remove(); coBubble('No pude transcribir, escríbelo.','ai'); }
+    };
+    _coRec.start();
+    _coSetMic('rec');
+    _coTimer=setInterval(()=>{ const mic2=document.getElementById('coMic'); if(!mic2){return;} const s=Math.floor((Date.now()-_coT0)/1000); const mm=Math.floor(s/60), ss=s%60; mic2.innerHTML='<span style="font-size:.7rem;font-weight:800">'+mm+':'+(ss<10?'0':'')+ss+'</span>'; if(s>=120){ try{_coRec.stop();}catch(e){} } },300);
+  }catch(e){ if(typeof toast==='function')toast('No hay acceso al micrófono. Permite el micro en el navegador.','error'); } }
 
 function loadAll(){loadKPIs();loadLeads();loadAppts();loadPipeline();loadSmsCredits();}
 
