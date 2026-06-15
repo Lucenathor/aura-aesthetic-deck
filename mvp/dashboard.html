@@ -839,23 +839,38 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 <!-- DRAWER -->
 <div class="drawer" id="drawer">
   <button class="x" onclick="closeDrawer()">✕</button>
-  <h2 id="dName">—</h2>
+  <h2 id="dName" style="margin-bottom:.15rem">—</h2>
   <div class="dmeta" id="dMeta"></div>
-  <div class="meta">
-    <div><small>tratamiento</small><b id="dT">—</b></div>
-    <div><small>plazo</small><b id="dP">—</b></div>
-    <div><small>objeción</small><b id="dO">—</b></div>
-    <div><small>score</small><b id="dS">—</b></div>
-    <div style="grid-column:1/-1"><small>código / canal</small><b id="dRef">—</b></div>
+  <!-- Etiquetas inline bajo el nombre -->
+  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;margin-top:.5rem"><div id="dTags" style="display:flex;flex-wrap:wrap;gap:.4rem"></div><button class="btn" style="padding:.18rem .5rem;font-size:.72rem" onclick="addTag()">+ Etiqueta</button></div>
+  <!-- ALERTAS clínicas (alergias) + chips de resumen: lo primero que ve el profesional -->
+  <div id="clSummary" style="margin-top:.8rem"></div>
+  <!-- TARJETA RESUMEN "de un vistazo": gastado / pendiente / próxima cita / última visita -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.6rem">
+    <div style="background:var(--bg2);border-radius:12px;padding:.6rem .7rem"><div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Gastado</div><div id="dSpent" style="font-family:'Fraunces',serif;font-size:1.2rem;font-weight:600;color:#1f8c69">0€</div></div>
+    <div style="background:var(--bg2);border-radius:12px;padding:.6rem .7rem"><div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Pendiente</div><div id="dPending" style="font-family:'Fraunces',serif;font-size:1.2rem;font-weight:600;color:#b0432e">0€</div></div>
+    <div style="background:var(--bg2);border-radius:12px;padding:.6rem .7rem"><div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Próxima cita</div><div id="dNextAppt" style="font-size:.92rem;font-weight:700;color:#3a342e;margin-top:.15rem">—</div></div>
+    <div style="background:var(--bg2);border-radius:12px;padding:.6rem .7rem"><div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Última visita</div><div id="dLastVisit" style="font-size:.92rem;font-weight:700;color:#3a342e;margin-top:.15rem">—</div></div>
   </div>
-  <div style="display:flex;gap:.6rem;margin-top:1.2rem">
-    <div style="flex:1;background:var(--bg2);border-radius:12px;padding:.7rem .8rem;text-align:center"><div style="font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Gastado</div><div id="dSpent" style="font-family:'Fraunces',serif;font-size:1.3rem;font-weight:600;color:#1f8c69">0€</div></div>
-    <div style="flex:1;background:var(--bg2);border-radius:12px;padding:.7rem .8rem;text-align:center"><div style="font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Pendiente</div><div id="dPending" style="font-family:'Fraunces',serif;font-size:1.3rem;font-weight:600;color:#b0432e">0€</div></div>
+  <!-- ACCIONES RÁPIDAS -->
+  <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.7rem">
+    <button class="btn prim" style="flex:1;min-width:120px;padding:.5rem;font-size:.82rem" onclick="addClinicalNote()">🩺 Nueva visita</button>
+    <button class="btn" style="flex:1;min-width:120px;padding:.5rem;font-size:.82rem" onclick="addTreatment()">💶 Cobro</button>
+    <button class="btn" style="flex:1;min-width:120px;padding:.5rem;font-size:.82rem" id="dWaBtn" onclick="drawerWhatsApp()">💬 WhatsApp</button>
   </div>
-  <!-- Etiquetas -->
-  <div style="margin-top:1rem"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem"><h4 class="serif" style="font-size:1.05rem;margin:0">Etiquetas</h4><button class="btn" style="padding:.25rem .55rem;font-size:.74rem" onclick="addTag()">+ Etiqueta</button></div><div id="dTags" style="display:flex;flex-wrap:wrap;gap:.4rem"></div></div>
-  <!-- Métricas del cliente -->
+  <!-- Métricas del cliente (visitas, ticket medio…) -->
   <div id="dStats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-top:1rem"></div>
+  <!-- ORIGEN / MARKETING (plegado: no es lo primero que necesita el profesional) -->
+  <details style="margin-top:1rem;background:var(--bg2);border-radius:12px;padding:.2rem .2rem">
+    <summary style="cursor:pointer;font-size:.82rem;font-weight:600;color:var(--muted);padding:.55rem .7rem;list-style:none">▸ Origen y marketing</summary>
+    <div class="meta" style="padding:.2rem .7rem .7rem">
+      <div><small>tratamiento de interés</small><b id="dT">—</b></div>
+      <div><small>plazo</small><b id="dP">—</b></div>
+      <div><small>objeción</small><b id="dO">—</b></div>
+      <div><small>score</small><b id="dS">—</b></div>
+      <div style="grid-column:1/-1"><small>código / canal</small><b id="dRef">—</b></div>
+    </div>
+  </details>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1.2rem;margin-bottom:.4rem"><h4 class="serif" style="font-size:1.05rem;margin:0">Tratamientos y pagos</h4><button class="btn" style="padding:.3rem .6rem;font-size:.78rem" onclick="addTreatment()">+ Añadir</button></div>
   <div id="dTreatments"></div>
   <!-- Guión de llamada de NUEVA VENTA (recall) -->
@@ -896,7 +911,6 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
   <!-- HISTORIA CLÍNICA -->
   <div style="margin-top:1.3rem;border-top:2px solid var(--line);padding-top:1rem">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem"><h4 class="serif" style="font-size:1.08rem;margin:0">🩺 Historia clínica</h4><button class="btn prim" style="padding:.3rem .6rem;font-size:.78rem" onclick="addClinicalNote()">+ Nueva visita</button></div>
-    <div id="clSummary"></div>
     <!-- Ficha médica -->
     <div style="background:var(--bg2);border-radius:12px;padding:.8rem .9rem;margin-bottom:.8rem">
       <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem">Ficha médica</div>
@@ -1515,16 +1529,20 @@ async function loadClinical(leadId, phone){ _clLead=leadId; _clPhone=phone||'';
     if(g('clAllergies'))g('clAllergies').value=c.allergies||''; if(g('clSkin'))g('clSkin').value=c.skin_type||''; if(g('clConditions'))g('clConditions').value=c.conditions||''; if(g('clMeds'))g('clMeds').value=c.medications||''; if(g('clNotes'))g('clNotes').value=c.notes||'';
     renderClSummary(c, r.notes||[]);
     renderClTimeline(r.notes||[]);
+    // Última visita en la cabecera
+    var lv=document.getElementById('dLastVisit'); if(lv){ var n0=(r.notes||[])[0]; lv.textContent = n0?((n0.treatment||'Visita')+' · '+(n0.visit_date||'')):'Sin visitas'; }
   }catch(e){}
+  // Próxima cita en la cabecera (desde wa-patient por teléfono)
+  try{ if(phone){ var pr=await clApi('/api/wa-patient?number='+encodeURIComponent(phone)); var na=pr&&pr.next_appt; var nx=document.getElementById('dNextAppt'); if(nx){ if(na){ var dd=new Date(na.date_iso); nx.textContent=dd.toLocaleDateString('es-ES',{day:'numeric',month:'short'})+' '+dd.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}); nx.style.color=(na.status==='confirmed')?'#1f8c69':'#b06a2e'; } else { nx.textContent='Sin cita'; nx.style.color='var(--muted)'; } } } }catch(e){}
   loadClinicalGallery(leadId, phone);
 }
+function drawerWhatsApp(){ var ph=(_curLead&&_curLead.phone)||_clPhone||''; if(!ph){ if(typeof toast==='function')toast('Sin teléfono','error'); return; } var d=String(ph).replace(/\D/g,''); window.open('https://wa.me/'+d,'_blank'); }
 // Cabecera clínica: banner de alergia + resumen (como los grandes muestran lo crítico arriba)
 function renderClSummary(c, notes){ var box=document.getElementById('clSummary'); if(!box)return; c=c||{};
   var chips=[];
   if(c.skin_type) chips.push('<span style="background:#eef3f0;color:#3a6b57;font-size:.72rem;font-weight:600;padding:.2rem .5rem;border-radius:999px">Piel '+escapeHtml(c.skin_type)+'</span>');
-  var lastV = (notes&&notes.length)?notes[0]:null;
-  if(lastV) chips.push('<span style="background:#f3eef9;color:#6b4fd0;font-size:.72rem;font-weight:600;padding:.2rem .5rem;border-radius:999px">Última: '+escapeHtml(lastV.treatment||'visita')+' · '+escapeHtml(lastV.visit_date||'')+'</span>');
-  if(notes&&notes.length) chips.push('<span style="background:#fdf3ea;color:#b06a2e;font-size:.72rem;font-weight:600;padding:.2rem .5rem;border-radius:999px">'+notes.length+' visita'+(notes.length>1?'s':'')+'</span>');
+  if(c.conditions && c.conditions.trim() && !/^(ninguna|no|none|sin)/i.test(c.conditions.trim())) chips.push('<span style="background:#fff6e9;color:#b06a2e;font-size:.72rem;font-weight:600;padding:.2rem .5rem;border-radius:999px">⚠ '+escapeHtml(c.conditions.length>28?c.conditions.slice(0,28)+'…':c.conditions)+'</span>');
+  if(notes&&notes.length) chips.push('<span style="background:#f3eef9;color:#6b4fd0;font-size:.72rem;font-weight:600;padding:.2rem .5rem;border-radius:999px">'+notes.length+' visita'+(notes.length>1?'s':'')+' registrada'+(notes.length>1?'s':'')+'</span>');
   var allergyBanner = (c.allergies && c.allergies.trim() && !/^(ninguna|no|none|sin)/i.test(c.allergies.trim())) ? '<div style="display:flex;align-items:center;gap:.45rem;background:#fde8e4;border:1px solid #e8a294;color:#a8341f;font-size:.8rem;font-weight:700;padding:.5rem .65rem;border-radius:10px;margin-bottom:.5rem">⚠️ ALERGIAS: '+escapeHtml(c.allergies)+'</div>' : '';
   box.innerHTML = allergyBanner + (chips.length?('<div style="display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.6rem">'+chips.join('')+'</div>'):'');
 }
