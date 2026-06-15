@@ -422,6 +422,7 @@ async function ensureInventorySchema(env: Env) {
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS inventory_moves (id TEXT PRIMARY KEY, tenant_id TEXT, product_id TEXT, delta REAL, reason TEXT, ref TEXT, actor TEXT, created_at INTEGER)"); } catch(e){}
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS copilot_log (id TEXT PRIMARY KEY, tenant_id TEXT, actor TEXT, prompt TEXT, action TEXT, payload TEXT, result TEXT, created_at INTEGER)"); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE professionals ADD COLUMN can_copilot INTEGER DEFAULT 0'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE team_members ADD COLUMN can_copilot INTEGER DEFAULT 0'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE inventory_products ADD COLUMN image_url TEXT'); } catch(e){}
   __invReady = true;
 }
@@ -2079,6 +2080,13 @@ export default {
           for (const h of history){ if(h && h.role && h.content) msgs.push({role: h.role==='ai'?'assistant':'user', content: String(h.content).slice(0,500)}); }
           msgs.push({role:'user',content:text});
           try { const raw = await runAI(env, msgs, true); parsed = JSON.parse(raw||'{}'); } catch(e){ parsed = { action:'ninguna', summary:'No he podido interpretar la orden.' }; }
+          // SEGURIDAD POR ROL: las acciones financieras (nóminas/beneficio) solo owner/finance/superadmin
+          const _coRole = ctx.role || '';
+          const _coCanFinance = (_coRole==='owner'||_coRole==='finance'||_coRole==='superadmin');
+          const _financeActions = ['crear_empleado'];
+          if (!_coCanFinance && (_financeActions.includes(parsed.action) || (parsed.action==='consultar_negocio' && (parsed.metric==='beneficio'||parsed.metric==='facturacion')))) {
+            return json({ ok:false, stage:'done', message:'No tienes permiso para ver o gestionar sueldos ni datos financieros. Pídeselo al propietario o a finanzas de la clínica.' });
+          }
           // Las CONSULTAS se responden al instante (no necesitan confirmación)
           const readOnly = ['consultar','consultar_agenda','consultar_pacientes','consultar_negocio','consultar_pendientes'];
           if (readOnly.includes(parsed.action)) {
@@ -2094,6 +2102,12 @@ export default {
           return json({ ok:true, stage:'confirm', plan: parsed });
         }
         const plan = b.plan || parsed;
+        // SEGURIDAD POR ROL también al confirmar (el cliente no puede saltarse el check enviando confirm directo)
+        const _coRole2 = ctx.role || '';
+        const _coCanFinance2 = (_coRole2==='owner'||_coRole2==='finance'||_coRole2==='superadmin');
+        if (!_coCanFinance2 && plan && plan.action==='crear_empleado') {
+          return json({ ok:false, stage:'done', message:'No tienes permiso para dar de alta empleados ni gestionar nóminas.' });
+        }
         const result = await runCopilotAction(env, tid, plan, actorEmail, text);
         return json({ ok: result.ok, stage:'done', message: result.msg });
       }
@@ -2688,13 +2702,15 @@ export default {
       }
       if (p === '/api/professionals' && req.method === 'POST') {
         const b:any = await req.json();
-        if (b.delete) { await env.aura_db.prepare('DELETE FROM professionals WHERE id=?').bind(b.delete).run(); return json({ok:true}); }
-        // actualizar empleado existente (datos + compensación)
-        // guardar SOLO el horario de un profesional
-        if (b.id && b.schedule!==undefined && b.name===undefined) {
+        // Solo horario (sin tocar datos ni compensación): permitido a roles operativos
+        if (b.id && b.schedule!==undefined && b.name===undefined && b.delete===undefined) {
           await env.aura_db.prepare('UPDATE professionals SET schedule=? WHERE id=? AND tenant_id=?').bind(typeof b.schedule==='string'?b.schedule:JSON.stringify(b.schedule), b.id, b.tenant_id).run();
           return json({ ok:true, id:b.id });
         }
+        // Crear/editar/borrar empleado y su NÓMINA: solo owner/finance/superadmin
+        const _profRole = await getSessionRole(env, req, url);
+        if (!(_profRole==='owner'||_profRole==='finance'||_profRole==='superadmin')) return json({ error:'forbidden', reason:'role' }, 403);
+        if (b.delete) { await env.aura_db.prepare('DELETE FROM professionals WHERE id=?').bind(b.delete).run(); return json({ok:true}); }
         if (b.id) {
           await env.aura_db.prepare('UPDATE professionals SET name=?, role=?, salary_gross=?, ss_pct=?, commission_pct=?, active=?, can_copilot=? WHERE id=? AND tenant_id=?')
             .bind(b.name||'Profesional', b.role||'pro', Number(b.salary_gross)||0, b.ss_pct!=null?Number(b.ss_pct):30, Number(b.commission_pct)||0, b.active!=null?(b.active?1:0):1, b.can_copilot?1:0, b.id, b.tenant_id).run();
