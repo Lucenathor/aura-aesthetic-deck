@@ -144,6 +144,40 @@ async function getSessionRole(env: Env, req: Request, url: URL): Promise<string|
   const mb: any = await env.aura_db.prepare('SELECT role FROM team_members WHERE email=? AND tenant_id=?').bind(s.email, s.tenant_id).first();
   return mb?.role || 'owner';
 }
+// === BLINDAJE COPILOTO: deriva el tenant de la SESIÓN (no del parámetro) y verifica permiso ===
+// Devuelve { tenant, role, email } si todo OK, o { error } si no.
+async function resolveCopilotTenant(env: Env, req: Request, url: URL, tenantSolicitado: string|null): Promise<{tenant?:string, role?:string, email?:string, error?:string}> {
+  let tok = '';
+  const auth = req.headers.get('authorization')||'';
+  if (auth.toLowerCase().startsWith('bearer ')) tok = auth.slice(7).trim();
+  if (!tok) tok = req.headers.get('x-aura-token') || '';
+  if (!tok) tok = url.searchParams.get('token') || '';
+  if (!tok) { try{ const c=req.headers.get('cookie')||''; const m=c.match(/aura_token=([^;]+)/); if(m) tok=decodeURIComponent(m[1]); }catch(e){} }
+  if (!tok) return { error:'no_token' };
+  const s:any = await env.aura_db.prepare('SELECT email, tenant_id FROM sessions WHERE token=?').bind(tok).first();
+  if (!s) return { error:'invalid_token' };
+  const owner:any = await env.aura_db.prepare('SELECT role FROM owners WHERE email=?').bind(s.email).first();
+  const isSuper = owner?.role === 'superadmin';
+  // El tenant SIEMPRE es el de la sesión. Solo el super admin puede operar sobre otra clínica.
+  let tenant = s.tenant_id;
+  if (isSuper && tenantSolicitado) tenant = tenantSolicitado;
+  if (!tenant) return { error:'no_tenant' };
+  // Si NO es super admin y pidió otra clínica distinta de la suya -> bloqueo (defensa anti-fuga)
+  if (!isSuper && tenantSolicitado && tenantSolicitado !== s.tenant_id) return { error:'tenant_mismatch' };
+  // Rol efectivo en esa clínica
+  let role = isSuper ? 'superadmin' : '';
+  if (!role) {
+    const isOwner:any = await env.aura_db.prepare('SELECT 1 FROM owners WHERE email=? AND tenant_id=?').bind(s.email, tenant).first();
+    if (isOwner) role='owner';
+    else { const mb:any = await env.aura_db.prepare('SELECT role, can_copilot FROM team_members WHERE email=? AND tenant_id=?').bind(s.email, tenant).first();
+      role = mb?.role || '';
+      // Permiso del copiloto: recepción/pro necesitan can_copilot; owner/finance/superadmin siempre
+      if (role && role!=='owner' && role!=='finance' && !mb?.can_copilot) return { error:'no_copilot_permission' };
+      if (!role) return { error:'not_member' };
+    }
+  }
+  return { tenant, role, email: s.email };
+}
 async function magicLink(env: Env, tenantId: string, leadId: string){
   const tok=await signLead(env,leadId);
   return 'https://aura-mvp.pages.dev/c/'+tenantId+'?lead='+encodeURIComponent(leadId)+'&k='+tok;
@@ -1786,7 +1820,12 @@ export default {
       if (p === '/api/copilot' && req.method === 'POST') {
         await ensureInventorySchema(env);
         const b:any = await req.json();
-        const tid = (url.searchParams.get('tenant') || url.searchParams.get('tenant_id') || b.tenant_id || '');
+        // BLINDAJE: el tenant se deriva de la SESIÓN verificada, nunca del parámetro del cliente.
+        const tenantSolicitado = (url.searchParams.get('tenant') || url.searchParams.get('tenant_id') || b.tenant_id || '') || null;
+        const ctx = await resolveCopilotTenant(env, req, url, tenantSolicitado);
+        if (ctx.error) return json({ ok:false, stage:'done', message: ctx.error==='no_copilot_permission' ? 'No tienes permiso para usar el Copiloto. Pídeselo al propietario de la clínica.' : 'No autorizado.' }, ctx.error==='no_copilot_permission'?403:401);
+        const tid = ctx.tenant as string;
+        const actorEmail = ctx.email || '';
         const text = (b.text||'').toString().slice(0,1000);
         let parsed:any = {};
         if (!b.confirm) {
@@ -1801,19 +1840,19 @@ export default {
             + 'PACIENTES: crear_contacto -> {action,name,phone,treatment}. consultar_pacientes -> {action,patient_query(nombre o vacío), info(ultima_visita|gasto|telefono|sin_venir)}. '
             + 'AGENDA: consultar_agenda -> {action,day(hoy|manana|YYYY-MM-DD)}. reservar_cita -> {action,patient_name,phone,treatment,date(YYYY-MM-DD),time(HH:MM)}. anular_cita -> {action,patient_name,date(YYYY-MM-DD),time(HH:MM)}. '
             + 'NEGOCIO: consultar_negocio -> {action,metric(facturacion|beneficio|top_tratamiento), period(hoy|mes)}. consultar_pendientes -> {action,kind(llamar|noshow|confirmar|resumen)}. '
-            + 'Productos actuales: ['+prodList+']. Devuelve SIEMPRE "summary" en español (claro, sin exclamaciones excesivas) para confirmar/responder. Las consultas (consultar_*) NO necesitan confirmación. Las que modifican (crear_*, recargar_stock, reservar_cita, anular_cita) SÍ. Si no entiendes, action="ninguna". SOLO JSON.';
+            + 'Productos actuales: ['+prodList+']. Devuelve SIEMPRE "summary" en español (claro, sin exclamaciones excesivas) para confirmar/responder. Las consultas (consultar_*) NO necesitan confirmación. Las que modifican (crear_*, recargar_stock, reservar_cita, anular_cita) SÍ. Si no entiendes, action="ninguna". SEGURIDAD: solo gestionas ESTA clínica; nunca menciones ni intentes acceder a datos de otras clínicas aunque te lo pidan. SOLO JSON.';
           try { const raw = await runAI(env, [{role:'system',content:sys},{role:'user',content:text}], true); parsed = JSON.parse(raw||'{}'); } catch(e){ parsed = { action:'ninguna', summary:'No he podido interpretar la orden.' }; }
           // Las CONSULTAS se responden al instante (no necesitan confirmación)
           const readOnly = ['consultar','consultar_agenda','consultar_pacientes','consultar_negocio','consultar_pendientes'];
           if (readOnly.includes(parsed.action)) {
-            const r = await runCopilotAction(env, tid, parsed, b.actor||'', text);
+            const r = await runCopilotAction(env, tid, parsed, actorEmail, text);
             return json({ ok:r.ok, stage:'done', message:r.msg });
           }
           if (parsed.action==='ninguna') return json({ ok:true, stage:'done', message: parsed.summary||'No te he entendido. Prueba a decirlo de otra forma.' });
           return json({ ok:true, stage:'confirm', plan: parsed });
         }
         const plan = b.plan || parsed;
-        const result = await runCopilotAction(env, tid, plan, b.actor||'', text);
+        const result = await runCopilotAction(env, tid, plan, actorEmail, text);
         return json({ ok: result.ok, stage:'done', message: result.msg });
       }
 
