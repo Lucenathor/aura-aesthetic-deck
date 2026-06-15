@@ -738,7 +738,18 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
     <section class="view" id="v-admin">
       <div class="top"><div><h1>Administración</h1><div class="sub2">Da de alta y configura clínicas llave en mano. Solo tú (Super Admin) ves esta sección. Cada clínica nace vacía y aislada.</div></div>
         <div class="actions"><button class="btn prim" onclick="openNewClinic()">+ Nueva clínica</button></div></div>
-      <div id="adminList" style="display:grid;gap:.7rem"><div style="color:var(--muted);font-size:.85rem">Cargando clínicas…</div></div>
+      <div id="adminListWrap">
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:.9rem">
+          <input id="adminSearch" placeholder="Buscar clínica…" oninput="renderAdminList()" style="flex:1;min-width:180px;padding:.55rem .8rem;border:1px solid var(--line);border-radius:10px;font-size:.85rem"/>
+          <select id="adminFilter" onchange="renderAdminList()" style="padding:.55rem .8rem;border:1px solid var(--line);border-radius:10px;font-size:.85rem;background:#fff">
+            <option value="active">Activas</option>
+            <option value="archived">Archivadas</option>
+            <option value="all">Todas</option>
+          </select>
+        </div>
+        <div id="adminList" style="display:grid;gap:.7rem"><div style="color:var(--muted);font-size:.85rem">Cargando clínicas…</div></div>
+      </div>
+      <div id="adminDetail" style="display:none"></div>
     </section>
 
     <!-- EMBUDO / EDITOR v2 -->
@@ -3150,27 +3161,66 @@ async function coToggleVoice(){ const mic=document.getElementById('coMic');
 
 // ===== ADMINISTRACIÓN (Super Admin): onboarding de clínicas =====
 async function adminApi(path, opts){ opts=opts||{}; opts.headers=Object.assign({'Authorization':'Bearer '+(localStorage.getItem('aura_token')||''),'Content-Type':'application/json'}, opts.headers||{}); const r=await fetch(WORKER+path, opts); return r.json(); }
+var _adminClinics=[];
+var ADMIN_CHECK_ITEMS=[
+  {k:'datos',label:'Datos y contacto',auto:true},
+  {k:'logo',label:'Logo y marca',auto:true},
+  {k:'horario',label:'Horario',auto:false},
+  {k:'tratamientos',label:'Tratamientos y precios',auto:false},
+  {k:'equipo',label:'Equipo',auto:false},
+  {k:'whatsapp',label:'WhatsApp conectado',auto:false},
+  {k:'packs',label:'Packs del portal',auto:false},
+  {k:'embudo',label:'Embudo',auto:false},
+  {k:'acceso',label:'Acceso enviado',auto:false}
+];
+function adminProgress(cl){ // estimación rápida solo con datos del listado
+  var done=0,total=ADMIN_CHECK_ITEMS.length;
+  if(cl.name&&cl.city) done++;            // datos
+  if(cl.wa_connected) done++;             // whatsapp
+  // el resto se calcula con detalle real al abrir la ficha
+  return Math.round(done/total*100);
+}
 async function loadAdmin(){
   const c=document.getElementById('adminList'); if(!c)return;
+  document.getElementById('adminDetail').style.display='none';
+  document.getElementById('adminListWrap').style.display='';
   c.innerHTML='<div style="color:var(--muted);font-size:.85rem">Cargando clínicas…</div>';
   try{
     const d=await adminApi('/api/admin-clinics');
-    const cl=(d&&d.clinics)||[];
-    if(!cl.length){ c.innerHTML='<div style="color:var(--muted);font-size:.9rem">Aún no hay clínicas. Pulsa “+ Nueva clínica” para dar de alta la primera.</div>'; return; }
-    c.innerHTML=cl.map(function(t){
-      var estado = t.status==='archived' ? '<span style="color:#b0432e;font-weight:700">Archivada</span>' : '<span style="color:#1f8c69;font-weight:700">Activa</span>';
-      var wa = t.wa_connected ? 'WhatsApp ✓' : 'WhatsApp —';
-      return '<div style="border:1px solid var(--line);border-radius:14px;padding:1rem 1.1rem;background:#fff;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">'
-        +'<div style="min-width:200px"><div style="font-weight:700;font-size:1rem">'+escapeHtml(t.name||t.id)+'</div>'
-        +'<div style="font-size:.78rem;color:var(--muted)">'+escapeHtml(t.city||'')+(t.email?(' · '+escapeHtml(t.email)):'')+'</div>'
-        +'<div style="font-size:.78rem;color:var(--muted);margin-top:.2rem">'+estado+' · '+(t.patients||0)+' pacientes · '+(t.sms_credits||0)+' SMS · '+wa+' · plan '+escapeHtml(t.plan||'—')+'</div></div>'
-        +'<div style="display:flex;gap:.4rem;flex-wrap:wrap">'
-        +'<button class="btn" style="font-size:.78rem" onclick="adminOpenClinic(\''+t.id+'\')">Abrir panel</button>'
-        +(t.email?('<button class="btn" style="font-size:.78rem" onclick="adminSendAccess(\''+t.id+'\',\''+escapeHtml(t.email)+'\',\''+escapeHtml((t.name||"").replace(/\x27/g,""))+'\')">Enviar acceso</button>'):'')
-        +(t.id!=='aura-demo'&&t.status!=='archived'?('<button class="btn" style="font-size:.78rem;color:#b0432e" onclick="adminArchive(\''+t.id+'\',\''+escapeHtml((t.name||"").replace(/\x27/g,""))+'\')">Archivar</button>'):'')
-        +'</div></div>';
-    }).join('');
+    _adminClinics=(d&&d.clinics)||[];
+    renderAdminList();
   }catch(e){ c.innerHTML='<div style="color:#b0432e;font-size:.85rem">No se pudo cargar el listado.</div>'; }
+}
+function renderAdminList(){
+  const c=document.getElementById('adminList'); if(!c)return;
+  var q=((document.getElementById('adminSearch')||{}).value||'').trim().toLowerCase();
+  var f=((document.getElementById('adminFilter')||{}).value||'active');
+  var cl=_adminClinics.filter(function(t){
+    if(f==='active'&&t.status==='archived')return false;
+    if(f==='archived'&&t.status!=='archived')return false;
+    if(q && !((t.name||'').toLowerCase().indexOf(q)>=0 || (t.city||'').toLowerCase().indexOf(q)>=0 || (t.email||'').toLowerCase().indexOf(q)>=0))return false;
+    return true;
+  });
+  if(!cl.length){ c.innerHTML='<div style="color:var(--muted);font-size:.9rem">No hay clínicas que coincidan. Pulsa “+ Nueva clínica” para dar de alta una.</div>'; return; }
+  c.innerHTML=cl.map(function(t){
+    var arch = t.status==='archived';
+    var estado = arch ? '<span style="color:#b0432e;font-weight:700">Archivada</span>' : '<span style="color:#1f8c69;font-weight:700">Activa</span>';
+    var wa = t.wa_connected ? 'WhatsApp ✓' : 'WhatsApp —';
+    var pct = adminProgress(t);
+    var idJs = t.id.replace(/\x27/g,"\\x27");
+    var nameJs = (t.name||'').replace(/\x27/g,'');
+    return '<div style="border:1px solid var(--line);border-radius:14px;padding:1rem 1.1rem;background:#fff;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;cursor:pointer;transition:box-shadow .18s cubic-bezier(.23,1,.32,1)" onmouseover="this.style.boxShadow=\'0 8px 22px -12px rgba(0,0,0,.25)\'" onmouseout="this.style.boxShadow=\'none\'" onclick="adminOpenDetail(\''+idJs+'\')">'
+      +'<div style="min-width:220px;flex:1"><div style="font-weight:700;font-size:1rem">'+escapeHtml(t.name||t.id)+'</div>'
+      +'<div style="font-size:.78rem;color:var(--muted)">'+escapeHtml(t.city||'')+(t.email?(' · '+escapeHtml(t.email)):'')+'</div>'
+      +'<div style="font-size:.78rem;color:var(--muted);margin-top:.2rem">'+estado+' · '+(t.patients||0)+' pacientes · '+(t.sms_credits||0)+' SMS · '+wa+' · plan '+escapeHtml(t.plan||'—')+'</div>'
+      +(arch?'':('<div style="margin-top:.55rem;display:flex;align-items:center;gap:.5rem"><div style="flex:1;height:7px;background:var(--line);border-radius:6px;overflow:hidden;max-width:220px"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#C8745A,#A85942);border-radius:6px"></div></div><span style="font-size:.72rem;color:var(--muted);font-weight:600">Onboarding '+pct+'%</span></div>'))
+      +'</div>'
+      +'<div style="display:flex;gap:.4rem;flex-wrap:wrap" onclick="event.stopPropagation()">'
+      +'<button class="btn prim" style="font-size:.78rem" onclick="adminOpenDetail(\''+idJs+'\')">Configurar</button>'
+      +'<button class="btn" style="font-size:.78rem" onclick="adminOpenClinic(\''+idJs+'\')">Entrar al panel</button>'
+      +(arch?('<button class="btn" style="font-size:.78rem;color:#1f8c69" onclick="adminReactivate(\''+idJs+'\',\''+escapeHtml(nameJs)+'\')">Reactivar</button>'):'')
+      +'</div></div>';
+  }).join('');
 }
 function adminOpenClinic(id){ try{ if(typeof switchTenant==='function'){ switchTenant(id); } else { T=id; } }catch(e){ T=id; } goSection('resumen'); if(typeof toast==='function')toast('Entrando en la clínica…'); }
 function openNewClinic(){
@@ -3196,8 +3246,188 @@ function openNewClinic(){
       loadAdmin();
     });
 }
-async function adminSendAccess(id,email,name){ if(!confirm('¿Enviar email de acceso a '+email+'?'))return; var r=await adminApi('/api/admin-send-access',{method:'POST',body:JSON.stringify({email:email,clinic_name:name})}); if(typeof toast==='function')toast(r&&r.ok?'Acceso enviado ✓':'No se pudo enviar', r&&r.ok?'':'error'); }
+async function adminSendAccess(id,email,name){ if(!confirm('¿Enviar email de acceso a '+email+'?'))return; var r=await adminApi('/api/admin-send-access',{method:'POST',body:JSON.stringify({email:email,clinic_name:name})}); if(typeof toast==='function')toast(r&&r.ok?'Acceso enviado ✓':'No se pudo enviar', r&&r.ok?'':'error'); if(r&&r.ok && _adminDetail && _adminDetail.id===id){ adminToggleCheck('acceso', true); } }
 async function adminArchive(id,name){ if(!confirm('¿Archivar la clínica "'+name+'"? Dejará de estar activa (no se borran sus datos).'))return; var r=await adminApi('/api/admin-delete-clinic',{method:'POST',body:JSON.stringify({id:id})}); if(typeof toast==='function')toast(r&&r.ok?'Clínica archivada':'No se pudo','error'); loadAdmin(); }
+async function adminReactivate(id,name){ if(!confirm('¿Reactivar la clínica "'+name+'"?'))return; var r=await adminApi('/api/admin-reactivate-clinic',{method:'POST',body:JSON.stringify({id:id})}); if(typeof toast==='function')toast(r&&r.ok?'Clínica reactivada ✓':'No se pudo','error'); loadAdmin(); }
+
+// ===== FICHA DE CLÍNICA (onboarding asistido) =====
+var _adminDetail=null; // {id, clinic, counts, checklist, manual, owner_resp, wa_connected, hours_set}
+var _adminTab='datos';
+function adminBack(){ document.getElementById('adminDetail').style.display='none'; document.getElementById('adminListWrap').style.display=''; _adminDetail=null; loadAdmin(); }
+async function adminOpenDetail(id){
+  const box=document.getElementById('adminDetail'); if(!box)return;
+  document.getElementById('adminListWrap').style.display='none';
+  box.style.display=''; box.innerHTML='<div style="color:var(--muted);font-size:.9rem;padding:2rem">Cargando ficha…</div>';
+  try{
+    const d=await adminApi('/api/admin-clinic-detail?id='+encodeURIComponent(id));
+    if(!d||!d.ok){ box.innerHTML='<div style="color:#b0432e">No se pudo cargar la ficha. <a href="#" onclick="adminBack();return false">Volver</a></div>'; return; }
+    _adminDetail={ id:id, clinic:d.clinic||{}, counts:d.counts||{}, checklist:d.checklist||{}, manual:d.manual||{}, owner_resp:d.owner_resp||'', wa_connected:!!d.wa_connected, hours_set:!!d.hours_set };
+    _adminTab='datos';
+    adminRenderDetail();
+    adminLoadNotes();
+  }catch(e){ box.innerHTML='<div style="color:#b0432e">Error cargando la ficha.</div>'; }
+}
+function adminEffectiveCheck(){ // combina autodetección + manual
+  var c=_adminDetail.checklist||{}; var m=_adminDetail.manual||{}; var out={};
+  ADMIN_CHECK_ITEMS.forEach(function(it){ out[it.k] = !!(c[it.k] || m[it.k]); });
+  return out;
+}
+function adminPctDetail(){ var e=adminEffectiveCheck(); var done=0; ADMIN_CHECK_ITEMS.forEach(function(it){ if(e[it.k])done++; }); return Math.round(done/ADMIN_CHECK_ITEMS.length*100); }
+function adminRenderDetail(){
+  const box=document.getElementById('adminDetail'); if(!box||!_adminDetail)return;
+  var t=_adminDetail.clinic; var ct=_adminDetail.counts; var pct=adminPctDetail(); var eff=adminEffectiveCheck();
+  var nameJs=(t.name||'').replace(/\x27/g,'');
+  var checkHtml=ADMIN_CHECK_ITEMS.map(function(it){
+    var on=eff[it.k]; var autoBadge=it.auto?'<span style="font-size:.62rem;color:var(--muted);margin-left:.3rem">(auto)</span>':'';
+    return '<label style="display:flex;align-items:center;gap:.55rem;padding:.5rem .65rem;border:1px solid var(--line);border-radius:10px;background:'+(on?'#f3faf6':'#fff')+';cursor:'+(it.auto?'default':'pointer')+';font-size:.84rem">'
+      +'<input type="checkbox" '+(on?'checked':'')+' '+(it.auto?'disabled':'')+' onchange="adminToggleCheck(\''+it.k+'\',this.checked)"/>'
+      +'<span style="'+(on?'font-weight:600':'')+'">'+it.label+'</span>'+autoBadge+'</label>';
+  }).join('');
+  var ready = pct>=100;
+  box.innerHTML=
+    '<div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1rem;flex-wrap:wrap">'
+      +'<button class="btn" style="font-size:.8rem" onclick="adminBack()">← Volver</button>'
+      +'<div style="flex:1;min-width:160px"><div style="font-weight:800;font-size:1.15rem">'+escapeHtml(t.name||t.id)+'</div><div style="font-size:.76rem;color:var(--muted)">'+escapeHtml(t.city||'')+' · id: '+escapeHtml(t.id)+'</div></div>'
+      +'<button class="btn" style="font-size:.8rem" onclick="adminOpenClinic(\''+t.id.replace(/\x27/g,"\\x27")+'\')">Entrar al panel ↗</button>'
+      +(t.email?('<button class="btn" style="font-size:.8rem" onclick="adminSendAccess(\''+t.id.replace(/\x27/g,"\\x27")+'\',\''+escapeHtml(t.email)+'\',\''+escapeHtml(nameJs)+'\')">Enviar acceso</button>'):'')
+    +'</div>'
+    // Cabecera: progreso onboarding
+    +'<div style="border:1px solid var(--line);border-radius:14px;padding:1rem 1.1rem;background:'+(ready?'linear-gradient(135deg,#f3faf6,#eaf7f0)':'#fff')+';margin-bottom:1rem">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">'
+        +'<div><div style="font-weight:700">Onboarding '+pct+'%</div><div style="font-size:.76rem;color:var(--muted)">'+(ready?'✓ Lista para entregar al cliente':'Completa los pasos para dejarla lista')+'</div></div>'
+        +'<div style="font-size:.74rem;color:var(--muted)">'+(ct.patients||0)+' pacientes · '+(ct.team||0)+' equipo · '+(ct.catalog||0)+' tratamientos · '+(ct.packs||0)+' packs · '+(ct.portal||0)+' clientes portal</div>'
+      +'</div>'
+      +'<div style="height:10px;background:var(--line);border-radius:7px;overflow:hidden;margin-top:.7rem"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#C8745A,#A85942);border-radius:7px;transition:width .3s cubic-bezier(.23,1,.32,1)"></div></div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.5rem;margin-top:.8rem">'+checkHtml+'</div>'
+    +'</div>'
+    // Pestañas
+    +'<div style="display:flex;gap:.4rem;border-bottom:1px solid var(--line);margin-bottom:1rem;flex-wrap:wrap">'
+      +adminTabBtn('datos','Datos y marca')+adminTabBtn('comercial','Plan y comercial')+adminTabBtn('config','Configuración rápida')+adminTabBtn('notas','Notas internas')
+    +'</div>'
+    +'<div id="adminTabBody"></div>';
+  adminRenderTab();
+}
+function adminTabBtn(k,label){ var on=_adminTab===k; return '<button onclick="_adminTab=\''+k+'\';adminRenderTab();adminSyncTabBtns()" data-atab="'+k+'" style="background:none;border:none;padding:.6rem .9rem;font-size:.86rem;cursor:pointer;font-weight:'+(on?'700':'500')+';color:'+(on?'#A85942':'var(--muted)')+';border-bottom:2px solid '+(on?'#A85942':'transparent')+';margin-bottom:-1px">'+label+'</button>'; }
+function adminSyncTabBtns(){ document.querySelectorAll('[data-atab]').forEach(function(b){ var on=b.getAttribute('data-atab')===_adminTab; b.style.fontWeight=on?'700':'500'; b.style.color=on?'#A85942':'var(--muted)'; b.style.borderBottom='2px solid '+(on?'#A85942':'transparent'); }); }
+function _fld(id,label,val,ph,type){ return '<label style="font-size:.8rem;display:block">'+label+'<input id="'+id+'" type="'+(type||'text')+'" value="'+escapeHtml(val||'')+'" placeholder="'+(ph||'')+'" style="width:100%;padding:.55rem;border:1px solid var(--line);border-radius:8px;margin-top:.2rem"/></label>'; }
+function adminRenderTab(){
+  var body=document.getElementById('adminTabBody'); if(!body||!_adminDetail)return; var t=_adminDetail.clinic;
+  if(_adminTab==='datos'){
+    body.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.7rem">'
+      +_fld('afName','Nombre de la clínica',t.name)
+      +_fld('afCity','Ciudad',t.city)
+      +_fld('afAddress','Dirección',t.address)
+      +_fld('afWhats','WhatsApp',t.whatsapp,'+34…')
+      +_fld('afEmail','Email propietario',t.email,'',  'email')
+      +_fld('afWebsite','Web de la clínica',t.website,'https://…')
+      +_fld('afOwner','Nombre del propietario',t.owner_name,'Dra. …')
+      +_fld('afDoctor','Doctor/a principal',t.doctor_name)
+      +'</div>'
+      +'<div style="font-weight:700;font-size:.9rem;margin:1.1rem 0 .5rem">Marca</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.7rem;align-items:end">'
+        +_fld('afLogo','URL del logo',t.logo_url,'https://…')
+        +'<label style="font-size:.8rem;display:block">Color principal<input id="afPrimary" type="color" value="'+(t.brand_primary||'#C8745A')+'" style="width:100%;height:42px;padding:2px;border:1px solid var(--line);border-radius:8px;margin-top:.2rem"/></label>'
+        +'<label style="font-size:.8rem;display:block">Color acento<input id="afAccent" type="color" value="'+(t.brand_accent||'#A85942')+'" style="width:100%;height:42px;padding:2px;border:1px solid var(--line);border-radius:8px;margin-top:.2rem"/></label>'
+      +'</div>'
+      +'<div style="font-weight:700;font-size:.9rem;margin:1.1rem 0 .5rem">Reseñas de Google</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.7rem">'
+        +_fld('afRating','Valoración (0-5)',t.google_rating,'4.9','number')
+        +_fld('afReviews','Nº de reseñas',t.google_reviews,'0','number')
+        +_fld('afReviewUrl','Enlace para pedir reseña',t.google_review_url,'https://g.page/…')
+      +'</div>'
+      +'<button class="btn prim" style="margin-top:1.1rem" onclick="adminSaveDatos()">Guardar datos y marca</button>';
+  } else if(_adminTab==='comercial'){
+    var trial = t.trial_ends_at ? new Date(t.trial_ends_at).toISOString().slice(0,10) : '';
+    body.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.7rem">'
+      +'<label style="font-size:.8rem;display:block">Plan<select id="afPlan" style="width:100%;padding:.55rem;border:1px solid var(--line);border-radius:8px;margin-top:.2rem;background:#fff">'
+        +['trial','growth','pro'].map(function(p){return '<option value="'+p+'" '+(t.plan===p?'selected':'')+'>'+p+'</option>';}).join('')+'</select></label>'
+      +'<label style="font-size:.8rem;display:block">Estado<select id="afStatus" style="width:100%;padding:.55rem;border:1px solid var(--line);border-radius:8px;margin-top:.2rem;background:#fff">'
+        +['active','archived'].map(function(p){return '<option value="'+p+'" '+(t.status===p?'selected':'')+'>'+(p==='active'?'Activa':'Archivada')+'</option>';}).join('')+'</select></label>'
+      +'<label style="font-size:.8rem;display:block">Fin del periodo de prueba<input id="afTrial" type="date" value="'+trial+'" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px;margin-top:.2rem"/></label>'
+      +'<label style="font-size:.8rem;display:block">Responsable del onboarding<input id="afResp" value="'+escapeHtml(_adminDetail.owner_resp||'')+'" placeholder="Tu equipo…" style="width:100%;padding:.55rem;border:1px solid var(--line);border-radius:8px;margin-top:.2rem"/></label>'
+      +'</div>'
+      +'<button class="btn prim" style="margin-top:1rem" onclick="adminSaveComercial()">Guardar plan y comercial</button>'
+      +'<div style="border:1px solid var(--line);border-radius:12px;padding:1rem;margin-top:1.2rem;background:var(--bg2)">'
+        +'<div style="font-weight:700;font-size:.9rem">Créditos SMS</div>'
+        +'<div style="font-size:.8rem;color:var(--muted);margin:.2rem 0 .6rem">Saldo actual: <b>'+(t.sms_credits||0)+'</b> SMS</div>'
+        +'<div style="display:flex;gap:.5rem;flex-wrap:wrap">'
+          +[100,250,500,1000].map(function(n){return '<button class="btn" style="font-size:.8rem" onclick="adminAddSms('+n+')">+'+n+'</button>';}).join('')
+          +'<input id="afSmsCustom" type="number" placeholder="Otra cantidad" style="width:130px;padding:.45rem;border:1px solid var(--line);border-radius:8px"/>'
+          +'<button class="btn prim" style="font-size:.8rem" onclick="adminAddSms()">Añadir</button>'
+        +'</div>'
+      +'</div>';
+  } else if(_adminTab==='config'){
+    var idJs=t.id.replace(/\x27/g,"\\x27");
+    var quick=[
+      {s:'ajustes',t:'Horario de la clínica',d:'Define apertura, cierre y pausa de comer.'},
+      {s:'ajustes',t:'Tratamientos y precios',d:'Carga el catálogo de tratamientos.'},
+      {s:'equipo',t:'Equipo',d:'Da de alta recepción y doctoras.'},
+      {s:'whatsapp',t:'WhatsApp',d:'Conecta el WhatsApp de la clínica por QR.'},
+      {s:'portal',t:'Packs del portal',d:'Crea los packs y ofertas del portal cliente.'},
+      {s:'embudo',t:'Embudo',d:'Personaliza el embudo de captación.'}
+    ];
+    body.innerHTML='<div style="font-size:.84rem;color:var(--muted);margin-bottom:.8rem">Entra al panel de la clínica para configurar cada bloque. Marca el paso como hecho en el checklist de arriba cuando lo termines.</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.7rem">'
+      +quick.map(function(q){ return '<div style="border:1px solid var(--line);border-radius:12px;padding:.9rem 1rem;background:#fff"><div style="font-weight:700;font-size:.9rem">'+q.t+'</div><div style="font-size:.76rem;color:var(--muted);margin:.25rem 0 .6rem">'+q.d+'</div><button class="btn" style="font-size:.78rem" onclick="adminOpenClinicSection(\''+idJs+'\',\''+q.s+'\')">Abrir ↗</button></div>'; }).join('')
+      +'</div>';
+  } else if(_adminTab==='notas'){
+    body.innerHTML='<div style="display:flex;gap:.5rem;margin-bottom:.8rem">'
+      +'<input id="afNoteInput" placeholder="Añadir nota interna (ej. pendiente de contrato…)" style="flex:1;padding:.6rem;border:1px solid var(--line);border-radius:8px" onkeydown="if(event.key===\'Enter\')adminAddNote()"/>'
+      +'<button class="btn prim" onclick="adminAddNote()">Añadir</button></div>'
+      +'<div id="afNotesList" style="display:grid;gap:.5rem"><div style="color:var(--muted);font-size:.84rem">Cargando notas…</div></div>';
+    adminRenderNotes();
+  }
+  adminSyncTabBtns();
+}
+function adminOpenClinicSection(id,sec){ try{ if(typeof switchTenant==='function'){ switchTenant(id); } else { T=id; } }catch(e){ T=id; } goSection(sec||'resumen'); }
+async function adminSaveDatos(){
+  var g=function(id){var e=document.getElementById(id);return e?e.value:undefined;};
+  var body={ id:_adminDetail.id, name:g('afName'), city:g('afCity'), address:g('afAddress'), whatsapp:g('afWhats'), email:g('afEmail'), website:g('afWebsite'), owner_name:g('afOwner'), doctor_name:g('afDoctor'), logo_url:g('afLogo'), brand_primary:g('afPrimary'), brand_accent:g('afAccent'), google_rating:parseFloat(g('afRating'))||0, google_reviews:parseInt(g('afReviews'),10)||0, google_review_url:g('afReviewUrl') };
+  var r=await adminApi('/api/admin-update-clinic',{method:'POST',body:JSON.stringify(body)});
+  if(r&&r.ok){ Object.assign(_adminDetail.clinic, body); if(typeof toast==='function')toast('Datos guardados ✓'); adminRefreshDetailMeta(); } else { if(typeof toast==='function')toast('No se pudo guardar','error'); }
+}
+async function adminSaveComercial(){
+  var g=function(id){var e=document.getElementById(id);return e?e.value:undefined;};
+  var trialVal=g('afTrial'); var trialTs=trialVal?new Date(trialVal+'T00:00:00').getTime():'';
+  var body={ id:_adminDetail.id, plan:g('afPlan'), status:g('afStatus'), trial_ends_at:trialTs };
+  var r=await adminApi('/api/admin-update-clinic',{method:'POST',body:JSON.stringify(body)});
+  var resp=g('afResp');
+  await adminApi('/api/admin-checklist',{method:'POST',body:JSON.stringify({ id:_adminDetail.id, manual:_adminDetail.manual||{}, owner_resp:resp })});
+  _adminDetail.owner_resp=resp;
+  if(r&&r.ok){ Object.assign(_adminDetail.clinic, {plan:body.plan,status:body.status,trial_ends_at:trialTs}); if(typeof toast==='function')toast('Plan y comercial guardados ✓'); } else { if(typeof toast==='function')toast('No se pudo guardar','error'); }
+}
+async function adminAddSms(n){
+  var amount=n||parseInt((document.getElementById('afSmsCustom')||{}).value,10)||0;
+  if(amount<=0){ if(typeof toast==='function')toast('Indica una cantidad','error'); return; }
+  var r=await adminApi('/api/admin-add-sms',{method:'POST',body:JSON.stringify({ id:_adminDetail.id, amount:amount })});
+  if(r&&r.ok){ _adminDetail.clinic.sms_credits=r.sms_credits; if(typeof toast==='function')toast('+'+amount+' SMS añadidos ✓'); adminRenderTab(); } else { if(typeof toast==='function')toast('No se pudo','error'); }
+}
+async function adminToggleCheck(k,val){
+  if(!_adminDetail)return; _adminDetail.manual=_adminDetail.manual||{}; _adminDetail.manual[k]=!!val;
+  await adminApi('/api/admin-checklist',{method:'POST',body:JSON.stringify({ id:_adminDetail.id, manual:_adminDetail.manual })});
+  adminRenderDetail();
+}
+function adminRefreshDetailMeta(){ // refresca cabecera (progreso) sin recargar pestaña
+  var pct=adminPctDetail();
+}
+async function adminLoadNotes(){
+  if(!_adminDetail)return;
+  try{ var r=await adminApi('/api/admin-notes?id='+encodeURIComponent(_adminDetail.id)); _adminDetail.notes=(r&&r.notes)||[]; }catch(e){ _adminDetail.notes=[]; }
+  if(_adminTab==='notas') adminRenderNotes();
+}
+function adminRenderNotes(){
+  var c=document.getElementById('afNotesList'); if(!c)return; var ns=_adminDetail.notes||[];
+  if(!ns.length){ c.innerHTML='<div style="color:var(--muted);font-size:.84rem">Sin notas todavía.</div>'; return; }
+  c.innerHTML=ns.map(function(n){ var dt=n.created_at?new Date(n.created_at).toLocaleString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''; return '<div style="border:1px solid var(--line);border-radius:10px;padding:.65rem .8rem;background:#fff;display:flex;justify-content:space-between;gap:.6rem"><div><div style="font-size:.86rem">'+escapeHtml(n.text)+'</div><div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">'+escapeHtml(n.author||'')+' · '+dt+'</div></div><span onclick="adminDelNote(\''+n.id+'\')" style="cursor:pointer;color:#b0432e;font-size:1.1rem;line-height:1">×</span></div>'; }).join('');
+}
+async function adminAddNote(){
+  var inp=document.getElementById('afNoteInput'); var txt=(inp.value||'').trim(); if(!txt)return;
+  var r=await adminApi('/api/admin-notes',{method:'POST',body:JSON.stringify({ id:_adminDetail.id, text:txt })});
+  if(r&&r.ok){ inp.value=''; adminLoadNotes(); } else { if(typeof toast==='function')toast('No se pudo añadir','error'); }
+}
+async function adminDelNote(nid){
+  await adminApi('/api/admin-note-delete',{method:'POST',body:JSON.stringify({ id:nid })}); adminLoadNotes();
+}
 
 function loadAll(){loadKPIs();loadLeads();loadAppts();loadPipeline();loadSmsCredits();}
 

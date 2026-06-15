@@ -1337,6 +1337,110 @@ export default {
           await env.aura_db.prepare("UPDATE tenants SET status='archived' WHERE id=?").bind(id).run();
           return json({ ok:true });
         }
+
+        // REACTIVAR clínica archivada
+        if (p === '/api/admin-reactivate-clinic' && req.method === 'POST') {
+          const b:any = await req.json(); const id=b.id;
+          if(!id) return json({ ok:false, error:'id_required' });
+          await env.aura_db.prepare("UPDATE tenants SET status='active' WHERE id=?").bind(id).run();
+          return json({ ok:true });
+        }
+
+        // Asegura tablas auxiliares de onboarding (idempotente)
+        await env.aura_db.prepare('CREATE TABLE IF NOT EXISTS admin_notes (id TEXT PRIMARY KEY, tenant_id TEXT, text TEXT, author TEXT, created_at INTEGER)').run().catch(()=>{});
+        await env.aura_db.prepare('CREATE TABLE IF NOT EXISTS admin_onboarding (tenant_id TEXT PRIMARY KEY, manual_json TEXT, owner_resp TEXT, updated_at INTEGER)').run().catch(()=>{});
+
+        // FICHA COMPLETA de una clínica (datos + marca + comercial + contadores + checklist autodetectado)
+        if (p === '/api/admin-clinic-detail' && req.method === 'GET') {
+          const id = url.searchParams.get('id')||'';
+          if(!id) return json({ ok:false, error:'id_required' });
+          const t:any = await env.aura_db.prepare('SELECT * FROM tenants WHERE id=?').bind(id).first();
+          if(!t) return json({ ok:false, error:'not_found' });
+          const cnt = async (sql:string)=>{ try{ const r:any=await env.aura_db.prepare(sql).bind(id).first(); return r?(r.c||0):0; }catch(e){ return 0; } };
+          // equipo: profesionales activos + miembros de team_members (lo que exista)
+          const team   = (await cnt('SELECT COUNT(*) c FROM professionals WHERE tenant_id=?')) + (await cnt('SELECT COUNT(*) c FROM team_members WHERE tenant_id=?'));
+          const catalog= await cnt('SELECT COUNT(*) c FROM treatment_catalog WHERE tenant_id=?');
+          const packs  = await cnt('SELECT COUNT(*) c FROM packs WHERE tenant_id=?');
+          const portal = await cnt('SELECT COUNT(*) c FROM pack_orders WHERE tenant_id=?');
+          const patients = await cnt('SELECT COUNT(*) c FROM leads WHERE tenant_id=?');
+          const wa:any = await env.aura_db.prepare('SELECT connected FROM wa_config WHERE tenant_id=?').bind(id).first().catch(()=>null);
+          const sch:any = await env.aura_db.prepare('SELECT COUNT(*) c FROM schedule_by_day WHERE tenant_id=?').bind(id).first().catch(()=>null);
+          const ob:any = await env.aura_db.prepare('SELECT manual_json,owner_resp FROM admin_onboarding WHERE tenant_id=?').bind(id).first().catch(()=>null);
+          let manual:any = {}; try{ if(ob?.manual_json) manual = JSON.parse(ob.manual_json); }catch(e){}
+          const checklist = {
+            datos:    !!(t.name && t.city && t.whatsapp),
+            logo:     !!t.logo_url,
+            horario:  (sch && sch.c>0) || !!manual.horario,
+            tratamientos: catalog>0 || !!manual.tratamientos,
+            equipo:   team>0 || !!manual.equipo,
+            whatsapp: (wa?!!wa.connected:false) || !!manual.whatsapp,
+            packs:    packs>0 || !!manual.packs,
+            embudo:   !!manual.embudo,
+            acceso:   !!manual.acceso,
+          };
+          return json({ ok:true, clinic:t, counts:{team,catalog,packs,portal,patients}, wa_connected: wa?!!wa.connected:false, hours_set: !!(sch&&sch.c>0), checklist, manual, owner_resp: ob?ob.owner_resp:'' });
+        }
+
+        // ACTUALIZAR todos los campos de una clínica
+        if (p === '/api/admin-update-clinic' && req.method === 'POST') {
+          const b:any = await req.json(); const id=b.id;
+          if(!id) return json({ ok:false, error:'id_required' });
+          const fields = ['name','city','address','whatsapp','email','owner_name','doctor_name','brand_primary','brand_accent','google_rating','google_reviews','google_review_url','plan','status','trial_ends_at','ai_system_prompt','logo_url','website'];
+          const sets:string[]=[]; const vals:any[]=[];
+          for (const f of fields){ if (b[f]!==undefined){ sets.push(f+'=?'); vals.push(b[f]); } }
+          if(!sets.length) return json({ ok:false, error:'no_fields' });
+          sets.push('updated_at=?'); vals.push(Date.now()); vals.push(id);
+          try{ await env.aura_db.prepare('UPDATE tenants SET '+sets.join(',')+' WHERE id=?').bind(...vals).run(); }
+          catch(e:any){ return json({ ok:false, error:'update_failed', detail:String(e&&e.message||e) }); }
+          return json({ ok:true });
+        }
+
+        // RECARGAR SMS a una clínica
+        if (p === '/api/admin-add-sms' && req.method === 'POST') {
+          const b:any = await req.json(); const id=b.id; const amount=parseInt(b.amount,10)||0;
+          if(!id || amount<=0) return json({ ok:false, error:'bad_request' });
+          await env.aura_db.prepare('UPDATE tenants SET sms_credits = COALESCE(sms_credits,0) + ? WHERE id=?').bind(amount, id).run();
+          const t:any = await env.aura_db.prepare('SELECT sms_credits FROM tenants WHERE id=?').bind(id).first();
+          return json({ ok:true, sms_credits: t?t.sms_credits:null });
+        }
+
+        // NOTAS internas por clínica
+        if (p === '/api/admin-notes' && req.method === 'GET') {
+          const id = url.searchParams.get('id')||'';
+          if(!id) return json({ ok:false, error:'id_required' });
+          const r:any = await env.aura_db.prepare('SELECT id,text,author,created_at FROM admin_notes WHERE tenant_id=? ORDER BY created_at DESC').bind(id).all();
+          return json({ ok:true, notes: r.results||[] });
+        }
+        if (p === '/api/admin-notes' && req.method === 'POST') {
+          const b:any = await req.json(); const id=b.id; const text=(b.text||'').trim();
+          if(!id || !text) return json({ ok:false, error:'bad_request' });
+          const nid = 'note_'+Math.random().toString(36).slice(2,12);
+          await env.aura_db.prepare('INSERT INTO admin_notes (id,tenant_id,text,author,created_at) VALUES (?,?,?,?,?)').bind(nid, id, text, sess.email||'admin', Date.now()).run();
+          return json({ ok:true, id:nid });
+        }
+        if (p === '/api/admin-note-delete' && req.method === 'POST') {
+          const b:any = await req.json(); if(!b.id) return json({ ok:false, error:'id_required' });
+          await env.aura_db.prepare('DELETE FROM admin_notes WHERE id=?').bind(b.id).run();
+          return json({ ok:true });
+        }
+
+        // CHECKLIST manual + responsable de onboarding
+        if (p === '/api/admin-checklist' && req.method === 'POST') {
+          const b:any = await req.json(); const id=b.id;
+          if(!id) return json({ ok:false, error:'id_required' });
+          const manual = JSON.stringify(b.manual||{});
+          const owner_resp = b.owner_resp!==undefined ? b.owner_resp : null;
+          const now = Date.now();
+          const exist:any = await env.aura_db.prepare('SELECT tenant_id FROM admin_onboarding WHERE tenant_id=?').bind(id).first().catch(()=>null);
+          if (exist) {
+            if (owner_resp!==null) await env.aura_db.prepare('UPDATE admin_onboarding SET manual_json=?, owner_resp=?, updated_at=? WHERE tenant_id=?').bind(manual, owner_resp, now, id).run();
+            else await env.aura_db.prepare('UPDATE admin_onboarding SET manual_json=?, updated_at=? WHERE tenant_id=?').bind(manual, now, id).run();
+          } else {
+            await env.aura_db.prepare('INSERT INTO admin_onboarding (tenant_id,manual_json,owner_resp,updated_at) VALUES (?,?,?,?)').bind(id, manual, owner_resp||'', now).run();
+          }
+          return json({ ok:true });
+        }
+
         return json({ ok:false, error:'unknown_admin_endpoint' });
       }
 

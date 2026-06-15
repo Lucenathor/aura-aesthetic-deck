@@ -69,3 +69,11 @@ _backups/      Volcados de BD (NO se versiona; guardar fuera del sandbox)
 - 2026-06: el archivo local quedó atrasado respecto a producción (inventario/copiloto existían en
   Cloudflare pero no en el local) por trabajar sin commits frecuentes. Se recuperó desde producción.
   Causa: no se hacía commit a GitHub. Solución: commits frecuentes + GitHub como fuente única.
+
+## 8. Onboarding asistido (panel Administración, solo Super Admin)
+- `GET  /api/admin-clinic-detail?id=X`: ficha completa (datos, marca, comercial, contadores equipo/catálogo/packs/clientes portal, estado WhatsApp y horario, checklist autodetectado).
+- `POST /api/admin-update-clinic`: edita todos los campos de `tenants`.
+- `POST /api/admin-add-sms`: suma saldo SMS a una clínica.
+- `GET/POST /api/admin-notes?id=X`: notas internas por clínica (tabla `admin_notes`).
+- `POST /api/admin-checklist`: guarda items manuales del checklist (tabla `admin_onboarding`, JSON por tenant).
+- `POST /api/admin-reactivate-clinic`: devuelve a `status='active'` una clínica archivada.
