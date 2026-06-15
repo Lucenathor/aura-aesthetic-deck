@@ -456,8 +456,9 @@ async function runCopilotAction(env: Env, tid: string, plan: any, actor: string,
       const ssPct = plan.ss_pct!=null? Number(plan.ss_pct) : 30;
       const salary = Number(plan.salary_gross)||0;
       const comm = Number(plan.commission_pct)||0;
+      const canCo = (plan.can_copilot===true||plan.can_copilot==='true'||plan.can_copilot===1)?1:0;
       await env.aura_db.prepare('INSERT INTO professionals (id,tenant_id,name,color,role,salary_gross,ss_pct,commission_pct,active,can_copilot,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
-        .bind(eid, tid, plan.name||'Empleado', colors[Math.floor(Math.random()*colors.length)], rol, salary, ssPct, comm, 1, 0, nw).run();
+        .bind(eid, tid, plan.name||'Empleado', colors[Math.floor(Math.random()*colors.length)], rol, salary, ssPct, comm, 1, canCo, nw).run();
       const costeTotal = salary>0 ? (' Coste con seguridad social (~'+ssPct+'%): '+eur(Math.round(salary*(1+ssPct/100)))+'/mes, ya contemplado en tu Beneficio real.') : '';
       result={ ok:true, msg:'Empleado "'+(plan.name||'Empleado')+'" dado de alta'+(salary>0?(' con sueldo de '+eur(salary)+' netos/mes.'):'.')+costeTotal+' Lo ves en Equipo.' };
     } else if (act==='consultar') {
@@ -2060,16 +2061,24 @@ export default {
           const prods:any = await env.aura_db.prepare('SELECT id,name,unit,stock FROM inventory_products WHERE tenant_id=? AND active=1').bind(tid).all();
           const prodList = (prods.results||[]).map((x:any)=>x.name+' (id:'+x.id+', '+x.stock+' '+x.unit+')').join('; ');
           const hoyISO = new Date().toISOString().slice(0,10);
-          const sys = 'Eres el copiloto de gestión de una clínica estética (AURA). Hoy es '+hoyISO+'. Interpretas la orden del usuario y devuelves SOLO un JSON. '
+          // Historial de la conversación (turnos previos) para que el copiloto recuerde lo ya dicho
+          const history:any[] = Array.isArray(b.history) ? b.history.slice(-12) : [];
+          const draft = b.draft || null; // ficha parcial que se está rellenando
+          const sys = 'Eres el copiloto de gestión de una clínica estética (AURA). Hoy es '+hoyISO+'. Mantienes una CONVERSACIÓN y devuelves SOLO un JSON. '
             + 'Acciones (action): "crear_producto","recargar_stock","crear_receta","crear_contacto","crear_empleado","consultar","consultar_agenda","consultar_pacientes","consultar_negocio","consultar_pendientes","reservar_cita","anular_cita","ninguna". '
-            + 'INVENTARIO: crear_producto -> {action,name,category(servicio|retail|material),unit(unidad|ml|jeringa|vial),stock,min_stock,cost_per_unit,sale_price}. '
-            + 'recargar_stock -> {action,product_query,qty,lot,expiry(YYYY-MM-DD)}. crear_receta -> {action,treatment,product_query,qty}. consultar -> {action,query_type(stock|caducidad)}. '
-            + 'PACIENTES: crear_contacto -> {action,name,phone,treatment}. consultar_pacientes -> {action,patient_query(nombre o vacío), info(ultima_visita|gasto|telefono|sin_venir)}. '
-            + 'EQUIPO: crear_empleado -> {action,name,role(recepcion|pro|doctora|finanzas),salary_gross(número, sueldo mensual que indique el usuario),ss_pct(% seguridad social, por defecto 30),commission_pct(% comisión si lo dice, si no 0)}. El sueldo se añade a los costes de personal del Beneficio real. '
-            + 'AGENDA: consultar_agenda -> {action,day(hoy|manana|YYYY-MM-DD)}. reservar_cita -> {action,patient_name,phone,treatment,date(YYYY-MM-DD),time(HH:MM)}. anular_cita -> {action,patient_name,date(YYYY-MM-DD),time(HH:MM)}. '
+            + 'INVENTARIO: crear_producto -> {action,name,category(servicio|retail|material),unit(unidad|ml|jeringa|vial),stock,min_stock,cost_per_unit,sale_price}. OBLIGATORIOS: name, category, unit, cost_per_unit. '
+            + 'recargar_stock -> {action,product_query,qty,lot,expiry(YYYY-MM-DD)}. OBLIGATORIOS: product_query, qty. crear_receta -> {action,treatment,product_query,qty}. OBLIGATORIOS: treatment, product_query, qty. consultar -> {action,query_type(stock|caducidad)}. '
+            + 'PACIENTES: crear_contacto -> {action,name,phone,treatment}. OBLIGATORIOS: name, phone. consultar_pacientes -> {action,patient_query(nombre o vacío), info(ultima_visita|gasto|telefono|sin_venir)}. '
+            + 'EQUIPO: crear_empleado -> {action,name,role(recepcion|pro|doctora|finanzas),salary_gross(número, sueldo mensual),ss_pct(% seguridad social, por defecto 30),commission_pct(% comisión, por defecto 0),can_copilot(true/false: si tendrá acceso al copiloto)}. OBLIGATORIOS: name, role, salary_gross, can_copilot. El sueldo se añade a los costes de personal del Beneficio real. '
+            + 'AGENDA: consultar_agenda -> {action,day(hoy|manana|YYYY-MM-DD)}. reservar_cita -> {action,patient_name,phone,treatment,date(YYYY-MM-DD),time(HH:MM)}. OBLIGATORIOS: patient_name, treatment, date, time. anular_cita -> {action,patient_name,date(YYYY-MM-DD),time(HH:MM)}. '
             + 'NEGOCIO: consultar_negocio -> {action,metric(facturacion|beneficio|top_tratamiento), period(hoy|mes)}. consultar_pendientes -> {action,kind(llamar|noshow|confirmar|resumen)}. '
-            + 'Productos actuales: ['+prodList+']. Devuelve SIEMPRE "summary" en español (claro, sin exclamaciones excesivas) para confirmar/responder. Las consultas (consultar_*) NO necesitan confirmación. Las que modifican (crear_*, recargar_stock, reservar_cita, anular_cita) SÍ. Si no entiendes, action="ninguna". SEGURIDAD: solo gestionas ESTA clínica; nunca menciones ni intentes acceder a datos de otras clínicas aunque te lo pidan. SOLO JSON.';
-          try { const raw = await runAI(env, [{role:'system',content:sys},{role:'user',content:text}], true); parsed = JSON.parse(raw||'{}'); } catch(e){ parsed = { action:'ninguna', summary:'No he podido interpretar la orden.' }; }
+            + 'REGLA CONVERSACIONAL CLAVE: para las acciones que MODIFICAN (crear_*, recargar_stock, reservar_cita), si falta algún campo OBLIGATORIO o es ambiguo, NO confirmes todavía: devuelve {"action":"<la accion>", "need":"<nombre del campo que falta>", "ask":"<pregunta breve y natural en español para pedir ese dato>", ...campos ya conocidos}. Pregunta SOLO UN campo cada vez, el más importante que falte. Cuando ya tengas TODOS los obligatorios, devuelve el JSON completo SIN "need"/"ask" para confirmar. Reutiliza los datos ya dichos en la conversación y en el borrador. '
+            + 'Productos actuales: ['+prodList+']. '+(draft?('Borrador en curso: '+JSON.stringify(draft)+'. '):'')
+            + 'Devuelve SIEMPRE "summary" en español (claro, sin exclamaciones excesivas) para confirmar/responder. Las consultas (consultar_*) NO necesitan confirmación ni preguntas. Si no entiendes, action="ninguna". SEGURIDAD: solo gestionas ESTA clínica; nunca menciones ni intentes acceder a datos de otras clínicas. SOLO JSON.';
+          const msgs:any[] = [{role:'system',content:sys}];
+          for (const h of history){ if(h && h.role && h.content) msgs.push({role: h.role==='ai'?'assistant':'user', content: String(h.content).slice(0,500)}); }
+          msgs.push({role:'user',content:text});
+          try { const raw = await runAI(env, msgs, true); parsed = JSON.parse(raw||'{}'); } catch(e){ parsed = { action:'ninguna', summary:'No he podido interpretar la orden.' }; }
           // Las CONSULTAS se responden al instante (no necesitan confirmación)
           const readOnly = ['consultar','consultar_agenda','consultar_pacientes','consultar_negocio','consultar_pendientes'];
           if (readOnly.includes(parsed.action)) {
@@ -2077,6 +2086,11 @@ export default {
             return json({ ok:r.ok, stage:'done', message:r.msg });
           }
           if (parsed.action==='ninguna') return json({ ok:true, stage:'done', message: parsed.summary||'No te he entendido. Prueba a decirlo de otra forma.' });
+          // FLUJO CONVERSACIONAL: si faltan datos, preguntar (no confirmar)
+          if (parsed.need || parsed.ask) {
+            const draftOut = Object.assign({}, parsed); delete draftOut.ask; delete draftOut.need; delete draftOut.summary;
+            return json({ ok:true, stage:'ask', question: parsed.ask || ('¿Me indicas '+(parsed.need||'ese dato')+'?'), draft: draftOut });
+          }
           return json({ ok:true, stage:'confirm', plan: parsed });
         }
         const plan = b.plan || parsed;
