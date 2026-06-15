@@ -423,6 +423,7 @@ async function ensureInventorySchema(env: Env) {
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS copilot_log (id TEXT PRIMARY KEY, tenant_id TEXT, actor TEXT, prompt TEXT, action TEXT, payload TEXT, result TEXT, created_at INTEGER)"); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE professionals ADD COLUMN can_copilot INTEGER DEFAULT 0'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE team_members ADD COLUMN can_copilot INTEGER DEFAULT 0'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE wa_messages ADD COLUMN att_id TEXT'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE inventory_products ADD COLUMN image_url TEXT'); } catch(e){}
   __invReady = true;
 }
@@ -2128,6 +2129,23 @@ export default {
         const digits9 = (s:any)=> String(s||'').replace(/@.*/,'').replace(/\D/g,'').slice(-9);
         // Convierte string de QR en data URL de imagen usando un generador externo no es posible offline; devolvemos el string y el panel lo renderiza
 
+        // PROXY DE MEDIOS: descarga el adjunto de Unipile (foto/video/audio/doc) y lo sirve al navegador
+        if (p === '/api/wa-media' && req.method === 'GET') {
+          const mid = url.searchParams.get('mid')||''; let aid = url.searchParams.get('aid')||'';
+          if(!mid) return new Response('missing mid', { status:400 });
+          // Si no tenemos attachment_id, intentamos resolverlo consultando el mensaje en Unipile
+          if(!aid || aid==='0' || aid==='null'){
+            try{ const mr = await uni('/api/v1/messages/'+encodeURIComponent(mid)); const at=(mr.data?.attachments&&mr.data.attachments[0])||null; aid = at?(at.id||at.attachment_id||''):''; }catch(e){}
+          }
+          if(!aid) return new Response('no attachment', { status:404 });
+          try{
+            const ar = await fetch(UNI+'/api/v1/messages/'+encodeURIComponent(mid)+'/attachments/'+encodeURIComponent(aid), { headers:{ 'X-API-KEY': UKEY } });
+            if(!ar.ok) return new Response('upstream '+ar.status, { status:502 });
+            const ct = ar.headers.get('content-type') || 'application/octet-stream';
+            const buf = await ar.arrayBuffer();
+            return new Response(buf, { headers: { 'content-type': ct, 'cache-control':'public, max-age=86400', 'access-control-allow-origin':'*' } });
+          }catch(e){ return new Response('error', { status:500 }); }
+        }
         // Estado de conexión
         if (p === '/api/wa-status' && req.method === 'GET') {
           if(!tnt) return json({error:'missing tenant'},400);
@@ -2201,10 +2219,14 @@ export default {
               const items = (r.data?.items)||[];
               for (const m of items){ const att=(m.attachments&&m.attachments[0])||null;
                 const mtype=att?String(att.type||att.mimetype||att.mime_type||'file').toLowerCase():'text';
-                const murl=att?(att.url||att.download_url||att.public_url||att.file_url||(att.data&&att.data.url)||null):null;
+                const directUrl=att?(att.url||att.download_url||att.public_url||att.file_url||(att.data&&att.data.url)||null):null;
+                const attId=att?(att.id||att.attachment_id||null):null;
                 const mname=att?(att.file_name||att.name||att.filename||null):null;
+                const mid=m.id||(chatId+'_'+(m.timestamp?Date.parse(m.timestamp):Date.now()));
+                // Si no hay URL directa pero hay adjunto, lo serviremos por nuestro proxy /api/wa-media
+                const murl = directUrl || (att ? ('/api/wa-media?mid='+encodeURIComponent(mid)+'&aid='+encodeURIComponent(attId||'0')+'&t='+encodeURIComponent(tnt)) : null);
                 const ts=m.timestamp?Date.parse(m.timestamp):Date.now(); const fromMe=(m.is_sender===1||m.is_sender===true)?1:0;
-                try{ await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(m.id||(chatId+'_'+ts), tnt, chatId, fromMe, m.text||'', mtype, murl, mname, ts, Date.now()).run(); }catch(e){}
+                try{ await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,att_id,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(mid, tnt, chatId, fromMe, m.text||'', mtype, murl, mname, attId, ts, Date.now()).run(); }catch(e){}
               }
             } catch(e){}
             dbRes = await env.aura_db.prepare('SELECT * FROM wa_messages WHERE tenant_id=? AND chat_id=? ORDER BY ts ASC LIMIT 100').bind(tnt, chatId).all();

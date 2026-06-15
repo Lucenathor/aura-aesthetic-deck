@@ -2948,11 +2948,14 @@ function waIsPhone(s){ if(!s) return false; var d=String(s).replace(/\D/g,''); v
 function waFmtPhone(s){ var d=String(s||'').replace(/\D/g,''); if(!d) return ''; if(d.length>=11) return '+'+d.slice(0,d.length-9)+' '+d.slice(-9,-6)+' '+d.slice(-6,-3)+' '+d.slice(-3); if(d.length===9) return d.slice(0,3)+' '+d.slice(3,6)+' '+d.slice(6); return '+'+d; }
 // Nombre legible para mostrar: lead.name > pushName real > teléfono formateado > 'Contacto sin nombre'
 function waDisplayName(c){ if(!c) return 'Contacto'; var lead=c._lead; if(lead&&lead.name&&lead.name.trim()) return lead.name.trim(); var pn=(c.pushName||c.name||'').trim(); var phone=c.phone||waJidToNumber(c.id||c.chat_id||''); if(pn && !waIsPhone(pn) && pn!==waJidToNumber(c.id||'')) return pn; if(waIsPhone(phone)) return waFmtPhone(phone); if(waIsPhone(pn)) return waFmtPhone(pn); return 'Contacto sin nombre'; }
-function waSubLine(c){ var phone=c.phone||waJidToNumber(c.id||c.chat_id||''); return waIsPhone(phone)?waFmtPhone(phone):'WhatsApp'; }
+function waSubLine(c){ var phone=c.phone||waJidToNumber(c.id||c.chat_id||''); if(waIsPhone(phone)) return waFmtPhone(phone); var pn=(c.pushName||c.name||''); if(waIsPhone(pn)) return waFmtPhone(pn); return 'WhatsApp'; }
 const WA_QUICK=[{label:'👋 Saludo',text:'¡Hola! Gracias por escribirnos 😊 ¿En qué podemos ayudarte?'},{label:'💰 Precios',text:'Te paso la información de precios. ¿Qué tratamiento te interesa?'},{label:'📅 Reservar',text:'¿Quieres que te reserve un hueco? Díme qué día y hora te viene mejor.'},{label:'✅ Confirmar cita',text:'Te confirmo tu cita. ¡Te esperamos!'},{label:'🙏 Gracias',text:'¡Gracias a ti! Cualquier cosa, aquí estamos.'}];
 function waQuickReply(i){ const q=WA_QUICK[i]; if(!q)return; const inp=document.getElementById('waInput'); if(inp){ inp.value=q.text; inp.focus(); } }
-function waInitials(n){ return (n||'?').trim().charAt(0).toUpperCase(); }
-function waAvatar(name,pic,size){ size=size||44; if(pic) return '<img src="'+pic+'" style="width:'+size+'px;height:'+size+'px;border-radius:50%;object-fit:cover;flex:none"/>'; return '<span style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:linear-gradient(135deg,#25d366,#1f8c69);color:#fff;display:grid;place-items:center;font-weight:800;flex:none;font-size:'+(size/2.6)+'px">'+waInitials(name)+'</span>'; }
+function waInitials(n){ var s=(n||'').trim(); if(!s||s==='Contacto sin nombre'||s.charAt(0)==='+') return '👤'; return s.charAt(0).toUpperCase(); }
+// Paleta amable y variada: el color sale de la inicial/nombre para que sea estable por contacto
+var WA_AV_GRAD=['#F2A65A,#E76F51','#7FB069,#52796F','#6C9BD1,#3D5A80','#C08497,#8E5572','#E9C46A,#E76F51','#9D8DF1,#6C5CE7','#56C2A8,#1F8C69','#F4978E,#C9485B','#7AC7C4,#3A8A8C','#E5989B,#B5838D'];
+function waColorFor(name){ var s=String(name||'?'); var h=0; for(var i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))>>>0; } return WA_AV_GRAD[h%WA_AV_GRAD.length]; }
+function waAvatar(name,pic,size){ size=size||44; if(pic) return '<img src="'+pic+'" onerror="this.style.display=\'none\'" style="width:'+size+'px;height:'+size+'px;border-radius:50%;object-fit:cover;flex:none"/>'; var ini=waInitials(name); var grad=waColorFor(name); return '<span style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:linear-gradient(135deg,'+grad+');color:#fff;display:grid;place-items:center;font-weight:700;flex:none;font-size:'+(ini.length>1?size/2.4:size/2.4)+'px;box-shadow:0 2px 6px rgba(0,0,0,.12)">'+ini+'</span>'; }
 function waTime(ts){ if(!ts)return''; try{ const d=new Date(ts); return d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}); }catch(e){return'';} }
 function waDateLabel(ts){ if(!ts)return''; try{ const d=new Date(ts), h=new Date(), y=new Date(Date.now()-864e5); if(d.toDateString()===h.toDateString())return'Hoy'; if(d.toDateString()===y.toDateString())return'Ayer'; return d.toLocaleDateString('es-ES',{day:'numeric',month:'long'}); }catch(e){return'';} }
 function renderWaInbox(){
@@ -3005,8 +3008,10 @@ async function openWaChat(jid, name){
 }
 function waBackToList(){ const grid=document.getElementById('waGrid'); if(grid){ grid.classList.remove('show-chat'); grid.classList.remove('show-ctx'); } _waActive=null; }
 function waToggleCtx(){ const grid=document.getElementById('waGrid'); if(grid){ grid.classList.toggle('show-ctx'); } }
+function waMediaUrl(u){ if(!u) return u; if(/^https?:/i.test(u)) return u; if(u.charAt(0)==='/') return WORKER+u; return u; }
 function waMsgBubble(m){
   const fromMe=m.fromMe||(m.key&&m.key.fromMe); const t=waTime(m.timestamp);
+  if(m.murl) m.murl=waMediaUrl(m.murl);
   let inner=''; const mt=String(m.mtype||'text').toLowerCase();
   const isImg=/img|image|photo/.test(mt), isVid=/vid|video/.test(mt), isAud=/audio|voice|ptt/.test(mt), isSticker=/sticker/.test(mt), isDoc=/doc|file|pdf|application/.test(mt);
   if(m.murl && isImg) inner='<img src="'+m.murl+'" loading="lazy" style="max-width:240px;width:100%;border-radius:10px;display:block;cursor:pointer" onclick="window.open(this.src,\'_blank\')"/>'+(m.text?'<div style="margin-top:5px">'+escapeHtml(m.text)+'</div>':'');
