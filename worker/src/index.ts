@@ -1293,7 +1293,7 @@ export default {
         const ua = req.headers.get('user-agent') || '';
         const id = 'la_'+Math.random().toString(36).slice(2,12);
         await env.aura_db.prepare('INSERT INTO legal_acceptances (id,tenant_id,email,signer_name,clinic_name,version,docs,ip,user_agent,accepted_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
-          .bind(id, tid, s.email, signer, (t&&t.name)||(b.clinic_name||''), b.version||'1.0', JSON.stringify({terms:true,privacy:true,dpa:true}), ip, ua, Date.now()).run();
+          .bind(id, tid, s.email, signer, (t&&t.name)||(b.clinic_name||''), b.version||'1.0', JSON.stringify({terms:true,privacy:true,dpa:true,reviewed:!!b.reviewed}), ip, ua, Date.now()).run();
         return json({ ok:true, id });
       }
       // Listar todos los tenants (solo para superadmin)
