@@ -1066,7 +1066,8 @@ async function loadTeam(){
   loadEmployees();
 }
 // ===== EMPLEADOS / NÓMINAS =====
-const EMP_ROLES={pro:'Profesional',reception:'Recepción',manager:'Gerente',aux:'Auxiliar',other:'Otro'};
+const EMP_ROLES={pro:'Profesional',doctora:'Doctora',reception:'Recepción',finanzas:'Finanzas',manager:'Gerente',aux:'Auxiliar',other:'Otro'};
+function roleLabel(r){ if(!r) return 'Profesional'; var k=String(r).toLowerCase().trim(); var map={pro:'Profesional',profesional:'Profesional',reception:'Recepción',recepcion:'Recepción','recepción':'Recepción',recepcionista:'Recepción',doctora:'Doctora',doctor:'Doctor',medico:'Médico','médico':'Médico',finance:'Finanzas',finanzas:'Finanzas',manager:'Gerente',gerente:'Gerente',aux:'Auxiliar',auxiliar:'Auxiliar',owner:'Propietario',other:'Otro',otro:'Otro'}; return map[k] || (k.charAt(0).toUpperCase()+k.slice(1)); }
 async function loadEmployees(){
   if(typeof CAN_FINANCE!=='undefined' && !CAN_FINANCE){ return; }
   const c=document.getElementById('empList'); if(!c)return;
@@ -1082,7 +1083,7 @@ async function loadEmployees(){
     if(!list.length){ c.innerHTML='<div style="color:var(--muted);font-size:.85rem">Aún no has añadido empleados. Añade tu equipo con su salario para ver tu beneficio real.</div>'; return; }
     c.innerHTML=list.map(e=>{ const sal=+e.salary_gross||0; const ss=e.ss_pct!=null?+e.ss_pct:30; const coste=sal*(1+ss/100); const inactive=e.active===0;
       return '<div style="display:flex;align-items:center;gap:.7rem;padding:.7rem 0;border-bottom:1px solid var(--line);'+(inactive?'opacity:.5':'')+'"><div style="width:34px;height:34px;border-radius:50%;background:'+(e.color||'#c8745a')+';color:#fff;display:grid;place-items:center;font-weight:700;flex:none">'+((e.name||'?').charAt(0).toUpperCase())+'</div>'
-        +'<div style="flex:1;min-width:0"><b style="font-size:.92rem">'+(e.name||'Empleado')+'</b> <span class="tag" style="background:var(--bg2);font-size:.68rem">'+(EMP_ROLES[e.role]||e.role||'Profesional')+'</span><div style="font-size:.76rem;color:var(--muted)">'+(sal>0?eur(sal)+' bruto/mes · +'+ss+'% S.S. = '+eur(coste):'sin salario')+(e.commission_pct>0?' · '+e.commission_pct+'% comisión':'')+'</div></div>'
+        +'<div style="flex:1;min-width:0"><b style="font-size:.92rem">'+(e.name||'Empleado')+'</b> <span class="tag" style="background:var(--bg2);font-size:.68rem">'+roleLabel(e.role)+'</span><div style="font-size:.76rem;color:var(--muted)">'+(sal>0?eur(sal)+' bruto/mes · +'+ss+'% S.S. = '+eur(coste):'sin salario')+(e.commission_pct>0?' · '+e.commission_pct+'% comisión':'')+'</div></div>'
         +'<button class="btn" style="padding:.3rem .6rem;font-size:.75rem" onclick="editProSchedule(\''+e.id+'\')">🕒 Horario</button>'
         +'<button class="btn" style="padding:.3rem .6rem;font-size:.75rem" onclick="editEmployee(\''+e.id+'\')">Editar</button>'
         +'<button class="btn" style="padding:.3rem .45rem;font-size:.75rem" onclick="delEmployee(\''+e.id+'\',\''+(e.name||'').replace(/\x27/g,"")+'\')">✕</button></div>'; }).join('');
