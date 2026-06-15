@@ -626,7 +626,7 @@ export default {
       ]);
       // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
       const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar','/api/portal-clients']);
-      const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p)) || (p==='/api/packs' && req.method==='POST') || (p.startsWith('/api/wa-') && p!=='/api/wa-webhook') || p.startsWith('/api/inv-') || p==='/api/copilot';
+      const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p)) || (p==='/api/packs' && req.method==='POST') || (p.startsWith('/api/wa-') && p!=='/api/wa-webhook' && p!=='/api/wa-media') || p.startsWith('/api/inv-') || p==='/api/copilot';
       if (mustGuard) {
         // tenant solicitado: de query (?tenant=) o del body para POST
         let tenantReq = url.searchParams.get('tenant') || url.searchParams.get('tenant_id');
@@ -2212,8 +2212,9 @@ export default {
           if(!tnt) return json({error:'missing tenant'},400);
           const chatId = url.searchParams.get('number')||'';
           let dbRes:any = await env.aura_db.prepare('SELECT * FROM wa_messages WHERE tenant_id=? AND chat_id=? ORDER BY ts ASC LIMIT 100').bind(tnt, chatId).all();
-          if(!(dbRes.results||[]).length){
-            // sincroniza historial desde Unipile una vez
+          // Sincroniza desde Unipile si el chat está vacío, si faltan adjuntos, o si aún no hemos bajado el historial completo (<60)
+          const missingMedia = (dbRes.results||[]).some((x:any)=> x.mtype && x.mtype!=='text' && !x.att_id);
+          if(!(dbRes.results||[]).length || missingMedia || (dbRes.results||[]).length < 60){
             try {
               const r = await uni('/api/v1/chats/'+encodeURIComponent(chatId)+'/messages?limit=60');
               const items = (r.data?.items)||[];
@@ -2223,10 +2224,10 @@ export default {
                 const attId=att?(att.id||att.attachment_id||null):null;
                 const mname=att?(att.file_name||att.name||att.filename||null):null;
                 const mid=m.id||(chatId+'_'+(m.timestamp?Date.parse(m.timestamp):Date.now()));
-                // Si no hay URL directa pero hay adjunto, lo serviremos por nuestro proxy /api/wa-media
                 const murl = directUrl || (att ? ('/api/wa-media?mid='+encodeURIComponent(mid)+'&aid='+encodeURIComponent(attId||'0')+'&t='+encodeURIComponent(tnt)) : null);
                 const ts=m.timestamp?Date.parse(m.timestamp):Date.now(); const fromMe=(m.is_sender===1||m.is_sender===true)?1:0;
-                try{ await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,att_id,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(mid, tnt, chatId, fromMe, m.text||'', mtype, murl, mname, attId, ts, Date.now()).run(); }catch(e){}
+                // INSERT OR REPLACE: inserta o reemplaza por message_id (PK), rellenando medios
+                try{ await env.aura_db.prepare("INSERT OR REPLACE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,att_id,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(mid, tnt, chatId, fromMe, m.text||'', mtype, murl, mname, attId, ts, Date.now()).run(); }catch(e){}
               }
             } catch(e){}
             dbRes = await env.aura_db.prepare('SELECT * FROM wa_messages WHERE tenant_id=? AND chat_id=? ORDER BY ts ASC LIMIT 100').bind(tnt, chatId).all();
