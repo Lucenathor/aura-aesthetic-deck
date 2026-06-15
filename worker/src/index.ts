@@ -1269,6 +1269,77 @@ export default {
         return json({ tenants: r.results || [] });
       }
 
+      // ============ ADMINISTRACIÓN (solo Super Admin) — onboarding de clínicas ============
+      if (p.startsWith('/api/admin-')) {
+        // Verificar Super Admin por sesión
+        let tk = (req.headers.get('authorization')||'').replace(/^Bearer\s+/i,''); if(!tk) tk = url.searchParams.get('token')||'';
+        if(!tk){ try{ const c=req.headers.get('cookie')||''; const m=c.match(/aura_token=([^;]+)/); if(m) tk=decodeURIComponent(m[1]); }catch(e){} }
+        const sess:any = tk ? await env.aura_db.prepare('SELECT email FROM sessions WHERE token=?').bind(tk).first() : null;
+        const ow:any = sess ? await env.aura_db.prepare('SELECT role FROM owners WHERE email=?').bind(sess.email).first() : null;
+        if (!ow || ow.role !== 'superadmin') return json({ error:'forbidden' }, 403);
+
+        // LISTAR clínicas con estado (pacientes, SMS, WhatsApp, plan)
+        if (p === '/api/admin-clinics' && req.method === 'GET') {
+          const ts:any = await env.aura_db.prepare('SELECT id,name,city,email,owner_name,status,plan,sms_credits,created_at FROM tenants ORDER BY created_at DESC').all();
+          const out:any[] = [];
+          for (const t of (ts.results||[])) {
+            const pac:any = await env.aura_db.prepare('SELECT COUNT(*) c FROM leads WHERE tenant_id=?').bind(t.id).first();
+            const wa:any = await env.aura_db.prepare('SELECT connected FROM wa_config WHERE tenant_id=?').bind(t.id).first().catch(()=>null);
+            out.push({ ...t, patients: pac?pac.c:0, wa_connected: wa?!!wa.connected:false });
+          }
+          return json({ ok:true, clinics: out });
+        }
+
+        // CREAR clínica nueva (vacía y aislada)
+        if (p === '/api/admin-create-clinic' && req.method === 'POST') {
+          const b:any = await req.json();
+          const name = (b.name||'').trim(); if(!name) return json({ ok:false, error:'name_required' });
+          // id slug único a partir del nombre
+          let base = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40) || 'clinica';
+          let id = base; let n=1;
+          while (await env.aura_db.prepare('SELECT 1 FROM tenants WHERE id=?').bind(id).first()) { id = base+'-'+(++n); }
+          const email = (b.email||'').trim().toLowerCase();
+          const nw = Date.now();
+          await env.aura_db.prepare('INSERT INTO tenants (id,name,city,address,whatsapp,email,owner_name,doctor_name,brand_primary,brand_accent,google_rating,google_reviews,status,plan,sms_credits,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+            .bind(id, name, b.city||'', b.address||'', b.whatsapp||'', email, b.owner_name||'', b.doctor_name||'', b.brand_primary||'#C8745A', b.brand_accent||'#A85942', 4.9, 0, 'active', b.plan||'growth', 100, nw, nw).run();
+          // Propietario: lo damos de alta en owners (rol owner) para que pueda entrar
+          if (email.includes('@')) {
+            try { await env.aura_db.prepare('INSERT INTO owners (email,tenant_id,role,created_at) VALUES (?,?,?,?)').bind(email, id, 'owner', nw).run(); } catch(e){}
+          }
+          // Packs de ejemplo opcionales (para que el portal no nazca vacío)
+          if (b.seed_packs) {
+            await ensurePacksSchema(env);
+            const packs = [
+              { name:'Bono 3 sesiones', tagline:'Ahorra reservando tu pack', price:240, sessions:3, badge:'', featured:0 },
+              { name:'Pack Glow facial', tagline:'Tu piel radiante', price:180, sessions:1, badge:'Nuevo', featured:1 },
+              { name:'Membresía mensual', tagline:'Cuídate todo el año', price:59, sessions:1, badge:'', featured:0 },
+            ];
+            for (const pk of packs) { try { await env.aura_db.prepare('INSERT INTO packs (id,tenant_id,name,tagline,price,sessions,badge,featured,active,created_at) VALUES (?,?,?,?,?,?,?,?,1,?)').bind('pk_'+Math.random().toString(36).slice(2,12), id, pk.name, pk.tagline, pk.price, pk.sessions, pk.badge, pk.featured, nw).run(); } catch(e){} }
+          }
+          return json({ ok:true, id, login_url:'https://aura-mvp.pages.dev/login' });
+        }
+
+        // ENVIAR acceso al propietario (email con enlace al panel)
+        if (p === '/api/admin-send-access' && req.method === 'POST') {
+          const b:any = await req.json(); const email=(b.email||'').trim().toLowerCase(); const cname=b.clinic_name||'tu clínica';
+          if(!email.includes('@')) return json({ ok:false, error:'email_invalido' });
+          try{ await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':'Bearer '+env.RESEND_KEY,'Content-Type':'application/json'},body:JSON.stringify({
+            from:'AURA <onboarding@resend.dev>', to:[email], subject:'Tu panel de AURA ya está listo',
+            html:`<div style="font-family:sans-serif;max-width:460px;margin:auto;padding:24px"><h2 style="font-family:Georgia,serif;color:#A85942">Bienvenida a AURA</h2><p style="color:#444">Hemos preparado el panel de <b>${cname}</b>. Entra con este correo y te enviaremos un código de acceso.</p><a href="https://aura-mvp.pages.dev/login" style="display:inline-block;background:#C8745A;color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:bold;margin-top:10px">Entrar a mi panel</a></div>`
+          })}); }catch(e){ return json({ ok:false, error:'email_fallo' }); }
+          return json({ ok:true });
+        }
+
+        // ELIMINAR clínica (con confirmación en el front)
+        if (p === '/api/admin-delete-clinic' && req.method === 'POST') {
+          const b:any = await req.json(); const id=b.id;
+          if(!id || id==='aura-demo') return json({ ok:false, error:'protegida' });
+          await env.aura_db.prepare("UPDATE tenants SET status='archived' WHERE id=?").bind(id).run();
+          return json({ ok:true });
+        }
+        return json({ ok:false, error:'unknown_admin_endpoint' });
+      }
+
       // EQUIPO: listar miembros
       if (p === '/api/team' && req.method === 'GET') {
         const tenant = url.searchParams.get('tenant');

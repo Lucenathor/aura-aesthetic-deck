@@ -379,6 +379,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
     <div class="nav-item" data-v="embudo"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18l-7 8v6l-4 2v-8z"/></svg></span> Embudo</div>
     <div class="nav-item" data-v="equipo"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="3.2"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg></span> Equipo</div>
     <div class="nav-item" data-v="ajustes"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Ajustes</div>
+    <div class="nav-item" data-v="admin" id="navAdmin" style="display:none"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V5z"/><path d="m9 12 2 2 4-4"/></svg></span> Administración</div>
     <div class="side-foot">
       <div id="saSelector" style="display:none;margin-bottom:.8rem">
         <label style="font-size:.7rem;font-weight:700;color:var(--terra)">SUPER ADMIN</label>
@@ -733,6 +734,13 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
       </div>
     </section>
 
+    <!-- ADMINISTRACIÓN (solo super admin): onboarding de clínicas -->
+    <section class="view" id="v-admin">
+      <div class="top"><div><h1>Administración</h1><div class="sub2">Da de alta y configura clínicas llave en mano. Solo tú (Super Admin) ves esta sección. Cada clínica nace vacía y aislada.</div></div>
+        <div class="actions"><button class="btn prim" onclick="openNewClinic()">+ Nueva clínica</button></div></div>
+      <div id="adminList" style="display:grid;gap:.7rem"><div style="color:var(--muted);font-size:.85rem">Cargando clínicas…</div></div>
+    </section>
+
     <!-- EMBUDO / EDITOR v2 -->
     <section class="view" id="v-embudo">
       <div class="top"><div><h1>Editor de embudos</h1><div class="sub2">Personaliza la página que ve la clienta antes de reservar (textos, fotos, ofertas). Lo editas aquí y lo ves en vivo al lado.</div></div>
@@ -950,6 +958,8 @@ function applyRolePerms(){
   CAN_FINANCE = (ROLE==='owner'||ROLE==='finance'||ROLE==='superadmin');
   const pc=document.getElementById('profitCard'); if(pc) pc.style.display=CAN_FINANCE?'':'none';
   const ec=document.getElementById('empCard'); if(ec) ec.style.display=CAN_FINANCE?'':'none';
+  // Administración: solo Super Admin
+  const na=document.getElementById('navAdmin'); if(na) na.style.display = (ROLE==='superadmin') ? 'flex' : 'none';
   // Copiloto IA global: visible para propietario, finanzas, recepción y super admin
   const canCopilot = (ROLE==='owner'||ROLE==='finance'||ROLE==='reception'||ROLE==='superadmin');
   const fab=document.getElementById('copilotFab'); if(fab) fab.style.display=canCopilot?'flex':'none';
@@ -1079,6 +1089,7 @@ function goSection(v,push){
   if(v==='ajustes'){loadSmsTpl();loadSmsCredits();try{ if(typeof buildTimeline==='function')buildTimeline(); }catch(e){}}
   if(v==='whatsapp'){ try{ loadWhatsApp(); }catch(e){} }
   if(v==='inventario'){ try{ loadInventory(); }catch(e){} }
+  if(v==='admin'){ try{ loadAdmin(); }catch(e){} }
   if(v==='portal'){ mountPortalCards(); loadPortalClients(); try{ loadClinicMeta(); if(typeof loadLoyalty==='function')loadLoyalty(); if(typeof loadPacks==='function')loadPacks(); if(typeof renderPortalQR==='function')renderPortalQR(); }catch(e){} }
 }
 // Mueve las cards de puntos y packs (definidas en Ajustes) a la seccion Portal del cliente
@@ -3136,6 +3147,57 @@ async function coToggleVoice(){ const mic=document.getElementById('coMic');
     _coSetMic('rec');
     _coTimer=setInterval(()=>{ const mic2=document.getElementById('coMic'); if(!mic2){return;} const s=Math.floor((Date.now()-_coT0)/1000); const mm=Math.floor(s/60), ss=s%60; mic2.innerHTML='<span style="font-size:.7rem;font-weight:800">'+mm+':'+(ss<10?'0':'')+ss+'</span>'; if(s>=120){ try{_coRec.stop();}catch(e){} } },300);
   }catch(e){ if(typeof toast==='function')toast('No hay acceso al micrófono. Permite el micro en el navegador.','error'); } }
+
+// ===== ADMINISTRACIÓN (Super Admin): onboarding de clínicas =====
+async function adminApi(path, opts){ opts=opts||{}; opts.headers=Object.assign({'Authorization':'Bearer '+(localStorage.getItem('aura_token')||''),'Content-Type':'application/json'}, opts.headers||{}); const r=await fetch(WORKER+path, opts); return r.json(); }
+async function loadAdmin(){
+  const c=document.getElementById('adminList'); if(!c)return;
+  c.innerHTML='<div style="color:var(--muted);font-size:.85rem">Cargando clínicas…</div>';
+  try{
+    const d=await adminApi('/api/admin-clinics');
+    const cl=(d&&d.clinics)||[];
+    if(!cl.length){ c.innerHTML='<div style="color:var(--muted);font-size:.9rem">Aún no hay clínicas. Pulsa “+ Nueva clínica” para dar de alta la primera.</div>'; return; }
+    c.innerHTML=cl.map(function(t){
+      var estado = t.status==='archived' ? '<span style="color:#b0432e;font-weight:700">Archivada</span>' : '<span style="color:#1f8c69;font-weight:700">Activa</span>';
+      var wa = t.wa_connected ? 'WhatsApp ✓' : 'WhatsApp —';
+      return '<div style="border:1px solid var(--line);border-radius:14px;padding:1rem 1.1rem;background:#fff;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">'
+        +'<div style="min-width:200px"><div style="font-weight:700;font-size:1rem">'+escapeHtml(t.name||t.id)+'</div>'
+        +'<div style="font-size:.78rem;color:var(--muted)">'+escapeHtml(t.city||'')+(t.email?(' · '+escapeHtml(t.email)):'')+'</div>'
+        +'<div style="font-size:.78rem;color:var(--muted);margin-top:.2rem">'+estado+' · '+(t.patients||0)+' pacientes · '+(t.sms_credits||0)+' SMS · '+wa+' · plan '+escapeHtml(t.plan||'—')+'</div></div>'
+        +'<div style="display:flex;gap:.4rem;flex-wrap:wrap">'
+        +'<button class="btn" style="font-size:.78rem" onclick="adminOpenClinic(\''+t.id+'\')">Abrir panel</button>'
+        +(t.email?('<button class="btn" style="font-size:.78rem" onclick="adminSendAccess(\''+t.id+'\',\''+escapeHtml(t.email)+'\',\''+escapeHtml((t.name||"").replace(/\x27/g,""))+'\')">Enviar acceso</button>'):'')
+        +(t.id!=='aura-demo'&&t.status!=='archived'?('<button class="btn" style="font-size:.78rem;color:#b0432e" onclick="adminArchive(\''+t.id+'\',\''+escapeHtml((t.name||"").replace(/\x27/g,""))+'\')">Archivar</button>'):'')
+        +'</div></div>';
+    }).join('');
+  }catch(e){ c.innerHTML='<div style="color:#b0432e;font-size:.85rem">No se pudo cargar el listado.</div>'; }
+}
+function adminOpenClinic(id){ try{ if(typeof switchTenant==='function'){ switchTenant(id); } else { T=id; } }catch(e){ T=id; } goSection('resumen'); if(typeof toast==='function')toast('Entrando en la clínica…'); }
+function openNewClinic(){
+  waModal('Nueva clínica',
+    '<div style="display:grid;gap:.6rem">'
+    +'<label style="font-size:.8rem">Nombre de la clínica *<input id="ncName" placeholder="Ej. Clínica Bella Madrid" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:8px;margin-top:.2rem"/></label>'
+    +'<label style="font-size:.8rem">Email del propietario<input id="ncEmail" type="email" placeholder="dueña@clinica.com" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:8px;margin-top:.2rem"/></label>'
+    +'<div style="display:flex;gap:.5rem"><label style="font-size:.8rem;flex:1">Ciudad<input id="ncCity" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:8px;margin-top:.2rem"/></label>'
+    +'<label style="font-size:.8rem;flex:1">WhatsApp<input id="ncWa" placeholder="+34…" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:8px;margin-top:.2rem"/></label></div>'
+    +'<label style="font-size:.8rem">Nombre del propietario<input id="ncOwner" placeholder="Dra. …" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:8px;margin-top:.2rem"/></label>'
+    +'<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;background:var(--bg2);border-radius:10px;padding:.55rem .7rem;font-size:.82rem"><input type="checkbox" id="ncSeed" checked/> Precargar 3 packs de ejemplo (para que su portal no nazca vacío)</label>'
+    +'<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem"><input type="checkbox" id="ncSend" checked/> Enviar email de acceso al propietario al crearla</label>'
+    +'</div>',
+    'Crear clínica', async function(){
+      var name=(document.getElementById('ncName').value||'').trim();
+      if(!name){ if(typeof toast==='function')toast('Pon el nombre de la clínica','error'); return false; }
+      var email=(document.getElementById('ncEmail').value||'').trim();
+      var body={ name:name, email:email, city:(document.getElementById('ncCity').value||''), whatsapp:(document.getElementById('ncWa').value||''), owner_name:(document.getElementById('ncOwner').value||''), seed_packs: document.getElementById('ncSeed').checked };
+      var r=await adminApi('/api/admin-create-clinic',{method:'POST',body:JSON.stringify(body)});
+      if(!r||!r.ok){ if(typeof toast==='function')toast('No se pudo crear','error'); return false; }
+      if(document.getElementById('ncSend').checked && email.includes('@')){ try{ await adminApi('/api/admin-send-access',{method:'POST',body:JSON.stringify({email:email,clinic_name:name})}); }catch(e){} }
+      if(typeof toast==='function')toast('Clínica creada ✓');
+      loadAdmin();
+    });
+}
+async function adminSendAccess(id,email,name){ if(!confirm('¿Enviar email de acceso a '+email+'?'))return; var r=await adminApi('/api/admin-send-access',{method:'POST',body:JSON.stringify({email:email,clinic_name:name})}); if(typeof toast==='function')toast(r&&r.ok?'Acceso enviado ✓':'No se pudo enviar', r&&r.ok?'':'error'); }
+async function adminArchive(id,name){ if(!confirm('¿Archivar la clínica "'+name+'"? Dejará de estar activa (no se borran sus datos).'))return; var r=await adminApi('/api/admin-delete-clinic',{method:'POST',body:JSON.stringify({id:id})}); if(typeof toast==='function')toast(r&&r.ok?'Clínica archivada':'No se pudo','error'); loadAdmin(); }
 
 function loadAll(){loadKPIs();loadLeads();loadAppts();loadPipeline();loadSmsCredits();}
 
