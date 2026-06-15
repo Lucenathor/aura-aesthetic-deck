@@ -941,9 +941,60 @@ async function guard(){
         }
       });
     }
+    // Aceptación legal obligatoria del dueño (clickwrap) antes de usar el panel
+    if(ROLE==='owner' && d.legal_accepted===false){
+      showLegalGate(d.name||d.email||'');
+      return false;
+    }
   }catch(e){}
   applyRolePerms();
   return true;
+}
+
+// ===== PANTALLA DE ACEPTACIÓN LEGAL (clickwrap obligatorio en primer acceso del dueño) =====
+function showLegalGate(signerHint){
+  var clinicName = (typeof TENANT_NAME!=='undefined' && TENANT_NAME) ? TENANT_NAME : '';
+  // intentamos obtener el nombre real de la clínica
+  try{ fetch(WORKER+'/api/portal-info?tenant='+encodeURIComponent(T)).then(r=>r.json()).then(function(pi){ var el=document.getElementById('lgClinicName'); if(el && pi && pi.name){ el.textContent=pi.name; } }); }catch(e){}
+  var ov=document.createElement('div');
+  ov.id='legalGate';
+  ov.style.cssText='position:fixed;inset:0;z-index:100000;background:#FBF8F2;overflow-y:auto;font-family:Inter,system-ui,sans-serif;color:#1F2024';
+  ov.innerHTML=''
+    +'<div style="max-width:640px;margin:0 auto;padding:2.2rem 1.3rem 3rem">'
+    +'<div style="font-family:\'Inter Tight\',sans-serif;font-weight:800;font-size:1.2rem;letter-spacing:-.02em;color:#0F1011;margin-bottom:1.4rem">AURA</div>'
+    +'<div style="background:#fff;border:1px solid #EAE2D2;border-radius:18px;padding:1.6rem 1.5rem;box-shadow:0 20px 50px -24px rgba(0,0,0,.25)">'
+      +'<h1 style="font-family:\'Inter Tight\',sans-serif;font-weight:800;font-size:1.5rem;letter-spacing:-.02em;color:#0F1011;line-height:1.12;margin:0 0 .5rem">Antes de empezar, revisa y acepta las condiciones</h1>'
+      +'<p style="color:#7C7872;font-size:.92rem;line-height:1.6;margin:0 0 1.2rem">Para activar el panel de <b id="lgClinicName" style="color:#1F2024">'+(clinicName||'tu clínica')+'</b> necesitamos tu aceptación de los documentos legales. Es un paso único.</p>'
+      +'<div style="background:#FFF3EE;border:1px solid #F6D9CF;border-radius:12px;padding:.9rem 1.1rem;font-size:.86rem;line-height:1.55;margin-bottom:1.3rem">Como responsable de la clínica, eres responsable de los datos de tus pacientes (incluidos los datos de salud) y de contar con su consentimiento. AURA actúa como encargado del tratamiento por tu cuenta. Lee con atención el Contrato de Encargado de Tratamiento.</div>'
+      +'<label style="display:flex;gap:.7rem;align-items:flex-start;padding:.8rem .9rem;border:1px solid #EAE2D2;border-radius:11px;margin-bottom:.6rem;cursor:pointer;font-size:.9rem"><input type="checkbox" id="lgT" style="margin-top:.2rem;width:18px;height:18px;flex:none"/> <span>He leído y acepto los <a href="/legal/terminos.html" target="_blank" style="color:#FF6B5A;font-weight:600">Términos del Servicio</a>.</span></label>'
+      +'<label style="display:flex;gap:.7rem;align-items:flex-start;padding:.8rem .9rem;border:1px solid #EAE2D2;border-radius:11px;margin-bottom:.6rem;cursor:pointer;font-size:.9rem"><input type="checkbox" id="lgP" style="margin-top:.2rem;width:18px;height:18px;flex:none"/> <span>He leído y acepto la <a href="/legal/privacidad.html" target="_blank" style="color:#FF6B5A;font-weight:600">Política de Privacidad</a>.</span></label>'
+      +'<label style="display:flex;gap:.7rem;align-items:flex-start;padding:.8rem .9rem;border:1px solid #EAE2D2;border-radius:11px;margin-bottom:1.1rem;cursor:pointer;font-size:.9rem"><input type="checkbox" id="lgD" style="margin-top:.2rem;width:18px;height:18px;flex:none"/> <span>He leído y acepto el <a href="/legal/dpa.html" target="_blank" style="color:#FF6B5A;font-weight:600">Contrato de Encargado de Tratamiento (DPA)</a>, y declaro estar autorizado para firmar en nombre de la clínica.</span></label>'
+      +'<label style="display:block;font-size:.82rem;color:#7C7872;margin-bottom:.3rem">Firma escribiendo tu nombre y apellidos</label>'
+      +'<input id="lgSigner" placeholder="Nombre y apellidos" value="" style="width:100%;padding:.7rem .9rem;border:1px solid #EAE2D2;border-radius:10px;font-size:1rem;font-family:inherit;margin-bottom:1.1rem"/>'
+      +'<button id="lgBtn" onclick="submitLegal()" style="width:100%;background:#0F1011;color:#fff;font-family:inherit;font-weight:700;font-size:.98rem;border:0;border-radius:12px;padding:.9rem;cursor:pointer;transition:background .2s">Aceptar y activar mi panel</button>'
+      +'<div id="lgErr" style="color:#b0432e;font-size:.84rem;margin-top:.7rem;display:none"></div>'
+      +'<p style="font-size:.72rem;color:#9a938c;margin:1rem 0 0;line-height:1.5">Al aceptar, se registrará la fecha, tu identidad y la versión de los documentos como constancia. Puedes consultar los documentos en cualquier momento desde el pie del panel.</p>'
+    +'</div>'
+    +'<div style="text-align:center;margin-top:1.2rem"><button onclick="logout()" style="background:none;border:0;color:#7C7872;font-family:inherit;font-size:.82rem;cursor:pointer">Cerrar sesión</button></div>'
+    +'</div>';
+  document.body.appendChild(ov);
+  var s=document.getElementById('lgSigner'); if(s && signerHint && signerHint.indexOf('@')<0){ s.value=signerHint; }
+}
+async function submitLegal(){
+  var err=document.getElementById('lgErr');
+  var t=document.getElementById('lgT').checked, p=document.getElementById('lgP').checked, d=document.getElementById('lgD').checked;
+  var signer=(document.getElementById('lgSigner').value||'').trim();
+  if(!t||!p||!d){ err.style.display='block'; err.textContent='Debes aceptar los tres documentos para continuar.'; return; }
+  if(signer.length<3){ err.style.display='block'; err.textContent='Escribe tu nombre y apellidos para firmar.'; return; }
+  err.style.display='none';
+  var btn=document.getElementById('lgBtn'); btn.disabled=true; btn.textContent='Guardando…';
+  try{
+    var tok=localStorage.getItem('aura_token');
+    var r=await fetch(WORKER+'/api/legal-accept?token='+tok,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({ signer_name:signer, accept_terms:true, accept_privacy:true, accept_dpa:true, version:'1.0' })});
+    var j=await r.json();
+    if(j&&j.ok){ var g=document.getElementById('legalGate'); if(g)g.remove(); location.reload(); }
+    else { btn.disabled=false; btn.textContent='Aceptar y activar mi panel'; err.style.display='block'; err.textContent='No se pudo registrar. Inténtalo de nuevo.'; }
+  }catch(e){ btn.disabled=false; btn.textContent='Aceptar y activar mi panel'; err.style.display='block'; err.textContent='Error de conexión. Inténtalo de nuevo.'; }
 }
 function switchTenant(newT){
   if(!newT) return;

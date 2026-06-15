@@ -77,3 +77,10 @@ _backups/      Volcados de BD (NO se versiona; guardar fuera del sandbox)
 - `GET/POST /api/admin-notes?id=X`: notas internas por clínica (tabla `admin_notes`).
 - `POST /api/admin-checklist`: guarda items manuales del checklist (tabla `admin_onboarding`, JSON por tenant).
 - `POST /api/admin-reactivate-clinic`: devuelve a `status='active'` una clínica archivada.
+
+## 9. Aceptación legal obligatoria (clickwrap) del dueño
+- Documentos en `mvp/legal/`: aviso-legal, privacidad, cookies, terminos, **dpa** (Contrato de Encargado de Tratamiento).
+- Al primer acceso del rol `owner`, si no ha aceptado, el panel muestra una pantalla bloqueante (`showLegalGate`) con 3 casillas (Términos, Privacidad, DPA) + firma con nombre.
+- `GET /api/auth/me` devuelve `legal_accepted` (solo para owner).
+- `GET /api/legal-status?tenant=` y `POST /api/legal-accept` (registra en tabla `legal_acceptances`: tenant, email, signer_name, clinic_name, version, docs, ip, user_agent, accepted_at) como prueba legal.
+- Superadmin y otros roles NO ven el gate.

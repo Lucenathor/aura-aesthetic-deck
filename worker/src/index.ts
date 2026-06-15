@@ -1255,7 +1255,46 @@ export default {
         const owner: any = await env.aura_db.prepare('SELECT role FROM owners WHERE email=?').bind(s.email).first();
         const mb: any = await env.aura_db.prepare("SELECT role,name FROM team_members WHERE email=? AND tenant_id=? AND status='active'").bind(s.email, s.tenant_id).first();
         const role = owner?.role === 'superadmin' ? 'superadmin' : (mb?.role || 'owner');
-        return json({ auth:true, email:s.email, tenant_id:s.tenant_id, role, name: mb?.name||null });
+        // Estado de aceptación legal (solo aplica al dueño de la clínica, no a superadmin ni a otros roles)
+        let legal_accepted = true;
+        if (role === 'owner') {
+          try {
+            await env.aura_db.prepare('CREATE TABLE IF NOT EXISTS legal_acceptances (id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT, signer_name TEXT, clinic_name TEXT, version TEXT, docs TEXT, ip TEXT, user_agent TEXT, accepted_at INTEGER)').run();
+            const la:any = await env.aura_db.prepare('SELECT id FROM legal_acceptances WHERE tenant_id=? ORDER BY accepted_at DESC LIMIT 1').bind(s.tenant_id).first();
+            legal_accepted = !!la;
+          } catch(e){ legal_accepted = true; }
+        }
+        return json({ auth:true, email:s.email, tenant_id:s.tenant_id, role, name: mb?.name||null, legal_accepted });
+      }
+
+      // ESTADO/REGISTRO de aceptación legal (clickwrap)
+      if (p === '/api/legal-status' && req.method === 'GET') {
+        const token = url.searchParams.get('token'); const tid = url.searchParams.get('tenant')||'';
+        if (!token) return json({ ok:false, error:'unauthorized' }, 401);
+        const s:any = await env.aura_db.prepare('SELECT * FROM sessions WHERE token=?').bind(token).first();
+        if (!s) return json({ ok:false, error:'unauthorized' }, 401);
+        await env.aura_db.prepare('CREATE TABLE IF NOT EXISTS legal_acceptances (id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT, signer_name TEXT, clinic_name TEXT, version TEXT, docs TEXT, ip TEXT, user_agent TEXT, accepted_at INTEGER)').run().catch(()=>{});
+        const la:any = await env.aura_db.prepare('SELECT * FROM legal_acceptances WHERE tenant_id=? ORDER BY accepted_at DESC LIMIT 1').bind(tid||s.tenant_id).first();
+        return json({ ok:true, accepted: !!la, record: la||null });
+      }
+      if (p === '/api/legal-accept' && req.method === 'POST') {
+        const token = url.searchParams.get('token') || (req.headers.get('authorization')||'').replace(/^Bearer\s+/i,'');
+        if (!token) return json({ ok:false, error:'unauthorized' }, 401);
+        const s:any = await env.aura_db.prepare('SELECT * FROM sessions WHERE token=?').bind(token).first();
+        if (!s) return json({ ok:false, error:'unauthorized' }, 401);
+        const b:any = await req.json().catch(()=>({}));
+        const signer = (b.signer_name||'').trim();
+        if (signer.length < 3) return json({ ok:false, error:'signer_required' });
+        if (!b.accept_terms || !b.accept_privacy || !b.accept_dpa) return json({ ok:false, error:'must_accept_all' });
+        await env.aura_db.prepare('CREATE TABLE IF NOT EXISTS legal_acceptances (id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT, signer_name TEXT, clinic_name TEXT, version TEXT, docs TEXT, ip TEXT, user_agent TEXT, accepted_at INTEGER)').run().catch(()=>{});
+        const tid = s.tenant_id;
+        const t:any = await env.aura_db.prepare('SELECT name FROM tenants WHERE id=?').bind(tid).first().catch(()=>null);
+        const ip = req.headers.get('cf-connecting-ip') || '';
+        const ua = req.headers.get('user-agent') || '';
+        const id = 'la_'+Math.random().toString(36).slice(2,12);
+        await env.aura_db.prepare('INSERT INTO legal_acceptances (id,tenant_id,email,signer_name,clinic_name,version,docs,ip,user_agent,accepted_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+          .bind(id, tid, s.email, signer, (t&&t.name)||(b.clinic_name||''), b.version||'1.0', JSON.stringify({terms:true,privacy:true,dpa:true}), ip, ua, Date.now()).run();
+        return json({ ok:true, id });
       }
       // Listar todos los tenants (solo para superadmin)
       if (p === '/api/tenants' && req.method === 'GET') {
