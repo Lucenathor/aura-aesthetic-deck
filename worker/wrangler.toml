@@ -20,4 +20,4 @@ binding = "aura_r2"
 bucket_name = "aura-storage"
 
 [triggers]
-crons = ["0 * * * *"]
+crons = ["* * * * *"]

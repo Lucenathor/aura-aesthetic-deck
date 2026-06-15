@@ -1,0 +1,23 @@
+# Dependencias
+node_modules/
+.wrangler/
+
+# Backups y volcados (no versionar; van fuera)
+_backups/
+*.sql.bak
+AURA-backup-*.zip
+
+# Material temporal / scratch
+qr_whatsapp.png
+*.tmp
+/tmp/
+
+# Secretos (nunca subir credenciales)
+.env
+.env.*
+.cf_session_token
+*.secret
+
+# Sistema
+.DS_Store
+Thumbs.db

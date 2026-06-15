@@ -22,6 +22,10 @@ interface Env {
   STRIPE_WEBHOOK_SECRET?: string;
   JWT_SECRET?: string;
   aura_r2?: R2Bucket;
+  EVOLUTION_URL?: string;
+  EVOLUTION_KEY?: string;
+  UNIPILE_DSN?: string;
+  UNIPILE_KEY?: string;
 }
 interface R2Bucket {
   put(key: string, value: string|ArrayBuffer|ReadableStream, opts?: any): Promise<any>;
@@ -112,10 +116,15 @@ async function requireTenant(env: Env, req: Request, url: URL, tenantSolicitado:
   if (!tok) tok = url.searchParams.get('token') || '';
   if (!tok) { try{ const c=req.headers.get('cookie')||''; const m=c.match(/aura_token=([^;]+)/); if(m) tok=decodeURIComponent(m[1]); }catch(e){} }
   if (!tok) return 'no_token';
-  const s: any = await env.aura_db.prepare('SELECT tenant_id FROM sessions WHERE token=?').bind(tok).first();
+  const s: any = await env.aura_db.prepare('SELECT tenant_id, email FROM sessions WHERE token=?').bind(tok).first();
   if (!s) return 'invalid_token';
-  if (s.tenant_id !== tenantSolicitado) return 'tenant_mismatch';
-  return null; // OK
+  if (s.tenant_id === tenantSolicitado) return null; // OK: su propia clínica
+  // El SUPER ADMIN puede acceder a cualquier clínica (selector de clínicas del panel)
+  try {
+    const owner: any = await env.aura_db.prepare('SELECT role FROM owners WHERE email=?').bind(s.email).first();
+    if (owner?.role === 'superadmin') return null; // OK: superadmin
+  } catch(e){}
+  return 'tenant_mismatch';
 }
 // Devuelve el rol del usuario de la sesion: superadmin | owner | finance | reception | pro | null
 async function getSessionRole(env: Env, req: Request, url: URL): Promise<string|null> {
@@ -348,6 +357,50 @@ async function ensureBusinessCosts(env: Env) {
   if (__bcReady) return;
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS business_costs (tenant_id TEXT PRIMARY KEY, fixed_json TEXT, marketing_monthly REAL DEFAULT 0, commission_pct REAL DEFAULT 0, iva_pct REAL DEFAULT 21, price_includes_iva INTEGER DEFAULT 1, prorate_mode TEXT DEFAULT 'open_days', updated_at INTEGER)"); __bcReady = true; } catch(e){ console.error('ensureBusinessCosts', e); }
 }
+let __leadFlowReady = false;
+async function ensureLeadFlowSchema(env: Env) {
+  if (__leadFlowReady) return;
+  // Columnas para la máquina de estados de llamadas del pipeline (migración segura)
+  const cols = ['call_attempts INTEGER DEFAULT 0', 'last_call_at TEXT', 'pipeline_state TEXT', 'lost_reason TEXT', 'recovered_by TEXT', 'recovered_at TEXT'];
+  for (const c of cols) {
+    try { await env.aura_db.exec('ALTER TABLE leads ADD COLUMN ' + c); } catch(e) { /* ya existe */ }
+  }
+  __leadFlowReady = true;
+}
+let __waReady = false;
+async function ensureWaSchema(env: Env) {
+  if (__waReady) return;
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS wa_config (tenant_id TEXT PRIMARY KEY, instance TEXT, updated_at INTEGER)"); } catch(e){}
+  // Mensajes persistidos (fuente de verdad de AURA). message_id único para dedupe (Unipile recomienda).
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS wa_messages (message_id TEXT PRIMARY KEY, tenant_id TEXT, chat_id TEXT, from_me INTEGER, text TEXT, mtype TEXT, murl TEXT, mname TEXT, ts INTEGER, created_at INTEGER)"); } catch(e){}
+  try { await env.aura_db.exec("CREATE INDEX IF NOT EXISTS idx_wa_msg_chat ON wa_messages (tenant_id, chat_id, ts)"); } catch(e){}
+  // Metadatos de cada chat para construir la lista sin recorrer Unipile cada vez
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS wa_chats_meta (tenant_id TEXT, chat_id TEXT, name TEXT, phone TEXT, picture TEXT, last_text TEXT, last_ts INTEGER, unread INTEGER DEFAULT 0, updated_at INTEGER, PRIMARY KEY (tenant_id, chat_id))"); } catch(e){}
+  __waReady = true;
+}
+let __invReady = false;
+async function ensureInventorySchema(env: Env) {
+  if (__invReady) return;
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS inventory_products (id TEXT PRIMARY KEY, tenant_id TEXT, name TEXT, category TEXT DEFAULT 'servicio', unit TEXT DEFAULT 'unidad', stock REAL DEFAULT 0, min_stock REAL DEFAULT 0, cost_per_unit REAL DEFAULT 0, sale_price REAL DEFAULT 0, track_lots INTEGER DEFAULT 0, active INTEGER DEFAULT 1, image_url TEXT, created_at INTEGER, updated_at INTEGER)"); } catch(e){}
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS inventory_lots (id TEXT PRIMARY KEY, tenant_id TEXT, product_id TEXT, lot TEXT, qty REAL DEFAULT 0, expiry TEXT, cost_per_unit REAL DEFAULT 0, created_at INTEGER)"); } catch(e){}
+  try { await env.aura_db.exec("CREATE INDEX IF NOT EXISTS idx_inv_lot_prod ON inventory_lots (tenant_id, product_id, expiry)"); } catch(e){}
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS inventory_recipes (id TEXT PRIMARY KEY, tenant_id TEXT, treatment TEXT, product_id TEXT, qty REAL DEFAULT 0, created_at INTEGER)"); } catch(e){}
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS inventory_moves (id TEXT PRIMARY KEY, tenant_id TEXT, product_id TEXT, delta REAL, reason TEXT, ref TEXT, actor TEXT, created_at INTEGER)"); } catch(e){}
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS copilot_log (id TEXT PRIMARY KEY, tenant_id TEXT, actor TEXT, prompt TEXT, action TEXT, payload TEXT, result TEXT, created_at INTEGER)"); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE professionals ADD COLUMN can_copilot INTEGER DEFAULT 0'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE inventory_products ADD COLUMN image_url TEXT'); } catch(e){}
+  __invReady = true;
+}
+let __packsReady = false;
+async function ensurePacksSchema(env: Env) {
+  if (__packsReady) return;
+  // Añade columnas nuevas a packs si no existen (migración segura, idempotente)
+  const cols = ['tagline TEXT', 'badge TEXT', 'featured INTEGER DEFAULT 0', 'valid_until TEXT', 'image_url TEXT'];
+  for (const c of cols) {
+    try { await env.aura_db.exec('ALTER TABLE packs ADD COLUMN ' + c); } catch(e) { /* ya existe */ }
+  }
+  __packsReady = true;
+}
 async function getVacations(env: Env, tenantId: string): Promise<any[]> {
   await ensureAvailabilitySchema(env);
   const rows: any = await env.aura_db.prepare('SELECT * FROM vacations WHERE tenant_id=? ORDER BY start_date').bind(tenantId).all();
@@ -457,7 +510,7 @@ export default {
       ]);
       // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
       const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar','/api/portal-clients']);
-      const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p)) || (p==='/api/packs' && req.method==='POST');
+      const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p)) || (p==='/api/packs' && req.method==='POST') || (p.startsWith('/api/wa-') && p!=='/api/wa-webhook') || p.startsWith('/api/inv-') || p==='/api/copilot';
       if (mustGuard) {
         // tenant solicitado: de query (?tenant=) o del body para POST
         let tenantReq = url.searchParams.get('tenant') || url.searchParams.get('tenant_id');
@@ -670,17 +723,19 @@ export default {
       // ===== PORTAL DEL CLIENTE (web app) =====
       // Catálogo de packs (GET público para el portal; POST protegido para el panel)
       if (p === '/api/packs' && req.method === 'GET') {
+        await ensurePacksSchema(env);
         const tid = url.searchParams.get('tenant');
-        const r = await env.aura_db.prepare("SELECT * FROM packs WHERE tenant_id=? AND active=1 ORDER BY sort_order, created_at").bind(tid).all();
+        const r = await env.aura_db.prepare("SELECT * FROM packs WHERE tenant_id=? AND active=1 ORDER BY featured DESC, sort_order, created_at").bind(tid).all();
         return json({ packs: r.results||[] });
       }
       if (p === '/api/packs' && req.method === 'POST') {
+        await ensurePacksSchema(env);
         const b:any = await req.json(); const tid=b.tenant_id; if(!tid) return json({error:'missing_tenant'},400);
         if (b.delete && b.id) { await env.aura_db.prepare('DELETE FROM packs WHERE id=? AND tenant_id=?').bind(b.id,tid).run(); return json({ok:true}); }
         const id = b.id || ('pk_'+uid());
-        await env.aura_db.prepare(`INSERT INTO packs (id,tenant_id,name,description,sessions,price,original_price,kind,recurring,active,sort_order,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
-          ON CONFLICT(id) DO UPDATE SET name=excluded.name,description=excluded.description,sessions=excluded.sessions,price=excluded.price,original_price=excluded.original_price,kind=excluded.kind,recurring=excluded.recurring,active=excluded.active,sort_order=excluded.sort_order`)
-          .bind(id,tid,b.name||'Pack',b.description||'',Number(b.sessions)||1,Number(b.price)||0,Number(b.original_price)||0,b.kind||'pack',b.recurring?1:0,b.active===0?0:1,Number(b.sort_order)||0,new Date().toISOString()).run();
+        await env.aura_db.prepare(`INSERT INTO packs (id,tenant_id,name,description,sessions,price,original_price,kind,recurring,active,sort_order,tagline,badge,featured,valid_until,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          ON CONFLICT(id) DO UPDATE SET name=excluded.name,description=excluded.description,sessions=excluded.sessions,price=excluded.price,original_price=excluded.original_price,kind=excluded.kind,recurring=excluded.recurring,active=excluded.active,sort_order=excluded.sort_order,tagline=excluded.tagline,badge=excluded.badge,featured=excluded.featured,valid_until=excluded.valid_until`)
+          .bind(id,tid,b.name||'Pack',b.description||'',Number(b.sessions)||1,Number(b.price)||0,Number(b.original_price)||0,b.kind||'pack',b.recurring?1:0,b.active===0?0:1,Number(b.sort_order)||0,b.tagline||null,b.badge||null,b.featured?1:0,b.valid_until||null,new Date().toISOString()).run();
         return json({ ok:true, id });
       }
       // Comprar/reservar un pack desde el portal (público, identificado por lead). Sin Stripe => queda 'reserved' y entra al CRM.
@@ -1350,8 +1405,36 @@ export default {
       // TRIAJE: registrar resultado de llamada (saca al lead de la cola urgente)
       if (p === '/api/lead-call' && req.method === 'POST') {
         const b: any = await req.json();
-        await env.aura_db.prepare('UPDATE leads SET call_result=? WHERE id=?').bind(b.result||'contactado', b.lead_id).run();
-        return json({ ok:true });
+        await ensureLeadFlowSchema(env);
+        const res = b.result || 'no_contesta';     // 'reservo' | 'no_contesta' | 'no_interesado'
+        const fase = b.fase || 'llama';             // 'llama' | 'recuperar' | 'confirmar' | 'reactivar'
+        const MAX: any = { llama:4, recuperar:3, confirmar:2, reactivar:2 };
+        const lead: any = await env.aura_db.prepare('SELECT call_attempts FROM leads WHERE id=?').bind(b.lead_id).first();
+        const prevAttempts = Number(lead?.call_attempts||0);
+        const nowIso = new Date().toISOString();
+        if (res === 'reservo') {
+          // Recuperado por llamada manual: sale del pipeline y se atribuye a AURA
+          await env.aura_db.prepare("UPDATE leads SET call_result='recuperado', pipeline_state='recovered', recovered_by='llamada', recovered_at=?, last_call_at=?, call_attempts=? WHERE id=?")
+            .bind(nowIso, nowIso, prevAttempts+1, b.lead_id).run();
+          return json({ ok:true, state:'recovered' });
+        }
+        if (res === 'no_interesado') {
+          await env.aura_db.prepare("UPDATE leads SET call_result='no_interesado', pipeline_state='lost', lost_reason='no_interesado', last_call_at=?, call_attempts=? WHERE id=?")
+            .bind(nowIso, prevAttempts+1, b.lead_id).run();
+          return json({ ok:true, state:'lost' });
+        }
+        // no_contesta: suma intento; si supera el máximo de la fase -> perdido (no contactable)
+        const attempts = prevAttempts + 1;
+        const max = MAX[fase] || 4;
+        if (attempts >= max) {
+          await env.aura_db.prepare("UPDATE leads SET call_attempts=?, last_call_at=?, pipeline_state='lost', lost_reason='no_contactable', call_result='no_contesta' WHERE id=?")
+            .bind(attempts, nowIso, b.lead_id).run();
+          return json({ ok:true, state:'lost', attempts });
+        }
+        // sigue en cola, pero no reaparece hasta el día siguiente (last_call_at controla "1 llamada/día")
+        await env.aura_db.prepare("UPDATE leads SET call_attempts=?, last_call_at=?, call_result=NULL WHERE id=?")
+          .bind(attempts, nowIso, b.lead_id).run();
+        return json({ ok:true, state:'retry', attempts, remaining: max-attempts });
       }
       // FICHA: guardar notas, recall y tags del lead
       if (p === '/api/lead-meta' && req.method === 'POST') {
@@ -1385,11 +1468,14 @@ export default {
           const nm = (b.name||'').toLowerCase();
           const prev: any = await env.aura_db.prepare('SELECT COUNT(*) as c FROM treatments_log WHERE lead_id=?').bind(b.lead_id).first();
           const isFirst = (prev?.c||1) <= 1;
-          let days = 180; // por defecto exacto
-          if (nm.includes('labio')) days = isFirst ? 180 : 270;       // 6 / 9 meses exactos
-          else if (nm.includes('botox') || nm.includes('arrug')) days = 90;   // 3 meses
-          else if (nm.includes('hidrat') || nm.includes('peel') || nm.includes('piel')) days = 45;
-          else if (nm.includes('rino') || nm.includes('mand') || nm.includes('ojera') || nm.includes('relleno')) days = 270;
+          // Ciclo de recall por tratamiento (benchmark de duración real del efecto)
+          let days = 90; // por defecto: 3 meses
+          if (nm.includes('labio')) days = isFirst ? 180 : 270;       // labios: 6 meses, luego 9
+          else if (nm.includes('botox') || nm.includes('arrug') || nm.includes('toxina')) days = 120; // botox: 4 meses
+          else if (nm.includes('rino') || nm.includes('mand') || nm.includes('ojera') || nm.includes('relleno') || nm.includes('surco') || nm.includes('menton')) days = 270; // rellenos: 9 meses
+          else if (nm.includes('meso') || nm.includes('vitamin')) days = 30;  // mesoterapia: mantenimiento mensual
+          else if (nm.includes('hidrat') || nm.includes('peel') || nm.includes('piel') || nm.includes('facial') || nm.includes('limpie')) days = 30; // facial/peeling: mensual
+          else if (nm.includes('laser') || nm.includes('láser') || nm.includes('depil') || nm.includes('ipl')) days = 45; // láser/depilación: ~6 semanas entre sesiones
           const rd = new Date(baseDate); rd.setDate(rd.getDate() + days);
           // Mensaje de recall persuasivo ADAPTADO POR PRODUCTO
           let recallMsg = '{clinica}: {nombre}, tu tratamiento ya pide un repaso para seguir luciéndolo. Resérvalo gratis aquí: {link}';
@@ -1513,28 +1599,348 @@ export default {
         else if (period==='year'){ start=ref.slice(0,4)+'-01-01'; end=ref.slice(0,4)+'-12-31'; }
         // visitas pagadas del periodo, con datos del lead para atribuir origen
         const rows:any = await env.aura_db.prepare(
-          `SELECT t.amount, t.lead_id, l.recover_state, l.noshow_count, l.react_d3, l.react_d7, l.recall_type, l.funnel_id, l.source
+          `SELECT t.amount, t.lead_id, l.recover_state, l.noshow_count, l.react_d3, l.react_d7, l.recall_type, l.funnel_id, l.source, l.recovered_by
            FROM treatments_log t LEFT JOIN leads l ON l.id=t.lead_id
            WHERE t.tenant_id=? AND t.pay_status='paid' AND substr(t.date_iso,1,10) BETWEEN ? AND ?`
         ).bind(tenant, start, end).all();
-        const buckets:any = { noshow:{n:0,v:0}, recall:{n:0,v:0}, reactivation:{n:0,v:0}, funnel:{n:0,v:0} };
+        const buckets:any = { call:{n:0,v:0}, noshow:{n:0,v:0}, recall:{n:0,v:0}, reactivation:{n:0,v:0}, funnel:{n:0,v:0} };
         for (const r of (rows.results||[])){
           const amt = Number(r.amount)||0; if(amt<=0) continue;
           // prioridad de atribución (una sola causa por visita)
-          if (r.recover_state==='noshow' || (r.noshow_count&&r.noshow_count>0)) { buckets.noshow.n++; buckets.noshow.v+=amt; }
+          if (r.recovered_by==='llamada') { buckets.call.n++; buckets.call.v+=amt; }
+          else if (r.recover_state==='noshow' || (r.noshow_count&&r.noshow_count>0)) { buckets.noshow.n++; buckets.noshow.v+=amt; }
           else if (r.recall_type==='venta') { buckets.recall.n++; buckets.recall.v+=amt; }
           else if (r.react_d3 || r.react_d7) { buckets.reactivation.n++; buckets.reactivation.v+=amt; }
           else if (r.funnel_id || (r.source && r.source!=='manual' && r.source!=='walkin')) { buckets.funnel.n++; buckets.funnel.v+=amt; } // entró por el embudo
         }
-        const total = buckets.noshow.v + buckets.recall.v + buckets.reactivation.v + buckets.funnel.v;
-        const totalN = buckets.noshow.n + buckets.recall.n + buckets.reactivation.n + buckets.funnel.n;
+        const total = buckets.call.v + buckets.noshow.v + buckets.recall.v + buckets.reactivation.v + buckets.funnel.v;
+        const totalN = buckets.call.n + buckets.noshow.n + buckets.recall.n + buckets.reactivation.n + buckets.funnel.n;
         return json({ period, start, end, total: Math.round(total*100)/100, count: totalN,
           breakdown: [
+            { key:'call', label:'Recuperados por llamada', n:buckets.call.n, value:Math.round(buckets.call.v*100)/100 },
             { key:'noshow', label:'Citas recuperadas (no-show)', n:buckets.noshow.n, value:Math.round(buckets.noshow.v*100)/100 },
             { key:'recall', label:'Nuevas ventas por recall', n:buckets.recall.n, value:Math.round(buckets.recall.v*100)/100 },
             { key:'reactivation', label:'Leads reactivados', n:buckets.reactivation.n, value:Math.round(buckets.reactivation.v*100)/100 },
             { key:'funnel', label:'Captados por el embudo', n:buckets.funnel.n, value:Math.round(buckets.funnel.v*100)/100 }
           ] });
+      }
+
+      // ============ INVENTARIO ============
+      if (p.startsWith('/api/inv-')) {
+        await ensureInventorySchema(env);
+        let tid = url.searchParams.get('tenant') || url.searchParams.get('tenant_id') || '';
+        if (!tid && req.method!=='GET') { try { const cl = req.clone(); const bb:any = await cl.json(); tid = bb.tenant_id || bb.tenant || ''; } catch(e){} }
+        const nowI = Date.now();
+        if (p === '/api/inv-products' && req.method === 'GET') {
+          const prods:any = await env.aura_db.prepare('SELECT * FROM inventory_products WHERE tenant_id=? AND active=1 ORDER BY name').bind(tid).all();
+          const lots:any = await env.aura_db.prepare('SELECT product_id, lot, qty, expiry, cost_per_unit FROM inventory_lots WHERE tenant_id=? AND qty>0 ORDER BY expiry').bind(tid).all();
+          const byProd:any = {}; for (const l of (lots.results||[])) { (byProd[l.product_id]=byProd[l.product_id]||[]).push(l); }
+          return json({ ok:true, products: (prods.results||[]).map((pr:any)=>({ ...pr, lots: byProd[pr.id]||[] })) });
+        }
+        if (p === '/api/inv-product' && req.method === 'POST') {
+          const b:any = await req.json();
+          if (b.delete) { await env.aura_db.prepare('UPDATE inventory_products SET active=0 WHERE id=? AND tenant_id=?').bind(b.delete, tid).run(); return json({ ok:true }); }
+          if (b.photo!==undefined && b.id && b.name===undefined) { await env.aura_db.prepare('UPDATE inventory_products SET image_url=?, updated_at=? WHERE id=? AND tenant_id=?').bind(b.photo||null, nowI, b.id, tid).run(); return json({ ok:true, id:b.id }); }
+          if (b.id) {
+            await env.aura_db.prepare('UPDATE inventory_products SET name=?,category=?,unit=?,min_stock=?,cost_per_unit=?,sale_price=?,track_lots=?,image_url=COALESCE(?,image_url),updated_at=? WHERE id=? AND tenant_id=?')
+              .bind(b.name, b.category||'servicio', b.unit||'unidad', Number(b.min_stock)||0, Number(b.cost_per_unit)||0, Number(b.sale_price)||0, b.track_lots?1:0, b.image_url||null, nowI, b.id, tid).run();
+            return json({ ok:true, id:b.id });
+          }
+          const id = 'inv_'+Math.random().toString(36).slice(2,12);
+          await env.aura_db.prepare('INSERT INTO inventory_products (id,tenant_id,name,category,unit,stock,min_stock,cost_per_unit,sale_price,track_lots,active,image_url,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?,?)')
+            .bind(id, tid, b.name||'Producto', b.category||'servicio', b.unit||'unidad', Number(b.stock)||0, Number(b.min_stock)||0, Number(b.cost_per_unit)||0, Number(b.sale_price)||0, b.track_lots?1:0, b.image_url||null, nowI, nowI).run();
+          if ((Number(b.stock)||0)>0) await env.aura_db.prepare('INSERT INTO inventory_moves (id,tenant_id,product_id,delta,reason,actor,created_at) VALUES (?,?,?,?,?,?,?)').bind('mv_'+Math.random().toString(36).slice(2,10), tid, id, Number(b.stock)||0, 'alta', b.actor||'panel', nowI).run();
+          return json({ ok:true, id });
+        }
+        if (p === '/api/inv-restock' && req.method === 'POST') {
+          const b:any = await req.json();
+          const prod:any = await env.aura_db.prepare('SELECT * FROM inventory_products WHERE tenant_id=? AND id=?').bind(tid, b.product_id).first();
+          if (!prod) return json({ ok:false, error:'no_product' });
+          const qty = Number(b.qty)||0; if (qty<=0) return json({ ok:false, error:'bad_qty' });
+          await env.aura_db.prepare('UPDATE inventory_products SET stock=stock+?, updated_at=? WHERE id=? AND tenant_id=?').bind(qty, nowI, b.product_id, tid).run();
+          if (b.lot || b.expiry) { await env.aura_db.prepare('INSERT INTO inventory_lots (id,tenant_id,product_id,lot,qty,expiry,cost_per_unit,created_at) VALUES (?,?,?,?,?,?,?,?)').bind('lot_'+Math.random().toString(36).slice(2,10), tid, b.product_id, b.lot||'', qty, b.expiry||'', Number(b.cost_per_unit)||prod.cost_per_unit||0, nowI).run(); }
+          await env.aura_db.prepare('INSERT INTO inventory_moves (id,tenant_id,product_id,delta,reason,actor,created_at) VALUES (?,?,?,?,?,?,?)').bind('mv_'+Math.random().toString(36).slice(2,10), tid, b.product_id, qty, 'recarga', b.actor||'panel', nowI).run();
+          const upd:any = await env.aura_db.prepare('SELECT stock FROM inventory_products WHERE id=?').bind(b.product_id).first();
+          return json({ ok:true, stock: upd?upd.stock:null });
+        }
+        if (p === '/api/inv-recipes' && req.method === 'GET') {
+          const rc:any = await env.aura_db.prepare('SELECT r.*, pr.name as product_name, pr.unit FROM inventory_recipes r LEFT JOIN inventory_products pr ON pr.id=r.product_id WHERE r.tenant_id=? ORDER BY r.treatment').bind(tid).all();
+          return json({ ok:true, recipes: rc.results||[] });
+        }
+        if (p === '/api/inv-recipe' && req.method === 'POST') {
+          const b:any = await req.json();
+          if (b.delete) { await env.aura_db.prepare('DELETE FROM inventory_recipes WHERE id=? AND tenant_id=?').bind(b.delete, tid).run(); return json({ ok:true }); }
+          const id = 'rcp_'+Math.random().toString(36).slice(2,10);
+          await env.aura_db.prepare('INSERT INTO inventory_recipes (id,tenant_id,treatment,product_id,qty,created_at) VALUES (?,?,?,?,?,?)').bind(id, tid, b.treatment||'', b.product_id, Number(b.qty)||0, nowI).run();
+          return json({ ok:true, id });
+        }
+        if (p === '/api/inv-alerts' && req.method === 'GET') {
+          const low:any = await env.aura_db.prepare('SELECT id,name,stock,min_stock,unit FROM inventory_products WHERE tenant_id=? AND active=1 AND min_stock>0 AND stock<=min_stock ORDER BY name').bind(tid).all();
+          const soon = new Date(Date.now()+30*864e5).toISOString().slice(0,10);
+          const exp:any = await env.aura_db.prepare("SELECT l.lot,l.qty,l.expiry,pr.name FROM inventory_lots l LEFT JOIN inventory_products pr ON pr.id=l.product_id WHERE l.tenant_id=? AND l.qty>0 AND l.expiry!='' AND l.expiry<=? ORDER BY l.expiry").bind(tid, soon).all();
+          return json({ ok:true, low: low.results||[], expiring: exp.results||[] });
+        }
+        return json({ ok:false, error:'unknown_inv_endpoint' });
+      }
+
+      // ============ TRANSCRIPCIÓN DE VOZ (Whisper) ============
+      if (p === '/api/transcribe' && req.method === 'POST') {
+        if (!env.OPENAI_KEY) return json({ ok:false, error:'no_key' });
+        try {
+          const inForm = await req.formData();
+          const audio:any = inForm.get('audio');
+          if (!audio) return json({ ok:false, error:'no_audio' });
+          const fd = new FormData(); fd.append('file', audio, 'voice.webm'); fd.append('model', 'whisper-1'); fd.append('language', 'es');
+          const wr = await fetch('https://api.openai.com/v1/audio/transcriptions', { method:'POST', headers:{ Authorization:`Bearer ${env.OPENAI_KEY}` }, body: fd });
+          const wd:any = await wr.json();
+          return json({ ok:true, text: wd.text || '' });
+        } catch(e:any){ return json({ ok:false, error:'transcribe_failed' }); }
+      }
+
+      // ============ COPILOTO IA ============
+      if (p === '/api/copilot' && req.method === 'POST') {
+        await ensureInventorySchema(env);
+        const b:any = await req.json();
+        const tid = (url.searchParams.get('tenant') || url.searchParams.get('tenant_id') || b.tenant_id || '');
+        const text = (b.text||'').toString().slice(0,1000);
+        let parsed:any = {};
+        if (!b.confirm) {
+          if (!text) return json({ ok:false, error:'empty' });
+          const prods:any = await env.aura_db.prepare('SELECT id,name,unit,stock FROM inventory_products WHERE tenant_id=? AND active=1').bind(tid).all();
+          const prodList = (prods.results||[]).map((x:any)=>x.name+' (id:'+x.id+', '+x.stock+' '+x.unit+')').join('; ');
+          const sys = 'Eres el copiloto de gestión de una clínica estética (AURA). Interpretas la orden y devuelves SOLO un JSON. Acciones (action): "crear_producto","recargar_stock","crear_receta","crear_contacto","consultar","ninguna". '
+            + 'crear_producto -> {action,name,category(servicio|retail|material),unit(unidad|ml|jeringa|vial),stock,min_stock,cost_per_unit,sale_price}. '
+            + 'recargar_stock -> {action,product_query,qty,lot,expiry(YYYY-MM-DD)}. '
+            + 'crear_receta -> {action,treatment,product_query,qty}. crear_contacto -> {action,name,phone,treatment}. consultar -> {action,query_type(stock|caducidad|generico)}. '
+            + 'Productos actuales: ['+prodList+']. Devuelve SIEMPRE "summary" en español para confirmar. Si no entiendes, action="ninguna". SOLO JSON.';
+          try { const raw = await runAI(env, [{role:'system',content:sys},{role:'user',content:text}], true); parsed = JSON.parse(raw||'{}'); } catch(e){ parsed = { action:'ninguna', summary:'No he podido interpretar la orden.' }; }
+          return json({ ok:true, stage:'confirm', plan: parsed });
+        }
+        const plan = b.plan || parsed; const act = plan.action; let result:any = { ok:false };
+        const findProd = async (q:string)=>{ if(!q) return null; const all:any = await env.aura_db.prepare('SELECT * FROM inventory_products WHERE tenant_id=? AND active=1').bind(tid).all(); const ql=q.toLowerCase(); return (all.results||[]).find((x:any)=> (x.name||'').toLowerCase().includes(ql) || ql.includes((x.name||'').toLowerCase())) || null; };
+        if (act==='crear_producto') {
+          const id='inv_'+Math.random().toString(36).slice(2,12); const nw=Date.now();
+          await env.aura_db.prepare('INSERT INTO inventory_products (id,tenant_id,name,category,unit,stock,min_stock,cost_per_unit,sale_price,track_lots,active,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,0,1,?,?)').bind(id,tid,plan.name||'Producto',plan.category||'servicio',plan.unit||'unidad',Number(plan.stock)||0,Number(plan.min_stock)||0,Number(plan.cost_per_unit)||0,Number(plan.sale_price)||0,nw,nw).run();
+          result={ ok:true, msg:'Producto "'+(plan.name||'')+'" creado con '+(Number(plan.stock)||0)+' '+(plan.unit||'unidad')+'.' };
+        } else if (act==='recargar_stock') {
+          const pr=await findProd(plan.product_query||plan.name); if(!pr){ result={ok:false,msg:'No encontré el producto "'+(plan.product_query||'')+'".'}; }
+          else { const qty=Number(plan.qty)||0; await env.aura_db.prepare('UPDATE inventory_products SET stock=stock+?, updated_at=? WHERE id=?').bind(qty,Date.now(),pr.id).run(); if(plan.lot||plan.expiry){ await env.aura_db.prepare('INSERT INTO inventory_lots (id,tenant_id,product_id,lot,qty,expiry,cost_per_unit,created_at) VALUES (?,?,?,?,?,?,?,?)').bind('lot_'+Math.random().toString(36).slice(2,10),tid,pr.id,plan.lot||'',qty,plan.expiry||'',pr.cost_per_unit||0,Date.now()).run(); } await env.aura_db.prepare('INSERT INTO inventory_moves (id,tenant_id,product_id,delta,reason,actor,created_at) VALUES (?,?,?,?,?,?,?)').bind('mv_'+Math.random().toString(36).slice(2,10),tid,pr.id,qty,'recarga-copiloto',b.actor||'copiloto',Date.now()).run(); result={ ok:true, msg:'Cargadas '+qty+' '+(pr.unit||'')+' de "'+pr.name+'". Stock ahora: '+((pr.stock||0)+qty)+'.' }; }
+        } else if (act==='crear_receta') {
+          const pr=await findProd(plan.product_query||plan.name); if(!pr){ result={ok:false,msg:'No encontré el producto para la receta.'}; }
+          else { await env.aura_db.prepare('INSERT INTO inventory_recipes (id,tenant_id,treatment,product_id,qty,created_at) VALUES (?,?,?,?,?,?)').bind('rcp_'+Math.random().toString(36).slice(2,10),tid,plan.treatment||'',pr.id,Number(plan.qty)||0,Date.now()).run(); result={ ok:true, msg:'Cuando se haga "'+(plan.treatment||'')+'" se descontarán '+(Number(plan.qty)||0)+' '+(pr.unit||'')+' de "'+pr.name+'".' }; }
+        } else if (act==='crear_contacto') {
+          const lid='l_'+Math.random().toString(36).slice(2,12); const nw=Date.now();
+          try { await env.aura_db.prepare('INSERT INTO leads (id,tenant_id,name,phone,treatment,status,source,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(lid,tid,plan.name||'Contacto',plan.phone||'',plan.treatment||'','new','copiloto',nw).run(); result={ ok:true, msg:'Contacto "'+(plan.name||'')+'" creado.' }; }
+          catch(e){ result={ ok:false, msg:'No pude crear el contacto.' }; }
+        } else if (act==='consultar') {
+          if (plan.query_type==='caducidad') { const soon=new Date(Date.now()+30*864e5).toISOString().slice(0,10); const exp:any=await env.aura_db.prepare("SELECT l.expiry,l.qty,pr.name FROM inventory_lots l LEFT JOIN inventory_products pr ON pr.id=l.product_id WHERE l.tenant_id=? AND l.qty>0 AND l.expiry!='' AND l.expiry<=? ORDER BY l.expiry").bind(tid,soon).all(); const rows=(exp.results||[]); result={ ok:true, msg: rows.length? ('Caduca pronto: '+rows.map((r:any)=>r.name+' ('+r.qty+' uds, '+r.expiry+')').join('; ')) : 'No hay productos que caduquen en los próximos 30 días.' }; }
+          else { const all:any=await env.aura_db.prepare('SELECT name,stock,unit,min_stock FROM inventory_products WHERE tenant_id=? AND active=1 ORDER BY name').bind(tid).all(); const rows=(all.results||[]); result={ ok:true, msg: rows.length? ('Stock actual: '+rows.map((r:any)=>r.name+' '+r.stock+' '+r.unit+(r.min_stock>0&&r.stock<=r.min_stock?' (BAJO)':'')).join('; ')) : 'Aún no tienes productos en inventario.' }; }
+        } else { result={ ok:false, msg: plan.summary||'No entendí la orden.' }; }
+        try { await env.aura_db.prepare('INSERT INTO copilot_log (id,tenant_id,actor,prompt,action,payload,result,created_at) VALUES (?,?,?,?,?,?,?,?)').bind('cl_'+Math.random().toString(36).slice(2,10),tid,b.actor||'',text,act||'',JSON.stringify(plan),JSON.stringify(result),Date.now()).run(); } catch(e){}
+        return json({ ok: result.ok, stage:'done', message: result.msg });
+      }
+
+      // ============ WHATSAPP (Unipile API) ============
+      // Config por tenant: cada clínica tiene su account_id de Unipile. Tabla wa_config (campo instance = account_id).
+      if (p.startsWith('/api/wa-')) {
+        await ensureWaSchema(env);
+        const UNI = env.UNIPILE_DSN || 'https://api50.unipile.com:18013';
+        const UKEY = env.UNIPILE_KEY || '';
+        const uni = async (path:string, method='GET', body?:any) => {
+          const r = await fetch(UNI+path, { method, headers: { 'X-API-KEY': UKEY, 'accept':'application/json', 'content-type':'application/json' }, body: body?JSON.stringify(body):undefined });
+          const t = await r.text(); try { return { ok:r.ok, status:r.status, data: JSON.parse(t) }; } catch { return { ok:r.ok, status:r.status, data:t }; }
+        };
+        const tnt = url.searchParams.get('tenant') || (await (async()=>{ try{ const b:any=await req.clone().json(); return b.tenant_id||b.tenant; }catch{return null;} })());
+        // Devuelve el account_id de Unipile guardado para este tenant
+        const acctOf = async (t:string):Promise<string|null> => { try{ const r:any=await env.aura_db.prepare('SELECT instance FROM wa_config WHERE tenant_id=?').bind(t).first(); return r?.instance||null; }catch{return null;} };
+        const digits9 = (s:any)=> String(s||'').replace(/@.*/,'').replace(/\D/g,'').slice(-9);
+        // Convierte string de QR en data URL de imagen usando un generador externo no es posible offline; devolvemos el string y el panel lo renderiza
+
+        // Estado de conexión
+        if (p === '/api/wa-status' && req.method === 'GET') {
+          if(!tnt) return json({error:'missing tenant'},400);
+          const acc = await acctOf(tnt);
+          if(!acc) return json({ connected:false, exists:false });
+          const st = await uni('/api/v1/accounts/'+acc);
+          if(!st.ok) return json({ connected:false, exists:false });
+          const sources = st.data?.sources || [];
+          const ok = Array.isArray(sources) ? sources.some((s:any)=>s.status==='OK') : (st.data?.status==='OK');
+          return json({ connected: !!ok, state: ok?'open':'connecting', exists:true, account_id:acc });
+        }
+        // Conectar: crea cuenta WhatsApp en Unipile y devuelve el string del QR
+        if (p === '/api/wa-connect' && req.method === 'POST') {
+          if(!tnt) return json({error:'missing tenant'},400);
+          const r = await uni('/api/v1/accounts','POST',{ provider:'WHATSAPP' });
+          const acc = r.data?.account_id;
+          const qr = r.data?.checkpoint?.qrcode || null;
+          if(acc){ await env.aura_db.prepare("INSERT INTO wa_config (tenant_id,instance,updated_at) VALUES (?,?,?) ON CONFLICT(tenant_id) DO UPDATE SET instance=excluded.instance, updated_at=excluded.updated_at").bind(tnt, acc, Date.now()).run(); }
+          return json({ ok:!!qr, account_id:acc, qrstr:qr });
+        }
+        // Refrescar QR de una cuenta en checkpoint (si caduca)
+        if (p === '/api/wa-qr' && req.method === 'GET') {
+          const acc = await acctOf(tnt||''); if(!acc) return json({ qrstr:null });
+          const r = await uni('/api/v1/accounts/'+acc+'/checkpoint','POST',{});
+          return json({ qrstr: r.data?.checkpoint?.qrcode || null });
+        }
+        // Sincroniza chats desde Unipile a wa_chats_meta (nombre/teléfono reales). Se usa en carga inicial y en cron.
+        const syncChats = async (t:string, acc:string) => {
+          const r = await uni('/api/v1/chats?account_id='+acc+'&limit=50');
+          const items = (r.data?.items)||[];
+          const top = items.slice(0,25);
+          const att = await Promise.all(top.map((c:any)=> uni('/api/v1/chats/'+encodeURIComponent(c.id)+'/attendees').then((a:any)=>{ const it=(a.data?.items||[]).find((x:any)=>x.is_self!==1)||(a.data?.items||[])[0]; return it||null; }).catch(()=>null) ));
+          // intenta obtener foto de perfil de cada contacto (cuando WhatsApp la expone)
+          const pics = await Promise.all(att.map((a:any)=>{ const pid=a?.public_identifier||a?.provider_id; if(!pid) return Promise.resolve(null); return uni('/api/v1/users/'+encodeURIComponent(pid)+'?account_id='+acc).then((u:any)=> u.data?.profile_picture_url||u.data?.picture_url||null).catch(()=>null); }));
+          for (let i=0;i<top.length;i++){ const c=top[i]; const a=att[i]||{}; const phoneRaw=a.specifics?.phone_number||c.provider_id||''; const realName=a.name||(phoneRaw?('+'+String(phoneRaw).replace(/@.*/,'')):''); const last=c.last_message?.text||c.snippet||''; const ts=c.timestamp?Date.parse(c.timestamp):Date.now(); const pic=pics[i]||a.picture_url||a.profile_picture_url||null;
+            try { await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,picture,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET name=COALESCE(NULLIF(excluded.name,''),wa_chats_meta.name), phone=COALESCE(NULLIF(excluded.phone,''),wa_chats_meta.phone), picture=COALESCE(excluded.picture,wa_chats_meta.picture), last_text=excluded.last_text, last_ts=excluded.last_ts, updated_at=excluded.updated_at").bind(t,c.id,realName,String(phoneRaw).replace(/@.*/,''),pic,last,ts,c.unread_count||0,Date.now()).run(); } catch(e){}
+          }
+        };
+        // Lista de chats: SERVIDA DESDE LA BD de AURA (escalable). Sincroniza la 1ª vez si está vacía.
+        if (p === '/api/wa-chats' && req.method === 'GET') {
+          if(!tnt) return json({error:'missing tenant'},400);
+          const acc = await acctOf(tnt); if(!acc) return json({ chats:[] });
+          let metaRes:any = await env.aura_db.prepare('SELECT * FROM wa_chats_meta WHERE tenant_id=? ORDER BY last_ts DESC LIMIT 50').bind(tnt).all();
+          if(!(metaRes.results||[]).length){ try{ await syncChats(tnt, acc); }catch(e){} metaRes = await env.aura_db.prepare('SELECT * FROM wa_chats_meta WHERE tenant_id=? ORDER BY last_ts DESC LIMIT 50').bind(tnt).all(); }
+          const byPhone:any = {};
+          try { const leadsRes:any = await env.aura_db.prepare('SELECT id,name,phone,treatment,status,temperature FROM leads WHERE tenant_id=?').bind(tnt).all(); for (const l of (leadsRes.results||[])) { const k=digits9(l.phone); if(k) byPhone[k]=l; } } catch(e){}
+          const chats = (metaRes.results||[]).map((m:any)=>{ const num=digits9(m.phone||''); const lead=byPhone[num]; return { remoteJid:m.chat_id, id:m.chat_id, chat_id:m.chat_id, pushName:m.name, name:m.name, phone:m.phone, picture:m.picture||null, timestamp:m.last_ts||null, unread:m.unread||0, lastMessage:{ message:{ conversation:m.last_text||'' } }, _lead: lead?{ id:lead.id, name:lead.name, treatment:lead.treatment, status:lead.status, temperature:lead.temperature }:undefined }; });
+          return json({ chats });
+        }
+        // Ficha del paciente por número
+        if (p === '/api/wa-patient' && req.method === 'GET') {
+          if(!tnt) return json({error:'missing tenant'},400);
+          const num = digits9(url.searchParams.get('number')||'');
+          if(!num) return json({ lead:null });
+          const leadsRes:any = await env.aura_db.prepare('SELECT id,name,phone,treatment,status,temperature,created_at FROM leads WHERE tenant_id=?').bind(tnt).all();
+          let lead=null; for (const l of (leadsRes.results||[])) { if(digits9(l.phone)===num){ lead=l; break; } }
+          let spent=0, visits=0, nextAppt:any=null;
+          if(lead){ try{ const t:any=await env.aura_db.prepare("SELECT COALESCE(SUM(amount),0) s, COUNT(*) n FROM treatments_log WHERE lead_id=? AND pay_status='paid'").bind(lead.id).first(); spent=Number(t?.s)||0; visits=Number(t?.n)||0; }catch(e){}
+            try{ nextAppt = await env.aura_db.prepare("SELECT id,treatment,date_iso,status FROM appointments WHERE lead_id=? AND status IN ('booked','confirmed') AND date_iso>=datetime('now') ORDER BY date_iso ASC LIMIT 1").bind(lead.id).first(); }catch(e){} }
+          return json({ lead, spent, visits, next_appt: nextAppt });
+        }
+        // Mensajes de un chat: SERVIDOS DESDE LA BD. Sincroniza desde Unipile si no hay (1ª vez).
+        if (p === '/api/wa-messages' && req.method === 'GET') {
+          if(!tnt) return json({error:'missing tenant'},400);
+          const chatId = url.searchParams.get('number')||'';
+          let dbRes:any = await env.aura_db.prepare('SELECT * FROM wa_messages WHERE tenant_id=? AND chat_id=? ORDER BY ts ASC LIMIT 100').bind(tnt, chatId).all();
+          if(!(dbRes.results||[]).length){
+            // sincroniza historial desde Unipile una vez
+            try {
+              const r = await uni('/api/v1/chats/'+encodeURIComponent(chatId)+'/messages?limit=60');
+              const items = (r.data?.items)||[];
+              for (const m of items){ const att=(m.attachments&&m.attachments[0])||null; const mtype=att?String(att.type||'file').toLowerCase():'text'; const murl=att?(att.url||null):null; const mname=att?(att.file_name||att.name||null):null; const ts=m.timestamp?Date.parse(m.timestamp):Date.now(); const fromMe=(m.is_sender===1||m.is_sender===true)?1:0;
+                try{ await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(m.id||(chatId+'_'+ts), tnt, chatId, fromMe, m.text||'', mtype, murl, mname, ts, Date.now()).run(); }catch(e){}
+              }
+            } catch(e){}
+            dbRes = await env.aura_db.prepare('SELECT * FROM wa_messages WHERE tenant_id=? AND chat_id=? ORDER BY ts ASC LIMIT 100').bind(tnt, chatId).all();
+          }
+          // marca leído
+          try { await env.aura_db.prepare('UPDATE wa_chats_meta SET unread=0 WHERE tenant_id=? AND chat_id=?').bind(tnt, chatId).run(); } catch(e){}
+          const messages = (dbRes.results||[]).map((m:any)=>({ id:m.message_id, fromMe: m.from_me===1, text:m.text||'', timestamp:m.ts||null, mtype:m.mtype||'text', murl:m.murl||null, mname:m.mname||null, key:{ id:m.message_id, fromMe: m.from_me===1 }, message:{ conversation:m.text||'' } }));
+          return json({ messages });
+        }
+        // Enviar mensaje (number = chat_id)
+        if (p === '/api/wa-send' && req.method === 'POST') {
+          const b:any = await req.json(); if(!b.tenant_id) return json({error:'missing tenant'},400);
+          const chatId = b.jid || b.number;
+          const r = await uni('/api/v1/chats/'+encodeURIComponent(chatId)+'/messages','POST',{ text:b.text });
+          // guarda saliente en BD
+          try { const mid=r.data?.message_id||r.data?.id||(chatId+'_out_'+Date.now()); const now=Date.now(); await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,ts,created_at) VALUES (?,?,?,?,?,?,?,?)").bind(mid, b.tenant_id, chatId, 1, b.text||'', 'text', now, now).run(); await env.aura_db.prepare("UPDATE wa_chats_meta SET last_text=?, last_ts=?, unread=0 WHERE tenant_id=? AND chat_id=?").bind(b.text||'', now, b.tenant_id, chatId).run(); } catch(e){}
+          return json({ ok:r.ok, data:r.data });
+        }
+        // Enviar adjunto (imagen/audio/documento) - recibe base64 y lo manda como multipart a Unipile
+        if (p === '/api/wa-attach' && req.method === 'POST') {
+          const b:any = await req.json(); if(!b.tenant_id) return json({error:'missing tenant'},400);
+          const chatId = b.jid || b.number; if(!chatId) return json({ok:false,error:'no chat'});
+          try {
+            const bin = Uint8Array.from(atob(String(b.data_b64||'').split(',').pop()||''), c=>c.charCodeAt(0));
+            const fd = new FormData();
+            if(b.text) fd.append('text', b.text);
+            fd.append('attachments', new Blob([bin], { type: b.mime||'application/octet-stream' }), b.filename||'archivo');
+            const r = await fetch(UNI+'/api/v1/chats/'+encodeURIComponent(chatId)+'/messages', { method:'POST', headers:{ 'X-API-KEY': UKEY, 'accept':'application/json' }, body: fd });
+            const t = await r.text(); const data=(()=>{try{return JSON.parse(t);}catch{return t;}})();
+            try { const mid=(data&&(data.message_id||data.id))||(chatId+'_out_'+Date.now()); const now=Date.now(); const isImg=/^image\//.test(b.mime||''); await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,mname,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(mid, b.tenant_id, chatId, 1, b.text||'', isImg?'img':'file', b.filename||'archivo', now, now).run(); await env.aura_db.prepare("UPDATE wa_chats_meta SET last_text=?, last_ts=?, unread=0 WHERE tenant_id=? AND chat_id=?").bind('[adjunto]', now, b.tenant_id, chatId).run(); } catch(e){}
+            return json({ ok:r.ok, status:r.status, data });
+          } catch(e:any){ return json({ ok:false, error:String(e&&e.message||e) }); }
+        }
+        // Reaccionar a un mensaje
+        if (p === '/api/wa-react' && req.method === 'POST') {
+          const b:any = await req.json(); const chatId=b.jid||b.number; if(!chatId||!b.message_id) return json({ok:false});
+          const r = await uni('/api/v1/chats/'+encodeURIComponent(chatId)+'/messages','POST',{ reaction:{ value:b.emoji||'👍', message_id:b.message_id } });
+          return json({ ok:r.ok, data:r.data });
+        }
+        // Iniciar conversación nueva con un número (start new chat)
+        if (p === '/api/wa-newchat' && req.method === 'POST') {
+          const b:any = await req.json(); if(!b.tenant_id) return json({error:'missing tenant'},400);
+          const acc = await acctOf(b.tenant_id); if(!acc) return json({ok:false,error:'sin cuenta'});
+          const phone = String(b.number||'').replace(/\D/g,'');
+          if(!phone) return json({ok:false,error:'numero'});
+          const fd = new FormData(); fd.append('account_id', acc); fd.append('text', b.text||'Hola'); fd.append('attendees_ids', phone+'@s.whatsapp.net');
+          try { const r = await fetch(UNI+'/api/v1/chats', { method:'POST', headers:{ 'X-API-KEY': UKEY, 'accept':'application/json' }, body: fd }); const t=await r.text(); return json({ ok:r.ok, status:r.status, data:(()=>{try{return JSON.parse(t);}catch{return t;}})() }); } catch(e:any){ return json({ok:false,error:String(e&&e.message||e)}); }
+        }
+        // Crear paciente/lead desde un chat de WhatsApp (cuando el contacto no existe)
+        if (p === '/api/wa-add-lead' && req.method === 'POST') {
+          const b:any = await req.json(); if(!b.tenant_id) return json({error:'missing tenant'},400);
+          const phone = String(b.phone||'').replace(/[^0-9+]/g,''); if(!phone) return json({ok:false,error:'sin telefono'});
+          const num9 = phone.replace(/\D/g,'').slice(-9);
+          // evita duplicado: si ya existe un lead con ese teléfono, lo devuelve
+          try { const ex:any = await env.aura_db.prepare('SELECT id,name,phone FROM leads WHERE tenant_id=?').bind(b.tenant_id).all(); for(const l of (ex.results||[])){ if(String(l.phone||'').replace(/\D/g,'').slice(-9)===num9){ return json({ ok:true, existed:true, lead_id:l.id }); } } } catch(e){}
+          const nid = 'wa_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+          try { await env.aura_db.prepare("INSERT INTO leads (id,tenant_id,name,phone,treatment,temperature,status,source,notes,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(nid, b.tenant_id, (b.name||'Contacto WhatsApp'), phone, (b.treatment||''), 'warm', 'new', 'whatsapp', 'Creado desde WhatsApp', new Date().toISOString()).run(); } catch(e:any){ return json({ ok:false, error:String(e&&e.message||e) }); }
+          return json({ ok:true, existed:false, lead_id:nid });
+        }
+        // Confirmar una cita desde el chat
+        if (p === '/api/wa-confirm-appt' && req.method === 'POST') {
+          const b:any = await req.json(); if(!b.tenant_id||!b.appointment_id) return json({ok:false});
+          try { await env.aura_db.prepare("UPDATE appointments SET status='confirmed' WHERE id=? AND tenant_id=?").bind(b.appointment_id, b.tenant_id).run(); } catch(e){ return json({ok:false}); }
+          return json({ ok:true });
+        }
+        // Marcar chat como leído
+        if (p === '/api/wa-read' && req.method === 'POST') {
+          const b:any = await req.json(); const chatId=b.jid||b.number; if(!chatId) return json({ok:false});
+          await uni('/api/v1/chats/'+encodeURIComponent(chatId),'PATCH',{ action:'setReadStatus', value:true });
+          return json({ ok:true });
+        }
+        // Desconectar
+        if (p === '/api/wa-logout' && req.method === 'POST') {
+          const b:any = await req.json(); const acc = await acctOf(b.tenant_id||''); 
+          if(acc){ await uni('/api/v1/accounts/'+acc,'DELETE'); await env.aura_db.prepare('DELETE FROM wa_config WHERE tenant_id=?').bind(b.tenant_id).run(); }
+          return json({ ok:true });
+        }
+        // Webhook entrante de Unipile (mensajes nuevos) en tiempo real -> persiste en AURA
+        if (p === '/api/wa-webhook' && req.method === 'POST') {
+          try {
+            const ev:any = await req.json();
+            if (ev && (ev.event==='message_received' || ev.message || ev.message_id)) {
+              const accId = ev.account_id;
+              let owner:any = null;
+              try { owner = await env.aura_db.prepare('SELECT tenant_id FROM wa_config WHERE instance=?').bind(accId).first(); } catch(e){}
+              const tenantId = owner?.tenant_id;
+              if (tenantId) {
+                const chatId = ev.chat_id || '';
+                const msgId = ev.message_id || (chatId+'_'+(ev.timestamp||Date.now()));
+                const fromMe = !!(ev.account_info?.user_id && ev.sender?.attendee_provider_id && String(ev.account_info.user_id)===String(ev.sender.attendee_provider_id));
+                const text = String(ev.message||'');
+                const att = (ev.attachments&&ev.attachments[0])||null;
+                const mtype = att ? String(att.type||'file').toLowerCase() : 'text';
+                const murl = att ? (att.url||null) : null;
+                const mname = att ? (att.file_name||att.name||null) : null;
+                const ts = ev.timestamp ? Date.parse(ev.timestamp) : Date.now();
+                const senderPhone = (ev.sender?.attendee_provider_id||ev.provider_id||'').replace(/@.*/,'');
+                // dedupe por message_id (INSERT OR IGNORE)
+                try { await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(msgId, tenantId, chatId, fromMe?1:0, text, mtype, murl, mname, ts, Date.now()).run(); } catch(e){}
+                // actualiza metadatos del chat (nombre, último texto, no leídos)
+                try {
+                  const who = ev.sender?.attendee_name || (senderPhone?('+'+senderPhone):'');
+                  const incUnread = fromMe ? 0 : 1;
+                  await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text, last_ts=excluded.last_ts, unread=wa_chats_meta.unread+"+incUnread+", name=COALESCE(NULLIF(wa_chats_meta.name,''),excluded.name), phone=COALESCE(NULLIF(wa_chats_meta.phone,''),excluded.phone), updated_at=excluded.updated_at").bind(tenantId, chatId, who, senderPhone, text||(att?'[adjunto]':''), ts, incUnread, Date.now()).run();
+                } catch(e){}
+              }
+            }
+          } catch(e){}
+          return json({ ok:true });
+        }
+        if (p === '/api/wa-webhook') { return json({ ok:true }); }
+        return json({ error:'wa endpoint not found' }, 404);
       }
 
       // ===== CONSENTIMIENTOS: plantillas (panel) =====
@@ -1795,8 +2201,33 @@ export default {
           return json({ ok:true, result:'noshow' });
         }
         // Vino: marcar cita atendida + lead cliente
+        // ATRIBUCIÓN: ¿sin AURA esta venta no habría pasado? Leemos el estado ANTES de marcar cliente.
+        let attribution = 'normal';
+        try {
+          const lprev: any = await env.aura_db.prepare('SELECT recovered_by, recover_state, noshow_count, recall_type, recall_sms_sent, react_d3, react_d7, react_d21, chatted, last_call_at FROM leads WHERE id=?').bind(leadId).first();
+          if (lprev) {
+            if (lprev.recovered_by==='llamada' || lprev.last_call_at) attribution='call';            // lo recuperaste con una llamada
+            else if (lprev.recover_state==='noshow' || (lprev.noshow_count&&lprev.noshow_count>0)) attribution='noshow'; // no vino y volvió
+            else if (lprev.recall_type==='venta' && lprev.recall_sms_sent==1) attribution='recall';   // volvió por el recall de su tratamiento
+            else if (lprev.react_d3 || lprev.react_d7 || lprev.react_d21) attribution='reactivation'; // lead frío revivido por SMS
+          }
+        } catch(e){}
         if (apptId) await env.aura_db.prepare("UPDATE appointments SET status='attended' WHERE id=?").bind(apptId).run();
         await env.aura_db.prepare("UPDATE leads SET status='client' WHERE id=?").bind(leadId).run();
+        // DESCUENTO AUTOMÁTICO DE STOCK según receta del tratamiento
+        try {
+          await ensureInventorySchema(env);
+          let treat = b.treatment;
+          if (!treat && apptId) { const ap:any = await env.aura_db.prepare('SELECT treatment FROM appointments WHERE id=?').bind(apptId).first(); treat = ap?ap.treatment:null; }
+          if (treat) {
+            const recs:any = await env.aura_db.prepare('SELECT r.product_id, r.qty FROM inventory_recipes r WHERE r.tenant_id=? AND LOWER(r.treatment)=LOWER(?)').bind(tenantId, treat).all();
+            for (const rc of (recs.results||[])) {
+              const q = Number(rc.qty)||0; if (q<=0 || !rc.product_id) continue;
+              await env.aura_db.prepare('UPDATE inventory_products SET stock=stock-?, updated_at=? WHERE id=? AND tenant_id=?').bind(q, Date.now(), rc.product_id, tenantId).run();
+              await env.aura_db.prepare('INSERT INTO inventory_moves (id,tenant_id,product_id,delta,reason,ref,actor,created_at) VALUES (?,?,?,?,?,?,?,?)').bind('mv_'+Math.random().toString(36).slice(2,10), tenantId, rc.product_id, -q, 'consumo-tratamiento', treat, b.actor||'sistema', Date.now()).run();
+            }
+          }
+        } catch(e){}
         // Reseña automática en Google: si la clínica tiene enlace, pedir reseña al paciente tras la visita
         try {
           const tn: any = await env.aura_db.prepare('SELECT name,whatsapp,google_review_url FROM tenants WHERE id=?').bind(tenantId).first();
@@ -1865,7 +2296,7 @@ export default {
           await env.aura_db.prepare("INSERT INTO appointments (id,tenant_id,lead_id,treatment,date_iso,duration_min,status) VALUES (?,?,?,?,?,?,?)").bind(nid, tenantId, leadId, 'Revisión / '+tname, b.next_date, 30, 'booked').run();
           // recall queda informado pero sin SMS (ya tiene cita) — se marca recall_sms_sent=1 para que el motor no lo envíe
           await env.aura_db.prepare("UPDATE leads SET recall_date=?, recall_type='venta', recall_sms_sent=1 WHERE id=?").bind(b.next_date.slice(0,10), leadId).run();
-          return json({ ok:true, result:'client_rebooked', next_appt: nid });
+          return json({ ok:true, result:'client_rebooked', next_appt: nid, attribution, amount });
         }
         let recallMsg = '{clinica}: {nombre}, tu tratamiento ya pide un repaso para seguir luciéndolo. Resérvalo gratis aquí: {link}';
         if (nm.includes('labio')) recallMsg = '{clinica}: {nombre}, tus labios ya están perdiendo volumen. No esperes a que bajen del todo: te guardo hueco para mantenerlos perfectos. Reserva en 1 toque: {link}';
@@ -1881,10 +2312,13 @@ export default {
             if (pts>0) await env.aura_db.prepare("INSERT INTO points_ledger (id,tenant_id,lead_id,delta,reason,created_at) VALUES (?,?,?,?,?,?)").bind('pt_'+uid(), tenantId, leadId, pts, 'compra', new Date().toISOString()).run();
           }
         } catch(e){}
-        return json({ ok:true, result:'client', recall_date: rd.toISOString().slice(0,10) });
+        return json({ ok:true, result:'client', recall_date: rd.toISOString().slice(0,10), attribution, amount });
       }
 
       // PROFESIONALES (recursos del calendario)
+      // migración segura: columna schedule (JSON de horario por profesional)
+      try { await env.aura_db.exec("ALTER TABLE professionals ADD COLUMN schedule TEXT"); } catch(e){}
+      try { await env.aura_db.exec("ALTER TABLE professionals ADD COLUMN can_copilot INTEGER DEFAULT 0"); } catch(e){}
       if (p === '/api/professionals' && req.method === 'GET') {
         const tenant = url.searchParams.get('tenant');
         const r = await env.aura_db.prepare('SELECT * FROM professionals WHERE tenant_id=? ORDER BY created_at').bind(tenant).all();
@@ -1898,15 +2332,21 @@ export default {
         const b:any = await req.json();
         if (b.delete) { await env.aura_db.prepare('DELETE FROM professionals WHERE id=?').bind(b.delete).run(); return json({ok:true}); }
         // actualizar empleado existente (datos + compensación)
+        // guardar SOLO el horario de un profesional
+        if (b.id && b.schedule!==undefined && b.name===undefined) {
+          await env.aura_db.prepare('UPDATE professionals SET schedule=? WHERE id=? AND tenant_id=?').bind(typeof b.schedule==='string'?b.schedule:JSON.stringify(b.schedule), b.id, b.tenant_id).run();
+          return json({ ok:true, id:b.id });
+        }
         if (b.id) {
-          await env.aura_db.prepare('UPDATE professionals SET name=?, role=?, salary_gross=?, ss_pct=?, commission_pct=?, active=? WHERE id=? AND tenant_id=?')
-            .bind(b.name||'Profesional', b.role||'pro', Number(b.salary_gross)||0, b.ss_pct!=null?Number(b.ss_pct):30, Number(b.commission_pct)||0, b.active!=null?(b.active?1:0):1, b.id, b.tenant_id).run();
+          await env.aura_db.prepare('UPDATE professionals SET name=?, role=?, salary_gross=?, ss_pct=?, commission_pct=?, active=?, can_copilot=? WHERE id=? AND tenant_id=?')
+            .bind(b.name||'Profesional', b.role||'pro', Number(b.salary_gross)||0, b.ss_pct!=null?Number(b.ss_pct):30, Number(b.commission_pct)||0, b.active!=null?(b.active?1:0):1, b.can_copilot?1:0, b.id, b.tenant_id).run();
+          if (b.schedule!==undefined) { try{ await env.aura_db.prepare('UPDATE professionals SET schedule=? WHERE id=? AND tenant_id=?').bind(typeof b.schedule==='string'?b.schedule:JSON.stringify(b.schedule), b.id, b.tenant_id).run(); }catch(e){} }
           return json({ ok:true, id: b.id });
         }
         const id = 'pr_'+uid();
         const colors=['#9B7BFF','#FF6B5A','#34a877','#d9a23a','#3a8fd9','#c0568f'];
-        await env.aura_db.prepare('INSERT INTO professionals (id,tenant_id,name,color,role,salary_gross,ss_pct,commission_pct,active,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
-          .bind(id, b.tenant_id, b.name||'Profesional', b.color||colors[Math.floor(Math.random()*colors.length)], b.role||'pro', Number(b.salary_gross)||0, b.ss_pct!=null?Number(b.ss_pct):30, Number(b.commission_pct)||0, 1, Date.now()).run();
+        await env.aura_db.prepare('INSERT INTO professionals (id,tenant_id,name,color,role,salary_gross,ss_pct,commission_pct,active,can_copilot,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+          .bind(id, b.tenant_id, b.name||'Profesional', b.color||colors[Math.floor(Math.random()*colors.length)], b.role||'pro', Number(b.salary_gross)||0, b.ss_pct!=null?Number(b.ss_pct):30, Number(b.commission_pct)||0, 1, b.can_copilot?1:0, Date.now()).run();
         return json({ ok:true, id });
       }
 
@@ -1956,6 +2396,19 @@ export default {
         if (b.professional_id) {
           const clash:any = await env.aura_db.prepare("SELECT id FROM appointments WHERE tenant_id=? AND professional_id=? AND date_iso=? AND status NOT IN ('noshow','cancelled')").bind(b.tenant_id, b.professional_id, b.date_iso).first();
           if (clash) return json({ ok:false, error:'clash' });
+          // valida horario del profesional (si lo tiene definido)
+          try {
+            const pr:any = await env.aura_db.prepare('SELECT schedule FROM professionals WHERE id=? AND tenant_id=?').bind(b.professional_id, b.tenant_id).first();
+            if (pr && pr.schedule) { const sch = typeof pr.schedule==='string'?JSON.parse(pr.schedule):pr.schedule; const dt=new Date(b.date_iso); const dk=['sun','mon','tue','wed','thu','fri','sat'][dt.getDay()]; const c=sch[dk]; const hhmm=String(b.date_iso).slice(11,16);
+              if (c && c.on===false) return json({ ok:false, error:'pro_off', detail:'El profesional no trabaja ese día' });
+              if (c && c.on!==false) {
+                const t1s=c.t1_start||c.start, t1e=c.t1_end||c.end;
+                const in1 = t1s ? (hhmm>=t1s && hhmm<(t1e||'23:59')) : true;
+                const in2 = c.t2_start ? (hhmm>=c.t2_start && hhmm<(c.t2_end||'23:59')) : false;
+                if (t1s && !in1 && !in2) { const franjas = c.t2_start ? (t1s+'-'+t1e+' y '+c.t2_start+'-'+c.t2_end) : (t1s+'-'+t1e); return json({ ok:false, error:'pro_off', detail:'Fuera del horario del profesional ('+franjas+')' }); }
+              }
+            }
+          } catch(e){}
         }
         // crear/asociar lead
         let leadId = b.lead_id;
@@ -2046,13 +2499,41 @@ export default {
       return json({ error: 'server_error', detail: String(e && e.message ? e.message : e) }, 500);
     }
   },
-  // Cron: backup (1 vez/día a las 3h) + automatizaciones SMS (cada hora)
+  // Cron: backup (1 vez/día a las 3h) + automatizaciones SMS (cada hora) + sync WhatsApp respaldo (cada 10 min)
   async scheduled(event: any, env: Env, ctx: any) {
-    const hour = new Date().getUTCHours();
+    const now = new Date();
+    const hour = now.getUTCHours();
     if (hour === 3) ctx.waitUntil(runBackup(env).catch((e:any)=>console.error('backup error', e)));
     ctx.waitUntil(runAutomations(env).catch((e:any)=>console.error('automations error', e)));
+    // Respaldo WhatsApp: cada 10 min resincroniza chats por si el webhook falló (Unipile lo recomienda)
+    if (now.getUTCMinutes() % 10 === 0) ctx.waitUntil(runWaSync(env).catch((e:any)=>console.error('wa sync error', e)));
   },
 };
+
+// ─── RESPALDO WHATSAPP (cron cada 10 min) ───
+// Resincroniza chats/mensajes recientes de clínicas conectadas por si el webhook falló. Dedupe por message_id.
+async function runWaSync(env: Env): Promise<void> {
+  const UNI = env.UNIPILE_DSN || 'https://api50.unipile.com:18013';
+  const UKEY = env.UNIPILE_KEY || '';
+  if (!UKEY) return;
+  const uni = async (path:string) => { try { const r=await fetch(UNI+path,{ headers:{ 'X-API-KEY':UKEY, 'accept':'application/json' } }); const t=await r.text(); try{return JSON.parse(t);}catch{return null;} } catch{ return null; } };
+  let cfgs:any;
+  try { cfgs = await env.aura_db.prepare('SELECT tenant_id, instance FROM wa_config').all(); } catch { return; }
+  for (const c of (cfgs?.results||[])) {
+    const t=c.tenant_id, acc=c.instance; if(!acc) continue;
+    const r = await uni('/api/v1/chats?account_id='+acc+'&limit=15'); const items=(r?.items)||[];
+    for (const chat of items.slice(0,15)) {
+      const ts = chat.timestamp?Date.parse(chat.timestamp):Date.now();
+      const last = chat.last_message?.text||'';
+      try { await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,last_text,last_ts,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text, last_ts=MAX(wa_chats_meta.last_ts,excluded.last_ts), updated_at=excluded.updated_at").bind(t, chat.id, last, ts, Date.now()).run(); } catch(e){}
+      // trae últimos mensajes y deduplica
+      const mr = await uni('/api/v1/chats/'+encodeURIComponent(chat.id)+'/messages?limit=20'); const msgs=(mr?.items)||[];
+      for (const m of msgs){ const att=(m.attachments&&m.attachments[0])||null; const mtype=att?String(att.type||'file').toLowerCase():'text'; const murl=att?(att.url||null):null; const mname=att?(att.file_name||att.name||null):null; const mts=m.timestamp?Date.parse(m.timestamp):Date.now(); const fromMe=(m.is_sender===1||m.is_sender===true)?1:0;
+        try{ await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(m.id||(chat.id+'_'+mts), t, chat.id, fromMe, m.text||'', mtype, murl, mname, mts, Date.now()).run(); }catch(e){}
+      }
+    }
+  }
+}
 
 // ─── MOTOR DE AUTOMATIZACIONES SMS (corre cada hora) ───
 // Respeta plantillas, sender, datos, link mágico y créditos de CADA clínica. Anti-duplicado. Horario 9-21h Madrid.
@@ -2165,8 +2646,8 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
       const prox = await proximoDiaFor(l.tenant_id);
       const vars = { clinica: tn.name||'', nombre: l.name||'', link: mlink, tel:(tn.whatsapp||''), proximo_dia: prox || 'esta semana' };
       const mins = (nowUTC.getTime()-created.getTime())/60000;
-      // TOQUE RÁPIDO: dejó datos y no reservó ni entró al chat. 20 min y 5h (lead caliente, no dejar enfriar)
-      if (!l.sms_fast20 && mins >= 20 && mins < 80 && !l.chatted) {
+      // TOQUE RÁPIDO: dejó datos y no reservó ni entró al chat. 1er SMS a los ~3 min (lead caliente, contacto inmediato), 2º a las 5h
+      if (!l.sms_fast20 && mins >= 3 && mins < 300 && !l.chatted) {
         const r = await sendSMS(env, l.phone, fill(T.fast20, vars), tn.name||'AURA', l.tenant_id);
         if (r.ok) { await env.aura_db.prepare('UPDATE leads SET sms_fast20=1 WHERE id=?').bind(l.id).run(); sent++; }
       } else if (!l.sms_fast5h && mins >= 300 && mins < 360) {

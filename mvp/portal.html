@@ -6,22 +6,25 @@
 <meta name="theme-color" content="#5e1a2a"/>
 <title>Mi clínica</title>
 <link rel="manifest" href="/portal-manifest.json"/>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root{--brand:#5e1a2a;--brand2:#2a0f16;--accent:#D4A574;--bg:#f4efe8;--ink:#1f1a17;--muted:#8a7f73;--line:#ece5da;}
+  :root{--brand:#5e1a2a;--brand2:#2a0f16;--accent:#D4A574;--bg:#f4efe8;--ink:#1f1a17;--muted:#8a7f73;--line:#ece5da;--ok:#1f8c69;--warn:#c0392b}
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;padding-bottom:78px}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;padding-bottom:80px}
   .serif{font-family:'Playfair Display',serif}
   .wrap{max-width:480px;margin:0 auto;min-height:100vh}
   .hidden{display:none!important}
   /* LOGIN */
-  #login{display:flex;flex-direction:column;justify-content:center;min-height:100vh;padding:1.5rem}
-  .card{background:#fff;border-radius:22px;padding:1.6rem;box-shadow:0 14px 40px rgba(0,0,0,.08)}
+  #login{display:flex;flex-direction:column;justify-content:center;min-height:100vh;padding:1.5rem;background:linear-gradient(165deg,var(--brand),var(--brand2));position:relative;overflow:hidden}
+  #login::after{content:'';position:absolute;top:-15%;right:-25%;width:340px;height:340px;background:radial-gradient(circle,rgba(212,165,116,.30),transparent 70%);animation:floaty 11s ease-in-out infinite}
+  #login>*{position:relative;z-index:1}
+  .card{background:#fff;border-radius:22px;padding:1.6rem;box-shadow:0 18px 50px rgba(0,0,0,.22)}
   input{width:100%;padding:.9rem;border:1px solid var(--line);border-radius:13px;font-size:1rem;margin-top:.55rem;font-family:inherit}
   button{font-family:inherit;cursor:pointer;border:none}
-  .btn{width:100%;padding:.95rem;border-radius:13px;background:var(--brand);color:#fff;font-weight:700;font-size:1rem;margin-top:.9rem;transition:transform .15s cubic-bezier(.23,1,.32,1)}
+  .btn{width:100%;padding:.98rem;border-radius:13px;background:var(--brand);color:#fff;font-weight:700;font-size:1rem;margin-top:.9rem;transition:transform .15s cubic-bezier(.23,1,.32,1)}
   .btn:active{transform:scale(.97)}
   .btn.ghost{background:transparent;color:var(--brand);border:1px solid var(--line)}
+  .btn.gold{background:linear-gradient(120deg,var(--accent),#b9894f);color:#2a0f16}
   /* HEADER */
   header{background:linear-gradient(150deg,var(--brand),var(--brand2));color:#fff;padding:1.4rem 1.3rem 2.4rem;border-radius:0 0 28px 28px;position:relative;overflow:hidden}
   header::after{content:'';position:absolute;top:-40%;right:-20%;width:260px;height:260px;background:radial-gradient(circle,rgba(212,165,116,.40),transparent 70%);pointer-events:none;animation:floaty 9s ease-in-out infinite}
@@ -32,76 +35,134 @@
   .hello{font-size:.8rem;opacity:.85}
   .clinicTtl{font-size:1.3rem;font-weight:700;line-height:1.1}
   .clinicAddr{font-size:.74rem;opacity:.8;margin-top:.15rem;display:flex;align-items:center;gap:.3rem}
-  /* PTS CARD */
-  .pts{position:relative;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:18px;padding:1.1rem 1.2rem;margin-top:1rem;backdrop-filter:blur(6px);overflow:hidden}
+  /* PTS / WALLET CARD */
+  .pts{position:relative;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:18px;padding:1.05rem 1.2rem;margin-top:1rem;backdrop-filter:blur(6px);overflow:hidden}
   .pts::before{content:'';position:absolute;top:0;left:-60%;width:50%;height:100%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.25),transparent);animation:shine 4.5s ease-in-out infinite}
   @keyframes shine{0%,60%{left:-60%}100%{left:130%}}
-  .pts .n{font-size:2.6rem;font-weight:700;line-height:1}
-  .pts .lbl{font-size:.72rem;opacity:.8;text-transform:uppercase;letter-spacing:.06em}
-  .tier{display:inline-block;font-size:.7rem;font-weight:700;padding:.2rem .6rem;border-radius:20px;background:var(--accent);color:#2a0f16;margin-top:.5rem}
-  .prog{height:7px;background:rgba(255,255,255,.2);border-radius:5px;margin-top:.6rem;overflow:hidden}
-  .prog>div{height:100%;background:var(--accent);border-radius:5px;transition:width .8s cubic-bezier(.23,1,.32,1)}
+  .ptsTop{display:flex;justify-content:space-between;align-items:flex-end}
+  .pts .n{font-size:2.5rem;font-weight:800;line-height:1}
+  .pts .lbl{font-size:.7rem;opacity:.8;text-transform:uppercase;letter-spacing:.06em}
+  .pts .val{text-align:right;font-size:.78rem;opacity:.92}
+  .pts .val b{font-size:1.15rem;display:block;font-weight:800}
+  .tier{display:inline-flex;align-items:center;gap:.3rem;font-size:.68rem;font-weight:800;padding:.22rem .65rem;border-radius:20px;background:var(--accent);color:#2a0f16;margin-top:.55rem}
+  .prog{height:7px;background:rgba(255,255,255,.2);border-radius:5px;margin-top:.55rem;overflow:hidden}
+  .prog>div{height:100%;background:linear-gradient(90deg,var(--accent),#fff6e8);border-radius:5px;transition:width .9s cubic-bezier(.23,1,.32,1)}
+  .ptsNext{font-size:.74rem;margin-top:.45rem;opacity:.92}
   .content{padding:1.1rem 1.1rem 1.5rem}
   .sec{display:none}.sec.on{display:block;animation:fade .4s cubic-bezier(.23,1,.32,1)}
   @keyframes fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-  @keyframes pop{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
-  .sec.on .tile,.sec.on .card{animation:pop .45s cubic-bezier(.23,1,.32,1) both}
-  .sec.on .tile:nth-child(2){animation-delay:.05s}.sec.on .tile:nth-child(3){animation-delay:.1s}.sec.on .tile:nth-child(4){animation-delay:.15s}.sec.on .tile:nth-child(5){animation-delay:.2s}.sec.on .tile:nth-child(6){animation-delay:.25s}
+  @keyframes pop{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+  .sec.on .tile,.sec.on .card,.sec.on .pcard,.sec.on .qa{animation:pop .45s cubic-bezier(.23,1,.32,1) both}
+  .sec.on .pcard:nth-child(2){animation-delay:.05s}.sec.on .pcard:nth-child(3){animation-delay:.1s}.sec.on .pcard:nth-child(4){animation-delay:.15s}.sec.on .pcard:nth-child(5){animation-delay:.2s}.sec.on .pcard:nth-child(6){animation-delay:.25s}
   @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
-  h2.t{font-size:1.15rem;font-weight:700;margin:.2rem 0 .8rem}
-  .tile{background:#fff;border-radius:16px;padding:1rem 1.1rem;margin-bottom:.7rem;box-shadow:0 4px 14px rgba(0,0,0,.04)}
-  .pack{display:flex;flex-direction:column;gap:.3rem}
-  .pack .nm{font-weight:700;font-size:1.02rem}
-  .pack .ds{font-size:.82rem;color:var(--muted)}
-  .pack .pr{display:flex;align-items:baseline;gap:.5rem;margin-top:.3rem}
-  .pack .pr b{font-size:1.3rem;color:var(--brand)}
-  .pack .pr s{font-size:.85rem;color:var(--muted)}
-  .pack .badge{font-size:.66rem;font-weight:700;background:#f0e6ee;color:var(--brand);padding:.15rem .5rem;border-radius:6px;align-self:flex-start}
-  .pkbtn{margin-top:.7rem;padding:.7rem;border-radius:11px;background:var(--brand);color:#fff;font-weight:700;font-size:.92rem;transition:transform .16s cubic-bezier(.23,1,.32,1),filter .16s}
-  .pkbtn:active{transform:scale(.97);filter:brightness(1.1)}
-  .tile{transition:transform .2s cubic-bezier(.23,1,.32,1),box-shadow .2s}
+  h2.t{font-size:1.18rem;font-weight:800;margin:.2rem 0 .3rem}
+  .sub{font-size:.82rem;color:var(--muted);margin-bottom:.85rem}
+  .tile{background:#fff;border-radius:16px;padding:1rem 1.1rem;margin-bottom:.7rem;box-shadow:0 4px 14px rgba(0,0,0,.04);transition:transform .2s cubic-bezier(.23,1,.32,1)}
   .tile:active{transform:scale(.99)}
-  .nav-i{transition:color .2s,transform .15s}.nav-i:active{transform:scale(.9)}
-  .nav-i.on .ic{animation:bounce .4s cubic-bezier(.23,1,.32,1)}
-  @keyframes bounce{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
+  /* QUICK ACTIONS (home) */
+  .qgrid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.4rem}
+  .qa{background:#fff;border-radius:15px;padding:.9rem .85rem;box-shadow:0 4px 14px rgba(0,0,0,.05);cursor:pointer;transition:transform .18s cubic-bezier(.23,1,.32,1)}
+  .qa:active{transform:scale(.96)}
+  .qa .qic{width:38px;height:38px;border-radius:11px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin-bottom:.5rem}
+  .qa b{font-size:.92rem;display:block}
+  .qa span{font-size:.74rem;color:var(--muted)}
+  /* HERO OFFER */
+  .heroOffer{position:relative;border-radius:18px;padding:1.15rem 1.2rem;color:#fff;overflow:hidden;background:linear-gradient(120deg,var(--brand),var(--brand2));box-shadow:0 10px 28px rgba(0,0,0,.14);margin-bottom:.8rem;cursor:pointer}
+  .heroOffer::after{content:'';position:absolute;top:-30%;right:-15%;width:180px;height:180px;background:radial-gradient(circle,rgba(212,165,116,.45),transparent 70%);animation:floaty 8s ease-in-out infinite}
+  .heroOffer .tag{display:inline-block;font-size:.66rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:var(--accent);color:#2a0f16;padding:.2rem .6rem;border-radius:6px}
+  .heroOffer h3{font-size:1.25rem;font-weight:800;margin:.5rem 0 .2rem;position:relative;z-index:1}
+  .heroOffer p{font-size:.82rem;opacity:.92;position:relative;z-index:1}
+  .heroOffer .cd{display:inline-flex;gap:.3rem;align-items:center;font-size:.74rem;font-weight:700;margin-top:.6rem;background:rgba(255,255,255,.16);padding:.3rem .6rem;border-radius:8px}
+  /* PACK CARDS */
+  .pcard{background:#fff;border-radius:18px;overflow:hidden;margin-bottom:.85rem;box-shadow:0 5px 18px rgba(0,0,0,.05);border:1px solid var(--line);position:relative}
+  .pcard.feat{border:1.5px solid var(--accent);box-shadow:0 8px 24px rgba(212,165,116,.22)}
+  .pcard .pimg{height:130px;background:linear-gradient(135deg,var(--brand),var(--brand2));position:relative;display:flex;align-items:center;justify-content:center}
+  .pcard .pimg img{width:100%;height:100%;object-fit:cover}
+  .pcard .pimg .ph{font-family:'Playfair Display',serif;font-size:2.6rem;color:rgba(255,255,255,.32)}
+  .pcard .ribbons{position:absolute;top:.6rem;left:.6rem;display:flex;gap:.35rem;flex-wrap:wrap;z-index:2}
+  .ribbon{font-size:.64rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase;padding:.22rem .55rem;border-radius:6px;background:#fff;color:var(--brand);box-shadow:0 2px 6px rgba(0,0,0,.12)}
+  .ribbon.gold{background:var(--accent);color:#2a0f16}
+  .ribbon.save{background:var(--ok);color:#fff}
+  .ribbon.timer{background:var(--warn);color:#fff}
+  .pcard .pbody{padding:.9rem 1.05rem 1.05rem}
+  .pcard .pnm{font-weight:800;font-size:1.05rem;line-height:1.2}
+  .pcard .ptag{font-size:.8rem;color:var(--brand);font-weight:600;margin-top:.12rem}
+  .pcard .pds{font-size:.81rem;color:var(--muted);margin-top:.3rem;line-height:1.35}
+  .pcard .prow{display:flex;align-items:baseline;gap:.5rem;margin-top:.65rem}
+  .pcard .prow b{font-size:1.5rem;color:var(--brand);font-weight:800}
+  .pcard .prow s{font-size:.9rem;color:var(--muted)}
+  .pcard .prow .per{font-size:.8rem;color:var(--muted)}
+  .pcard .ppm{font-size:.74rem;color:var(--ok);font-weight:700;margin-top:.15rem}
+  .pkbtn{width:100%;margin-top:.8rem;padding:.78rem;border-radius:12px;background:var(--brand);color:#fff;font-weight:800;font-size:.95rem;transition:transform .16s cubic-bezier(.23,1,.32,1),filter .16s}
+  .pkbtn:active{transform:scale(.98);filter:brightness(1.1)}
+  .pkbtn.gold{background:linear-gradient(120deg,var(--accent),#b9894f);color:#2a0f16}
+  .cdline{font-size:.72rem;color:var(--warn);font-weight:700;margin-top:.5rem;display:flex;align-items:center;gap:.3rem}
+  /* category pills */
+  .pills{display:flex;gap:.45rem;overflow-x:auto;padding-bottom:.5rem;margin-bottom:.3rem;-webkit-overflow-scrolling:touch}
+  .pills::-webkit-scrollbar{display:none}
+  .pill{flex-shrink:0;font-size:.78rem;font-weight:700;padding:.4rem .85rem;border-radius:20px;background:#fff;color:var(--muted);border:1px solid var(--line);cursor:pointer;transition:all .18s}
+  .pill.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+  /* CITAS */
   .appt{display:flex;justify-content:space-between;align-items:center}
   .appt .st{font-size:.7rem;font-weight:700;padding:.15rem .5rem;border-radius:6px}
-  .st.booked{background:#fff4e0;color:#b8860b}.st.attended{background:#e6f6ee;color:#1f8c69}.st.noshow{background:#fde8e8;color:#c0392b}
-  .reward{display:flex;justify-content:space-between;align-items:center;padding:.7rem 0;border-bottom:1px solid var(--line)}
+  .st.booked{background:#fff4e0;color:#b8860b}.st.attended{background:#e6f6ee;color:#1f8c69}.st.noshow{background:#fde8e8;color:#c0392b}.st.cancelled{background:#eee;color:#888}
+  /* RECOMPENSAS */
+  .reward{display:flex;justify-content:space-between;align-items:center;padding:.75rem 0;border-bottom:1px solid var(--line)}
   .reward:last-child{border:none}
-  .rbadge{font-size:.7rem;font-weight:700;padding:.2rem .55rem;border-radius:20px;background:#eee;color:#888}
-  .rbadge.ok{background:var(--brand);color:#fff}
+  .reward .rl b{font-size:.95rem}
+  .rbadge{font-size:.68rem;font-weight:800;padding:.22rem .6rem;border-radius:20px;background:#eee;color:#888;white-space:nowrap}
+  .rbadge.ok{background:var(--ok);color:#fff}
+  .bono{display:flex;flex-direction:column}
+  .bonoTop{display:flex;justify-content:space-between;align-items:center}
+  .dots{display:flex;gap:.3rem;margin-top:.55rem}
+  .dot{flex:1;height:7px;border-radius:4px;background:var(--line)}
+  .dot.used{background:var(--brand)}
   /* NAV */
-  nav{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:.5rem .3rem calc(.5rem + env(safe-area-inset-bottom));box-shadow:0 -4px 20px rgba(0,0,0,.05)}
-  .nav-i{flex:1;text-align:center;font-size:.66rem;color:var(--muted);padding:.3rem 0;font-weight:600}
+  nav{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:.5rem .3rem calc(.5rem + env(safe-area-inset-bottom));box-shadow:0 -4px 20px rgba(0,0,0,.05);z-index:50}
+  .nav-i{flex:1;text-align:center;font-size:.64rem;color:var(--muted);padding:.3rem 0;font-weight:600;transition:color .2s,transform .15s;cursor:pointer}
+  .nav-i:active{transform:scale(.9)}
   .nav-i.on{color:var(--brand)}
-  .nav-i .ic{font-size:1.25rem;display:block;margin-bottom:.1rem}
-  .toast{position:fixed;top:1rem;left:50%;transform:translateX(-50%);background:#1f8c69;color:#fff;padding:.7rem 1.2rem;border-radius:30px;font-weight:600;font-size:.88rem;opacity:0;transition:opacity .3s;z-index:99;max-width:90%}
+  .nav-i .ic{font-size:1.22rem;display:block;margin-bottom:.1rem}
+  .nav-i.on .ic{animation:bounce .4s cubic-bezier(.23,1,.32,1)}
+  @keyframes bounce{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(1)}}
+  .toast{position:fixed;top:1rem;left:50%;transform:translateX(-50%);background:#1f8c69;color:#fff;padding:.75rem 1.2rem;border-radius:30px;font-weight:600;font-size:.88rem;opacity:0;transition:opacity .3s;z-index:99;max-width:90%;box-shadow:0 8px 24px rgba(0,0,0,.18)}
   .toast.show{opacity:1}
-  .empty{text-align:center;color:var(--muted);font-size:.88rem;padding:1.5rem}
-  .clinicInfo{background:#fff;border-radius:16px;padding:1rem 1.1rem;margin-bottom:.7rem;box-shadow:0 4px 14px rgba(0,0,0,.04)}
-  .clinicInfo a{display:flex;align-items:center;gap:.6rem;padding:.55rem 0;color:var(--ink);text-decoration:none;font-size:.9rem;font-weight:500;border-bottom:1px solid var(--line)}
+  .empty{text-align:center;color:var(--muted);font-size:.88rem;padding:1.6rem}
+  .clinicInfo{background:#fff;border-radius:16px;padding:.4rem 1.1rem;box-shadow:0 4px 14px rgba(0,0,0,.04)}
+  .clinicInfo a{display:flex;align-items:center;gap:.6rem;padding:.65rem 0;color:var(--ink);text-decoration:none;font-size:.9rem;font-weight:500;border-bottom:1px solid var(--line)}
   .clinicInfo a:last-child{border:none}
   .clinicInfo .ci-ic{width:34px;height:34px;border-radius:9px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:1rem}
-  .loginLogo{width:72px;height:72px;border-radius:18px;object-fit:contain;background:#fff;padding:8px;box-shadow:0 10px 26px rgba(0,0,0,.1);margin:0 auto .8rem}
+  .loginLogo{width:78px;height:78px;border-radius:18px;object-fit:contain;background:#fff;padding:8px;box-shadow:0 10px 26px rgba(0,0,0,.18);margin:0 auto .8rem}
+  /* SHEET (detalle de pack) */
+  .sheet{position:fixed;inset:0;z-index:80;display:none}
+  .sheet.on{display:block}
+  .sheet .ov{position:absolute;inset:0;background:rgba(20,12,15,.55);animation:fade .25s}
+  .sheet .pane{position:absolute;left:0;right:0;bottom:0;max-width:480px;margin:0 auto;background:#fff;border-radius:24px 24px 0 0;padding:1.2rem 1.2rem calc(1.4rem + env(safe-area-inset-bottom));box-shadow:0 -10px 40px rgba(0,0,0,.25);animation:slideUp .32s cubic-bezier(.23,1,.32,1)}
+  @keyframes slideUp{from{transform:translateY(100%)}to{transform:none}}
+  .sheet .grab{width:42px;height:5px;border-radius:5px;background:var(--line);margin:0 auto .9rem}
+  .sheet h3{font-size:1.3rem;font-weight:800}
+  .benefit{display:flex;gap:.55rem;align-items:flex-start;font-size:.88rem;margin-top:.55rem;color:var(--ink)}
+  .benefit .bk{color:var(--ok);font-weight:800;flex-shrink:0}
+  .secure{font-size:.72rem;color:var(--muted);text-align:center;margin-top:.7rem;display:flex;align-items:center;justify-content:center;gap:.3rem}
 </style>
 </head>
 <body>
 <div class="wrap">
   <!-- LOGIN -->
   <div id="login">
-    <div style="text-align:center;margin-bottom:1.2rem">
+    <div style="text-align:center;margin-bottom:1.3rem">
       <img id="loginLogo" class="loginLogo" style="display:none"/>
-      <div class="serif" id="loginClinic" style="font-size:1.8rem;font-weight:700;color:var(--brand)">Tu clínica</div>
-      <p style="color:var(--muted);margin-top:.3rem;font-size:.9rem">Tu espacio de clienta: puntos, citas y ofertas.</p>
+      <div class="serif" id="loginClinic" style="font-size:1.9rem;font-weight:800;color:#fff">Tu clínica</div>
+      <p style="color:rgba(255,255,255,.85);margin-top:.35rem;font-size:.92rem">Tu club privado: puntos, ofertas exclusivas y tus citas, 24/7.</p>
     </div>
     <div class="card">
-      <label style="font-size:.85rem;font-weight:600">Tu móvil</label>
+      <label style="font-size:.85rem;font-weight:700">Tu móvil</label>
       <input id="phone" type="tel" inputmode="numeric" placeholder="600 000 000"/>
-      <input id="name" type="text" placeholder="Tu nombre (primera vez)"/>
-      <button class="btn" onclick="doLogin()">Entrar</button>
-      <p style="color:var(--muted);font-size:.72rem;text-align:center;margin-top:.7rem">Sin contraseñas. Te reconoceremos en este teléfono.</p>
+      <input id="name" type="text" placeholder="Tu nombre (solo la primera vez)"/>
+      <button class="btn" onclick="doLogin()">Entrar a mi club</button>
+      <p style="color:var(--muted);font-size:.72rem;text-align:center;margin-top:.75rem">Sin contraseñas. Te reconocemos por tu teléfono.</p>
     </div>
+    <p style="color:rgba(255,255,255,.7);font-size:.7rem;text-align:center;margin-top:1.1rem">Powered by AURA</p>
   </div>
 
   <!-- APP -->
@@ -117,40 +178,50 @@
         </div>
       </div>
       <div class="pts">
-        <div class="lbl">Tus puntos</div>
-        <div class="n" id="uPts">0</div>
-        <div id="uTier" class="tier">Bronce</div>
+        <div class="ptsTop">
+          <div>
+            <div class="lbl">Tus puntos</div>
+            <div class="n" id="uPts">0</div>
+          </div>
+          <div class="val">
+            <span class="lbl">Equivale a</span>
+            <b id="uWallet">0€</b>
+            <span style="opacity:.8">para tus tratamientos</span>
+          </div>
+        </div>
+        <div id="uTier" class="tier">✦ Bronce</div>
         <div class="prog"><div id="uProg" style="width:0%"></div></div>
-        <div class="lbl" id="uNext" style="margin-top:.4rem;text-transform:none;letter-spacing:0;opacity:.9"></div>
+        <div class="ptsNext" id="uNext"></div>
       </div>
     </header>
     <div class="content">
       <!-- INICIO -->
       <section class="sec on" id="s-home">
-        <h2 class="t">Para ti</h2>
-        <div class="tile" onclick="go('tienda')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
-          <div><b>Comprar un pack</b><div style="font-size:.82rem;color:var(--muted)">Ahorra reservando tu tratamiento</div></div><span style="font-size:1.4rem">→</span>
+        <div id="homeHero"></div>
+        <div class="qgrid">
+          <div class="qa" onclick="go('tienda')"><div class="qic">🛍️</div><b>Ofertas y packs</b><span>Ahorra reservando</span></div>
+          <div class="qa" onclick="go('citas')"><div class="qic">📅</div><b>Mis citas</b><span>Ver y reservar</span></div>
+          <div class="qa" onclick="go('prem')"><div class="qic">★</div><b>Mis premios</b><span id="qaPts">0 puntos</span></div>
+          <div class="qa" onclick="go('referir')"><div class="qic">💜</div><b>Invitar amiga</b><span>Gana puntos</span></div>
         </div>
-        <div class="tile" onclick="go('citas')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
-          <div><b>Mis citas</b><div style="font-size:.82rem;color:var(--muted)">Ver y reservar</div></div><span style="font-size:1.4rem">→</span>
-        </div>
-        <div class="tile" onclick="go('referir')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center">
-          <div><b>Invita a una amiga</b><div style="font-size:.82rem;color:var(--muted)">Gana puntos cuando venga</div></div><span style="font-size:1.4rem">→</span>
-        </div>
-        <button class="btn ghost" onclick="checkin()" style="margin-top:.4rem">He llegado a la clínica (sumar puntos)</button>
-        <h2 class="t" style="margin-top:1.3rem">Tu clínica</h2>
+        <button class="btn ghost" onclick="checkin()" style="margin-top:.5rem;background:#fff">📍 He llegado a la clínica · sumar puntos</button>
+        <h2 class="t" style="margin-top:1.4rem">Tu clínica</h2>
+        <div class="sub">Estamos a un toque de distancia.</div>
         <div class="clinicInfo" id="clinicInfoBox"></div>
       </section>
 
       <!-- TIENDA -->
       <section class="sec" id="s-tienda">
-        <h2 class="t">Tienda · packs y bonos</h2>
+        <h2 class="t">Tu tienda de belleza</h2>
+        <div class="sub">Reserva ahora, paga en tu visita. Precios solo para miembras del club.</div>
+        <div class="pills" id="catPills"></div>
         <div id="packsList"></div>
       </section>
 
       <!-- CITAS -->
       <section class="sec" id="s-citas">
         <h2 class="t">Mis citas</h2>
+        <div class="sub">Tu próxima cita y tu historial.</div>
         <a id="bookLink" href="#" target="_blank"><button class="btn" style="margin-top:0;margin-bottom:1rem">+ Reservar una cita</button></a>
         <div id="apptsList"></div>
       </section>
@@ -158,19 +229,21 @@
       <!-- RECOMPENSAS -->
       <section class="sec" id="s-prem">
         <h2 class="t">Mis recompensas</h2>
+        <div class="sub">Cada visita y cada compra suma. Canjea cuando quieras.</div>
         <div class="tile"><div id="rewardsList"></div></div>
-        <h2 class="t" style="margin-top:1.2rem">Mis bonos</h2>
+        <h2 class="t" style="margin-top:1.3rem">Mis bonos</h2>
+        <div class="sub">Sesiones que ya tienes pagadas, listas para usar.</div>
         <div id="bonosList"></div>
       </section>
 
       <!-- REFERIR -->
       <section class="sec" id="s-referir">
-        <h2 class="t">Invita a una amiga</h2>
+        <h2 class="t">Invita y ganáis las dos</h2>
         <div class="card">
-          <p style="font-size:.88rem;color:var(--muted);margin-bottom:.3rem">Cuando venga por primera vez, ganas puntos. Es nuestra forma de daros las gracias.</p>
+          <p style="font-size:.88rem;color:var(--muted);margin-bottom:.5rem">Cuando tu amiga venga por primera vez, tú ganas puntos y ella entra en el club. Es nuestra forma de daros las gracias.</p>
           <input id="fName" type="text" placeholder="Nombre de tu amiga"/>
           <input id="fPhone" type="tel" inputmode="numeric" placeholder="Su móvil"/>
-          <button class="btn" onclick="doRefer()">Invitar y ganar puntos</button>
+          <button class="btn gold" onclick="doRefer()">Invitar y ganar puntos</button>
         </div>
       </section>
     </div>
@@ -184,16 +257,25 @@
     </nav>
   </div>
 </div>
+
+<!-- SHEET detalle de pack -->
+<div class="sheet" id="sheet">
+  <div class="ov" onclick="closeSheet()"></div>
+  <div class="pane" id="sheetPane"></div>
+</div>
+
 <div class="toast" id="toast"></div>
 <script>
 const WORKER='https://aura-chat-worker.adrian-7b9.workers.dev';
 const params=new URLSearchParams(location.search);
 const T=params.get('t')||params.get('clinica')||'';
-let LEAD=null, CFG=null, CLINIC='', INFO={};
-function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2300);}
+let LEAD=null, CFG=null, CLINIC='', INFO={}, PACKS=[], PTS=0, EURPER100=10, CAT='all';
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
 function eur(n){return (Math.round((n||0)*100)/100).toLocaleString('es-ES')+'€';}
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 function darken(hex,f){try{hex=hex.replace('#','');if(hex.length===3)hex=hex.split('').map(c=>c+c).join('');const n=parseInt(hex,16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;r=Math.round(r*(1-f));g=Math.round(g*(1-f));b=Math.round(b*(1-f));return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}catch(e){return hex;}}
+
 async function loadClinicMeta(){
   try{const d=await (await fetch(WORKER+'/api/portal-info?tenant='+T)).json(); INFO=d||{};
     CLINIC=d.name||'Tu clínica';
@@ -205,23 +287,19 @@ async function loadClinicMeta(){
     document.querySelector('meta[name=theme-color]').content=brand;
     if(d.logo_url){const ll=document.getElementById('loginLogo');ll.src=d.logo_url;ll.style.display='block';}
   }catch(e){}
-  // config de puntos (separado)
   try{const c=await (await fetch(WORKER+'/api/loyalty-config?tenant='+T)).json(); CFG=c.config||c||null;}catch(e){}
 }
 function renderClinicInfo(){
-  // header logo / iniciales
   const hl=document.getElementById('hLogo'), ht=document.getElementById('hLogoTxt');
   if(INFO.logo_url){hl.src=INFO.logo_url;hl.style.display='block';ht.style.display='none';}
   else{ht.textContent=(CLINIC||'C').trim()[0].toUpperCase();ht.style.display='flex';hl.style.display='none';}
-  // direccion en header
   const addr=[INFO.address,INFO.city].filter(Boolean).join(', ');
   if(addr){document.getElementById('appAddrTxt').textContent=addr;document.getElementById('appAddr').style.display='flex';}
-  // tarjeta info
   const box=document.getElementById('clinicInfoBox'); if(!box)return; let h='';
-  if(addr){h+='<a href="https://maps.google.com/?q='+encodeURIComponent(addr+' '+CLINIC)+'" target="_blank"><span class="ci-ic">📍</span><span>'+addr+'</span></a>';}
-  const tel=(INFO.whatsapp||'').replace(/[^0-9+]/g,'');
-  if(tel){h+='<a href="https://wa.me/'+tel.replace('+','')+'" target="_blank"><span class="ci-ic">💬</span><span>Escríbenos por WhatsApp</span></a>';h+='<a href="tel:'+tel+'"><span class="ci-ic">📞</span><span>Llamar a la clínica</span></a>';}
-  if(INFO.email){h+='<a href="mailto:'+INFO.email+'"><span class="ci-ic">✉️</span><span>'+INFO.email+'</span></a>';}
+  if(addr){h+='<a href="https://maps.google.com/?q='+encodeURIComponent(addr+' '+CLINIC)+'" target="_blank"><span class="ci-ic">📍</span><span>'+esc(addr)+'</span></a>';}
+  const tel=(INFO.whatsapp||'').trim();
+  if(tel){h+='<a href="https://wa.me/'+tel.replace('+','').replace(/\s/g,'')+'" target="_blank"><span class="ci-ic">💬</span><span>Escríbenos por WhatsApp</span></a>';h+='<a href="tel:'+tel+'"><span class="ci-ic">📞</span><span>Llamar a la clínica</span></a>';}
+  if(INFO.email){h+='<a href="mailto:'+INFO.email+'"><span class="ci-ic">✉️</span><span>'+esc(INFO.email)+'</span></a>';}
   box.innerHTML=h||'<div class="empty" style="padding:.6rem">Tu clínica añadirá sus datos pronto.</div>';
 }
 async function doLogin(){
@@ -231,7 +309,7 @@ async function doLogin(){
   try{const d=await (await fetch(WORKER+'/api/loyalty-find',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,phone,name})})).json();
     if(!d.ok){toast('No se pudo entrar');return;}
     LEAD=d.lead_id; localStorage.setItem('portal_lead_'+T,LEAD);
-    if(d.welcome)toast('+'+d.welcome+' puntos de bienvenida');
+    if(d.welcome)toast('🎁 +'+d.welcome+' puntos de bienvenida');
     enterApp();
   }catch(e){toast('Error de conexión');}
 }
@@ -241,55 +319,134 @@ async function enterApp(){
   document.getElementById('appClinic').textContent=CLINIC;
   renderClinicInfo();
   document.getElementById('bookLink').href='/c/'+T;
-  await refreshCard(); loadPacks(); loadAppts(); loadBonos();
+  await refreshCard(); await loadPacks(); loadAppts(); loadBonos();
 }
 async function refreshCard(){
   const d=await (await fetch(WORKER+'/api/loyalty-card?tenant='+T+'&lead='+LEAD)).json();
   CFG=d.config||CFG;
   document.getElementById('uName').textContent=(d.name||'').split(' ')[0]||'';
-  const pts=d.points||0; animate('uPts',pts);
-  const eurPer100=(CFG&&CFG.eur_per_100pts)||10;
-  // nivel
-  let tier='Bronce',min=0,max=500; if(pts>=1500){tier='Oro';min=1500;max=3000;}else if(pts>=500){tier='Plata';min=500;max=1500;}
-  document.getElementById('uTier').textContent=tier;
-  document.getElementById('uProg').style.width=Math.min(100,((pts-min)/(max-min)*100))+'%';
-  document.getElementById('uNext').textContent=tier==='Oro'?('Eres nuestra clienta VIP · '+eur(pts/100*eurPer100)+' en premios'):('Te faltan '+(max-pts)+' pts para '+(tier==='Bronce'?'Plata':'Oro'));
-  renderRewards(pts,eurPer100);
+  PTS=d.points||0; animate('uPts',PTS);
+  EURPER100=(CFG&&CFG.eur_per_100pts)||10;
+  const wallet=PTS/100*EURPER100;
+  document.getElementById('uWallet').textContent=eur(wallet);
+  document.getElementById('qaPts').textContent=PTS+' puntos';
+  // niveles
+  let tier='Bronce',ic='✦',min=0,max=500; if(PTS>=1500){tier='Oro';ic='♛';min=1500;max=3000;}else if(PTS>=500){tier='Plata';ic='✧';min=500;max=1500;}
+  document.getElementById('uTier').textContent=ic+' '+tier;
+  document.getElementById('uProg').style.width=Math.min(100,((PTS-min)/(max-min)*100))+'%';
+  document.getElementById('uNext').textContent=tier==='Oro'?('Eres clienta VIP · disfruta de tus ventajas exclusivas'):('Te faltan '+(max-PTS)+' pts para nivel '+(tier==='Bronce'?'Plata':'Oro'));
+  renderRewards();
 }
 function animate(id,target){const el=document.getElementById(id);let c=0;const s=Math.max(1,Math.ceil(target/30));const iv=setInterval(()=>{c+=s;if(c>=target){c=target;clearInterval(iv);}el.textContent=c;},22);}
-function renderRewards(pts,eurPer100){
+function renderRewards(){
   let rw=[];try{rw=CFG&&CFG.rewards?(typeof CFG.rewards==='string'?JSON.parse(CFG.rewards):CFG.rewards):[];}catch(e){}
-  if(!rw.length)rw=[{name:'Descuento '+eurPer100+'€',pts:100},{name:'Producto de regalo',pts:250},{name:'Limpieza facial gratis',pts:500}];
-  document.getElementById('rewardsList').innerHTML=rw.map(r=>{const ok=pts>=r.pts;return '<div class="reward"><div><b>'+r.name+'</b><div style="font-size:.76rem;color:var(--muted)">'+r.pts+' puntos</div></div><span class="rbadge '+(ok?'ok':'')+'">'+(ok?'Disponible':'-'+(r.pts-pts))+'</span></div>';}).join('');
+  if(!rw.length)rw=[{name:'Descuento '+EURPER100+'€',pts:100},{name:'Producto de regalo',pts:250},{name:'Limpieza facial gratis',pts:500}];
+  document.getElementById('rewardsList').innerHTML=rw.map(r=>{const ok=PTS>=r.pts;return '<div class="reward"><div class="rl"><b>'+esc(r.name)+'</b><div style="font-size:.76rem;color:var(--muted)">'+r.pts+' puntos</div></div><span class="rbadge '+(ok?'ok':'')+'">'+(ok?'Disponible ✓':'Te faltan '+(r.pts-PTS))+'</span></div>';}).join('');
 }
+// ===== OFERTAS / PACKS =====
+function packKindLabel(p){return p.recurring?'Membresía':p.kind==='giftcard'?'Tarjeta regalo':(p.sessions>1?'Bono':'Pack');}
+function daysLeft(p){ if(!p.valid_until)return null; const end=new Date(p.valid_until+'T23:59:59'); const ms=end-new Date(); if(ms<=0)return 0; return Math.ceil(ms/86400000); }
+function catOf(p){ if(p.recurring)return 'membresia'; if(p.kind==='giftcard')return 'regalo'; if(p.sessions>1)return 'bono'; return 'pack'; }
 async function loadPacks(){
-  const d=await (await fetch(WORKER+'/api/packs?tenant='+T)).json();
-  const box=document.getElementById('packsList');
-  if(!d.packs||!d.packs.length){box.innerHTML='<div class="empty">Pronto tendrás packs disponibles aquí.</div>';return;}
-  box.innerHTML=d.packs.map(p=>{const off=p.original_price&&p.original_price>p.price;return '<div class="tile pack">'+(off?'<span class="badge">Ahorras '+eur(p.original_price-p.price)+'</span>':'')+'<div class="nm">'+p.name+'</div><div class="ds">'+(p.description||'')+'</div><div class="pr"><b>'+eur(p.price)+'</b>'+(off?'<s>'+eur(p.original_price)+'</s>':'')+(p.recurring?'<span style="font-size:.8rem;color:var(--muted)">/mes</span>':'')+'</div><button class="pkbtn" onclick="buyPack(\''+p.id+'\',\''+p.name.replace(/\x27/g,'')+'\')">Reservar este pack</button></div>';}).join('');
+  try{const d=await (await fetch(WORKER+'/api/packs?tenant='+T)).json(); PACKS=d.packs||[];}catch(e){PACKS=[];}
+  renderHero(); renderPills(); renderPacks();
 }
-async function buyPack(pid,name){
-  if(!confirm('¿Reservar "'+name+'"? Te lo guardamos y lo pagas en tu próxima visita.'))return;
+function renderHero(){
+  const box=document.getElementById('homeHero'); if(!box)return;
+  // hero = pack destacado o con oferta limitada
+  let hero=PACKS.find(p=>p.featured)||PACKS.find(p=>p.valid_until&&daysLeft(p)>0)||PACKS.find(p=>p.original_price>p.price);
+  if(!hero){box.innerHTML='';return;}
+  const dl=daysLeft(hero);
+  const save=hero.original_price>hero.price?(' · ahorras '+eur(hero.original_price-hero.price)):'';
+  box.innerHTML='<div class="heroOffer" onclick="openPack(\''+hero.id+'\')">'
+    +'<span class="tag">'+(hero.badge||'Oferta destacada')+'</span>'
+    +'<h3>'+esc(hero.name)+'</h3>'
+    +'<p>'+esc(hero.tagline||hero.description||'Tu tratamiento favorito, a precio de miembra')+save+'</p>'
+    +(dl!=null&&dl>0?'<span class="cd">⏳ Solo '+dl+' día'+(dl>1?'s':'')+'</span>':'<span class="cd">Ver oferta →</span>')
+    +'</div>';
+}
+function renderPills(){
+  const box=document.getElementById('catPills'); if(!box)return;
+  const cats=[['all','Todo'],['pack','Packs'],['bono','Bonos'],['membresia','Membresías'],['regalo','Regalos']];
+  const present=new Set(PACKS.map(catOf));
+  box.innerHTML=cats.filter(c=>c[0]==='all'||present.has(c[0])).map(c=>'<div class="pill '+(CAT===c[0]?'on':'')+'" onclick="setCat(\''+c[0]+'\')">'+c[1]+'</div>').join('');
+}
+function setCat(c){CAT=c;renderPills();renderPacks();}
+function renderPacks(){
+  const box=document.getElementById('packsList');
+  let list=PACKS.filter(p=>CAT==='all'||catOf(p)===CAT);
+  if(!list.length){box.innerHTML='<div class="empty">Pronto tendrás ofertas disponibles aquí. ✨</div>';return;}
+  box.innerHTML=list.map(p=>{
+    const off=p.original_price&&p.original_price>p.price;
+    const dl=daysLeft(p);
+    const ph=(p.name||'·').trim()[0].toUpperCase();
+    let ribbons='';
+    if(p.featured)ribbons+='<span class="ribbon gold">★ '+(p.badge||'Más popular')+'</span>';
+    else if(p.badge)ribbons+='<span class="ribbon">'+esc(p.badge)+'</span>';
+    if(off)ribbons+='<span class="ribbon save">-'+Math.round((p.original_price-p.price)/p.original_price*100)+'%</span>';
+    if(dl!=null&&dl>0&&dl<=14)ribbons+='<span class="ribbon timer">⏳ '+dl+'d</span>';
+    const img=p.image_url?'<img src="'+esc(p.image_url)+'"/>':'<div class="ph">'+ph+'</div>';
+    return '<div class="pcard '+(p.featured?'feat':'')+'">'
+      +'<div class="pimg">'+img+'<div class="ribbons">'+ribbons+'</div></div>'
+      +'<div class="pbody">'
+        +'<div class="pnm">'+esc(p.name)+'</div>'
+        +(p.tagline?'<div class="ptag">'+esc(p.tagline)+'</div>':'')
+        +'<div class="pds">'+esc(p.description||'')+'</div>'
+        +'<div class="prow"><b>'+eur(p.price)+'</b>'+(off?'<s>'+eur(p.original_price)+'</s>':'')+(p.recurring?'<span class="per">/mes</span>':'')+'</div>'
+        +(p.sessions>1?'<div class="ppm">'+eur(p.price/p.sessions)+' por sesión · '+p.sessions+' sesiones</div>':'')
+        +(dl!=null&&dl>0&&dl<=14?'<div class="cdline">⏳ Oferta acaba en '+dl+' día'+(dl>1?'s':'')+'</div>':'')
+        +'<button class="pkbtn '+(p.featured?'gold':'')+'" onclick="openPack(\''+p.id+'\')">Lo quiero</button>'
+      +'</div></div>';
+  }).join('');
+}
+function openPack(pid){
+  const p=PACKS.find(x=>x.id===pid); if(!p)return;
+  const off=p.original_price&&p.original_price>p.price;
+  const dl=daysLeft(p);
+  let benefits=[];
+  if(p.sessions>1)benefits.push('<b>'+p.sessions+' sesiones</b> a '+eur(p.price/p.sessions)+' cada una');
+  if(off)benefits.push('Ahorras <b>'+eur(p.original_price-p.price)+'</b> frente al precio normal');
+  if(p.recurring)benefits.push('Cuota mensual flexible · cancela cuando quieras');
+  benefits.push('Reservas ahora y <b>pagas en tu visita</b>');
+  benefits.push('Sumas puntos del club con esta compra');
+  const pane=document.getElementById('sheetPane');
+  pane.innerHTML='<div class="grab"></div>'
+    +'<div style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--brand)">'+packKindLabel(p)+'</div>'
+    +'<h3>'+esc(p.name)+'</h3>'
+    +(p.tagline?'<div style="color:var(--brand);font-weight:600;margin-top:.15rem">'+esc(p.tagline)+'</div>':'')
+    +'<p style="font-size:.9rem;color:var(--muted);margin-top:.5rem;line-height:1.4">'+esc(p.description||'')+'</p>'
+    +'<div class="prow" style="display:flex;align-items:baseline;gap:.5rem;margin-top:.9rem"><b style="font-size:1.9rem;color:var(--brand);font-weight:800">'+eur(p.price)+'</b>'+(off?'<s style="color:var(--muted)">'+eur(p.original_price)+'</s>':'')+(p.recurring?'<span style="color:var(--muted)">/mes</span>':'')+'</div>'
+    +(dl!=null&&dl>0?'<div class="cdline">⏳ Esta oferta acaba en '+dl+' día'+(dl>1?'s':'')+'</div>':'')
+    +'<div style="margin-top:.9rem">'+benefits.map(b=>'<div class="benefit"><span class="bk">✓</span><span>'+b+'</span></div>').join('')+'</div>'
+    +'<button class="pkbtn '+(p.featured?'gold':'')+'" style="margin-top:1.1rem" onclick="buyPack(\''+p.id+'\')">Reservar ahora · pago en clínica</button>'
+    +'<div class="secure">🔒 Sin pago online ahora · te lo guardamos para tu visita</div>';
+  document.getElementById('sheet').classList.add('on');
+}
+function closeSheet(){document.getElementById('sheet').classList.remove('on');}
+async function buyPack(pid){
+  const p=PACKS.find(x=>x.id===pid); if(!p)return;
   try{const d=await (await fetch(WORKER+'/api/pack-buy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,lead_id:LEAD,pack_id:pid})})).json();
-    if(d.ok){toast('¡Reservado! Te esperamos en la clínica.');loadBonos();}else toast('No se pudo reservar');
+    if(d.ok){closeSheet();toast('✨ ¡Reservado! Te esperamos en la clínica.');loadBonos();}else toast('No se pudo reservar');
   }catch(e){toast('Error');}
 }
 async function loadAppts(){
   const d=await (await fetch(WORKER+'/api/my-appointments?tenant='+T+'&lead='+LEAD)).json();
   const box=document.getElementById('apptsList');
-  if(!d.appointments||!d.appointments.length){box.innerHTML='<div class="empty">No tienes citas todavía. ¡Reserva la primera!</div>';return;}
+  if(!d.appointments||!d.appointments.length){box.innerHTML='<div class="empty">No tienes citas todavía. ¡Reserva la primera! 💆‍♀️</div>';return;}
   const stx={booked:'Reservada',attended:'Atendida',noshow:'No asististe',cancelled:'Cancelada'};
-  box.innerHTML=d.appointments.map(a=>{const dt=new Date(a.date_iso);const f=dt.toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'})+' · '+dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});return '<div class="tile appt"><div><b>'+(a.treatment||'Cita')+'</b><div style="font-size:.8rem;color:var(--muted)">'+f+'</div></div><span class="st '+(a.status||'booked')+'">'+(stx[a.status]||a.status)+'</span></div>';}).join('');
+  box.innerHTML=d.appointments.map(a=>{const dt=new Date(a.date_iso);const f=dt.toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'})+' · '+dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});return '<div class="tile appt"><div><b>'+esc(a.treatment||'Cita')+'</b><div style="font-size:.8rem;color:var(--muted)">'+f+'</div></div><span class="st '+(a.status||'booked')+'">'+(stx[a.status]||a.status)+'</span></div>';}).join('');
 }
 async function loadBonos(){
   const d=await (await fetch(WORKER+'/api/my-bonos?tenant='+T+'&lead='+LEAD)).json();
   const box=document.getElementById('bonosList');
-  if(!d.bonos||!d.bonos.length){box.innerHTML='<div class="empty">Aún no tienes bonos.</div>';return;}
-  box.innerHTML=d.bonos.map(b=>{const left=(b.total_sessions||0)-(b.used_sessions||0);const pct=b.total_sessions?(b.used_sessions/b.total_sessions*100):0;return '<div class="tile"><div style="display:flex;justify-content:space-between"><b>'+b.name+'</b><span style="font-size:.82rem;color:var(--brand);font-weight:700">'+left+' restantes</span></div><div class="prog" style="background:var(--line);margin-top:.5rem"><div style="width:'+pct+'%;background:var(--brand)"></div></div></div>';}).join('');
+  if(!d.bonos||!d.bonos.length){box.innerHTML='<div class="empty">Aún no tienes bonos. Compra uno en la tienda y ahorra. 🛍️</div>';return;}
+  box.innerHTML=d.bonos.map(b=>{const total=b.total_sessions||0;const used=b.used_sessions||0;const left=total-used;
+    let dots='';for(let i=0;i<total;i++){dots+='<div class="dot '+(i<used?'used':'')+'"></div>';}
+    return '<div class="tile bono"><div class="bonoTop"><b>'+esc(b.name)+'</b><span style="font-size:.85rem;color:var(--brand);font-weight:800">'+left+' de '+total+'</span></div><div style="font-size:.78rem;color:var(--muted);margin-top:.2rem">'+left+' sesion'+(left===1?'':'es')+' por usar</div><div class="dots">'+dots+'</div></div>';}).join('');
 }
 async function checkin(){
   try{const d=await (await fetch(WORKER+'/api/loyalty-checkin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,lead_id:LEAD})})).json();
-    if(d.already)toast('Ya sumaste puntos hoy');else if(d.earned)toast('+'+d.earned+' puntos por venir');
+    if(d.already)toast('Ya sumaste puntos hoy 😊');else if(d.earned)toast('🎉 +'+d.earned+' puntos por venir');
     refreshCard();
   }catch(e){toast('Error');}
 }
@@ -297,8 +454,8 @@ async function doRefer(){
   const fn=document.getElementById('fName').value.trim();const fp=document.getElementById('fPhone').value.trim();
   if(fp.replace(/[^0-9]/g,'').length<9){toast('Pon el móvil de tu amiga');return;}
   try{const d=await (await fetch(WORKER+'/api/refer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,lead_id:LEAD,friend_name:fn,friend_phone:fp})})).json();
-    if(d.already){toast('Esa persona ya es clienta');}
-    else if(d.ok){toast('¡Invitación enviada! Ganarás puntos cuando venga.');document.getElementById('fName').value='';document.getElementById('fPhone').value='';refreshCard();}
+    if(d.already){toast('Esa persona ya es clienta 💜');}
+    else if(d.ok){toast('💜 ¡Invitación enviada! Ganarás puntos cuando venga.');document.getElementById('fName').value='';document.getElementById('fPhone').value='';refreshCard();}
   }catch(e){toast('Error');}
 }
 function go(s){
