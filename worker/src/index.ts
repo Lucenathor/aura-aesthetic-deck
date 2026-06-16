@@ -3090,14 +3090,15 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
       // Si cae cerrada, no enviamos recordatorios que confundan y marcamos como enviados para no reintentar.
       const apptDay = String(a.date_iso).slice(0,10);
       const apptClosed = isDateClosed(apptDay, await schedFor(a.tenant_id), await vacFor(a.tenant_id)).closed;
-      // 24h exactas (ventana técnica de 1h del cron: 23-24h)
-      if (!a.sms_24h && diffH <= 24 && diffH > 23) {
+      // RECORDATORIO 24h — BLINDADO: ventana "a partir de" (en cuanto faltan ≤24h y aún >2h, sin importar el minuto
+      // exacto del cron). El flag sms_24h garantiza 1 solo envío. Así nunca se pierde aunque el cron falle/cambie.
+      if (!a.sms_24h && diffH <= 24 && diffH > 2) {
         if (apptClosed) { await env.aura_db.prepare('UPDATE appointments SET sms_24h=1 WHERE id=?').bind(a.id).run(); }
         else { const r = await sendSMS(env, a.lead_phone, fill(T.reminder_24h, vars), tn.name||'AURA', a.tenant_id);
           if (r.ok) { await env.aura_db.prepare('UPDATE appointments SET sms_24h=1 WHERE id=?').bind(a.id).run(); sent++; } }
       }
-      // 2h exactas (ventana técnica de 1h del cron: 1-2h)
-      if (!a.sms_2h && diffH <= 2 && diffH > 1) {
+      // RECORDATORIO 2h — BLINDADO: en cuanto faltan ≤2h y la cita no ha pasado (>0h). Flag sms_2h evita duplicados.
+      if (!a.sms_2h && diffH <= 2 && diffH > 0) {
         if (apptClosed) { await env.aura_db.prepare('UPDATE appointments SET sms_2h=1 WHERE id=?').bind(a.id).run(); }
         else { const r = await sendSMS(env, a.lead_phone, fill(T.reminder_2h, vars), tn.name||'AURA', a.tenant_id);
           if (r.ok) { await env.aura_db.prepare('UPDATE appointments SET sms_2h=1 WHERE id=?').bind(a.id).run(); sent++; } }
@@ -3111,8 +3112,8 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
           sent++;
         }
       }
-      // FLUJO NO-SHOW paso 1: 2h después de la cita, si sigue booked (no se cerro como atendida/no vino)
-      if (!a.sms_noshow && diffH <= -2 && diffH > -3) {
+      // FLUJO NO-SHOW paso 1 — BLINDADO: a partir de 2h después de la cita (hasta 48h) si sigue booked. Flag sms_noshow evita duplicados.
+      if (!a.sms_noshow && diffH <= -2 && diffH > -48) {
         const r = await sendSMS(env, a.lead_phone, fill(T.no_show, vars), tn.name||'AURA', a.tenant_id);
         if (r.ok) {
           await env.aura_db.prepare('UPDATE appointments SET sms_noshow=1, noshow_at=? WHERE id=?').bind(nowUTC.toISOString(), a.id).run();
@@ -3150,21 +3151,24 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
       if (!l.sms_fast20 && mins >= 3 && mins < 300 && !l.chatted) {
         const r = await sendSMS(env, l.phone, fill(T.fast20, vars), tn.name||'AURA', l.tenant_id);
         if (r.ok) { await env.aura_db.prepare('UPDATE leads SET sms_fast20=1 WHERE id=?').bind(l.id).run(); sent++; }
-      } else if (!l.sms_fast5h && mins >= 300 && mins < 360) {
+      } else if (!l.sms_fast5h && mins >= 300 && mins < 1440 && !l.chatted) {
+        // BLINDADO: a partir de 5h y hasta 24h tras dejar datos (antes solo 5-6h). Flag sms_fast5h evita duplicados.
         if (!prox) { /* sin día abierto: espera */ } else {
           const r = await sendSMS(env, l.phone, fill(T.fast5h, vars), tn.name||'AURA', l.tenant_id);
           if (r.ok) { await env.aura_db.prepare('UPDATE leads SET sms_fast5h=1 WHERE id=?').bind(l.id).run(); sent++; }
         }
-      } else if (!l.react_d3 && days >= 3 && days < 3.0417) {
+      } else if (!l.react_d3 && days >= 3 && days < 7) {
+        // BLINDADO: ventana amplia (día 3 al 7) en vez de franja de 1h. Flag react_d3 evita duplicados.
         if (!prox) continue; // sin ningún día abierto en el horizonte: espera al siguiente cron
         const r = await sendSMS(env, l.phone, fill(T.reactivation, vars), tn.name||'AURA', l.tenant_id);
         if (r.ok) { await env.aura_db.prepare('UPDATE leads SET react_d3=1 WHERE id=?').bind(l.id).run(); sent++; }
-      } else if (!l.react_d7 && days >= 7 && days < 7.0417) {
+      } else if (!l.react_d7 && days >= 7 && days < 21) {
+        // BLINDADO: ventana amplia (día 7 al 21). Flag react_d7 evita duplicados.
         if (!prox) continue;
         const r = await sendSMS(env, l.phone, fill(T.reactivation, vars), tn.name||'AURA', l.tenant_id);
         if (r.ok) { await env.aura_db.prepare('UPDATE leads SET react_d7=1 WHERE id=?').bind(l.id).run(); sent++; }
-      } else if (!l.react_d21 && days >= 21 && days < 21.0417) {
-        // Último intento antes de dejarlo ir
+      } else if (!l.react_d21 && days >= 21 && days < 60) {
+        // BLINDADO: último intento, ventana amplia (día 21 al 60). Flag react_d21 evita duplicados.
         const r = await sendSMS(env, l.phone, fill(T.react_last, vars), tn.name||'AURA', l.tenant_id);
         if (r.ok) { await env.aura_db.prepare('UPDATE leads SET react_d21=1 WHERE id=?').bind(l.id).run(); sent++; }
       }
