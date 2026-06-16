@@ -438,7 +438,16 @@ async function runCopilotAction(env: Env, tid: string, plan: any, actor: string,
   const act = plan && plan.action; let result:any = { ok:false, msg:'No entendí la orden.' };
   const eur = (n:number)=> (Math.round((n||0)*100)/100).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+'\u20ac';
   const findProd = async (q:string)=>{ if(!q) return null; const all:any = await env.aura_db.prepare('SELECT * FROM inventory_products WHERE tenant_id=? AND active=1').bind(tid).all(); const ql=String(q).toLowerCase(); return (all.results||[]).find((x:any)=> (x.name||'').toLowerCase().includes(ql) || ql.includes((x.name||'').toLowerCase())) || null; };
-  const findLead = async (q:string)=>{ if(!q) return null; const ql=String(q).toLowerCase(); const all:any = await env.aura_db.prepare('SELECT * FROM leads WHERE tenant_id=? ORDER BY created_at DESC').bind(tid).all(); return (all.results||[]).find((x:any)=> (x.name||'').toLowerCase().includes(ql)) || null; };
+  const _norm = (s:string)=> String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  const findLead = async (q:string)=>{ if(!q) return null; const qn=_norm(q); const qDigits=String(q).replace(/\D/g,''); const all:any = await env.aura_db.prepare('SELECT * FROM leads WHERE tenant_id=? ORDER BY created_at DESC').bind(tid).all(); const rows=(all.results||[]);
+    // 1) match por teléfono si la consulta es numérica
+    if(qDigits.length>=6){ const byPhone=rows.find((x:any)=> String(x.phone||'').replace(/\D/g,'').includes(qDigits)); if(byPhone) return byPhone; }
+    // 2) coincidencia exacta normalizada (nombre completo contiene la consulta)
+    let hit=rows.find((x:any)=> _norm(x.name).includes(qn)); if(hit) return hit;
+    // 3) por cualquier palabra de la consulta (nombre O apellido)
+    const words=qn.split(/\s+/).filter(w=>w.length>=3);
+    hit=rows.find((x:any)=>{ const nm=_norm(x.name); return words.some(w=> nm.split(/\s+/).some(part=> part.startsWith(w))); });
+    return hit || null; };
   const dayToISO = (d:string)=>{ const t=new Date(); if(!d||d==='hoy') return t.toISOString().slice(0,10); if(d==='manana'||d==='ma\u00f1ana'){ t.setDate(t.getDate()+1); return t.toISOString().slice(0,10);} return d; };
   try {
     if (act==='crear_producto') {
@@ -485,7 +494,18 @@ async function runCopilotAction(env: Env, tid: string, plan: any, actor: string,
       const per=plan.period||'hoy'; const t=new Date(); const hoyISO=t.toISOString().slice(0,10); const mesPrefix=hoyISO.slice(0,7);
       const periodCond = per==='mes' ? "substr(date_iso,1,7)='"+mesPrefix+"'" : "substr(date_iso,1,10)='"+hoyISO+"'";
       if (plan.metric==='top_tratamiento') { const tp:any=await env.aura_db.prepare("SELECT name, COUNT(*) c, COALESCE(SUM(amount),0) v FROM treatments_log WHERE tenant_id=? AND pay_status='paid' AND "+periodCond+" GROUP BY name ORDER BY v DESC LIMIT 1").bind(tid).first(); result={ ok:true, msg: tp&&tp.name? ('Lo que más factura ('+(per==='mes'?'este mes':'hoy')+'): '+tp.name+' con '+eur(tp.v)+' en '+tp.c+' ventas.') : 'Aún no hay ventas en el periodo.' }; }
-      else { const sm:any=await env.aura_db.prepare("SELECT COALESCE(SUM(amount),0) g, COUNT(*) c FROM treatments_log WHERE tenant_id=? AND pay_status='paid' AND "+periodCond).bind(tid).first(); result={ ok:true, msg:'Has facturado '+eur(sm?sm.g:0)+' en '+((sm&&sm.c)||0)+' cobros '+(per==='mes'?'este mes':'hoy')+'.'+(plan.metric==='beneficio'?' (El beneficio neto con gastos e IVA lo ves en Caja → Beneficio real.)':'') }; }
+      else { const sm:any=await env.aura_db.prepare("SELECT COALESCE(SUM(amount),0) g, COUNT(*) c FROM treatments_log WHERE tenant_id=? AND pay_status='paid' AND "+periodCond).bind(tid).first(); const facturado=(sm&&sm.g)||0; const cobros=(sm&&sm.c)||0;
+        if(plan.metric==='beneficio'){
+          // Beneficio estimado del MES: facturado - personal(con SS) - gastos fijos - marketing. (El detalle exacto con IVA está en Caja)
+          const pros:any=await env.aura_db.prepare('SELECT COALESCE(SUM(salary_gross*(1+COALESCE(ss_pct,30)/100.0)),0) p FROM professionals WHERE tenant_id=? AND active=1').bind(tid).first();
+          const personalMes=(pros&&pros.p)||0;
+          const bc:any=await env.aura_db.prepare('SELECT * FROM business_costs WHERE tenant_id=?').bind(tid).first();
+          let fijos=0, marketing=0; try{ if(bc){ const fx=JSON.parse(bc.fixed_json||'[]'); fijos=(Array.isArray(fx)?fx:[]).reduce((a:any,x:any)=>a+(Number(x.amount)||0),0); marketing=Number(bc.marketing_monthly||0); } }catch(e){}
+          const benef = facturado - personalMes - fijos - marketing;
+          result={ ok:true, msg:'Este mes has facturado '+eur(facturado)+'. Beneficio estimado (tras personal, gastos fijos y marketing): '+eur(benef)+'. El desglose exacto con IVA lo tienes en Caja → Beneficio real.' };
+        } else {
+          result={ ok:true, msg:'Has facturado '+eur(facturado)+' en '+cobros+' cobros '+(per==='mes'?'este mes':'hoy')+'.' };
+        } }
     } else if (act==='consultar_pendientes') {
       const leads:any=await env.aura_db.prepare("SELECT status, recover_state, chatted FROM leads WHERE tenant_id=?").bind(tid).all(); const L=(leads.results||[]);
       const llamar=L.filter((l:any)=>l.chatted && l.status!=='client' && l.status!=='booked' && l.status!=='lost').length;
