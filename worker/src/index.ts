@@ -2217,8 +2217,14 @@ export default {
           const att = await Promise.all(top.map((c:any)=> uni('/api/v1/chats/'+encodeURIComponent(c.id)+'/attendees').then((a:any)=>{ const it=(a.data?.items||[]).find((x:any)=>x.is_self!==1)||(a.data?.items||[])[0]; return it||null; }).catch(()=>null) ));
           // intenta obtener foto de perfil de cada contacto (cuando WhatsApp la expone)
           const pics = await Promise.all(att.map((a:any)=>{ const pid=a?.public_identifier||a?.provider_id; if(!pid) return Promise.resolve(null); return uni('/api/v1/users/'+encodeURIComponent(pid)+'?account_id='+acc).then((u:any)=> u.data?.profile_picture_url||u.data?.picture_url||null).catch(()=>null); }));
-          for (let i=0;i<top.length;i++){ const c=top[i]; const a=att[i]||{}; const phoneRaw=a.specifics?.phone_number||c.provider_id||''; const realName=a.name||(phoneRaw?('+'+String(phoneRaw).replace(/@.*/,'')):''); const last=c.last_message?.text||c.snippet||''; const ts=c.timestamp?Date.parse(c.timestamp):Date.now(); const pic=pics[i]||a.picture_url||a.profile_picture_url||null;
-            try { await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,picture,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET name=COALESCE(NULLIF(excluded.name,''),wa_chats_meta.name), phone=COALESCE(NULLIF(excluded.phone,''),wa_chats_meta.phone), picture=COALESCE(excluded.picture,wa_chats_meta.picture), last_text=excluded.last_text, last_ts=excluded.last_ts, updated_at=excluded.updated_at").bind(t,c.id,realName,String(phoneRaw).replace(/@.*/,''),pic,last,ts,c.unread_count||0,Date.now()).run(); } catch(e){}
+          for (let i=0;i<top.length;i++){ const c=top[i]; const a=att[i]||{};
+            // Extracción robusta del teléfono. PRIORIDAD: specifics.phone_number y public_identifier (traen el tel real),
+            // NUNCA provider_id cuando es '...@lid' (ID interno de WhatsApp sin teléfono).
+            const candidates = [ a.specifics?.phone_number, a.public_identifier, a.attendee_provider_id, a.provider_id, c.provider_id, c.attendee_provider_id ];
+            let phoneRaw = '';
+            for (const cand of candidates){ const s=String(cand||''); if(/@lid/i.test(s)) continue; const dgs=s.replace(/@.*/,'').replace(/\D/g,''); if(dgs.length>=7 && dgs.length<=15){ phoneRaw=dgs; break; } }
+            const realName=a.name||(phoneRaw?('+'+phoneRaw):''); const last=c.last_message?.text||c.snippet||''; const ts=c.timestamp?Date.parse(c.timestamp):Date.now(); const pic=pics[i]||a.picture_url||a.profile_picture_url||null;
+            try { await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,picture,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET name=COALESCE(NULLIF(excluded.name,''),wa_chats_meta.name), phone=COALESCE(NULLIF(excluded.phone,''),wa_chats_meta.phone), picture=COALESCE(excluded.picture,wa_chats_meta.picture), last_text=excluded.last_text, last_ts=excluded.last_ts, updated_at=excluded.updated_at").bind(t,c.id,realName,phoneRaw,pic,last,ts,c.unread_count||0,Date.now()).run(); } catch(e){}
           }
         };
         // Lista de chats: SERVIDA DESDE LA BD de AURA (escalable). Sincroniza la 1ª vez si está vacía.
@@ -2306,9 +2312,10 @@ export default {
           if(!tnt) return json({error:'missing tenant'},400);
           const chatId = url.searchParams.get('number')||'';
           let dbRes:any = await env.aura_db.prepare('SELECT * FROM wa_messages WHERE tenant_id=? AND chat_id=? ORDER BY ts ASC LIMIT 100').bind(tnt, chatId).all();
-          // Sincroniza desde Unipile si el chat está vacío, si faltan adjuntos, o si aún no hemos bajado el historial completo (<60)
-          const missingMedia = (dbRes.results||[]).some((x:any)=> x.mtype && x.mtype!=='text' && !x.att_id);
-          if(!(dbRes.results||[]).length || missingMedia || (dbRes.results||[]).length < 60){
+          // RENDIMIENTO: servimos SIEMPRE desde la BD al instante. Solo llamamos a Unipile (lento) si el chat
+          // está vacío (1ª vez) o si se pide refresco explícito con ?sync=1. El cron resincroniza cada 10 min en 2º plano.
+          const wantSync = url.searchParams.get('sync')==='1';
+          if(!(dbRes.results||[]).length || wantSync){
             try {
               const r = await uni('/api/v1/chats/'+encodeURIComponent(chatId)+'/messages?limit=60');
               const items = (r.data?.items)||[];
@@ -2323,6 +2330,13 @@ export default {
                 // INSERT OR REPLACE: inserta o reemplaza por message_id (PK), rellenando medios
                 try{ await env.aura_db.prepare("INSERT OR REPLACE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,att_id,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(mid, tnt, chatId, fromMe, m.text||'', mtype, murl, mname, attId, ts, Date.now()).run(); }catch(e){}
               }
+              // Rellena el TELÉFONO del chat desde el remitente de un mensaje entrante (dato 100% fiable de esta conversación).
+              // Busca un identificador con formato 'numero@s.whatsapp.net' (ignora '@lid', que es ID interno sin teléfono).
+              try{
+                let foundPhone='';
+                for(const m of items){ if(m.is_sender===1||m.is_sender===true) continue; const cands=[m.sender_public_identifier, m.sender?.attendee_provider_id, m.provider_id]; for(const cc of cands){ const s=String(cc||''); if(/@lid|@g\.us/i.test(s)) continue; const dgs=s.replace(/@.*/,'').replace(/\D/g,''); if(dgs.length>=7 && dgs.length<=15){ foundPhone=dgs; break; } } if(foundPhone) break; }
+                if(foundPhone){ await env.aura_db.prepare("UPDATE wa_chats_meta SET phone=COALESCE(NULLIF(phone,''),?), name=COALESCE(NULLIF(name,''),?) WHERE tenant_id=? AND chat_id=?").bind(foundPhone, '+'+foundPhone, tnt, chatId).run(); }
+              }catch(e){}
             } catch(e){}
             dbRes = await env.aura_db.prepare('SELECT * FROM wa_messages WHERE tenant_id=? AND chat_id=? ORDER BY ts ASC LIMIT 100').bind(tnt, chatId).all();
           }

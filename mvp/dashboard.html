@@ -161,6 +161,9 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 @media(max-width:900px){.ed-split{grid-template-columns:1fr}}
 /* ===== WhatsApp bandeja responsive ===== */
 .wa-grid{display:grid;grid-template-columns:340px 1fr 280px;height:calc(100vh - 250px);min-height:560px}
+.wa-grid > div{min-height:0;min-width:0}
+#waConvo{min-height:0;height:100%}
+#waMsgs{min-height:0!important;flex:1 1 0;overflow-y:auto!important}
 @media(max-width:1100px){.wa-grid{grid-template-columns:300px 1fr}.wa-grid .wa-col-ctx{display:none}.wa-grid.show-ctx .wa-col-ctx{display:block;position:fixed;right:0;top:0;bottom:0;width:min(340px,90vw);z-index:340;box-shadow:-8px 0 30px -10px rgba(0,0,0,.3)}}
 @media(max-width:760px){.wa-grid{grid-template-columns:1fr;height:calc(100vh - 180px);min-height:auto}.wa-grid .wa-col-chat{display:none}.wa-grid.show-chat .wa-col-list{display:none}.wa-grid.show-chat .wa-col-chat{display:flex}.wa-back-btn{display:inline-flex!important}}
 .wa-back-btn{display:none;align-items:center;justify-content:center;width:34px;height:34px;border:none;background:transparent;font-size:1.3rem;cursor:pointer;color:#fff;flex:none}
@@ -3093,7 +3096,7 @@ function waIsPhone(s){ if(!s) return false; var d=String(s).replace(/\D/g,''); v
 function waFmtPhone(s){ var d=String(s||'').replace(/\D/g,''); if(!d) return ''; if(d.length>=11) return '+'+d.slice(0,d.length-9)+' '+d.slice(-9,-6)+' '+d.slice(-6,-3)+' '+d.slice(-3); if(d.length===9) return d.slice(0,3)+' '+d.slice(3,6)+' '+d.slice(6); return '+'+d; }
 // Nombre legible para mostrar: lead.name > pushName real > teléfono formateado > 'Contacto sin nombre'
 function waDisplayName(c){ if(!c) return 'Contacto'; var lead=c._lead; if(lead&&lead.name&&lead.name.trim()) return lead.name.trim(); var pn=(c.pushName||c.name||'').trim(); var phone=c.phone||waJidToNumber(c.id||c.chat_id||''); if(pn && !waIsPhone(pn) && pn!==waJidToNumber(c.id||'')) return pn; if(waIsPhone(phone)) return waFmtPhone(phone); if(waIsPhone(pn)) return waFmtPhone(pn); var d=String(phone||'').replace(/\D/g,''); if(d.length>=7) return '+'+d; return 'Contacto sin nombre'; }
-function waSubLine(c){ var phone=c.phone||waJidToNumber(c.id||c.chat_id||''); if(waIsPhone(phone)) return waFmtPhone(phone); var pn=(c.pushName||c.name||''); if(waIsPhone(pn)) return waFmtPhone(pn); return 'WhatsApp'; }
+function waSubLine(c){ var phone=c.phone||waJidToNumber(c.id||c.chat_id||''); if(waIsPhone(phone)) return waFmtPhone(phone); var pn=(c.pushName||c.name||''); if(waIsPhone(pn)) return waFmtPhone(pn); var d=String(phone||'').replace(/\D/g,''); if(d.length>=7) return '+'+d; var dp=String(pn||'').replace(/\D/g,''); if(dp.length>=7) return '+'+dp; return 'WhatsApp'; }
 const WA_QUICK=[{label:'👋 Saludo',text:'¡Hola! Gracias por escribirnos 😊 ¿En qué podemos ayudarte?'},{label:'💰 Precios',text:'Te paso la información de precios. ¿Qué tratamiento te interesa?'},{label:'📅 Reservar',text:'¿Quieres que te reserve un hueco? Díme qué día y hora te viene mejor.'},{label:'✅ Confirmar cita',text:'Te confirmo tu cita. ¡Te esperamos!'},{label:'🙏 Gracias',text:'¡Gracias a ti! Cualquier cosa, aquí estamos.'}];
 function waQuickReply(i){ const q=WA_QUICK[i]; if(!q)return; const inp=document.getElementById('waInput'); if(inp){ inp.value=q.text; inp.focus(); } }
 function waInitials(n){ var s=(n||'').trim(); if(!s||s==='Contacto sin nombre'||s.charAt(0)==='+') return '👤'; return s.charAt(0).toUpperCase(); }
@@ -3140,7 +3143,7 @@ async function openWaChat(jid, name){
   const grid=document.getElementById('waGrid'); if(grid){ grid.classList.add('show-chat'); }
   var hdrName=waDisplayName(chat.id?chat:{_lead:chat._lead,pushName:name,name:name,phone:chat.phone,id:jid}); var hdrSub=waSubLine(chat.id?chat:{phone:chat.phone,id:jid});
   convo.innerHTML='<div style="padding:.55rem 1rem;border-bottom:1px solid #e9e2d8;display:flex;align-items:center;gap:.65rem;background:#f7f4ee"><button class="wa-back-btn" onclick="waBackToList()" title="Volver" style="color:#54656f">‹</button>'+waAvatar(hdrName,chat.picture,42)+'<div style="min-width:0;flex:1"><b style="font-size:.95rem;color:#111b21">'+escapeHtml(hdrName)+'</b><div style="font-size:.72rem;color:#667781">'+escapeHtml(hdrSub)+'</div></div><button class="btn" onclick="waToggleCtx()" title="Ficha del paciente" style="padding:.3rem .5rem;font-size:.9rem">👤</button></div>'
-    +'<div id="waMsgs" style="flex:1;overflow-y:auto;padding:1.2rem 8%;display:flex;flex-direction:column;gap:.25rem"><div class="sub" style="margin:auto">Cargando…</div></div>'
+    +'<div id="waMsgs" style="flex:1 1 0;min-height:0;overflow-y:auto;padding:1.2rem 8%;display:flex;flex-direction:column;gap:.25rem"><div class="sub" style="margin:auto">Cargando…</div></div>'
     +'<div id="waQuick" style="display:flex;gap:.4rem;padding:.4rem .8rem 0;background:#f0f2f5;overflow-x:auto;white-space:nowrap">'+WA_QUICK.map((q,i)=>'<button onclick="waQuickReply('+i+')" style="flex:none;background:#fff;border:1px solid var(--line);border-radius:16px;padding:.3rem .7rem;font-size:.75rem;cursor:pointer;color:#1f6b4f">'+q.label+'</button>').join('')+'</div>'
     +'<div style="padding:.6rem .8rem;border-top:1px solid var(--line);display:flex;gap:.5rem;align-items:center;background:#f0f2f5">'
       +'<label style="cursor:pointer;font-size:1.3rem;color:#54656f" title="Adjuntar">📎<input type="file" id="waFile" style="display:none" onchange="waSendFile(this)"/></label>'
@@ -3149,7 +3152,9 @@ async function openWaChat(jid, name){
   loadWaCtx(num);
   try{ waApi('/api/wa-read',{method:'POST',body:JSON.stringify({tenant_id:T,jid})}); }catch(e){}
   _waLastMsgIds='';
-  await refreshWaMsgs(true);
+  await refreshWaMsgs(true); // 1) instantáneo desde BD
+  // 2) en 2º plano: pide a Unipile lo más reciente y, si hay novedades, refresca sin bloquear
+  (function(jidFixed){ setTimeout(async()=>{ if(!_waActive||_waActive.jid!==jidFixed)return; try{ await waApi('/api/wa-messages?sync=1&number='+encodeURIComponent(jidFixed)); if(_waActive&&_waActive.jid===jidFixed){ _waLastMsgIds=''; refreshWaMsgs(false); } }catch(e){} },50); })(jid);
 }
 function waBackToList(){ const grid=document.getElementById('waGrid'); if(grid){ grid.classList.remove('show-chat'); grid.classList.remove('show-ctx'); } _waActive=null; }
 function waToggleCtx(){ const grid=document.getElementById('waGrid'); if(grid){ grid.classList.toggle('show-ctx'); } }
@@ -3188,7 +3193,7 @@ async function waSaveToPatient(mid){ if(!_waActive){ return; } var phone=waJidTo
 function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 async function refreshWaMsgs(initial){
   if(!_waActive)return; const box=document.getElementById('waMsgs'); if(!box)return;
-  let r={}; try{ r=await waApi('/api/wa-messages?number='+encodeURIComponent(_waActive.jid)); }catch(e){ return; }
+  let r={}; try{ r=await waApi('/api/wa-messages?number='+encodeURIComponent(_waActive.jid)); }catch(e){ if(initial && box) box.innerHTML='<div class="sub" style="margin:auto;text-align:center">No se pudo cargar. Reintentando…</div>'; return; }
   const msgs=(r&&r.messages)||[]; const ids=msgs.map(m=>m.id||(m.key&&m.key.id)).join(',');
   if(ids===_waLastMsgIds) return; _waLastMsgIds=ids;
   if(!msgs.length){ box.innerHTML='<div class="sub" style="margin:auto;text-align:center">No hay mensajes aún en esta conversación.</div>'; return; }
