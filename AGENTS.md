@@ -84,3 +84,9 @@ _backups/      Volcados de BD (NO se versiona; guardar fuera del sandbox)
 - `GET /api/auth/me` devuelve `legal_accepted` (solo para owner).
 - `GET /api/legal-status?tenant=` y `POST /api/legal-accept` (registra en tabla `legal_acceptances`: tenant, email, signer_name, clinic_name, version, docs, ip, user_agent, accepted_at) como prueba legal.
 - Superadmin y otros roles NO ven el gate.
+
+## 10. Backups automáticos de la base de datos (D1)
+- **Qué**: `runBackup()` exporta TODAS las tablas D1 a un JSON `{created_at, tables:{tabla:[filas]}}` y lo guarda en R2 (bucket `aura-storage`, prefijo `backups/`), con índice en KV (`backup_index`) y **retención de 30 copias**.
+- **Cuándo**: cron `scheduled` (crons `* * * * *` en wrangler.toml) ejecuta el backup **1 vez/día a las 03:00 UTC** (filtrado por `hour===3 && min===0`). Automatizaciones SMS en minuto 0 de cada hora; sync WhatsApp cada 10 min.
+- **Endpoints** (protegidos con `?key=<JWT_SECRET>`): `POST /api/backup-now` (forzar), `GET /api/backups` (listar).
+- **Restaurar**: descargar el JSON de R2 (`wrangler r2 object get aura-storage/backups/<archivo> --file bk.json --remote`) y re-insertar por tabla con `wrangler d1 execute`. Verificado: backup real con 24 tablas / 836 filas.

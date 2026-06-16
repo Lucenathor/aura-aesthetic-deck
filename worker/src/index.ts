@@ -2998,10 +2998,13 @@ export default {
   async scheduled(event: any, env: Env, ctx: any) {
     const now = new Date();
     const hour = now.getUTCHours();
-    if (hour === 3) ctx.waitUntil(runBackup(env).catch((e:any)=>console.error('backup error', e)));
-    ctx.waitUntil(runAutomations(env).catch((e:any)=>console.error('automations error', e)));
+    const min = now.getUTCMinutes();
+    // Backup: SOLO 1 vez al día, a las 03:00 UTC exactas (el cron corre cada minuto, por eso filtramos minuto 0)
+    if (hour === 3 && min === 0) ctx.waitUntil(runBackup(env).catch((e:any)=>console.error('backup error', e)));
+    // Automatizaciones SMS: 1 vez por hora (minuto 0), no cada minuto, para no reenviar de más
+    if (min === 0) ctx.waitUntil(runAutomations(env).catch((e:any)=>console.error('automations error', e)));
     // Respaldo WhatsApp: cada 10 min resincroniza chats por si el webhook falló (Unipile lo recomienda)
-    if (now.getUTCMinutes() % 10 === 0) ctx.waitUntil(runWaSync(env).catch((e:any)=>console.error('wa sync error', e)));
+    if (min % 10 === 0) ctx.waitUntil(runWaSync(env).catch((e:any)=>console.error('wa sync error', e)));
   },
 };
 
