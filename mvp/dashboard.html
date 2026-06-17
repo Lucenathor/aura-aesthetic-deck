@@ -946,6 +946,8 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 <script>
 const WORKER='https://aura-chat-worker.adrian-7b9.workers.dev';
 const params=new URLSearchParams(location.search);
+// Acceso por enlace: si llega ?token= en la URL, lo guardamos como sesion activa
+try{ var _urlTok=params.get('token'); if(_urlTok){ localStorage.setItem('aura_token',_urlTok); } }catch(e){}
 let T=params.get('t')||'clinica-elvira';
 // Blindaje: adjunta automaticamente el token de sesion a TODA llamada al WORKER (Authorization: Bearer).
 // Asi el backend verifica que esta sesion pertenece al tenant y ninguna clinica toca datos de otra.
