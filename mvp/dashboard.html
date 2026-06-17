@@ -3211,7 +3211,30 @@ function waMsgBubble(m){
   return '<div onmouseover="this.querySelector(\'.wa-react-btn\')&&(this.querySelector(\'.wa-react-btn\').style.display=\'flex\')" onmouseout="this.querySelector(\'.wa-react-btn\')&&(this.querySelector(\'.wa-react-btn\').style.display=\'none\')" style="position:relative;align-self:'+(fromMe?'flex-end':'flex-start')+';max-width:70%;background:'+(fromMe?'#d9fdd3':'#fff')+';padding:.45rem .65rem .3rem;border-radius:'+(fromMe?'10px 10px 2px 10px':'10px 10px 10px 2px')+';font-size:.88rem;box-shadow:0 1px .5px rgba(0,0,0,.13);line-height:1.35;word-wrap:break-word">'+reactBtn+inner+actions+'<div style="font-size:.62rem;color:#667781;text-align:right;margin-top:2px">'+t+(fromMe?' <span style="color:#53bdeb">✓✓</span>':'')+'</div></div>';
 }
 function waDownloadMedia(encUrl, mid){ var url=decodeURIComponent(encUrl); var a=document.createElement('a'); a.href=url; a.download='aura-'+(mid||Date.now()); a.target='_blank'; document.body.appendChild(a); a.click(); a.remove(); if(typeof toast==='function')toast('Descargando…'); }
-async function waSaveToPatient(mid){ if(!_waActive){ return; } var phone=waJidToNumber(_waActive.jid); var leadId=(_waCtxLead&&_waCtxLead.id)||''; if(typeof toast==='function')toast('Guardando en la ficha…');
+async function waSaveToPatient(mid){ if(!_waActive){ return; } var phone=waJidToNumber(_waActive.jid); var leadId=(_waCtxLead&&_waCtxLead.id)||'';
+  // LÓGICA: si el contacto AÚN no es paciente, no podemos guardarle la foto en una ficha que no existe.
+  // Avisamos y ofrecemos crearlo; al crearlo, guardamos la foto en su ficha automáticamente.
+  if(!leadId){
+    var nombre=(_waActive&&_waActive.name)||''; var esNombreReal = nombre && !/sin nombre|^\+?\d/.test(nombre);
+    waModal('👤 Aún no es paciente',
+      '<div class="sub" style="font-size:.82rem;line-height:1.5;margin-bottom:.8rem">Para guardar esta foto necesitamos crear primero la ficha del paciente. Se creará con estos datos y la foto se añadirá a su ficha automáticamente.</div>'
+      +'<label style="font-size:.78rem;font-weight:700;color:var(--muted)">Nombre del paciente</label><input id="spName" value="'+(esNombreReal?String(nombre).replace(/"/g,"&quot;"):'')+'" placeholder="Nombre y apellidos" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:10px;margin:.25rem 0 .8rem"/>'
+      +'<label style="font-size:.78rem;font-weight:700;color:var(--muted)">Teléfono</label><input id="spPhone" value="'+(phone||'')+'" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:10px;margin:.25rem 0"/>',
+      'Crear paciente y guardar foto', async()=>{
+        var nm=((document.getElementById('spName')||{}).value||'').trim(); var ph=((document.getElementById('spPhone')||{}).value||'').trim();
+        if(!nm){ if(typeof toast==='function')toast('Pon un nombre','error'); return false; }
+        try{
+          var cr=await waApi('/api/wa-add-lead',{method:'POST',body:JSON.stringify({tenant_id:T,phone:ph,name:nm,treatment:''})});
+          var newId=(cr&&(cr.lead_id||cr.id||(cr.lead&&cr.lead.id)))||'';
+          // guardamos la foto: por lead_id si lo tenemos, si no por teléfono (el backend la asocia)
+          var sv=await waApi('/api/wa-patient-media-save',{method:'POST',body:JSON.stringify({tenant_id:T, mid:mid, phone:ph, lead_id:newId})});
+          if(sv&&sv.ok){ if(typeof toast==='function')toast('✓ Paciente creado y foto añadida a su ficha'); loadWaCtx(ph); }
+          else { if(typeof toast==='function')toast('Paciente creado, pero no se pudo guardar la foto','error'); loadWaCtx(ph); }
+        }catch(e){ if(typeof toast==='function')toast('Error al crear el paciente','error'); return false; }
+      });
+    return;
+  }
+  if(typeof toast==='function')toast('Guardando en la ficha…');
   try{ var r=await waApi('/api/wa-patient-media-save',{method:'POST',body:JSON.stringify({tenant_id:T, mid:mid, phone:phone, lead_id:leadId})}); if(r&&r.ok){ if(typeof toast==='function')toast('✓ Añadido a la ficha del paciente'); try{ if(typeof loadPatientMedia==='function'&&_waCtxLead) loadPatientMedia(leadId, phone); }catch(e){} } else { if(typeof toast==='function')toast('No se pudo guardar','error'); } }catch(e){ if(typeof toast==='function')toast('Error al guardar','error'); } }
 function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 async function refreshWaMsgs(initial){
