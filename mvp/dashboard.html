@@ -275,6 +275,13 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 .kcard .kscript-lbl{display:flex;align-items:center;justify-content:space-between;font-size:.64rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--st,var(--terra-d));margin-bottom:.25rem}
 .kcard .kscript-copy{border:none;background:transparent;color:var(--st,var(--terra-d));font-size:.64rem;font-weight:700;cursor:pointer;text-decoration:underline;padding:0;letter-spacing:.02em}
 .kcard .kscript-txt{font-size:.78rem;line-height:1.4;color:#3a322c;font-style:italic}
+.kcard .kgoal{margin-top:.5rem;font-size:.72rem;font-weight:700;color:#3a322c;background:color-mix(in srgb,var(--st,#b06d44) 12%,#fff);border-radius:9px;padding:.35rem .55rem}
+.kcard .kobj{margin-top:.45rem;font-size:.74rem}
+.kcard .kobj>summary{cursor:pointer;list-style:none;font-weight:700;color:var(--st,var(--terra-d));font-size:.7rem;padding:.3rem .1rem;user-select:none}
+.kcard .kobj>summary::-webkit-details-marker{display:none}
+.kcard .kobj-row{margin-top:.4rem;padding-left:.6rem;border-left:2px solid color-mix(in srgb,var(--st,#b06d44) 35%,#e6dccb)}
+.kcard .kobj-q{font-weight:700;color:#7a6f64;font-size:.72rem}
+.kcard .kobj-a{color:#3a322c;font-size:.74rem;line-height:1.4;margin-top:.1rem}
 .kcard.big{padding:.85rem .8rem .8rem}
 .kcol-sub{font-size:.66rem;font-weight:600;color:var(--st,var(--terra-d));opacity:.85;text-transform:none;letter-spacing:0;margin-top:.15rem}
 
@@ -2914,18 +2921,32 @@ function callScript(fase, l){
   const nom=((l.name||'').trim().split(/\s+/)[0])||'Hola';
   const trat=(l.treatment||'tu tratamiento').toLowerCase();
   const citaTxt=(l._appt&&l._appt.date_iso)? new Date(l._appt.date_iso).toLocaleString('es-ES',{weekday:'long',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}) : 'tu cita';
+  // Devuelve { goal, say, obj:[{q,a}] } pensado para recepcionistas (no closers): objetivo claro, frase exacta y respuestas a objeciones.
   switch(fase){
     case 'llama':
-      return '“Hola '+nom+', soy de la clínica. Vi que te interesaba '+trat+' y quería atenderte yo personalmente. Justo me queda un hueco esta semana y te lo guardo. ¿Te viene mejor por la mañana o por la tarde?”';
+      return { goal:'Conseguir que reserve cita esta semana.', say:'“Hola '+nom+', soy de la clínica. Vi que te interesaba '+trat+' y quería atenderte yo personalmente. Justo me queda un hueco esta semana y te lo guardo. ¿Te viene mejor por la mañana o por la tarde?”',
+        obj:[ {q:'“Me lo tengo que pensar”', a:'“Te entiendo perfectamente. Reservar no te compromete a nada y así te aseguras el hueco; si cambias de idea, lo movemos sin problema. ¿Te lo dejo el jueves o el viernes?”'},
+               {q:'“¿Cuánto cuesta?”', a:'“Depende un poco de lo que necesites, por eso lo mejor es una primera valoración sin compromiso donde te lo explican todo y te dan precio cerrado. ¿Te la reservo?”'},
+               {q:'“Ahora no puedo hablar”', a:'“Sin problema, será solo un momento: ¿te va mejor que te llame esta tarde o mañana por la mañana?”'} ] };
     case 'recuperar':
-      return '“Hola '+nom+', te echamos en falta el otro día con '+trat+'. No pasa nada, a veces surge. Te he reservado otro hueco para que no pierdas tu sitio. ¿Te va bien esta semana o la próxima?”';
+      return { goal:'Reagendar la cita que perdió, sin que se sienta mal.', say:'“Hola '+nom+', te echamos en falta el otro día con '+trat+'. No pasa nada, a veces surge. Te he reservado otro hueco para que no pierdas tu sitio. ¿Te va bien esta semana o la próxima?”',
+        obj:[ {q:'“Al final no me interesa”', a:'“Sin problema. Solo para ayudarte mejor, ¿fue por el momento o por el precio? Muchas veces lo podemos adaptar a lo que buscabas.”'},
+               {q:'“Se me olvidó / surgió algo”', a:'“Nos pasa a todas 😊 Te dejo un nuevo hueco y te mando un recordatorio el día antes para que no se te pase. ¿Mejor mañana o tarde?”'},
+               {q:'“Ya lo haré más adelante”', a:'“Perfecto, pero te guardo ya el sitio sin compromiso porque tenemos la agenda muy llena. Si luego no puedes, lo movemos. ¿Te parece?”'} ] };
     case 'confirmar':
-      return '“Hola '+nom+', te llamo para confirmar tu cita de '+trat+' el '+citaTxt+'. ¿Todo correcto y cuento contigo? Así te guardo el hueco y lo dejamos todo preparado.”';
+      return { goal:'Que confirme que vendrá (evitar el plantón).', say:'“Hola '+nom+', te llamo para confirmar tu cita de '+trat+' el '+citaTxt+'. ¿Todo correcto y cuento contigo? Así te guardo el hueco y lo dejamos todo preparado.”',
+        obj:[ {q:'“Creo que no podré”', a:'“No te preocupes, mejor lo movemos a un día que te venga bien antes que perderlo. ¿Te busco otro hueco esta misma semana?”'},
+               {q:'“Tengo dudas de si ir”', a:'“Claro, cuéntame qué te frena y lo vemos. La cita es informativa y sin compromiso, salgas con lo que salgas.”'} ] };
     case 'reactivar':
-      return '“Hola '+nom+', ¿qué tal el resultado de '+trat+'? Te llamo porque es justo el momento de tu mantenimiento para que no pierdas lo conseguido. Te hago precio si lo dejamos cerrado hoy. ¿Te reservo?”';
+      return { goal:'Que vuelva para su mantenimiento (nueva cita).', say:'“Hola '+nom+', ¿qué tal el resultado de '+trat+'? Te llamo porque es justo el momento de tu mantenimiento para que no pierdas lo conseguido. Te hago precio si lo dejamos cerrado hoy. ¿Te reservo?”',
+        obj:[ {q:'“Todavía lo tengo bien”', a:'“Me alegro 😊 justo por eso es el momento ideal de mantenerlo, antes de que baje. Así te sale más rentable que volver a empezar. ¿Te reservo?”'},
+               {q:'“Es mucho dinero”', a:'“Te entiendo. Si lo dejamos cerrado hoy te aplico precio especial de cliente, y podemos repartirlo en sesiones. ¿Te lo preparo así?”'} ] };
     case 'venta':
-      return '“Hola '+nom+', soy de la clínica. Como ya confías en nosotros para '+trat+', te llamo en primicia: tenemos un pack pensado para ti que sale mucho mejor que sesiones sueltas. ¿Te cuento en 1 minuto y te lo reservo a precio de hoy?”';
-    default: return '';
+      return { goal:'Ofrecer el pack y reservar la primera sesión.', say:'“Hola '+nom+', soy de la clínica. Como ya confías en nosotros para '+trat+', te llamo en primicia: tenemos un pack pensado para ti que sale mucho más a cuenta que sesiones sueltas. ¿Te cuento en 1 minuto y te lo reservo a precio de hoy?”',
+        obj:[ {q:'“No sé si lo necesito”', a:'“Justo el pack es para mantener lo que ya conseguiste sin gastar de más. Te sale mejor que ir suelta. ¿Te reservo la primera y lo vemos en consulta?”'},
+               {q:'“Es caro”', a:'“Por eso te llamo a ti antes que a nadie: en pack el precio por sesión baja bastante y hoy te lo dejo cerrado a precio especial. ¿Te lo guardo?”'},
+               {q:'“Me lo pienso”', a:'“Claro. Te reservo el precio de hoy 48h sin compromiso para que lo pienses tranquila. Si no, no pasa nada. ¿Te parece?”'} ] };
+    default: return null;
   }
 }
 // Tarjeta de acción: número de orden + por qué + botón llamar grande (al tocar) + ver ficha
@@ -2938,7 +2959,7 @@ function actionCard(l, color, n, why, fase){
     +'<div style="min-width:0;flex:1"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(l.name||'—')+'</b>'
     +'<div class="ktr" style="font-size:.74rem;color:var(--muted)">'+(l.treatment||'—')+'</div></div></div>'
     +'<div><span class="kwhy">'+why+'</span></div>'
-    +(function(){ var sc=callScript(fase,l); if(!sc) return ''; var scEsc=sc.replace(/"/g,'&quot;'); return '<div class="kscript"><div class="kscript-lbl"><span>📞 Di esto</span><button class="kscript-copy" onclick="event.stopPropagation();(navigator.clipboard&&navigator.clipboard.writeText(this.getAttribute(\'data-t\')));this.textContent=\'✓ copiado\';" data-t="'+scEsc+'">copiar</button></div><div class="kscript-txt">'+sc+'</div></div>'; })()
+    +(function(){ var sc=callScript(fase,l); if(!sc) return ''; var sayEsc=sc.say.replace(/"/g,'&quot;'); var objH=''; if(sc.obj&&sc.obj.length){ objH='<details class="kobj" onclick="event.stopPropagation()"><summary>🛡️ Si te dicen… (toca para ver respuestas)</summary>'+sc.obj.map(function(o){ return '<div class="kobj-row"><div class="kobj-q">'+o.q+'</div><div class="kobj-a">'+o.a+'</div></div>'; }).join('')+'</details>'; } return '<div class="kgoal">🎯 Objetivo: '+sc.goal+'</div><div class="kscript"><div class="kscript-lbl"><span>📞 Di esto</span><button class="kscript-copy" onclick="event.stopPropagation();(navigator.clipboard&&navigator.clipboard.writeText(this.getAttribute(\'data-t\')));this.textContent=\'✓ copiado\';" data-t="'+sayEsc+'">copiar</button></div><div class="kscript-txt">'+sc.say+'</div></div>'+objH; })()
     +'<div class="kacts"><div style="flex-direction:column;gap:.4rem">'
     +'<a class="kbtn prim" href="tel:'+tel+'" onclick="event.stopPropagation()">☎ Llamar</a>'
     +'<div style="display:flex;gap:.35rem">'
@@ -2955,7 +2976,7 @@ async function logCall(leadId, result, fase){
   // Doble confirmación para evitar toques accidentales
   const l0=kLeads.find(x=>x.id===leadId); const nom=(l0&&l0.name)?l0.name:'este paciente';
   let q='';
-  if(result==='reservo') q='¿Confirmas que '+nom+' ha RESERVADO cita? Saldrá de la lista de llamadas y contará como recuperado por AURA.';
+  if(result==='reservo') q=(fase==='venta'?('¿Confirmas que '+nom+' ha COMPRADO/RESERVADO? Contará como venta conseguida gracias a AURA.'):('¿Confirmas que '+nom+' ha RESERVADO cita? Saldrá de la lista de llamadas y contará como recuperado por AURA.'));
   else if(result==='no_interesado') q='¿Marcar a '+nom+' como NO INTERESADO? Saldrá de la lista de llamadas.';
   else q='¿Marcar que '+nom+' NO COGE el teléfono? Se contará un intento y volverá mañana.';
   if(!confirm(q)) return;
@@ -2969,7 +2990,7 @@ async function logCall(leadId, result, fase){
       else { l.call_attempts=d.attempts; l.last_call_at=new Date().toISOString(); }
     }
     renderKanban();
-    if(result==='reservo' && typeof toast==='function'){ toast('Recuperado por llamada — cuenta para AURA'); }
+    if(result==='reservo' && typeof toast==='function'){ toast(fase==='venta'?'💰 Venta cerrada — gracias a AURA':'✓ Recuperado por llamada — gracias a AURA'); }
   }catch(e){ alert('No se pudo guardar el resultado'); }
 }
 function buildCallCol(k, cfg){
