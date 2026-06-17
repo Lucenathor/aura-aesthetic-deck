@@ -3161,11 +3161,16 @@ function waToggleCtx(){ const grid=document.getElementById('waGrid'); if(grid){ 
 function waMediaUrl(u){ if(!u) return u; if(/^https?:/i.test(u)) return u; if(u.charAt(0)==='/') return WORKER+u; return u; }
 function waMsgBubble(m){
   const fromMe=m.fromMe||(m.key&&m.key.fromMe); const t=waTime(m.timestamp);
-  if(m.murl) m.murl=waMediaUrl(m.murl);
   let inner=''; const mt=String(m.mtype||'text').toLowerCase();
   const isImg=/img|image|photo/.test(mt), isVid=/vid|video/.test(mt), isAud=/audio|voice|ptt/.test(mt), isSticker=/sticker/.test(mt), isDoc=/doc|file|pdf|application/.test(mt);
-  if(m.murl && isImg) inner='<img src="'+m.murl+'" loading="lazy" style="max-width:240px;width:100%;border-radius:10px;display:block;cursor:pointer" onclick="window.open(this.src,\'_blank\')"/>'+(m.text?'<div style="margin-top:5px">'+escapeHtml(m.text)+'</div>':'');
-  else if(m.murl && isVid) inner='<video controls src="'+m.murl+'" style="max-width:240px;width:100%;border-radius:10px;display:block"></video>'+(m.text?'<div style="margin-top:5px">'+escapeHtml(m.text)+'</div>':'');
+  // FALLBACK: si es un medio sin URL guardada pero tenemos el id del mensaje, construimos la URL del proxy
+  // (el endpoint /api/wa-media resuelve el attachment_id desde Unipile al vuelo). Así se ven aunque la BD no tenga att_id.
+  if(!m.murl && (isImg||isVid||isAud||isSticker||isDoc) && (m.id||(m.key&&m.key.id))){
+    var _mid=m.id||(m.key&&m.key.id); m.murl='/api/wa-media?mid='+encodeURIComponent(_mid)+'&t='+encodeURIComponent(T);
+  }
+  if(m.murl) m.murl=waMediaUrl(m.murl);
+  if(m.murl && isImg) inner='<img src="'+m.murl+'" loading="lazy" onerror="this.outerHTML=&quot;<span style=\'color:#667781\'>\ud83d\udcf7 Foto</span>&quot;" style="max-width:240px;width:100%;border-radius:10px;display:block;cursor:pointer" onclick="window.open(this.src,\'_blank\')"/>'+(m.text?'<div style="margin-top:5px">'+escapeHtml(m.text)+'</div>':'');
+  else if(m.murl && isVid) inner='<video controls src="'+m.murl+'" onerror="this.outerHTML=&quot;<span style=\'color:#667781\'>\ud83c\udfa5 V\u00eddeo</span>&quot;" style="max-width:240px;width:100%;border-radius:10px;display:block"></video>'+(m.text?'<div style="margin-top:5px">'+escapeHtml(m.text)+'</div>':'');
   else if(m.murl && isAud) inner='<audio controls src="'+m.murl+'" style="max-width:230px"></audio>';
   else if(m.murl && isSticker) inner='<img src="'+m.murl+'" style="width:120px;height:120px;object-fit:contain;display:block"/>';
   else if(m.murl) inner='<a href="'+m.murl+'" target="_blank" style="color:inherit;display:flex;align-items:center;gap:6px;text-decoration:none"><span style="font-size:1.3rem">📄</span><span style="text-decoration:underline">'+escapeHtml(m.mname||'Documento')+'</span></a>';
