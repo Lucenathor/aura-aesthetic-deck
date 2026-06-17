@@ -376,7 +376,13 @@ img{max-width:100%;display:block}
 .pl-card.typing .pl-cursor{opacity:1;animation:plBlink .8s step-end infinite}
 @keyframes plBlink{50%{opacity:0}}
 .pl-foot{display:flex;align-items:center;justify-content:space-between;font-size:.8rem;margin-top:auto;position:relative;z-index:1}
-.pl-foot span:first-child{color:#1f8c69;font-weight:800;font-family:'Inter Tight'}
+.pl-foot .pl-money{display:inline-flex;align-items:center;gap:.25rem;color:#1f8c69;font-weight:800;font-family:'Inter Tight';padding:.15rem .5rem;border-radius:999px;background:rgba(31,140,105,.10);transition:background .3s}
+.pl-foot .pl-money::before{content:'💰';font-size:.85em}
+.pl-money.pop{animation:plPop .5s var(--ease)}
+.pl-money.done{background:rgba(31,140,105,.18);box-shadow:0 0 0 0 rgba(31,140,105,.5);animation:plGlow 1.1s var(--ease)}
+@keyframes plPop{0%{transform:scale(1)}40%{transform:scale(1.22)}100%{transform:scale(1)}}
+@keyframes plGlow{0%{box-shadow:0 0 0 0 rgba(31,140,105,.45)}100%{box-shadow:0 0 0 14px rgba(31,140,105,0)}}
+.pl-eur{transition:color .2s}
 .pl-go{color:var(--ink);font-weight:700;font-size:.78rem;display:inline-flex;align-items:center;gap:3px;transition:gap .2s var(--ease),color .2s}
 .pl-card:hover .pl-go{color:var(--accent);gap:7px}
 .pl-bottom{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:1.6rem;text-align:center}
@@ -1256,17 +1262,17 @@ img{max-width:100%;display:block}
       <div class="pl-card" style="--d:0s">
         <div class="pl-top"><span class="pl-av">L</span><div><b>Lucía · vino por labios</b><small>hoy · ticket 290€</small></div><span class="pl-tag up">Upsell</span></div>
         <div class="pl-script"><span class="pl-lbl">Dile</span><span class="pl-typed" data-text='“Lucía, para que el resultado dure más y quede más natural, muchas clientas se añaden perfilado + ácido en surco nasogeniano. ¿Te lo dejo todo hoy?”'></span><span class="pl-cursor"></span></div>
-        <div class="pl-foot"><span>+<b class="pl-eur" data-to="140">0</b>€ potencial</span><span class="pl-go">Marcar vendido →</span></div>
+        <div class="pl-foot"><span class="pl-money">+<b class="pl-eur" data-to="140">0</b>€ potencial</span><span class="pl-go">Marcar vendido →</span></div>
       </div>
       <div class="pl-card" style="--d:.2s">
         <div class="pl-top"><span class="pl-av" style="background:linear-gradient(135deg,#9B7BFF,#6b4fc4)">M</span><div><b>Marta · botox entrecejo</b><small>terminó hace 10 min</small></div><span class="pl-tag cross">Cross-sell</span></div>
         <div class="pl-script"><span class="pl-lbl">Dile</span><span class="pl-typed" data-text='“Marta, ahora que tienes el entrecejo, una limpieza + vitamina C te dejaría la piel perfecta para las fotos. Te hago precio si la reservas hoy.”'></span><span class="pl-cursor"></span></div>
-        <div class="pl-foot"><span>+<b class="pl-eur" data-to="85">0</b>€ potencial</span><span class="pl-go">Reservar ahora →</span></div>
+        <div class="pl-foot"><span class="pl-money">+<b class="pl-eur" data-to="85">0</b>€ potencial</span><span class="pl-go">Reservar ahora →</span></div>
       </div>
       <div class="pl-card" style="--d:.4s">
         <div class="pl-top"><span class="pl-av" style="background:linear-gradient(135deg,#1f8c69,#0b3b25)">A</span><div><b>Ana · 3ª sesión láser</b><small>le quedan 2 del bono</small></div><span class="pl-tag pack">Renovación</span></div>
         <div class="pl-script"><span class="pl-lbl">Dile</span><span class="pl-typed" data-text='“Ana, te quedan 2 sesiones. Si renuevas el bono de 6 hoy, te mantengo el precio de este año. ¿Te lo preparo?”'></span><span class="pl-cursor"></span></div>
-        <div class="pl-foot"><span>+<b class="pl-eur" data-to="390">0</b>€ potencial</span><span class="pl-go">Renovar bono →</span></div>
+        <div class="pl-foot"><span class="pl-money">+<b class="pl-eur" data-to="390">0</b>€ potencial</span><span class="pl-go">Renovar bono →</span></div>
       </div>
     </div>
     <div class="pl-bottom reveal">
@@ -1930,7 +1936,7 @@ document.querySelectorAll('.section h2').forEach(el=>hIO.observe(el));
   const typeOne=(el,delay)=>{ const full=el.getAttribute('data-text')||''; const card=el.closest('.pl-card'); let i=0;
     setTimeout(()=>{ card&&card.classList.add('typing'); const iv=setInterval(()=>{ el.textContent=full.slice(0,i); i++; if(i>full.length){ clearInterval(iv); card&&card.classList.remove('typing'); } }, 18); }, delay);
   };
-  const countEur=(b,delay)=>{ const to=parseInt(b.getAttribute('data-to')||'0',10); setTimeout(()=>{ const t0=performance.now(),dur=900; const step=(n)=>{ const p=Math.min(1,(n-t0)/dur); b.textContent=Math.round(to*(0.2+0.8*p*(2-p))); if(p<1)requestAnimationFrame(step); else b.textContent=to; }; requestAnimationFrame(step); }, delay); };
+  const countEur=(b,delay)=>{ const to=parseInt(b.getAttribute('data-to')||'0',10); const money=b.closest('.pl-money'); setTimeout(()=>{ money&&money.classList.add('pop'); const t0=performance.now(),dur=1000; const step=(n)=>{ const p=Math.min(1,(n-t0)/dur); b.textContent=Math.round(to*(0.15+0.85*(1-Math.pow(1-p,3)))); if(p<1)requestAnimationFrame(step); else { b.textContent=to; if(money){ money.classList.remove('pop'); money.classList.add('done'); /* re-pop periodico para mantener el efecto */ setInterval(()=>{ money.classList.remove('pop'); void money.offsetWidth; money.classList.add('pop'); }, 4200); } } }; requestAnimationFrame(step); }, delay); };
   const io=new IntersectionObserver(es=>{ es.forEach(e=>{ if(!e.isIntersecting)return; io.disconnect();
     grid.querySelectorAll('.pl-card').forEach((card,idx)=>{ const base=300+idx*450; const typed=card.querySelector('.pl-typed'); const eur=card.querySelector('.pl-eur'); if(typed)typeOne(typed,base); if(eur)countEur(eur,base+200); });
   }); },{threshold:.3});
