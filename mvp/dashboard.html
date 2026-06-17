@@ -163,7 +163,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 .wa-grid{display:grid;grid-template-columns:340px 1fr 280px;height:calc(100vh - 250px);min-height:560px}
 .wa-grid > div{min-height:0;min-width:0}
 #waConvo{min-height:0;height:100%}
-#waMsgs{min-height:0!important;flex:1 1 0;overflow-y:auto!important}
+#waMsgs{min-height:0!important;flex:1 1 0;overflow-y:auto!important;overflow-anchor:auto;scroll-behavior:auto}
 @media(max-width:1100px){.wa-grid{grid-template-columns:300px 1fr}.wa-grid .wa-col-ctx{display:none}.wa-grid.show-ctx .wa-col-ctx{display:block;position:fixed;right:0;top:0;bottom:0;width:min(340px,90vw);z-index:340;box-shadow:-8px 0 30px -10px rgba(0,0,0,.3)}}
 @media(max-width:760px){.wa-grid{grid-template-columns:1fr;height:calc(100vh - 180px);min-height:auto}.wa-grid .wa-col-chat{display:none}.wa-grid.show-chat .wa-col-list{display:none}.wa-grid.show-chat .wa-col-chat{display:flex}.wa-back-btn{display:inline-flex!important}}
 .wa-back-btn{display:none;align-items:center;justify-content:center;width:34px;height:34px;border:none;background:transparent;font-size:1.3rem;cursor:pointer;color:#fff;flex:none}
@@ -3135,6 +3135,22 @@ async function loadWaChats(silent){
       +'<div style="min-width:0;flex:1"><div style="display:flex;align-items:center;justify-content:space-between;gap:.35rem"><b style="font-size:.9rem;font-weight:700;color:#111b21;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(name)+'</b><span style="font-size:.66rem;color:#8696a0;flex:none">'+t+'</span></div>'
       +'<div style="display:flex;align-items:center;justify-content:space-between;gap:.4rem;margin-top:.1rem"><span style="font-size:.79rem;color:#667781;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(known?'<span style="color:#1f8c69;font-weight:700">✓ paciente</span> · ':'')+escapeHtml(last)+'</span>'+(un>0?'<span style="background:#25d366;color:#fff;font-size:.62rem;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:grid;place-items:center;padding:0 5px;flex:none">'+un+'</span>':'')+'</div></div></div>';
   }).join('');
+  if(!silent) waPreloadChats();
+}
+// PRECARGA EN 2º PLANO: pide en silencio los mensajes de los primeros chats para que al abrirlos ya estén listos.
+window._waPrecache = window._waPrecache || {};
+let _waPreloading=false;
+async function waPreloadChats(){
+  if(_waPreloading) return; _waPreloading=true;
+  try{
+    const top=(_waChats||[]).slice(0,8);
+    for(const c of top){
+      if(_waActive) break; // si el usuario ya abrió un chat, paramos para no competir
+      if(window._waPrecache[c.id]) continue;
+      try{ const r=await waApi('/api/wa-messages?number='+encodeURIComponent(c.id)); window._waPrecache[c.id]=(r&&r.messages)||[]; }catch(e){}
+      await new Promise(res=>setTimeout(res,150)); // suave, sin saturar
+    }
+  }finally{ _waPreloading=false; }
 }
 async function openWaChat(jid, name){
   const chat=(_waChats||[]).find(c=>c.id===jid)||{};
@@ -3152,7 +3168,9 @@ async function openWaChat(jid, name){
   loadWaCtx(num);
   try{ waApi('/api/wa-read',{method:'POST',body:JSON.stringify({tenant_id:T,jid})}); }catch(e){}
   _waLastMsgIds='';
-  await refreshWaMsgs(true); // 1) instantáneo desde BD
+  // 0) si ya está precargado en memoria, lo pintamos AL INSTANTE (sin "Cargando…")
+  if(window._waPrecache && window._waPrecache[jid] && window._waPrecache[jid].length){ try{ waRenderMsgs(window._waPrecache[jid], true); }catch(e){} }
+  await refreshWaMsgs(true); // 1) confirma desde BD (rellena/actualiza)
   // 2) en 2º plano: pide a Unipile lo más reciente y, si hay novedades, refresca sin bloquear
   (function(jidFixed){ setTimeout(async()=>{ if(!_waActive||_waActive.jid!==jidFixed)return; try{ await waApi('/api/wa-messages?sync=1&number='+encodeURIComponent(jidFixed)); if(_waActive&&_waActive.jid===jidFixed){ _waLastMsgIds=''; refreshWaMsgs(false); } }catch(e){} },50); })(jid);
 }
@@ -3169,8 +3187,8 @@ function waMsgBubble(m){
     var _mid=m.id||(m.key&&m.key.id); m.murl='/api/wa-media?mid='+encodeURIComponent(_mid)+'&t='+encodeURIComponent(T);
   }
   if(m.murl) m.murl=waMediaUrl(m.murl);
-  if(m.murl && isImg) inner='<img src="'+m.murl+'" loading="lazy" onerror="this.outerHTML=&quot;<span style=\'color:#667781\'>\ud83d\udcf7 Foto</span>&quot;" style="max-width:240px;width:100%;border-radius:10px;display:block;cursor:pointer" onclick="window.open(this.src,\'_blank\')"/>'+(m.text?'<div style="margin-top:5px">'+escapeHtml(m.text)+'</div>':'');
-  else if(m.murl && isVid) inner='<video controls src="'+m.murl+'" onerror="this.outerHTML=&quot;<span style=\'color:#667781\'>\ud83c\udfa5 V\u00eddeo</span>&quot;" style="max-width:240px;width:100%;border-radius:10px;display:block"></video>'+(m.text?'<div style="margin-top:5px">'+escapeHtml(m.text)+'</div>':'');
+  if(m.murl && isImg) inner='<div style="width:220px;height:220px;border-radius:10px;background:#e9e2d8 url(\'data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2224%22 height=%2224%22 fill=%22none%22 stroke=%22%23b8ab9c%22 stroke-width=%221.5%22><rect x=%223%22 y=%223%22 width=%2218%22 height=%2218%22 rx=%222%22/><circle cx=%228.5%22 cy=%228.5%22 r=%221.5%22/><path d=%22M21 15l-5-5L5 21%22/></svg>\') center/24px no-repeat;overflow:hidden;display:block"><img src="'+m.murl+'" loading="lazy" onload="this.style.opacity=1" onerror="this.parentNode.outerHTML=&quot;<span style=\'color:#667781\'>\ud83d\udcf7 Foto</span>&quot;" style="width:100%;height:100%;object-fit:cover;display:block;cursor:pointer;opacity:0;transition:opacity .2s" onclick="window.open(this.src,\'_blank\')"/></div>'+(m.text?'<div style="margin-top:5px">'+escapeHtml(m.text)+'</div>':'');
+  else if(m.murl && isVid) inner='<div style="width:240px;height:200px;border-radius:10px;background:#000;overflow:hidden;display:block"><video controls preload="metadata" src="'+m.murl+'" onerror="this.parentNode.outerHTML=&quot;<span style=\'color:#667781\'>\ud83c\udfa5 V\u00eddeo</span>&quot;" style="width:100%;height:100%;object-fit:contain;display:block"></video></div>'+(m.text?'<div style="margin-top:5px">'+escapeHtml(m.text)+'</div>':'');
   else if(m.murl && isAud) inner='<audio controls src="'+m.murl+'" style="max-width:230px"></audio>';
   else if(m.murl && isSticker) inner='<img src="'+m.murl+'" style="width:120px;height:120px;object-fit:contain;display:block"/>';
   else if(m.murl) inner='<a href="'+m.murl+'" target="_blank" style="color:inherit;display:flex;align-items:center;gap:6px;text-decoration:none"><span style="font-size:1.3rem">📄</span><span style="text-decoration:underline">'+escapeHtml(m.mname||'Documento')+'</span></a>';
@@ -3201,18 +3219,19 @@ async function refreshWaMsgs(initial){
   let r={}; try{ r=await waApi('/api/wa-messages?number='+encodeURIComponent(_waActive.jid)); }catch(e){ if(initial && box) box.innerHTML='<div class="sub" style="margin:auto;text-align:center">No se pudo cargar. Reintentando…</div>'; return; }
   const msgs=(r&&r.messages)||[]; const ids=msgs.map(m=>m.id||(m.key&&m.key.id)).join(',');
   if(ids===_waLastMsgIds) return; _waLastMsgIds=ids;
+  if(_waActive) window._waPrecache[_waActive.jid]=msgs; // actualiza caché
   if(!msgs.length){ box.innerHTML='<div class="sub" style="margin:auto;text-align:center">No hay mensajes aún en esta conversación.</div>'; return; }
-  const atBottom = box.scrollHeight-box.scrollTop-box.clientHeight < 80 || initial;
+  waRenderMsgs(msgs, initial);
+}
+function waRenderMsgs(msgs, initial){
+  const box=document.getElementById('waMsgs'); if(!box) return;
+  // ¿estaba el usuario pegado al fondo? (o es la primera carga). Si estaba leyendo arriba, NO le movemos.
+  const atBottom = box.scrollHeight-box.scrollTop-box.clientHeight < 120 || initial;
   let html='', lastDay='';
   msgs.forEach(m=>{ const day=waDateLabel(m.timestamp); if(day && day!==lastDay){ lastDay=day; html+='<div style="align-self:center;background:#e1f2fb;color:#54656f;font-size:.68rem;padding:.2rem .6rem;border-radius:8px;margin:.4rem 0">'+day+'</div>'; } html+=waMsgBubble(m); });
   box.innerHTML=html;
-  if(atBottom){
-    var toBottom=function(){ box.scrollTop=box.scrollHeight; };
-    toBottom();
-    setTimeout(toBottom, 60); setTimeout(toBottom, 300); setTimeout(toBottom, 700);
-    // cuando cada imagen/vídeo carga, vuelve a bajar (las imágenes cambian la altura)
-    box.querySelectorAll('img,video').forEach(function(el){ el.addEventListener('load', toBottom); el.addEventListener('loadeddata', toBottom); }); 
-  }
+  // Los medios tienen tamaño reservado (no cambian la altura al cargar); overflow-anchor estabiliza. Bajamos una vez.
+  if(atBottom){ requestAnimationFrame(()=>{ box.scrollTop=box.scrollHeight; }); }
 }
 async function loadWaCtx(num){
   const ctx=document.getElementById('waCtx'); if(!ctx)return;
