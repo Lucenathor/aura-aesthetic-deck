@@ -351,25 +351,38 @@ img{max-width:100%;display:block}
 /* Pipeline guia de ventas */
 .pl-grid{display:grid;grid-template-columns:1fr;gap:1.1rem;margin-top:2.5rem}
 @media(min-width:820px){.pl-grid{grid-template-columns:repeat(3,1fr)}}
-@keyframes plIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
-.pl-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:1.2rem;display:flex;flex-direction:column;gap:.8rem;opacity:0;animation:plIn .6s var(--ease) forwards;animation-delay:var(--d);box-shadow:0 10px 30px -22px rgba(15,16,17,.35)}
-.pl-top{display:flex;align-items:center;gap:.6rem}
-.pl-av{width:38px;height:38px;border-radius:50%;flex:none;background:linear-gradient(135deg,var(--accent),#E0553F);color:#fff;display:grid;place-items:center;font-family:'Inter Tight';font-weight:800;font-size:1rem}
+.pl-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:1.2rem;display:flex;flex-direction:column;gap:.8rem;box-shadow:0 10px 30px -22px rgba(15,16,17,.35);position:relative;overflow:hidden;
+  opacity:0;transform:translateY(26px) scale(.97);transition:opacity .7s var(--ease),transform .7s var(--ease),box-shadow .3s var(--ease);transition-delay:var(--d)}
+.pl-grid.in .pl-card{opacity:1;transform:none}
+.pl-card:hover{transform:translateY(-5px);box-shadow:0 22px 44px -20px rgba(255,107,90,.4);border-color:rgba(255,107,90,.4)}
+.pl-top{display:flex;align-items:center;gap:.6rem;position:relative;z-index:1}
+.pl-av{width:38px;height:38px;border-radius:50%;flex:none;background:linear-gradient(135deg,var(--accent),#E0553F);color:#fff;display:grid;place-items:center;font-family:'Inter Tight';font-weight:800;font-size:1rem;box-shadow:0 4px 12px -4px rgba(255,107,90,.5)}
 .pl-top b{font-family:'Inter Tight';font-size:.92rem;color:var(--ink);display:block;line-height:1.1}
 .pl-top small{font-size:.74rem;color:var(--muted)}
-.pl-tag{margin-left:auto;flex:none;font-size:.64rem;font-weight:800;letter-spacing:.03em;padding:.25rem .55rem;border-radius:999px;text-transform:uppercase}
+.pl-tag{margin-left:auto;flex:none;font-size:.64rem;font-weight:800;letter-spacing:.03em;padding:.25rem .55rem;border-radius:999px;text-transform:uppercase;position:relative;overflow:hidden}
+.pl-tag::after{content:'';position:absolute;top:0;left:-120%;width:60%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.85),transparent);transform:skewX(-18deg)}
+.pl-grid.in .pl-tag::after{animation:plShine 2.6s var(--ease) infinite;animation-delay:calc(var(--d) + 1s)}
+@keyframes plShine{0%{left:-120%}35%,100%{left:160%}}
 .pl-tag.up{background:rgba(255,107,90,.14);color:var(--accent)}
 .pl-tag.cross{background:rgba(155,123,255,.16);color:#6b4fc4}
 .pl-tag.pack{background:rgba(164,229,205,.22);color:#1f8c69}
-.pl-script{background:#FBF6EE;border:1px dashed var(--line);border-radius:12px;padding:.7rem .8rem;font-size:.86rem;line-height:1.45;color:var(--ink-soft)}
-.pl-script .pl-lbl{display:block;font-size:.66rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:.25rem}
+.pl-script{background:#FBF6EE;border:1px dashed var(--line);border-radius:12px;padding:.7rem .8rem;font-size:.86rem;line-height:1.45;color:var(--ink-soft);position:relative;z-index:1}
+.pl-script .pl-lbl{display:flex;align-items:center;gap:.3rem;font-size:.66rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:.25rem}
+.pl-script .pl-lbl::before{content:'✎'}
 .pl-script b{color:var(--ink)}
-.pl-foot{display:flex;align-items:center;justify-content:space-between;font-size:.8rem;margin-top:auto}
+/* efecto typing del guion */
+.pl-typed{display:inline}
+.pl-cursor{display:inline-block;width:2px;height:1em;background:var(--accent);margin-left:1px;vertical-align:text-bottom;opacity:0}
+.pl-card.typing .pl-cursor{opacity:1;animation:plBlink .8s step-end infinite}
+@keyframes plBlink{50%{opacity:0}}
+.pl-foot{display:flex;align-items:center;justify-content:space-between;font-size:.8rem;margin-top:auto;position:relative;z-index:1}
 .pl-foot span:first-child{color:#1f8c69;font-weight:800;font-family:'Inter Tight'}
-.pl-go{color:var(--ink);font-weight:600;font-size:.78rem}
+.pl-go{color:var(--ink);font-weight:700;font-size:.78rem;display:inline-flex;align-items:center;gap:3px;transition:gap .2s var(--ease),color .2s}
+.pl-card:hover .pl-go{color:var(--accent);gap:7px}
 .pl-bottom{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:1.6rem;text-align:center}
 @media(max-width:620px){.pl-bottom{grid-template-columns:1fr}}
-.pl-stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1.1rem}
+.pl-stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1.1rem;transition:transform .3s var(--ease),box-shadow .3s}
+.pl-stat:hover{transform:translateY(-3px);box-shadow:0 14px 30px -18px rgba(15,16,17,.2)}
 .pl-stat b{display:block;font-family:'Inter Tight';font-weight:800;font-size:1.6rem;color:var(--accent);line-height:1}
 .pl-stat span{font-size:.8rem;color:var(--muted);margin-top:.25rem;display:block}
 .section .pill{display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .9rem;border-radius:999px;background:rgba(155,123,255,.10);color:var(--accent-2);font-size:.7rem;font-weight:600;letter-spacing:.04em;border:1px solid rgba(155,123,255,.22)}
@@ -1239,21 +1252,21 @@ img{max-width:100%;display:block}
     <span class="pill coral">Pipeline inteligente</span>
     <h2 class="reveal">Le dice a tu recepción <span class="accent">qué decir</span> <span class="serif">para vender más.</span></h2>
     <p class="lead reveal">AURA no solo te ordena los pacientes: en cada ficha sugiere el <b>upsell</b> o <b>cross-sell</b> perfecto y la frase exacta para proponerlo. Tu recepcionista cierra ventas aunque no sepa vender.</p>
-    <div class="pl-grid reveal">
+    <div class="pl-grid reveal" id="plGrid">
       <div class="pl-card" style="--d:0s">
         <div class="pl-top"><span class="pl-av">L</span><div><b>Lucía · vino por labios</b><small>hoy · ticket 290€</small></div><span class="pl-tag up">Upsell</span></div>
-        <div class="pl-script"><span class="pl-lbl">Dile:</span> “Lucía, para que el resultado dure más y quede más natural, muchas clientas se añaden <b>perfilado + ácido en surco nasogeniano</b>. ¿Te lo dejo todo hoy?”</div>
-        <div class="pl-foot"><span>+140€ potencial</span><span class="pl-go">Marcar vendido →</span></div>
+        <div class="pl-script"><span class="pl-lbl">Dile</span><span class="pl-typed" data-text='“Lucía, para que el resultado dure más y quede más natural, muchas clientas se añaden perfilado + ácido en surco nasogeniano. ¿Te lo dejo todo hoy?”'></span><span class="pl-cursor"></span></div>
+        <div class="pl-foot"><span>+<b class="pl-eur" data-to="140">0</b>€ potencial</span><span class="pl-go">Marcar vendido →</span></div>
       </div>
-      <div class="pl-card" style="--d:.18s">
+      <div class="pl-card" style="--d:.2s">
         <div class="pl-top"><span class="pl-av" style="background:linear-gradient(135deg,#9B7BFF,#6b4fc4)">M</span><div><b>Marta · botox entrecejo</b><small>terminó hace 10 min</small></div><span class="pl-tag cross">Cross-sell</span></div>
-        <div class="pl-script"><span class="pl-lbl">Dile:</span> “Marta, ahora que tienes el entrecejo, una <b>limpieza + vitamina C</b> te dejaría la piel perfecta para las fotos. Te hago precio si la reservas hoy.”</div>
-        <div class="pl-foot"><span>+85€ potencial</span><span class="pl-go">Reservar ahora →</span></div>
+        <div class="pl-script"><span class="pl-lbl">Dile</span><span class="pl-typed" data-text='“Marta, ahora que tienes el entrecejo, una limpieza + vitamina C te dejaría la piel perfecta para las fotos. Te hago precio si la reservas hoy.”'></span><span class="pl-cursor"></span></div>
+        <div class="pl-foot"><span>+<b class="pl-eur" data-to="85">0</b>€ potencial</span><span class="pl-go">Reservar ahora →</span></div>
       </div>
-      <div class="pl-card" style="--d:.36s">
+      <div class="pl-card" style="--d:.4s">
         <div class="pl-top"><span class="pl-av" style="background:linear-gradient(135deg,#1f8c69,#0b3b25)">A</span><div><b>Ana · 3ª sesión láser</b><small>le quedan 2 del bono</small></div><span class="pl-tag pack">Renovación</span></div>
-        <div class="pl-script"><span class="pl-lbl">Dile:</span> “Ana, te quedan 2 sesiones. Si renuevas el <b>bono de 6 hoy</b>, te mantengo el precio de este año. ¿Te lo preparo?”</div>
-        <div class="pl-foot"><span>+390€ potencial</span><span class="pl-go">Renovar bono →</span></div>
+        <div class="pl-script"><span class="pl-lbl">Dile</span><span class="pl-typed" data-text='“Ana, te quedan 2 sesiones. Si renuevas el bono de 6 hoy, te mantengo el precio de este año. ¿Te lo preparo?”'></span><span class="pl-cursor"></span></div>
+        <div class="pl-foot"><span>+<b class="pl-eur" data-to="390">0</b>€ potencial</span><span class="pl-go">Renovar bono →</span></div>
       </div>
     </div>
     <div class="pl-bottom reveal">
@@ -1911,6 +1924,18 @@ document.querySelectorAll('.section h2').forEach(h=>{
 const hIO = new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');hIO.unobserve(e.target);}});},{threshold:.3});
 document.querySelectorAll('.section h2').forEach(el=>hIO.observe(el));
 
+/* === PIPELINE: typing del guion + conteo de € === */
+(function(){
+  const grid=document.getElementById('plGrid'); if(!grid) return;
+  const typeOne=(el,delay)=>{ const full=el.getAttribute('data-text')||''; const card=el.closest('.pl-card'); let i=0;
+    setTimeout(()=>{ card&&card.classList.add('typing'); const iv=setInterval(()=>{ el.textContent=full.slice(0,i); i++; if(i>full.length){ clearInterval(iv); card&&card.classList.remove('typing'); } }, 18); }, delay);
+  };
+  const countEur=(b,delay)=>{ const to=parseInt(b.getAttribute('data-to')||'0',10); setTimeout(()=>{ const t0=performance.now(),dur=900; const step=(n)=>{ const p=Math.min(1,(n-t0)/dur); b.textContent=Math.round(to*(0.2+0.8*p*(2-p))); if(p<1)requestAnimationFrame(step); else b.textContent=to; }; requestAnimationFrame(step); }, delay); };
+  const io=new IntersectionObserver(es=>{ es.forEach(e=>{ if(!e.isIntersecting)return; io.disconnect();
+    grid.querySelectorAll('.pl-card').forEach((card,idx)=>{ const base=300+idx*450; const typed=card.querySelector('.pl-typed'); const eur=card.querySelector('.pl-eur'); if(typed)typeOne(typed,base); if(eur)countEur(eur,base+200); });
+  }); },{threshold:.3});
+  io.observe(grid);
+})();
 // Count-up de stats
 const countIO = new IntersectionObserver(es=>{
   es.forEach(e=>{
