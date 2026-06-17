@@ -324,6 +324,30 @@ img{max-width:100%;display:block}
 /* === SECTIONS === */
 .section{padding:7rem 0 1rem;position:relative}
 .mig-logo{padding:.5rem .9rem;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;font-family:'Inter Tight',sans-serif;font-weight:700;font-size:.92rem;letter-spacing:-.01em}
+/* Mockups animados de caracteristicas estrella */
+@keyframes bubIn{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
+.co-b,.wa-b,.co-typing,.wa-pill{opacity:0;animation:bubIn .5s var(--ease) forwards}
+.co-b{max-width:88%;padding:.55rem .8rem;border-radius:13px;font-size:.82rem;line-height:1.35;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.co-b.user{align-self:flex-end;background:linear-gradient(135deg,var(--accent),#E0553F);color:#fff;border-bottom-right-radius:4px}
+.co-b.ai{align-self:flex-start;background:#fff;color:var(--ink);border-bottom-left-radius:4px}
+.co-b.ai b{color:var(--accent)}
+.co-b.d2{animation-delay:.5s}.co-b.d3{animation-delay:1s}
+.co-typing{align-self:flex-start;display:flex;gap:4px;background:#fff;padding:.6rem .8rem;border-radius:13px;border-bottom-left-radius:4px;animation-delay:1.5s}
+.co-typing span{width:7px;height:7px;border-radius:50%;background:#b8ab9c;animation:coDot 1.2s infinite}
+.co-typing span:nth-child(2){animation-delay:.2s}.co-typing span:nth-child(3){animation-delay:.4s}
+@keyframes coDot{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+.wa-b{max-width:82%;padding:.5rem .75rem;border-radius:12px;font-size:.82rem;line-height:1.35;box-shadow:0 1px 1px rgba(0,0,0,.08)}
+.wa-b.them{align-self:flex-start;background:#fff;color:var(--ink);border-bottom-left-radius:3px}
+.wa-b.me{align-self:flex-end;background:#d9fdd3;color:#0b3b25;border-bottom-right-radius:3px}
+.wa-b.d2{animation-delay:.6s}.wa-b.d3{animation-delay:1.2s}
+.wa-pill{align-self:center;margin-top:.3rem;background:rgba(155,123,255,.16);color:#6b4fc4;font-size:.72rem;font-weight:700;padding:.3rem .7rem;border-radius:999px;animation-delay:1.6s}
+.pf-row{display:flex;align-items:center;justify-content:space-between;font-size:.9rem;color:var(--ink)}
+.pf-row span{color:var(--ink-soft)}.pf-row b{font-family:'Inter Tight';font-weight:700}
+.pf-row.sub{font-size:.82rem}.pf-row.sub span,.pf-row.sub b{color:var(--muted)}
+.pf-row.total{margin-top:.2rem;font-size:1.05rem}.pf-row.total b{font-size:1.5rem}
+.pf-bar{height:7px;background:#EADfce;border-radius:4px;overflow:hidden;margin:.3rem 0}
+.pf-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:4px;animation:pfFill 1.4s .3s var(--ease) forwards}
+@keyframes pfFill{to{width:38%}}
 .section .pill{display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .9rem;border-radius:999px;background:rgba(155,123,255,.10);color:var(--accent-2);font-size:.7rem;font-weight:600;letter-spacing:.04em;border:1px solid rgba(155,123,255,.22)}
 .section .pill.coral{background:rgba(255,107,90,.10);color:var(--accent);border-color:rgba(255,107,90,.22)}
 .section .pill.mint{background:rgba(164,229,205,.18);color:#1f8c69;border-color:rgba(164,229,205,.45)}
@@ -1133,13 +1157,55 @@ img{max-width:100%;display:block}
     <span class="pill">Mucho más que un embudo</span>
     <h2 class="reveal">No es otro CRM. Es el <span class="accent">sistema operativo</span> <span class="serif">de tu clínica.</span></h2>
     <p class="lead reveal">Captación, agenda, pacientes, caja, WhatsApp e inventario en un solo sitio — y un copiloto con IA que hace el trabajo por ti. Todo conectado, todo en español, pensado para estética.</p>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-top:2.2rem">
-      <div class="b-card reveal"><div class="tag">✦ Novedad</div><h3 style="font-size:1.06rem;margin-bottom:.4rem">Copiloto con IA</h3><p style="color:var(--muted);font-size:.92rem;line-height:1.5">Háblale o escríbele: “reserva una cita”, “da de alta un empleado”, “¿cuánto he facturado?”. Él lo hace y te pregunta lo que falta. Como tener una recepcionista 24/7.</p></div>
-      <div class="b-card reveal"><div class="tag lav">WhatsApp</div><h3 style="font-size:1.06rem;margin-bottom:.4rem">Bandeja de WhatsApp con IA</h3><p style="color:var(--muted);font-size:.92rem;line-height:1.5">Atiende a tus pacientes desde el panel. La IA puede responder sola a quien te escribe, y guardas sus fotos directamente en su ficha.</p></div>
+    <!-- 3 características estrella con mockup animado -->
+    <div class="bento reveal stagger" style="margin-top:3rem">
+      <div class="b-card" style="--i:0">
+        <div class="tag">✦ Copiloto IA</div>
+        <h3>Díselo y lo hace. Tu recepcionista con IA, 24/7.</h3>
+        <p>“Reserva una cita”, “da de alta un empleado”, “¿cuánto he facturado?”. El copiloto ejecuta la acción y te pregunta solo lo que falta. Por texto o por voz.</p>
+        <div class="visual" style="aspect-ratio:auto;background:linear-gradient(135deg,#FFEDE8,#F0E6FF);padding:1.6rem 1.2rem;display:flex;flex-direction:column;gap:.55rem;justify-content:flex-end">
+          <div class="co-b user">crea un empleado, recepción, 1.500€</div>
+          <div class="co-b ai">Hecho ✓ Marta dada de alta en Equipo. Coste con SS: 1.950€/mes.</div>
+          <div class="co-b user d2">¿cuánto he facturado este mes?</div>
+          <div class="co-b ai d3">Llevas <b>24.120€</b> en 110 cobros. Beneficio estimado: 9.270€.</div>
+          <div class="co-typing d4"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+      <div class="b-card" style="--i:1">
+        <div class="tag lav">WhatsApp + IA</div>
+        <h3>Atiende WhatsApp desde el panel. La IA responde sola.</h3>
+        <p>Centraliza los mensajes de tus pacientes. La IA contesta a quien te escribe, y guardas sus fotos directamente en su ficha clínica con un clic.</p>
+        <div class="visual" style="aspect-ratio:auto;background:linear-gradient(135deg,#E0F7EC,#F0E6FF);padding:1.6rem 1.2rem;display:flex;flex-direction:column;gap:.5rem;justify-content:flex-end">
+          <div class="wa-b them">Hola, ¿cuánto cuesta el aumento de labios? 💋</div>
+          <div class="wa-b me d2">¡Hola Laura! Desde 290€. ¿Te abro hueco esta semana? ✓✓</div>
+          <div class="wa-b them d3">Genial, el jueves</div>
+          <div class="wa-pill d4">✨ respondido por la IA en 40 seg</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bento reveal" style="margin-top:1.2rem;grid-template-columns:1fr">
+      <div class="b-card" style="--i:0">
+        <div class="tag mint">Beneficio real</div>
+        <h3>No solo lo que entra en caja. Lo que <span class="accent">de verdad ganas.</span></h3>
+        <p>AURA descuenta sueldos, seguridad social, gastos fijos, IVA y marketing, y te dice tu beneficio neto real cada mes. Algo que casi ningún CRM de estética te da.</p>
+        <div class="visual" style="aspect-ratio:auto;background:linear-gradient(135deg,#FFF6E9,#E0F7EC);padding:1.8rem;display:flex;flex-direction:column;gap:.5rem">
+          <div class="pf-row"><span>Facturado</span><b>24.120€</b></div>
+          <div class="pf-row sub"><span>− Personal y seguridad social</span><b>−8.900€</b></div>
+          <div class="pf-row sub"><span>− Gastos fijos + marketing</span><b>−3.450€</b></div>
+          <div class="pf-row sub"><span>− IVA</span><b>−2.500€</b></div>
+          <div class="pf-bar"><i></i></div>
+          <div class="pf-row total"><span>Beneficio real</span><b class="accent">9.270€</b></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Y además (compacto) -->
+    <p class="lead reveal" style="margin-top:3rem;font-weight:700;color:var(--ink)">Y además, todo lo que una clínica necesita:</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-top:1rem">
       <div class="b-card reveal"><div class="tag">Clínico</div><h3 style="font-size:1.06rem;margin-bottom:.4rem">Historia clínica completa</h3><p style="color:var(--muted);font-size:.92rem;line-height:1.5">Ficha médica, alergias, evolución por visita con plantillas por tratamiento (bótox, relleno, láser…) y fotos antes/después. Como Pabau, pero más simple.</p></div>
-      <div class="b-card reveal"><div class="tag lav">Dinero</div><h3 style="font-size:1.06rem;margin-bottom:.4rem">Beneficio real, no solo caja</h3><p style="color:var(--muted);font-size:.92rem;line-height:1.5">Descuenta sueldos, seguridad social, gastos fijos, IVA y marketing. Sabes lo que ganas de verdad cada mes. Algo que casi ningún CRM te da.</p></div>
-      <div class="b-card reveal"><div class="tag">Agenda</div><h3 style="font-size:1.06rem;margin-bottom:.4rem">Agenda y recordatorios SMS</h3><p style="color:var(--muted);font-size:.92rem;line-height:1.5">Citas, horarios, vacaciones y recordatorios automáticos por SMS (24h y 2h antes) para reducir los “no shows” sin mover un dedo.</p></div>
-      <div class="b-card reveal"><div class="tag lav">Stock</div><h3 style="font-size:1.06rem;margin-bottom:.4rem">Inventario con caducidades</h3><p style="color:var(--muted);font-size:.92rem;line-height:1.5">Controla viales, lotes y caducidades, y descuenta producto automáticamente con cada tratamiento. Nunca más te quedas sin stock.</p></div>
+      <div class="b-card reveal"><div class="tag lav">Agenda</div><h3 style="font-size:1.06rem;margin-bottom:.4rem">Agenda y recordatorios SMS</h3><p style="color:var(--muted);font-size:.92rem;line-height:1.5">Citas, horarios, vacaciones y recordatorios automáticos por SMS (24h y 2h antes) para reducir los “no shows” sin mover un dedo.</p></div>
+      <div class="b-card reveal"><div class="tag">Stock</div><h3 style="font-size:1.06rem;margin-bottom:.4rem">Inventario con caducidades</h3><p style="color:var(--muted);font-size:.92rem;line-height:1.5">Controla viales, lotes y caducidades, y descuenta producto automáticamente con cada tratamiento. Nunca más te quedas sin stock.</p></div>
     </div>
   </section>
 
