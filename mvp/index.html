@@ -348,6 +348,30 @@ img{max-width:100%;display:block}
 .pf-bar{height:7px;background:#EADfce;border-radius:4px;overflow:hidden;margin:.3rem 0}
 .pf-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:4px;animation:pfFill 1.4s .3s var(--ease) forwards}
 @keyframes pfFill{to{width:38%}}
+/* Pipeline guia de ventas */
+.pl-grid{display:grid;grid-template-columns:1fr;gap:1.1rem;margin-top:2.5rem}
+@media(min-width:820px){.pl-grid{grid-template-columns:repeat(3,1fr)}}
+@keyframes plIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.pl-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:1.2rem;display:flex;flex-direction:column;gap:.8rem;opacity:0;animation:plIn .6s var(--ease) forwards;animation-delay:var(--d);box-shadow:0 10px 30px -22px rgba(15,16,17,.35)}
+.pl-top{display:flex;align-items:center;gap:.6rem}
+.pl-av{width:38px;height:38px;border-radius:50%;flex:none;background:linear-gradient(135deg,var(--accent),#E0553F);color:#fff;display:grid;place-items:center;font-family:'Inter Tight';font-weight:800;font-size:1rem}
+.pl-top b{font-family:'Inter Tight';font-size:.92rem;color:var(--ink);display:block;line-height:1.1}
+.pl-top small{font-size:.74rem;color:var(--muted)}
+.pl-tag{margin-left:auto;flex:none;font-size:.64rem;font-weight:800;letter-spacing:.03em;padding:.25rem .55rem;border-radius:999px;text-transform:uppercase}
+.pl-tag.up{background:rgba(255,107,90,.14);color:var(--accent)}
+.pl-tag.cross{background:rgba(155,123,255,.16);color:#6b4fc4}
+.pl-tag.pack{background:rgba(164,229,205,.22);color:#1f8c69}
+.pl-script{background:#FBF6EE;border:1px dashed var(--line);border-radius:12px;padding:.7rem .8rem;font-size:.86rem;line-height:1.45;color:var(--ink-soft)}
+.pl-script .pl-lbl{display:block;font-size:.66rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:.25rem}
+.pl-script b{color:var(--ink)}
+.pl-foot{display:flex;align-items:center;justify-content:space-between;font-size:.8rem;margin-top:auto}
+.pl-foot span:first-child{color:#1f8c69;font-weight:800;font-family:'Inter Tight'}
+.pl-go{color:var(--ink);font-weight:600;font-size:.78rem}
+.pl-bottom{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:1.6rem;text-align:center}
+@media(max-width:620px){.pl-bottom{grid-template-columns:1fr}}
+.pl-stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1.1rem}
+.pl-stat b{display:block;font-family:'Inter Tight';font-weight:800;font-size:1.6rem;color:var(--accent);line-height:1}
+.pl-stat span{font-size:.8rem;color:var(--muted);margin-top:.25rem;display:block}
 .section .pill{display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .9rem;border-radius:999px;background:rgba(155,123,255,.10);color:var(--accent-2);font-size:.7rem;font-weight:600;letter-spacing:.04em;border:1px solid rgba(155,123,255,.22)}
 .section .pill.coral{background:rgba(255,107,90,.10);color:var(--accent);border-color:rgba(255,107,90,.22)}
 .section .pill.mint{background:rgba(164,229,205,.18);color:#1f8c69;border-color:rgba(164,229,205,.45)}
@@ -730,6 +754,7 @@ img{max-width:100%;display:block}
     <nav class="links">
       <a href="#how">Cómo funciona</a>
       <a href="#sistema">Plataforma</a>
+      <a href="#pipeline">Vender más</a>
       <a href="#treatments">Anuncios</a>
       <a href="#migracion">Migración 24h</a>
       <a href="#cta">Activar</a>
@@ -1206,6 +1231,35 @@ img{max-width:100%;display:block}
       <div class="b-card reveal"><div class="tag">Clínico</div><h3 style="font-size:1.06rem;margin-bottom:.4rem">Historia clínica completa</h3><p style="color:var(--muted);font-size:.92rem;line-height:1.5">Ficha médica, alergias, evolución por visita con plantillas por tratamiento (bótox, relleno, láser…) y fotos antes/después. Como Pabau, pero más simple.</p></div>
       <div class="b-card reveal"><div class="tag lav">Agenda</div><h3 style="font-size:1.06rem;margin-bottom:.4rem">Agenda y recordatorios SMS</h3><p style="color:var(--muted);font-size:.92rem;line-height:1.5">Citas, horarios, vacaciones y recordatorios automáticos por SMS (24h y 2h antes) para reducir los “no shows” sin mover un dedo.</p></div>
       <div class="b-card reveal"><div class="tag">Stock</div><h3 style="font-size:1.06rem;margin-bottom:.4rem">Inventario con caducidades</h3><p style="color:var(--muted);font-size:.92rem;line-height:1.5">Controla viales, lotes y caducidades, y descuenta producto automáticamente con cada tratamiento. Nunca más te quedas sin stock.</p></div>
+    </div>
+  </section>
+
+  <!-- PIPELINE: GUÍA DE VENTAS A LA RECEPCIÓN -->
+  <section class="section" id="pipeline">
+    <span class="pill coral">Pipeline inteligente</span>
+    <h2 class="reveal">Le dice a tu recepción <span class="accent">qué decir</span> <span class="serif">para vender más.</span></h2>
+    <p class="lead reveal">AURA no solo te ordena los pacientes: en cada ficha sugiere el <b>upsell</b> o <b>cross-sell</b> perfecto y la frase exacta para proponerlo. Tu recepcionista cierra ventas aunque no sepa vender.</p>
+    <div class="pl-grid reveal">
+      <div class="pl-card" style="--d:0s">
+        <div class="pl-top"><span class="pl-av">L</span><div><b>Lucía · vino por labios</b><small>hoy · ticket 290€</small></div><span class="pl-tag up">Upsell</span></div>
+        <div class="pl-script"><span class="pl-lbl">Dile:</span> “Lucía, para que el resultado dure más y quede más natural, muchas clientas se añaden <b>perfilado + ácido en surco nasogeniano</b>. ¿Te lo dejo todo hoy?”</div>
+        <div class="pl-foot"><span>+140€ potencial</span><span class="pl-go">Marcar vendido →</span></div>
+      </div>
+      <div class="pl-card" style="--d:.18s">
+        <div class="pl-top"><span class="pl-av" style="background:linear-gradient(135deg,#9B7BFF,#6b4fc4)">M</span><div><b>Marta · botox entrecejo</b><small>terminó hace 10 min</small></div><span class="pl-tag cross">Cross-sell</span></div>
+        <div class="pl-script"><span class="pl-lbl">Dile:</span> “Marta, ahora que tienes el entrecejo, una <b>limpieza + vitamina C</b> te dejaría la piel perfecta para las fotos. Te hago precio si la reservas hoy.”</div>
+        <div class="pl-foot"><span>+85€ potencial</span><span class="pl-go">Reservar ahora →</span></div>
+      </div>
+      <div class="pl-card" style="--d:.36s">
+        <div class="pl-top"><span class="pl-av" style="background:linear-gradient(135deg,#1f8c69,#0b3b25)">A</span><div><b>Ana · 3ª sesión láser</b><small>le quedan 2 del bono</small></div><span class="pl-tag pack">Renovación</span></div>
+        <div class="pl-script"><span class="pl-lbl">Dile:</span> “Ana, te quedan 2 sesiones. Si renuevas el <b>bono de 6 hoy</b>, te mantengo el precio de este año. ¿Te lo preparo?”</div>
+        <div class="pl-foot"><span>+390€ potencial</span><span class="pl-go">Renovar bono →</span></div>
+      </div>
+    </div>
+    <div class="pl-bottom reveal">
+      <div class="pl-stat"><b>+32%</b><span>ticket medio con sugerencias</span></div>
+      <div class="pl-stat"><b>0</b><span>oportunidades de venta perdidas</span></div>
+      <div class="pl-stat"><b>Cualquiera</b><span>puede vender, sepa o no</span></div>
     </div>
   </section>
 
