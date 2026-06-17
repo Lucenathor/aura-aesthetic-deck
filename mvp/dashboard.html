@@ -271,6 +271,10 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 .knum{position:absolute;top:-8px;left:-8px;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--st,var(--terra)),color-mix(in srgb,var(--st,var(--terra)) 65%,#000));color:#fff;font-weight:800;font-size:.78rem;display:grid;place-items:center;box-shadow:0 3px 9px -2px var(--st,var(--terra));border:2px solid #fff;z-index:3}
 .kcard{position:relative}
 .kcard .kwhy{font-size:.71rem;font-weight:700;margin-top:.45rem;display:inline-flex;align-items:center;padding:.22rem .55rem;border-radius:999px;background:var(--stbg,#f3e9dd);color:var(--st,var(--terra-d));letter-spacing:.01em}
+.kcard .kscript{margin-top:.55rem;background:#fbf7f0;border:1px dashed color-mix(in srgb,var(--st,#b06d44) 45%,#e6dccb);border-radius:11px;padding:.5rem .6rem}
+.kcard .kscript-lbl{display:flex;align-items:center;justify-content:space-between;font-size:.64rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--st,var(--terra-d));margin-bottom:.25rem}
+.kcard .kscript-copy{border:none;background:transparent;color:var(--st,var(--terra-d));font-size:.64rem;font-weight:700;cursor:pointer;text-decoration:underline;padding:0;letter-spacing:.02em}
+.kcard .kscript-txt{font-size:.78rem;line-height:1.4;color:#3a322c;font-style:italic}
 .kcard.big{padding:.85rem .8rem .8rem}
 .kcol-sub{font-size:.66rem;font-weight:600;color:var(--st,var(--terra-d));opacity:.85;text-transform:none;letter-spacing:0;margin-top:.15rem}
 
@@ -2904,6 +2908,26 @@ let pipeTab = 'call'; // Pipeline = lista de llamadas del día (vista única, si
 function setPipeTab(t){ pipeTab='call'; renderKanban(); }
 // "minutos esperando" desde el último contacto, para ordenar por urgencia
 function waitMin(l){ const t=l.last_message_at?new Date(l.last_message_at).getTime():(l.created_at?new Date(l.created_at).getTime():Date.now()); return Math.max(0,(Date.now()-t)/60000); }
+// === GUION DE LLAMADA por fase (optimizado para cerrar/vender) ===
+// Frase corta y directa que la recepcionista lee tal cual. Personalizada con nombre y tratamiento.
+function callScript(fase, l){
+  const nom=((l.name||'').trim().split(/\s+/)[0])||'Hola';
+  const trat=(l.treatment||'tu tratamiento').toLowerCase();
+  const citaTxt=(l._appt&&l._appt.date_iso)? new Date(l._appt.date_iso).toLocaleString('es-ES',{weekday:'long',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}) : 'tu cita';
+  switch(fase){
+    case 'llama':
+      return '“Hola '+nom+', soy de la clínica. Vi que te interesaba '+trat+' y quería atenderte yo personalmente. Justo me queda un hueco esta semana y te lo guardo. ¿Te viene mejor por la mañana o por la tarde?”';
+    case 'recuperar':
+      return '“Hola '+nom+', te echamos en falta el otro día con '+trat+'. No pasa nada, a veces surge. Te he reservado otro hueco para que no pierdas tu sitio. ¿Te va bien esta semana o la próxima?”';
+    case 'confirmar':
+      return '“Hola '+nom+', te llamo para confirmar tu cita de '+trat+' el '+citaTxt+'. ¿Todo correcto y cuento contigo? Así te guardo el hueco y lo dejamos todo preparado.”';
+    case 'reactivar':
+      return '“Hola '+nom+', ¿qué tal el resultado de '+trat+'? Te llamo porque es justo el momento de tu mantenimiento para que no pierdas lo conseguido. Te hago precio si lo dejamos cerrado hoy. ¿Te reservo?”';
+    case 'venta':
+      return '“Hola '+nom+', soy de la clínica. Como ya confías en nosotros para '+trat+', te llamo en primicia: tenemos un pack pensado para ti que sale mucho mejor que sesiones sueltas. ¿Te cuento en 1 minuto y te lo reservo a precio de hoy?”';
+    default: return '';
+  }
+}
 // Tarjeta de acción: número de orden + por qué + botón llamar grande (al tocar) + ver ficha
 function actionCard(l, color, n, why, fase){
   const initial=(l.name||'?').trim().charAt(0).toUpperCase();
@@ -2914,10 +2938,11 @@ function actionCard(l, color, n, why, fase){
     +'<div style="min-width:0;flex:1"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(l.name||'—')+'</b>'
     +'<div class="ktr" style="font-size:.74rem;color:var(--muted)">'+(l.treatment||'—')+'</div></div></div>'
     +'<div><span class="kwhy">'+why+'</span></div>'
+    +(function(){ var sc=callScript(fase,l); if(!sc) return ''; var scEsc=sc.replace(/"/g,'&quot;'); return '<div class="kscript"><div class="kscript-lbl"><span>📞 Di esto</span><button class="kscript-copy" onclick="event.stopPropagation();(navigator.clipboard&&navigator.clipboard.writeText(this.getAttribute(\'data-t\')));this.textContent=\'✓ copiado\';" data-t="'+scEsc+'">copiar</button></div><div class="kscript-txt">'+sc+'</div></div>'; })()
     +'<div class="kacts"><div style="flex-direction:column;gap:.4rem">'
     +'<a class="kbtn prim" href="tel:'+tel+'" onclick="event.stopPropagation()">☎ Llamar</a>'
     +'<div style="display:flex;gap:.35rem">'
-      +'<button class="kbtn" style="background:#e8f6ee;color:#1f6b4f" onclick="event.stopPropagation();logCall(\''+l.id+'\',\'reservo\',\''+fase+'\')">✓ Reservó</button>'
+      +'<button class="kbtn" style="background:#e8f6ee;color:#1f6b4f" onclick="event.stopPropagation();logCall(\''+l.id+'\',\'reservo\',\''+fase+'\')">✓ '+(fase==='venta'?'Vendió':'Reservó')+'</button>'
       +'<button class="kbtn ghost" onclick="event.stopPropagation();logCall(\''+l.id+'\',\'no_contesta\',\''+fase+'\')">No coge</button>'
       +'<button class="kbtn ghost" onclick="event.stopPropagation();logCall(\''+l.id+'\',\'no_interesado\',\''+fase+'\')">No quiere</button>'
     +'</div>'
@@ -3015,8 +3040,18 @@ function renderKanban(){
   buildCallCol(k,{title:'REACTIVAR',icon:'✦',sub:'El SMS de recall no funcionó · toca llamar',color:'#7048e8',pulse:'sale',fase:'reactivar',
     items:reactivar, empty:'✅ El SMS está al día con los recalls',
     why:l=>{ return '📩 Recall enviado · sin reservar'+attemptTxt(l); }});
+  // 5) NUEVA VENTA: clientes que YA confiaron (asistieron alguna vez), no tienen cita futura y hace +30 días de su
+  //    última visita → los más propensos a comprar un pack/mantenimiento (benchmark: el cliente recurrente convierte 3-4x mejor que uno nuevo)
+  const DAY=86400000;
+  let nuevaVenta = kLeads.filter(l=>{ if(!l._lastVisit) return false; if(l._hasFuture) return false; if(!callable(l)) return false; if(l.recall_type==='venta'&&l.recall_sms_sent==1) return false; const dias=(nowMs-l._lastVisit)/DAY; return dias>=30; });
+  // ordena por los que llevan más tiempo sin volver (más urgente recuperarlos antes de que se enfríen del todo) pero priorizando los de hasta ~120 días
+  nuevaVenta.sort((a,b)=> a._lastVisit-b._lastVisit);
+  nuevaVenta=nuevaVenta.slice(0,30);
+  buildCallCol(k,{title:'NUEVA VENTA',icon:'💸',sub:'Clientes que ya confían · propensos a un pack',color:'#1f8c69',pulse:'sale',fase:'venta',
+    items:nuevaVenta, empty:'✅ Sin oportunidades de pack ahora mismo',
+    why:l=>{ const dias=Math.floor((nowMs-l._lastVisit)/DAY); const m=dias>=60?'💰 Cliente · '+Math.floor(dias/30)+' meses sin volver':'💰 Cliente · '+dias+' días sin volver'; return m; }});
   // marcador del día
-  renderScoreboard({ llama:llamaYa.length, recup:recuperar.length, conf:confirmar.length, react:reactivar.length, total:llamaYa.length+recuperar.length+confirmar.length+reactivar.length });
+  renderScoreboard({ llama:llamaYa.length, recup:recuperar.length, conf:confirmar.length, react:reactivar.length, venta:nuevaVenta.length, total:llamaYa.length+recuperar.length+confirmar.length+reactivar.length+nuevaVenta.length });
   // cascada de entrada
   Array.from(k.children).forEach((col,ci)=>{ col.style.setProperty('--kd',(ci*0.07)+'s');
     Array.from(col.querySelectorAll('.kcard')).forEach((card,ri)=>{ card.style.setProperty('--cd',(ci*0.07+0.18+ri*0.05)+'s'); }); });
