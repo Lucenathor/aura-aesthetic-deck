@@ -601,12 +601,6 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
         <div id="bonosList" style="margin-top:.7rem"></div>
       </div>
 
-      <!-- Inventario -->
-      <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between"><div><h3 style="margin:0">Inventario</h3><p class="sub" style="margin:.2rem 0 0">Tu stock. Se descuenta solo al cerrar una visita con producto.</p></div><button class="btn prim" onclick="openNewProduct()">+ Producto</button></div>
-        <div id="prodList" style="margin-top:.7rem"></div>
-      </div>
-
       <!-- BENEFICIO REAL -->
       <div class="card" id="profitCard" style="background:linear-gradient(135deg,#2A211C,#3a2e26);color:#fff">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
@@ -1852,14 +1846,15 @@ function cashOffers(treatment){
   return { prod, pack, nextDays };
 }
 // RECEPCIÓN: cerrar visita
-function openCloseVisit(apptId,leadId,treatment,name){
+async function openCloseVisit(apptId,leadId,treatment,name){
   _cvUpsellEur=0;
+  try{ if(!(window.CATALOG&&window.CATALOG.length) && typeof loadCatalog==='function'){ await loadCatalog(); } }catch(e){}
   const ov=document.createElement('div'); ov.id='cvOverlay';
   ov.style.cssText='position:fixed;inset:0;background:rgba(15,16,17,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem';
   ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:380px;width:100%;padding:1.4rem;box-shadow:0 20px 60px rgba(0,0,0,.25)">'
     +'<h3 class="serif" style="margin:0 0 .3rem;font-size:1.2rem">Cerrar visita</h3>'
     +'<p style="color:var(--muted);font-size:.82rem;margin:0 0 1rem">'+(name||'Paciente')+' · cuando pase por recepción</p>'
-    +'<label style="font-size:.8rem;font-weight:600">Tratamiento realizado</label><input id="cvTreat" value="'+(treatment||'')+'" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin:.3rem 0 .8rem"/>'
+    +(function(){ var cat=(window.CATALOG||[]); var cur=(treatment||''); var inCat=cat.some(function(x){return (x.name||'')===cur;}); var opts=cat.map(function(x){return '<option value="'+escapeHtml(x.name)+'" data-price="'+(x.price||0)+'"'+((x.name===cur)?' selected':'')+'>'+escapeHtml(x.name)+'</option>';}).join(''); if(cur && !inCat) opts='<option value="'+escapeHtml(cur)+'" selected>'+escapeHtml(cur)+'</option>'+opts; var sel='<label style="font-size:.8rem;font-weight:600">Tratamiento realizado</label><select id="cvTreat" onchange="cvTreatChange(this)" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin:.3rem 0 .5rem">'+opts+'<option value="__other__">Otro… (escribir)</option></select><input id="cvTreatOther" placeholder="Escribe el tratamiento" style="display:none;width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin:0 0 .8rem"/>'; return sel; })()
     +'<label style="font-size:.8rem;font-weight:600">Importe pagado (€)</label><input id="cvAmount" type="number" placeholder="380" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin:.3rem 0 .6rem"/>'
     +'<label style="font-size:.8rem;font-weight:600">Método de pago</label><select id="cvMethod" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin:.3rem 0 .6rem">'+METODOS.map(m=>'<option value="'+m+'">'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>').join('')+'</select>'
     +'<label style="font-size:.8rem;font-weight:600">🛍️ Vender producto (opcional · descuenta stock y suma a caja)</label><div id="cvSold" style="margin:.3rem 0 .4rem"></div><button type="button" onclick="addSoldRow()" style="width:100%;background:#f6fbf8;border:1px solid #d4ece0;color:#1f8c69;border-radius:9px;padding:.45rem;font-size:.78rem;font-weight:700;cursor:pointer;margin-bottom:.9rem">+ Añadir producto a la venta</button>'
@@ -1914,10 +1909,11 @@ function renderSoldRows(){ var box=document.getElementById('cvSold'); if(!box)re
   box.innerHTML=(window._cvSoldRows||[]).map(function(r,i){ return '<div style="display:flex;gap:.4rem;margin-bottom:.4rem;align-items:center"><select onchange="window._cvSoldRows['+i+'].product_id=this.value" style="flex:2;padding:.5rem;border:1px solid var(--line);border-radius:9px"><option value="">Producto…</option>'+opts.replace('value="'+r.product_id+'"','value="'+r.product_id+'" selected')+'</select><input type="number" min="1" value="'+(r.qty||1)+'" oninput="window._cvSoldRows['+i+'].qty=this.value" style="width:64px;padding:.5rem;border:1px solid var(--line);border-radius:9px"/><button type="button" class="vac-del" onclick="window._cvSoldRows.splice('+i+',1);renderSoldRows()">✕</button></div>'; }).join('');
   if(!prods.length){ box.innerHTML='<div class="sub" style="font-size:.72rem;color:var(--muted)">Añade productos en Inventario para poder venderlos aquí.</div>'; }
 }
+function cvTreatChange(sel){ var other=document.getElementById('cvTreatOther'); if(sel.value==='__other__'){ if(other){ other.style.display='block'; other.focus(); } return; } if(other) other.style.display='none'; try{ var amt=document.getElementById('cvAmount'); var opt=sel.options[sel.selectedIndex]; var price=opt?+(opt.getAttribute('data-price')||0):0; if(amt && (!amt.value || +amt.value===0) && price>0) amt.value=price; }catch(e){} }
 let _cvSubmitting=false;
 async function doCloseVisit(apptId,leadId,attended){
   if(_cvSubmitting) return; // evita doble cobro por doble clic / toques repetidos
-  const treat=document.getElementById('cvTreat')?document.getElementById('cvTreat').value:'';
+  var _ts=document.getElementById('cvTreat'); var treat=_ts?_ts.value:''; if(treat==='__other__'){ var _to=document.getElementById('cvTreatOther'); treat=_to?(_to.value||'').trim():''; }
   const amount=document.getElementById('cvAmount')?document.getElementById('cvAmount').value:0;
   if(attended && (!amount || +amount<=0)){ if(!confirm('No has puesto importe. ¿Cerrar la visita con 0€ (sin cobro)?')) return; }
   const method=document.getElementById('cvMethod')?document.getElementById('cvMethod').value:null;
@@ -2714,7 +2710,7 @@ async function loadCaja(){
       tb.appendChild(tr);
     });
   }catch(e){}
-  loadBonos(); loadProducts(); if(CAN_FINANCE) loadProfit();
+  loadBonos(); if(CAN_FINANCE) loadProfit();
 }
 // ===== Beneficio real =====
 let _profitPeriod='day';
