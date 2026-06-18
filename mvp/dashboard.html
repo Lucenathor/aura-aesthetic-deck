@@ -247,6 +247,8 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 .kcard .kobj-btn.on{background:color-mix(in srgb,var(--st,#b06d44) 12%,#fff);border-color:var(--st)}
 .kcard .kobj-box{margin-top:.4rem;padding:.5rem .6rem;background:#fbf7f0;border-radius:9px}
 .db-chip{display:inline-flex;align-items:center;gap:.3rem;font-weight:700;font-size:.8rem;padding:.3rem .7rem;border-radius:999px}
+.cvofr{opacity:0;transform:translateY(8px);animation:cvofrIn .4s cubic-bezier(.16,1,.3,1) forwards;animation-delay:var(--d,0s)}
+@keyframes cvofrIn{to{opacity:1;transform:translateY(0)}}
 #dayBoard.db-pop{animation:dbPop .6s cubic-bezier(.16,1,.3,1)}
 @keyframes dbPop{0%{transform:scale(1)}30%{transform:scale(1.03)}100%{transform:scale(1)}}
 .kcard.dropped{animation:kcardDrop .5s cubic-bezier(.16,1,.3,1)}
@@ -1796,17 +1798,21 @@ async function loadAppts(){
 // Usa lo configurado por la clínica en Tratamientos; si no, defaults por tipo de tratamiento.
 function cashDefaults(treatment){
   const t=(treatment||'').toLowerCase();
-  // [productoParaLlevar(label,precio), pack(label, precioOferta, precioOriginal)]
-  if(/labio|relleno|ácido|acido|hialur/.test(t)) return { prod:{label:'Crema reparadora labial para casa',eur:35}, pack:{label:'Bono 3 sesiones de relleno',price:780,orig:990} };
-  if(/botox|toxina|entrecejo/.test(t)) return { prod:{label:'Sérum/serum facial para casa',eur:40}, pack:{label:'Bono 3 sesiones de bótox (1/año)',price:660,orig:840} };
-  if(/rino/.test(t)) return { prod:{label:'SPF 50 + sérum para casa',eur:45}, pack:{label:'Retoque + revisión 12 meses',price:300,orig:380} };
-  if(/láser|laser|depila|fotorr|fotorrejuv/.test(t)) return { prod:{label:'SPF 50 / vitamina C para casa',eur:30}, pack:{label:'Bono 6 sesiones de láser',price:540,orig:780} };
-  if(/peeling/.test(t)) return { prod:{label:'Rutina home-care (vitamina C)',eur:45}, pack:{label:'Bono 4 peelings',price:300,orig:400} };
-  if(/meso/.test(t)) return { prod:{label:'Sérum vitaminas para casa',eur:35}, pack:{label:'Bono mensual mesoterapia',price:240,orig:320} };
-  if(/hilo/.test(t)) return { prod:{label:'Crema firmeza para casa',eur:50}, pack:{label:'Bótox de mantenimiento (añadir)',price:180,orig:220} };
-  if(/limpieza|facial|hidra|vitamina/.test(t)) return { prod:{label:'Booster de vitamina C para casa',eur:30}, pack:{label:'Bono mensual de facial',price:150,orig:200} };
-  return { prod:{label:'Producto de mantenimiento para casa',eur:30}, pack:{label:'Bono de mantenimiento',price:0,orig:0} };
+  // nextDays = intervalo recomendado por benchmark (siempre el MÁS CORTO del rango) para la siguiente cita
+  if(/labio|relleno|ácido|acido|hialur/.test(t)) return { prod:{label:'Crema reparadora labial para casa',eur:35}, pack:{label:'Bono 3 sesiones de relleno',price:780,orig:990}, nextDays:180 };
+  if(/botox|toxina|entrecejo/.test(t)) return { prod:{label:'Sérum/serum facial para casa',eur:40}, pack:{label:'Bono 3 sesiones de bótox (1/año)',price:660,orig:840}, nextDays:120 };
+  if(/rino/.test(t)) return { prod:{label:'SPF 50 + sérum para casa',eur:45}, pack:{label:'Retoque + revisión 12 meses',price:300,orig:380}, nextDays:365 };
+  if(/láser|laser|depila|fotorr|fotorrejuv/.test(t)) return { prod:{label:'SPF 50 / vitamina C para casa',eur:30}, pack:{label:'Bono 6 sesiones de láser',price:540,orig:780}, nextDays:28 };
+  if(/peeling/.test(t)) return { prod:{label:'Rutina home-care (vitamina C)',eur:45}, pack:{label:'Bono 4 peelings',price:300,orig:400}, nextDays:21 };
+  if(/meso/.test(t)) return { prod:{label:'Sérum vitaminas para casa',eur:35}, pack:{label:'Bono mensual mesoterapia',price:240,orig:320}, nextDays:30 };
+  if(/hilo/.test(t)) return { prod:{label:'Crema firmeza para casa',eur:50}, pack:{label:'Bótox de mantenimiento (añadir)',price:180,orig:220}, nextDays:365 };
+  if(/limpieza|facial|hidra|vitamina/.test(t)) return { prod:{label:'Booster de vitamina C para casa',eur:30}, pack:{label:'Bono mensual de facial',price:150,orig:200}, nextDays:30 };
+  return { prod:{label:'Producto de mantenimiento para casa',eur:30}, pack:{label:'Bono de mantenimiento',price:0,orig:0}, nextDays:30 };
 }
+// Etiqueta legible del intervalo
+function nextLabel(days){ if(days>=350) return 'en 12 meses'; if(days>=170) return 'en 6 meses'; if(days>=110) return 'en 4 meses'; if(days>=28&&days<32) return 'en 1 mes'; if(days<=21) return 'en 3 semanas'; if(days<=28) return 'en 4 semanas'; return 'en '+days+' días'; }
+// Calcula fecha de siguiente cita (fija) sumando nextDays a hoy, en formato datetime-local
+function nextDateISO(days){ var d=new Date(); d.setDate(d.getDate()+(days||30)); d.setHours(10,0,0,0); var p=function(n){return String(n).padStart(2,'0');}; return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes()); }
 function cashOffers(treatment){
   const def=cashDefaults(treatment);
   // ¿la clínica lo configuró en su catálogo?
@@ -1817,7 +1823,8 @@ function cashOffers(treatment){
   const pack = (cat&&cat.pack_label&&Number(cat.pack_price)>0)
       ? {label:cat.pack_label, price:Number(cat.pack_price), orig:Number(cat.pack_original)||0}
       : def.pack;
-  return { prod, pack };
+  const nextDays = (cat&&Number(cat.next_days)>0) ? Number(cat.next_days) : def.nextDays;
+  return { prod, pack, nextDays };
 }
 // RECEPCIÓN: cerrar visita
 function openCloseVisit(apptId,leadId,treatment,name){
@@ -1836,21 +1843,30 @@ function openCloseVisit(apptId,leadId,treatment,name){
       +'<input id="cvNextDate" type="datetime-local" style="display:block;width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px;margin:.2rem 0 .5rem"/>'
       +'<label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;cursor:pointer;color:var(--muted)"><input type="radio" name="cvNext" value="recall" onchange="document.getElementById(\'cvNextDate\').style.display=\'none\'"> No la reserva ahora · avisar por SMS cuando toque</label></div>'
     +'<div id="cvLoyBox" style="display:none;background:#f0ebff;border-radius:10px;padding:.7rem;margin-bottom:.9rem"></div>'
-    +(function(){ var o=cashOffers(treatment); var html='<div style="font-size:.72rem;font-weight:800;color:#157a5b;letter-spacing:.02em;text-transform:uppercase;margin:.2rem 0 .5rem">💡 Aprovecha que está pagando</div>';
-      // 1) Producto para llevar
-      if(o.prod && o.prod.eur>0){ html+='<div style="display:flex;align-items:center;gap:.6rem;background:#f6fbf8;border:1px solid #d4ece0;border-radius:10px;padding:.55rem .7rem;margin-bottom:.5rem">'
-        +'<div style="flex:1"><div style="font-size:.82rem;font-weight:700;color:#14543f">🛍️ '+o.prod.label+'</div><div style="font-size:.72rem;color:#2f4a40">Se lo lleva hoy · +'+o.prod.eur+'€</div></div>'
-        +'<button type="button" id="cvProdBtn" onclick="applyUpsell('+o.prod.eur+', this)" style="background:#1f8c69;color:#fff;border:none;border-radius:8px;padding:.4rem .7rem;font-size:.76rem;font-weight:700;cursor:pointer;white-space:nowrap">+'+o.prod.eur+'€</button></div>'; }
-      // 2) Pack con descuento fuerte (solo hoy)
+    +(function(){ var o=cashOffers(treatment); var nd=o.nextDays||30; var html='<div style="display:flex;align-items:center;gap:.4rem;font-size:.72rem;font-weight:800;color:#157a5b;letter-spacing:.02em;text-transform:uppercase;margin:.2rem 0 .55rem"><span style="display:inline-grid;place-items:center;width:18px;height:18px;border-radius:6px;background:linear-gradient(135deg,#c98a5a,#a8623a);color:#fff;font-size:.62rem">✦</span> AURA · llévalo a más con 3 pasos</div>';
+      // PASO 1 — la GRANDE (pack con descuento)
       if(o.pack && o.pack.price>0){ var orig=o.pack.orig>o.pack.price?o.pack.orig:0; var pct=orig?Math.round((1-o.pack.price/orig)*100):0;
-        html+='<div style="background:linear-gradient(135deg,#fff4e6,#ffe9cf);border:1px dashed #e0a96b;border-radius:10px;padding:.55rem .7rem">'
-        +'<div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.15rem"><span style="font-size:.82rem;font-weight:800;color:#9a5a16">🔥 '+o.pack.label+'</span>'+(pct?'<span style="background:#e0392b;color:#fff;font-size:.66rem;font-weight:800;padding:.08rem .4rem;border-radius:6px">-'+pct+'%</span>':'')+'</div>'
-        +'<div style="font-size:.74rem;color:#7a4a16;margin-bottom:.35rem">'+(orig?('<s style="opacity:.6">'+orig+'€</s> '):'')+'<b style="font-size:.95rem;color:#9a5a16">'+o.pack.price+'€</b>'+(orig?(' · ahorra '+(orig-o.pack.price)+'€'):'')+' — <b>solo si lo paga hoy</b></div>'
-        +'<button type="button" id="cvPackBtn" onclick="applyUpsell('+o.pack.price+', this)" style="background:#d9822b;color:#fff;border:none;border-radius:8px;padding:.42rem .8rem;font-size:.78rem;font-weight:800;cursor:pointer">+ Añadir el pack (+'+o.pack.price+'€)</button></div>'; }
+        html+='<div class="cvofr" style="--d:0s;background:linear-gradient(135deg,#fff4e6,#ffe9cf);border:1px dashed #e0a96b;border-radius:11px;padding:.6rem .7rem;margin-bottom:.5rem">'
+        +'<div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.15rem"><span style="background:#9a5a16;color:#fff;font-size:.62rem;font-weight:800;padding:.05rem .35rem;border-radius:5px">1 · OFRECE ESTO PRIMERO</span>'+(pct?'<span style="background:#e0392b;color:#fff;font-size:.66rem;font-weight:800;padding:.08rem .4rem;border-radius:6px">-'+pct+'%</span>':'')+'</div>'
+        +'<div style="font-size:.84rem;font-weight:800;color:#9a5a16;margin-top:.15rem">🔥 '+o.pack.label+'</div>'
+        +'<div style="font-size:.74rem;color:#7a4a16;margin:.15rem 0 .4rem">'+(orig?('<s style="opacity:.6">'+orig+'€</s> '):'')+'<b style="font-size:.98rem;color:#9a5a16">'+o.pack.price+'€</b>'+(orig?(' · ahorra '+(orig-o.pack.price)+'€'):'')+' — <b>solo si lo deja cerrado hoy</b></div>'
+        +'<button type="button" onclick="applyUpsell('+o.pack.price+', this)" style="background:#d9822b;color:#fff;border:none;border-radius:8px;padding:.42rem .8rem;font-size:.78rem;font-weight:800;cursor:pointer">+ Añadir el pack (+'+o.pack.price+'€)</button></div>'; }
+      // PASO 2 — la MEDIANA (producto para llevar)
+      if(o.prod && o.prod.eur>0){ html+='<div class="cvofr" style="--d:.09s;display:flex;align-items:center;gap:.6rem;background:#f6fbf8;border:1px solid #d4ece0;border-radius:11px;padding:.55rem .7rem;margin-bottom:.5rem">'
+        +'<div style="flex:1"><div style="display:flex;align-items:center;gap:.35rem"><span style="background:#1f8c69;color:#fff;font-size:.62rem;font-weight:800;padding:.05rem .35rem;border-radius:5px">2 · SI NO, OFRECE</span></div>'
+        +'<div style="font-size:.82rem;font-weight:700;color:#14543f;margin-top:.15rem">🛍️ '+o.prod.label+'</div><div style="font-size:.72rem;color:#2f4a40">Hace que el resultado dure más · se lo lleva hoy · +'+o.prod.eur+'€</div></div>'
+        +'<button type="button" onclick="applyUpsell('+o.prod.eur+', this)" style="background:#1f8c69;color:#fff;border:none;border-radius:8px;padding:.4rem .7rem;font-size:.76rem;font-weight:700;cursor:pointer;white-space:nowrap">+'+o.prod.eur+'€</button></div>'; }
+      // PASO 3 — la PEQUEÑA (siguiente cita por benchmark)
+      html+='<div class="cvofr" style="--d:.18s;background:#f4f1fb;border:1px solid #ddd2f3;border-radius:11px;padding:.55rem .7rem">'
+        +'<div style="display:flex;align-items:center;gap:.35rem;margin-bottom:.1rem"><span style="background:#6d4ec4;color:#fff;font-size:.62rem;font-weight:800;padding:.05rem .35rem;border-radius:5px">3 · PASE LO QUE PASE</span></div>'
+        +'<div style="font-size:.82rem;font-weight:700;color:#3d2c75">📅 Dejar agendada la siguiente cita</div>'
+        +'<div style="font-size:.72rem;color:#4a3a7a">Lo recomendado para este tratamiento: <b>'+nextLabel(nd)+'</b>. Ya viene marcada arriba.</div></div>';
       return '<div id="cvUpsell" style="background:#fff;border:1px solid #e7eee9;border-radius:12px;padding:.7rem .75rem;margin-bottom:.9rem">'+html+'</div>'; })()
     +'<div style="display:flex;gap:.5rem"><button class="btn" style="flex:1;background:var(--mint);border-color:var(--mint)" onclick="doCloseVisit(\''+apptId+'\',\''+leadId+'\',true)">Vino y pagó</button><button class="btn" style="flex:1" onclick="doCloseVisit(\''+apptId+'\',\''+leadId+'\',false)">No vino</button></div>'
     +'<button onclick="document.getElementById(\'cvOverlay\').remove()" style="width:100%;background:none;border:none;color:var(--muted);font-size:.8rem;margin-top:.7rem;cursor:pointer">Cancelar</button></div>';
   document.body.appendChild(ov);
+  // Prerellenar la fecha de la siguiente cita con el intervalo recomendado por benchmark (fija)
+  try{ var _o=cashOffers(treatment); var _nd=document.getElementById('cvNextDate'); if(_nd && _o && _o.nextDays){ _nd.value=nextDateISO(_o.nextDays); } }catch(e){}
   // rellenar selector de productos del inventario
   (async()=>{ try{ const r=await fetch(WORKER+'/api/products?tenant='+T); const d=await r.json(); const sel=document.getElementById('cvProduct'); if(sel&&d.products){ d.products.forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=p.name+' ('+(p.stock||0)+' '+(p.unit||'ud')+')'; sel.appendChild(o); }); } }catch(e){} })();
   // cargar saldo de puntos del paciente para ofrecer canje
@@ -2473,7 +2489,10 @@ function editCashOffer(id){
     +'<div style="font-size:.72rem;font-weight:800;color:#9a5a16;text-transform:uppercase;margin-bottom:.3rem">🔥 Pack/bono con descuento (solo hoy)</div>'
     +'<input id="coPkL" placeholder="Ej: Bono 3 sesiones de bótox" value="'+(t.pack_label?escapeHtml(t.pack_label):'')+'" style="width:100%;padding:.55rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.4rem"/>'
     +'<div style="display:flex;gap:.4rem;margin-bottom:.4rem"><input id="coPkO" type="number" placeholder="Precio normal €" value="'+(t.pack_original||'')+'" style="flex:1;padding:.55rem;border:1px solid var(--line);border-radius:9px"/><input id="coPkP" type="number" placeholder="Precio hoy €" value="'+(t.pack_price||'')+'" style="flex:1;padding:.55rem;border:1px solid var(--line);border-radius:9px"/></div>'
-    +'<div class="sub" style="font-size:.72rem;margin:0 0 1rem">El “precio normal” se mostrará tachado para que se vea el ahorro. Déjalo en blanco si no aplica.</div>'
+    +'<div class="sub" style="font-size:.72rem;margin:0 0 .9rem">El “precio normal” se mostrará tachado para que se vea el ahorro. Déjalo en blanco si no aplica.</div>'
+    +'<div style="font-size:.72rem;font-weight:800;color:#6d4ec4;text-transform:uppercase;margin-bottom:.3rem">📅 Siguiente cita recomendada</div>'
+    +'<input id="coND" type="number" placeholder="Días (ej. 120). Vacío = usar la recomendada por AURA" value="'+(t.next_days||'')+'" style="width:100%;padding:.55rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.4rem"/>'
+    +'<div class="sub" style="font-size:.72rem;margin:0 0 1rem">AURA ya propone el plazo recomendado por tratamiento. Sólo ponlo si quieres forzar otro.</div>'
     +'<div style="display:flex;gap:.5rem"><button class="btn" style="flex:1;background:var(--mint);border-color:var(--mint)" onclick="saveCashOffer(\''+id+'\')">Guardar oferta</button>'
     +'<button class="btn" style="flex:1" onclick="document.getElementById(\'coOverlay\').remove()">Cancelar</button></div></div>';
   document.body.appendChild(ov);
@@ -2482,7 +2501,7 @@ async function saveCashOffer(id){
   var t=(CATALOG||[]).find(function(x){return x.id===id;})||{};
   var body={tenant_id:T,id:id,name:t.name,duration_min:t.duration_min,price:t.price,color:t.color,
     upsell_label:document.getElementById('coUpL').value.trim(),upsell_price:+document.getElementById('coUpP').value||0,
-    pack_label:document.getElementById('coPkL').value.trim(),pack_price:+document.getElementById('coPkP').value||0,pack_original:+document.getElementById('coPkO').value||0};
+    pack_label:document.getElementById('coPkL').value.trim(),pack_price:+document.getElementById('coPkP').value||0,pack_original:+document.getElementById('coPkO').value||0,next_days:+document.getElementById('coND').value||0};
   try{ await fetch(WORKER+'/api/treatment-catalog',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify(body)}); }catch(e){}
   var ov=document.getElementById('coOverlay'); if(ov)ov.remove(); loadCatalog();
 }
@@ -2490,9 +2509,15 @@ async function addTreatment(){
   const name=document.getElementById('tcName').value.trim();const dur=+document.getElementById('tcDur').value||30;const price=+document.getElementById('tcPrice').value||0;
   const m=document.getElementById('tcMsg');
   if(!name){m.style.color='#b45309';m.textContent='Indica el nombre del tratamiento';return;}
-  try{await fetch(WORKER+'/api/treatment-catalog',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,name,duration_min:dur,price})});
+  // AURA propone automáticamente la oferta de caja (3 puntos de venta) por benchmark del tratamiento
+  var sug=cashDefaults(name);
+  var body={tenant_id:T,name,duration_min:dur,price,
+    upsell_label:(sug.prod&&sug.prod.label)||'',upsell_price:(sug.prod&&sug.prod.eur)||0,
+    pack_label:(sug.pack&&sug.pack.label)||'',pack_price:(sug.pack&&sug.pack.price)||0,pack_original:(sug.pack&&sug.pack.orig)||0,
+    next_days:sug.nextDays||0};
+  try{await fetch(WORKER+'/api/treatment-catalog',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify(body)});
     document.getElementById('tcName').value='';document.getElementById('tcDur').value='';document.getElementById('tcPrice').value='';
-    m.style.color='#1f8c69';m.textContent='Tratamiento añadido ✓';setTimeout(()=>m.textContent='',2000);loadCatalog();}catch(e){m.style.color='#b45309';m.textContent='Error al guardar';}
+    m.style.color='#1f8c69';m.textContent='Tratamiento añadido ✓ AURA preparó su oferta de caja (revísala en "Oferta")';setTimeout(()=>m.textContent='',4000);loadCatalog();}catch(e){m.style.color='#b45309';m.textContent='Error al guardar';}
 }
 async function delTreatment(id){
   if(!confirm('¿Eliminar este tratamiento del catálogo?'))return;
