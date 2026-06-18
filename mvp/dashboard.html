@@ -246,6 +246,9 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 .kcard .kobj-btn:hover{background:color-mix(in srgb,var(--st,#b06d44) 8%,#fff);border-color:var(--st)}
 .kcard .kobj-btn.on{background:color-mix(in srgb,var(--st,#b06d44) 12%,#fff);border-color:var(--st)}
 .kcard .kobj-box{margin-top:.4rem;padding:.5rem .6rem;background:#fbf7f0;border-radius:9px}
+.db-chip{display:inline-flex;align-items:center;gap:.3rem;font-weight:700;font-size:.8rem;padding:.3rem .7rem;border-radius:999px}
+#dayBoard.db-pop{animation:dbPop .6s cubic-bezier(.16,1,.3,1)}
+@keyframes dbPop{0%{transform:scale(1)}30%{transform:scale(1.03)}100%{transform:scale(1)}}
 .kcard.dropped{animation:kcardDrop .5s cubic-bezier(.16,1,.3,1)}
 @keyframes kcardDrop{0%{transform:scale(1.08);box-shadow:0 0 0 2px var(--st,var(--terra)),0 12px 24px -10px rgba(42,33,28,.5)}to{transform:scale(1)}}
 .kcol.flash{animation:colFlash .6s ease-out}
@@ -3035,8 +3038,9 @@ async function logCall(leadId, result, fase){
       else if(d.state==='lost'){ l.pipeline_state='lost'; }
       else { l.call_attempts=d.attempts; l.last_call_at=new Date().toISOString(); }
     }
+    if(result==='reservo'){ try{ var _eur=(typeof potentialEur==='function'&&l)?potentialEur(l,fase):0; bumpDayBoard(fase==='venta'?'venta':'reserva', _eur); }catch(e){} }
     renderKanban();
-    if(result==='reservo' && typeof toast==='function'){ toast(fase==='venta'?'💰 Venta cerrada — gracias a AURA':'✓ Recuperado por llamada — gracias a AURA'); }
+    if(result==='reservo' && typeof toast==='function'){ toast(fase==='venta'?'💰 ¡Venta cerrada! Gran trabajo, tú y AURA':'✓ ¡Cita recuperada! Gran trabajo, tú y AURA'); }
   }catch(e){ alert('No se pudo guardar el resultado'); }
 }
 function buildCallCol(k, cfg){
@@ -3053,16 +3057,28 @@ function renderScoreboard(n){
   // sincroniza badge del menú y "Mi día" con los números REALES del pipeline
   try{ if(typeof updateMiDia==='function') updateMiDia({llama:n.llama||0,recup:n.recup||0,conf:n.conf||0,react:n.react||0,total:n.total||0}, window.__citasHoy, window.__waUnread); }catch(e){}
   const host=document.getElementById('pipeScore'); if(!host) return;
-  if(!n.total){ host.innerHTML='<div style="display:flex;align-items:center;gap:.6rem;background:#e8f6ee;border:1px solid #b6e3c9;color:#1f6b4f;border-radius:14px;padding:.7rem 1rem;font-weight:700;font-size:.9rem">✅ Todo al día. No hay nadie pendiente de llamar ahora mismo.</div>'; return; }
+  if(!n.total){ host.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:.8rem;align-items:center;background:#e8f6ee;border:1px solid #b6e3c9;color:#1f6b4f;border-radius:14px;padding:.7rem 1rem;font-weight:700;font-size:.9rem">✅ Todo al día. No hay nadie pendiente de llamar ahora mismo.'+dayBoardHtml()+'</div>'; return; }
   host.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:.8rem;align-items:center;background:linear-gradient(135deg,#fffefb,#fbf4ee);border:1px solid rgba(42,33,28,.07);border-radius:18px;padding:.85rem 1.1rem;box-shadow:0 1px 2px rgba(42,33,28,.04),0 14px 32px -22px rgba(42,33,28,.45)">'
     +'<div style="width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,var(--terra),var(--terra-d));display:grid;place-items:center;font-size:1.2rem;flex:none;box-shadow:0 6px 14px -6px var(--terra)">📞</div>'
     +'<div><div style="font-weight:800;font-size:1.12rem;color:var(--ink);line-height:1.15">Hoy toca llamar a <span style="color:var(--terra-d)">'+n.total+'</span> '+(n.total===1?'persona':'personas')+'</div>'
     +'<div style="font-size:.78rem;color:var(--muted);margin-top:.1rem">Empieza por la nº1 de cada columna · de izquierda a derecha</div></div>'
     +'<div style="flex:1"></div>'
     +scoreChip('☎ Llama ya',n.llama,'#e0392b')+scoreChip('↻ Recuperar',n.recup,'#d9822b')+scoreChip('✓ Confirmar',n.conf,'#c79a1e')+scoreChip('✦ Reactivar',n.react,'#7048e8')
-    +'</div>';
+    +'</div>'
+    +dayBoardHtml();
 }
 function scoreChip(label,val,color){ if(!val) return ''; return '<span style="display:inline-flex;align-items:center;gap:.35rem;background:'+hexA(color,.12)+';color:'+color+';font-weight:700;font-size:.8rem;padding:.3rem .7rem;border-radius:999px">'+label+' <b>'+val+'</b></span>'; }
+// ===== MARCADOR DEL DÍA (gamificación recepción) =====
+function dayKey(){ return 'aura_dia_'+(T||'')+'_'+new Date().toISOString().slice(0,10); }
+function getDayBoard(){ try{ return JSON.parse(localStorage.getItem(dayKey())||'{}'); }catch(e){ return {}; } }
+function bumpDayBoard(kind, eur){ const d=getDayBoard(); d.reservas=(d.reservas||0)+((kind==='reserva')?1:0); d.ventas=(d.ventas||0)+((kind==='venta')?1:0); d.eur=(d.eur||0)+(eur||0); localStorage.setItem(dayKey(), JSON.stringify(d)); var host=document.getElementById('dayBoard'); if(host){ host.outerHTML=dayBoardHtml(); var nh=document.getElementById('dayBoard'); if(nh){ nh.classList.add('db-pop'); setTimeout(function(){ nh&&nh.classList.remove('db-pop'); },600); } } }
+function dayBoardHtml(){ const d=getDayBoard(); const r=d.reservas||0, v=d.ventas||0, e=d.eur||0; const cerradas=r+v; return '<div id="dayBoard" style="flex-basis:100%;margin-top:.7rem;display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;border-top:1px dashed rgba(42,33,28,.12);padding-top:.7rem">'
+    +'<span style="font-size:.74rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)">🏆 Tu día</span>'
+    +'<span class="db-chip" style="background:'+hexA('#1f8c69',.12)+';color:#1f8c69">✅ '+cerradas+' '+(cerradas===1?'cerrada':'cerradas')+'</span>'
+    +(v?'<span class="db-chip" style="background:'+hexA('#1f8c69',.14)+';color:#1f8c69">💸 '+v+' '+(v===1?'venta':'ventas')+'</span>':'')
+    +'<span class="db-chip" style="background:'+hexA('#1f8c69',.16)+';color:#157a5b;font-weight:800">💰 '+eur(e)+' generados entre tú y AURA</span>'
+    +(cerradas===0?'<span style="font-size:.76rem;color:var(--muted)">Hoy aún no habéis cerrado ninguna — ¡empieza por la nº1 y a por ello!</span>':'<span style="font-size:.76rem;color:#1f8c69;font-weight:600">¡Gran equipo! Tú pones la llamada, AURA pone el resto 💪</span>')
+    +'</div>'; }
 function renderKanban(){
   const k=document.getElementById('kanban'); if(!k) return; k.innerHTML='';
   const nowMs=Date.now(); const _today=new Date().toISOString().slice(0,10);
