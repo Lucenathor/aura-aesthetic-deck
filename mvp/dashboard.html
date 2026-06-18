@@ -1792,17 +1792,32 @@ async function loadAppts(){
   }catch(e){}
 }
 // Sugerencia de upsell/cross-sell según el tratamiento (benchmark estetica RepeatMD/Prospyr)
-function upsellFor(treatment){
+// Ofertas que TIENEN SENTIDO en caja (el cliente ya paga y se va): producto para llevar + pack con descuento 'solo hoy'.
+// Usa lo configurado por la clínica en Tratamientos; si no, defaults por tipo de tratamiento.
+function cashDefaults(treatment){
   const t=(treatment||'').toLowerCase();
-  if(/labio|relleno|ácido|acido|hialur/.test(t)) return {add:'Perfilado labial + skinbooster de hidratación', eur:90, say:'“Para que el resultado dure más y quede aún más natural, muchas clientas se añaden el perfilado + un skinbooster. ¿Te lo dejo todo hoy?”'};
-  if(/botox|toxina|entrecejo/.test(t)) return {add:'Sérum post-tóxina / skinbooster', eur:80, say:'“Para potenciar el resultado del bótox, te recomiendo un skinbooster que deja la piel luminosa. ¿Te lo añado?”'};
-  if(/rino/.test(t)) return {add:'Revisión a los 12 meses + skinbooster', eur:90, say:'“Te dejo agendada la revisión para mantener el resultado perfecto, y muchas aprovechan un skinbooster. ¿Te lo preparo?”'};
-  if(/láser|laser|depila|fotorr|fotorrejuv/.test(t)) return {add:'Infusión de vitamina C / sérum post-láser', eur:60, say:'“Ahora mismo la piel está receptiva: una infusión de vitamina C potencia el resultado del láser. ¿Te la añado hoy?”'};
-  if(/peeling/.test(t)) return {add:'Vitamina C + rutina home-care', eur:55, say:'“Una limpieza + vitamina C te deja la piel perfecta tras el peeling. ¿Te lo añado?”'};
-  if(/meso/.test(t)) return {add:'Skinbooster / bono mensual', eur:70, say:'“En bono mensual mantienes la luminosidad todo el año y te sale mejor. ¿Te lo cuento?”'};
-  if(/hilo/.test(t)) return {add:'Bótox de mantenimiento', eur:120, say:'“Combinar los hilos con un poco de bótox prolonga el efecto lifting. ¿Te reservo?”'};
-  if(/limpieza|facial|hidra|vitamina/.test(t)) return {add:'Booster de vitamina C / bono mensual', eur:40, say:'“Por solo unos euros más le añadimos un booster de vitamina C y el resultado luce mucho más. ¿Te lo añado?”'};
-  return {add:'Bono de mantenimiento', eur:0, say:'“Muchas clientas dejan reservado su mantenimiento hoy para no perder el resultado. ¿Te lo preparo?”'};
+  // [productoParaLlevar(label,precio), pack(label, precioOferta, precioOriginal)]
+  if(/labio|relleno|ácido|acido|hialur/.test(t)) return { prod:{label:'Crema reparadora labial para casa',eur:35}, pack:{label:'Bono 3 sesiones de relleno',price:780,orig:990} };
+  if(/botox|toxina|entrecejo/.test(t)) return { prod:{label:'Sérum/serum facial para casa',eur:40}, pack:{label:'Bono 3 sesiones de bótox (1/año)',price:660,orig:840} };
+  if(/rino/.test(t)) return { prod:{label:'SPF 50 + sérum para casa',eur:45}, pack:{label:'Retoque + revisión 12 meses',price:300,orig:380} };
+  if(/láser|laser|depila|fotorr|fotorrejuv/.test(t)) return { prod:{label:'SPF 50 / vitamina C para casa',eur:30}, pack:{label:'Bono 6 sesiones de láser',price:540,orig:780} };
+  if(/peeling/.test(t)) return { prod:{label:'Rutina home-care (vitamina C)',eur:45}, pack:{label:'Bono 4 peelings',price:300,orig:400} };
+  if(/meso/.test(t)) return { prod:{label:'Sérum vitaminas para casa',eur:35}, pack:{label:'Bono mensual mesoterapia',price:240,orig:320} };
+  if(/hilo/.test(t)) return { prod:{label:'Crema firmeza para casa',eur:50}, pack:{label:'Bótox de mantenimiento (añadir)',price:180,orig:220} };
+  if(/limpieza|facial|hidra|vitamina/.test(t)) return { prod:{label:'Booster de vitamina C para casa',eur:30}, pack:{label:'Bono mensual de facial',price:150,orig:200} };
+  return { prod:{label:'Producto de mantenimiento para casa',eur:30}, pack:{label:'Bono de mantenimiento',price:0,orig:0} };
+}
+function cashOffers(treatment){
+  const def=cashDefaults(treatment);
+  // ¿la clínica lo configuró en su catálogo?
+  let cat=null; try{ const list=(typeof CATALOG!=='undefined'&&CATALOG)?CATALOG:[]; cat=list.find(c=> (c.name||'').toLowerCase()===(treatment||'').toLowerCase()) || list.find(c=> (treatment||'').toLowerCase().includes((c.name||'').toLowerCase()) && (c.name||'').length>2); }catch(e){}
+  const prod = (cat&&cat.upsell_label&&Number(cat.upsell_price)>0)
+      ? {label:cat.upsell_label, eur:Number(cat.upsell_price)}
+      : def.prod;
+  const pack = (cat&&cat.pack_label&&Number(cat.pack_price)>0)
+      ? {label:cat.pack_label, price:Number(cat.pack_price), orig:Number(cat.pack_original)||0}
+      : def.pack;
+  return { prod, pack };
 }
 // RECEPCIÓN: cerrar visita
 function openCloseVisit(apptId,leadId,treatment,name){
@@ -1821,12 +1836,18 @@ function openCloseVisit(apptId,leadId,treatment,name){
       +'<input id="cvNextDate" type="datetime-local" style="display:block;width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px;margin:.2rem 0 .5rem"/>'
       +'<label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;cursor:pointer;color:var(--muted)"><input type="radio" name="cvNext" value="recall" onchange="document.getElementById(\'cvNextDate\').style.display=\'none\'"> No la reserva ahora · avisar por SMS cuando toque</label></div>'
     +'<div id="cvLoyBox" style="display:none;background:#f0ebff;border-radius:10px;padding:.7rem;margin-bottom:.9rem"></div>'
-    +(function(){ var u=upsellFor(treatment); if(!u||!u.eur) return ''; var sayEsc=u.say.replace(/"/g,'&quot;'); return '<div id="cvUpsell" style="background:linear-gradient(135deg,#eafaf2,#dff3e8);border:1px solid #b6e3c9;border-radius:12px;padding:.75rem .8rem;margin-bottom:.9rem">'
-      +'<div style="font-size:.72rem;font-weight:800;color:#157a5b;letter-spacing:.02em;text-transform:uppercase;margin-bottom:.25rem">💡 Oportunidad de venta</div>'
-      +'<div style="font-size:.86rem;font-weight:700;color:#14543f">Súmale: '+u.add+' <span style="color:#1f8c69">(+'+u.eur+'€ aprox.)</span></div>'
-      +'<div style="font-size:.78rem;color:#2f4a40;font-style:italic;margin:.35rem 0 .5rem">'+u.say+'</div>'
-      +'<button type="button" id="cvUpsellBtn" onclick="applyUpsell('+u.eur+', this)" style="background:#1f8c69;color:#fff;border:none;border-radius:9px;padding:.4rem .8rem;font-size:.78rem;font-weight:700;cursor:pointer">+ Añadir al cobro (+'+u.eur+'€)</button>'
-      +'</div>'; })()
+    +(function(){ var o=cashOffers(treatment); var html='<div style="font-size:.72rem;font-weight:800;color:#157a5b;letter-spacing:.02em;text-transform:uppercase;margin:.2rem 0 .5rem">💡 Aprovecha que está pagando</div>';
+      // 1) Producto para llevar
+      if(o.prod && o.prod.eur>0){ html+='<div style="display:flex;align-items:center;gap:.6rem;background:#f6fbf8;border:1px solid #d4ece0;border-radius:10px;padding:.55rem .7rem;margin-bottom:.5rem">'
+        +'<div style="flex:1"><div style="font-size:.82rem;font-weight:700;color:#14543f">🛍️ '+o.prod.label+'</div><div style="font-size:.72rem;color:#2f4a40">Se lo lleva hoy · +'+o.prod.eur+'€</div></div>'
+        +'<button type="button" id="cvProdBtn" onclick="applyUpsell('+o.prod.eur+', this)" style="background:#1f8c69;color:#fff;border:none;border-radius:8px;padding:.4rem .7rem;font-size:.76rem;font-weight:700;cursor:pointer;white-space:nowrap">+'+o.prod.eur+'€</button></div>'; }
+      // 2) Pack con descuento fuerte (solo hoy)
+      if(o.pack && o.pack.price>0){ var orig=o.pack.orig>o.pack.price?o.pack.orig:0; var pct=orig?Math.round((1-o.pack.price/orig)*100):0;
+        html+='<div style="background:linear-gradient(135deg,#fff4e6,#ffe9cf);border:1px dashed #e0a96b;border-radius:10px;padding:.55rem .7rem">'
+        +'<div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.15rem"><span style="font-size:.82rem;font-weight:800;color:#9a5a16">🔥 '+o.pack.label+'</span>'+(pct?'<span style="background:#e0392b;color:#fff;font-size:.66rem;font-weight:800;padding:.08rem .4rem;border-radius:6px">-'+pct+'%</span>':'')+'</div>'
+        +'<div style="font-size:.74rem;color:#7a4a16;margin-bottom:.35rem">'+(orig?('<s style="opacity:.6">'+orig+'€</s> '):'')+'<b style="font-size:.95rem;color:#9a5a16">'+o.pack.price+'€</b>'+(orig?(' · ahorra '+(orig-o.pack.price)+'€'):'')+' — <b>solo si lo paga hoy</b></div>'
+        +'<button type="button" id="cvPackBtn" onclick="applyUpsell('+o.pack.price+', this)" style="background:#d9822b;color:#fff;border:none;border-radius:8px;padding:.42rem .8rem;font-size:.78rem;font-weight:800;cursor:pointer">+ Añadir el pack (+'+o.pack.price+'€)</button></div>'; }
+      return '<div id="cvUpsell" style="background:#fff;border:1px solid #e7eee9;border-radius:12px;padding:.7rem .75rem;margin-bottom:.9rem">'+html+'</div>'; })()
     +'<div style="display:flex;gap:.5rem"><button class="btn" style="flex:1;background:var(--mint);border-color:var(--mint)" onclick="doCloseVisit(\''+apptId+'\',\''+leadId+'\',true)">Vino y pagó</button><button class="btn" style="flex:1" onclick="doCloseVisit(\''+apptId+'\',\''+leadId+'\',false)">No vino</button></div>'
     +'<button onclick="document.getElementById(\'cvOverlay\').remove()" style="width:100%;background:none;border:none;color:var(--muted);font-size:.8rem;margin-top:.7rem;cursor:pointer">Cancelar</button></div>';
   document.body.appendChild(ov);
@@ -2438,7 +2459,32 @@ async function loadCatalog(){
 function renderCatalog(){
   const c=document.getElementById('tcList');if(!c)return;
   if(!CATALOG.length){c.innerHTML='<div class="sub" style="color:var(--muted)">Aún no has añadido tratamientos. Añade los más comunes para agilizar la agenda.</div>';return;}
-  c.innerHTML=CATALOG.map(t=>'<div style="display:flex;align-items:center;gap:.7rem;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;margin-bottom:.4rem"><span style="width:12px;height:12px;border-radius:50%;background:'+(t.color||'#9B7BFF')+';flex-shrink:0"></span><div style="flex:1"><b>'+t.name+'</b><div class="sub" style="margin:0">'+t.duration_min+' min · '+(t.price||0)+'€</div></div><button class="vac-del" onclick="delTreatment(\''+t.id+'\')">Eliminar</button></div>').join('');
+  c.innerHTML=CATALOG.map(t=>{ var hasOffer=(t.upsell_label&&t.upsell_price>0)||(t.pack_label&&t.pack_price>0); var offTxt=hasOffer?('<div class="sub" style="margin:.2rem 0 0;color:#1f8c69;font-size:.72rem">💸 Oferta caja: '+[(t.upsell_label?(t.upsell_label+" (+"+t.upsell_price+"€)"):""),(t.pack_label?(t.pack_label+" "+t.pack_price+"€"):"")].filter(Boolean).join(" · ")+'</div>'):'<div class="sub" style="margin:.2rem 0 0;color:var(--muted);font-size:.72rem">Sin oferta de caja · usará la sugerida</div>'; return '<div style="display:flex;align-items:center;gap:.7rem;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;margin-bottom:.4rem"><span style="width:12px;height:12px;border-radius:50%;background:'+(t.color||'#9B7BFF')+';flex-shrink:0"></span><div style="flex:1;min-width:0"><b>'+t.name+'</b><div class="sub" style="margin:0">'+t.duration_min+' min · '+(t.price||0)+'€</div>'+offTxt+'</div><button class="vac-del" style="background:#eef6f1;color:#1f8c69;border-color:#cfe8db" onclick=\'editCashOffer("'+t.id+'")\'>Oferta</button><button class="vac-del" onclick="delTreatment(\''+t.id+'\')">Eliminar</button></div>'; }).join('');
+}
+function editCashOffer(id){
+  var t=(CATALOG||[]).find(function(x){return x.id===id;}); if(!t) return;
+  var ov=document.createElement('div'); ov.id='coOverlay'; ov.style.cssText='position:fixed;inset:0;background:rgba(15,16,17,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem';
+  ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:400px;width:100%;padding:1.4rem;box-shadow:0 20px 60px rgba(0,0,0,.25)">'
+    +'<h3 class="serif" style="margin:0 0 .2rem;font-size:1.15rem">Oferta de caja</h3>'
+    +'<p style="color:var(--muted);font-size:.8rem;margin:0 0 1rem">'+escapeHtml(t.name)+' · lo que se ofrece al cobrar</p>'
+    +'<div style="font-size:.72rem;font-weight:800;color:#157a5b;text-transform:uppercase;margin-bottom:.3rem">🛍️ Producto para llevar</div>'
+    +'<input id="coUpL" placeholder="Ej: Sérum vitamina C para casa" value="'+(t.upsell_label?escapeHtml(t.upsell_label):'')+'" style="width:100%;padding:.55rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.4rem"/>'
+    +'<input id="coUpP" type="number" placeholder="Precio €" value="'+(t.upsell_price||'')+'" style="width:100%;padding:.55rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.9rem"/>'
+    +'<div style="font-size:.72rem;font-weight:800;color:#9a5a16;text-transform:uppercase;margin-bottom:.3rem">🔥 Pack/bono con descuento (solo hoy)</div>'
+    +'<input id="coPkL" placeholder="Ej: Bono 3 sesiones de bótox" value="'+(t.pack_label?escapeHtml(t.pack_label):'')+'" style="width:100%;padding:.55rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.4rem"/>'
+    +'<div style="display:flex;gap:.4rem;margin-bottom:.4rem"><input id="coPkO" type="number" placeholder="Precio normal €" value="'+(t.pack_original||'')+'" style="flex:1;padding:.55rem;border:1px solid var(--line);border-radius:9px"/><input id="coPkP" type="number" placeholder="Precio hoy €" value="'+(t.pack_price||'')+'" style="flex:1;padding:.55rem;border:1px solid var(--line);border-radius:9px"/></div>'
+    +'<div class="sub" style="font-size:.72rem;margin:0 0 1rem">El “precio normal” se mostrará tachado para que se vea el ahorro. Déjalo en blanco si no aplica.</div>'
+    +'<div style="display:flex;gap:.5rem"><button class="btn" style="flex:1;background:var(--mint);border-color:var(--mint)" onclick="saveCashOffer(\''+id+'\')">Guardar oferta</button>'
+    +'<button class="btn" style="flex:1" onclick="document.getElementById(\'coOverlay\').remove()">Cancelar</button></div></div>';
+  document.body.appendChild(ov);
+}
+async function saveCashOffer(id){
+  var t=(CATALOG||[]).find(function(x){return x.id===id;})||{};
+  var body={tenant_id:T,id:id,name:t.name,duration_min:t.duration_min,price:t.price,color:t.color,
+    upsell_label:document.getElementById('coUpL').value.trim(),upsell_price:+document.getElementById('coUpP').value||0,
+    pack_label:document.getElementById('coPkL').value.trim(),pack_price:+document.getElementById('coPkP').value||0,pack_original:+document.getElementById('coPkO').value||0};
+  try{ await fetch(WORKER+'/api/treatment-catalog',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify(body)}); }catch(e){}
+  var ov=document.getElementById('coOverlay'); if(ov)ov.remove(); loadCatalog();
 }
 async function addTreatment(){
   const name=document.getElementById('tcName').value.trim();const dur=+document.getElementById('tcDur').value||30;const price=+document.getElementById('tcPrice').value||0;

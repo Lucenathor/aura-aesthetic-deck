@@ -430,6 +430,12 @@ async function ensureInventorySchema(env: Env) {
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS clinical_notes (id TEXT PRIMARY KEY, tenant_id TEXT, lead_id TEXT, visit_date TEXT, professional TEXT, treatment TEXT, areas TEXT, product TEXT, lot TEXT, units TEXT, note TEXT, photo_url TEXT, created_at INTEGER, created_by TEXT)"); } catch(e){}
   try { await env.aura_db.exec("CREATE INDEX IF NOT EXISTS idx_cnotes ON clinical_notes (tenant_id, lead_id, visit_date)"); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE inventory_products ADD COLUMN image_url TEXT'); } catch(e){}
+  // Oferta de caja por tratamiento (upsell producto-para-llevar + pack con descuento)
+  try { await env.aura_db.exec('ALTER TABLE treatment_catalog ADD COLUMN upsell_label TEXT'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE treatment_catalog ADD COLUMN upsell_price REAL DEFAULT 0'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE treatment_catalog ADD COLUMN pack_label TEXT'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE treatment_catalog ADD COLUMN pack_price REAL DEFAULT 0'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE treatment_catalog ADD COLUMN pack_original REAL DEFAULT 0'); } catch(e){}
   __invReady = true;
 }
 
@@ -1914,17 +1920,19 @@ export default {
         return json({ catalog: r.results });
       }
       if (p === '/api/treatment-catalog' && req.method === 'POST') {
+        await ensureInventorySchema(env);
         const b:any = await req.json();
         if (b.delete) { await env.aura_db.prepare('DELETE FROM treatment_catalog WHERE id=? AND tenant_id=?').bind(b.delete, b.tenant_id).run(); return json({ok:true}); }
+        const upL=b.upsell_label||null, upP=Number(b.upsell_price)||0, pkL=b.pack_label||null, pkP=Number(b.pack_price)||0, pkO=Number(b.pack_original)||0;
         if (b.id) {
-          await env.aura_db.prepare('UPDATE treatment_catalog SET name=?, duration_min=?, price=?, color=? WHERE id=? AND tenant_id=?')
-            .bind(b.name||'Tratamiento', Number(b.duration_min)||30, Number(b.price)||0, b.color||'#9B7BFF', b.id, b.tenant_id).run();
+          await env.aura_db.prepare('UPDATE treatment_catalog SET name=?, duration_min=?, price=?, color=?, upsell_label=?, upsell_price=?, pack_label=?, pack_price=?, pack_original=? WHERE id=? AND tenant_id=?')
+            .bind(b.name||'Tratamiento', Number(b.duration_min)||30, Number(b.price)||0, b.color||'#9B7BFF', upL, upP, pkL, pkP, pkO, b.id, b.tenant_id).run();
           return json({ ok:true, id:b.id });
         }
         const id = 'tc_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
         const colors=['#9B7BFF','#FF6B5A','#34a877','#d9a23a','#3a8fd9','#c0568f'];
-        await env.aura_db.prepare('INSERT INTO treatment_catalog (id,tenant_id,name,duration_min,price,color,created_at) VALUES (?,?,?,?,?,?,?)')
-          .bind(id, b.tenant_id, b.name||'Tratamiento', Number(b.duration_min)||30, Number(b.price)||0, b.color||colors[Math.floor(Math.random()*colors.length)], Date.now()).run();
+        await env.aura_db.prepare('INSERT INTO treatment_catalog (id,tenant_id,name,duration_min,price,color,created_at,upsell_label,upsell_price,pack_label,pack_price,pack_original) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+          .bind(id, b.tenant_id, b.name||'Tratamiento', Number(b.duration_min)||30, Number(b.price)||0, b.color||colors[Math.floor(Math.random()*colors.length)], Date.now(), upL, upP, pkL, pkP, pkO).run();
         return json({ ok:true, id });
       }
 
