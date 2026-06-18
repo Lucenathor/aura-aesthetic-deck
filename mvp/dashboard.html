@@ -2960,28 +2960,31 @@ function callScript(fase, l){
   // Devuelve { goal, say, obj:[{q,a}] } pensado para recepcionistas (no closers): objetivo claro, frase exacta y respuestas a objeciones.
   switch(fase){
     case 'llama':
-      return { goal:'Conseguir que reserve cita esta semana.', say:'“Hola '+nom+', soy de la clínica. Vi que te interesaba '+trat+' y quería atenderte yo personalmente. Justo me queda un hueco esta semana y te lo guardo. ¿Te viene mejor por la mañana o por la tarde?”',
-        obj:[ {q:'“Me lo tengo que pensar”', a:'“Te entiendo perfectamente. Reservar no te compromete a nada y así te aseguras el hueco; si cambias de idea, lo movemos sin problema. ¿Te lo dejo el jueves o el viernes?”'},
-               {q:'“¿Cuánto cuesta?”', a:'“Depende un poco de lo que necesites, por eso lo mejor es una primera valoración sin compromiso donde te lo explican todo y te dan precio cerrado. ¿Te la reservo?”'},
-               {q:'“Ahora no puedo hablar”', a:'“Sin problema, será solo un momento: ¿te va mejor que te llame esta tarde o mañana por la mañana?”'} ] };
+      return { goal:'Que reserve su valoración esta semana (no la dejes “para pensar”).', say:'“Hola '+nom+', soy [tu nombre], de la clínica. Vi que dejaste tus datos interesad@ en '+trat+' y quise llamarte yo personalmente para ayudarte. Cuéntame, ¿qué es lo que más te gustaría mejorar? … Perfecto, justo para eso te va a venir genial. Te reservo una valoración con nuestra doctora y, mira, me queda un hueco esta semana: ¿te viene mejor por la mañana o por la tarde?”',
+        obj:[ {q:'“Me lo tengo que pensar”', a:'“Te entiendo, '+nom+'. La valoración es justo para eso: sin compromiso, te explican qué te conviene y sales con toda la info para decidir tranquila. Reservarla no te compromete a nada y así te aseguras el hueco. ¿Te lo dejo el jueves o mejor el viernes?”'},
+               {q:'“¿Cuánto cuesta?”', a:'“Buena pregunta. El precio exacto depende de lo que necesites tú en concreto, por eso la doctora lo valora en persona. Lo que sí te digo es que tenemos opciones y facilidades de pago para que se ajuste a ti. ¿Te reservo la valoración y lo ves todo sin compromiso?”'},
+               {q:'“Ahora no puedo hablar”', a:'“Sin problema, '+nom+', será un momento. ¿Prefieres que te llame esta tarde o mañana a primera hora? Así te guardo el hueco mientras tanto.”'},
+               {q:'“Estoy mirando varias clínicas”', a:'“Me parece perfecto, es para ti. Justo por eso ven a la valoración: así comparas con criterio y ves nuestros resultados en persona. ¿Te la dejo esta semana?”'} ] };
     case 'recuperar':
-      return { goal:'Reagendar la cita que perdió, sin que se sienta mal.', say:'“Hola '+nom+', te echamos en falta el otro día con '+trat+'. No pasa nada, a veces surge. Te he reservado otro hueco para que no pierdas tu sitio. ¿Te va bien esta semana o la próxima?”',
-        obj:[ {q:'“Al final no me interesa”', a:'“Sin problema. Solo para ayudarte mejor, ¿fue por el momento o por el precio? Muchas veces lo podemos adaptar a lo que buscabas.”'},
-               {q:'“Se me olvidó / surgió algo”', a:'“Nos pasa a todas 😊 Te dejo un nuevo hueco y te mando un recordatorio el día antes para que no se te pase. ¿Mejor mañana o tarde?”'},
-               {q:'“Ya lo haré más adelante”', a:'“Perfecto, pero te guardo ya el sitio sin compromiso porque tenemos la agenda muy llena. Si luego no puedes, lo movemos. ¿Te parece?”'} ] };
+      return { goal:'Reagendar ya la cita perdida, sin culpa y con compromiso.', say:'“Hola '+nom+', soy [tu nombre], de la clínica. Te esperábamos el otro día para tu '+trat+' y no pudiste venir — tranquila, a todas nos pasa. Te llamo porque no quiero que pierdas tu sitio: te he apartado un hueco nuevo. ¿Te viene mejor esta semana o la que viene?”',
+        obj:[ {q:'“Al final no me interesa”', a:'“Sin problema, '+nom+'. Solo para ayudarte mejor: ¿fue por el momento, por el precio o por alguna duda del tratamiento? Casi siempre lo podemos adaptar a lo que buscabas. ¿Le damos otra oportunidad esta semana?”'},
+               {q:'“Se me olvidó / me surgió algo”', a:'“Nos pasa a todas. Te dejo un hueco nuevo y te mando un recordatorio el día antes para que no se te pase. ¿Mejor por la mañana o por la tarde?”'},
+               {q:'“Ya llamaré yo más adelante”', a:'“Te entiendo, pero déjame guardarte ya el sitio sin compromiso, que tenemos la agenda muy llena estas semanas. Si luego no puedes, lo movemos con una llamada. ¿Te parece el [día]?”'} ] };
     case 'confirmar':
-      return { goal:'Que confirme que vendrá (evitar el plantón).', say:'“Hola '+nom+', te llamo para confirmar tu cita de '+trat+' el '+citaTxt+'. ¿Todo correcto y cuento contigo? Así te guardo el hueco y lo dejamos todo preparado.”',
-        obj:[ {q:'“Creo que no podré”', a:'“No te preocupes, mejor lo movemos a un día que te venga bien antes que perderlo. ¿Te busco otro hueco esta misma semana?”'},
-               {q:'“Tengo dudas de si ir”', a:'“Claro, cuéntame qué te frena y lo vemos. La cita es informativa y sin compromiso, salgas con lo que salgas.”'} ] };
+      return { goal:'Confirmar la asistencia y blindar la cita (cero plantón).', say:'“Hola '+nom+', soy [tu nombre], de la clínica. Te llamo para confirmar tu cita de '+trat+' el '+citaTxt+'. Te la dejamos preparada y te reservamos a la doctora en exclusiva para ti. ¿Cuento contigo, verdad?”',
+        obj:[ {q:'“Creo que no podré ir”', a:'“Gracias por avisármelo, '+nom+'. Mejor lo movemos a un día que te venga bien antes que perderlo. Te miro: ¿te va el [otro día] a la misma hora o prefieres por la tarde?”'},
+               {q:'“Tengo dudas de si ir”', a:'“Claro, cuéntame qué te frena y lo vemos juntas. Recuerda que es una valoración sin compromiso: vienes, te informan y decides tú con calma. ¿Te mantengo la cita del '+citaTxt+'?”'},
+               {q:'“¿Me recuerdas qué era?”', a:'“Claro: tu cita de '+trat+' el '+citaTxt+'. Ven 10 minutos antes para la fichita y te atendemos puntual. ¿Todo correcto entonces?”'} ] };
     case 'reactivar':
-      return { goal:'Que vuelva para su mantenimiento (nueva cita).', say:'“Hola '+nom+', ¿qué tal el resultado de '+trat+'? Te llamo porque es justo el momento de tu mantenimiento para que no pierdas lo conseguido. Te hago precio si lo dejamos cerrado hoy. ¿Te reservo?”',
-        obj:[ {q:'“Todavía lo tengo bien”', a:'“Me alegro 😊 justo por eso es el momento ideal de mantenerlo, antes de que baje. Así te sale más rentable que volver a empezar. ¿Te reservo?”'},
-               {q:'“Es mucho dinero”', a:'“Te entiendo. Si lo dejamos cerrado hoy te aplico precio especial de cliente, y podemos repartirlo en sesiones. ¿Te lo preparo así?”'} ] };
+      return { goal:'Que vuelva para su mantenimiento ahora (no cuando “se note”).', say:'“Hola '+nom+', soy [tu nombre], de la clínica. ¿Qué tal te quedó el resultado de tu '+trat+'? … Me alegro un montón. Te llamo porque justo ahora es el momento ideal de tu mantenimiento, para conservar lo conseguido y que no tengas que volver a empezar de cero. Te puedo dejar precio de clienta si lo cerramos hoy. ¿Te reservo esta semana o la que viene?”',
+        obj:[ {q:'“Todavía lo tengo bien”', a:'“Qué bien, '+nom+', y justo por eso es el momento perfecto: mantenerlo ahora es más cómodo y más económico que recuperarlo cuando ya bajó. ¿Te lo dejo esta semana para asegurarlo?”'},
+               {q:'“Es mucho dinero”', a:'“Te entiendo. Por eso, como clienta, te aplico un precio especial si lo cerramos hoy, y si quieres lo repartimos en sesiones cómodas. ¿Te lo preparo así y te reservo?”'},
+               {q:'“Ahora no es buen momento”', a:'“Sin problema. Te dejo apuntada y te aviso justo cuando toque tu mantenimiento para que no lo pierdas. ¿Te parece que te llame en un par de semanas o prefieres dejar ya el hueco a precio de hoy?”'} ] };
     case 'venta':
-      return { goal:'Ofrecer el pack y reservar la primera sesión.', say:'“Hola '+nom+', soy de la clínica. Como ya confías en nosotros para '+trat+', te llamo en primicia: tenemos un pack pensado para ti que sale mucho más a cuenta que sesiones sueltas. ¿Te cuento en 1 minuto y te lo reservo a precio de hoy?”',
-        obj:[ {q:'“No sé si lo necesito”', a:'“Justo el pack es para mantener lo que ya conseguiste sin gastar de más. Te sale mejor que ir suelta. ¿Te reservo la primera y lo vemos en consulta?”'},
-               {q:'“Es caro”', a:'“Por eso te llamo a ti antes que a nadie: en pack el precio por sesión baja bastante y hoy te lo dejo cerrado a precio especial. ¿Te lo guardo?”'},
-               {q:'“Me lo pienso”', a:'“Claro. Te reservo el precio de hoy 48h sin compromiso para que lo pienses tranquila. Si no, no pasa nada. ¿Te parece?”'} ] };
+      return { goal:'Presentar el pack y cerrar la primera sesión hoy.', say:'“Hola '+nom+', soy [tu nombre], de la clínica. Como ya eres clienta y confías en nosotros para tu '+trat+', quise avisarte la primera: hemos preparado un pack pensado para ti que sale bastante mejor que las sesiones sueltas y te mantiene el resultado todo el año. Son 30 segundos: ¿te lo cuento y te reservo la primera a precio de hoy?”',
+        obj:[ {q:'“No sé si lo necesito”', a:'“Te lo explico en una frase, '+nom+': el pack es justo para no perder lo que ya conseguiste y sin gastar de más, porque el precio por sesión te baja bastante. ¿Te reservo la primera y lo terminas de ver en consulta sin compromiso?”'},
+               {q:'“Es caro”', a:'“Te entiendo, y por eso te llamo a ti antes que a nadie: en pack el precio por sesión baja mucho respecto a ir suelta, y hoy te lo dejo a precio especial de clienta. Además lo podemos repartir en cómodos pagos. ¿Te lo guardo?”'},
+               {q:'“Me lo pienso”', a:'“Claro que sí. Te reservo el precio de hoy 48 horas sin ningún compromiso para que lo pienses tranquila; si no te encaja, no pasa nada y lo soltamos. ¿Te lo aparto mientras tanto?”'} ] };
     default: return null;
   }
 }
