@@ -420,6 +420,7 @@ async function ensureInventorySchema(env: Env) {
   try { await env.aura_db.exec("CREATE INDEX IF NOT EXISTS idx_inv_lot_prod ON inventory_lots (tenant_id, product_id, expiry)"); } catch(e){}
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS inventory_recipes (id TEXT PRIMARY KEY, tenant_id TEXT, treatment TEXT, product_id TEXT, qty REAL DEFAULT 0, created_at INTEGER)"); } catch(e){}
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS inventory_moves (id TEXT PRIMARY KEY, tenant_id TEXT, product_id TEXT, delta REAL, reason TEXT, ref TEXT, actor TEXT, created_at INTEGER)"); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE inventory_moves ADD COLUMN appt_id TEXT'); } catch(e){}
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS copilot_log (id TEXT PRIMARY KEY, tenant_id TEXT, actor TEXT, prompt TEXT, action TEXT, payload TEXT, result TEXT, created_at INTEGER)"); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE professionals ADD COLUMN can_copilot INTEGER DEFAULT 0'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE team_members ADD COLUMN can_copilot INTEGER DEFAULT 0'); } catch(e){}
@@ -649,7 +650,7 @@ export default {
       // Siempre protegidos (cualquier método): datos sensibles del panel.
       const TENANT_GUARDED = new Set<string>([
         '/api/lead-stage','/api/lead-meta','/api/lead-search',
-        '/api/treatments','/api/close-visit','/api/professionals','/api/blocks',
+        '/api/treatments','/api/close-visit','/api/visit-revert','/api/professionals','/api/blocks',
         '/api/waitlist','/api/pipeline','/api/products','/api/bonos','/api/cashbox','/api/profit',
         '/api/recovered','/api/business-costs','/api/schedule-by-day','/api/vacations',
         '/api/sms-templates','/api/team','/api/funnel-save','/api/funnel-edit',
@@ -2760,18 +2761,19 @@ export default {
         if (apptId) await env.aura_db.prepare("UPDATE appointments SET status='attended' WHERE id=?").bind(apptId).run();
         await env.aura_db.prepare("UPDATE leads SET status='client' WHERE id=?").bind(leadId).run();
         // DESCUENTO AUTOMÁTICO DE STOCK según receta del tratamiento (+ coste real para el beneficio)
-        let invCost = 0;
+        let invCost = 0; const stockWarnings:string[] = [];
         try {
           await ensureInventorySchema(env);
           let treat = b.treatment;
           if (!treat && apptId) { const ap:any = await env.aura_db.prepare('SELECT treatment FROM appointments WHERE id=?').bind(apptId).first(); treat = ap?ap.treatment:null; }
           if (treat) {
-            const recs:any = await env.aura_db.prepare('SELECT r.product_id, r.qty, pr.cost_per_unit FROM inventory_recipes r LEFT JOIN inventory_products pr ON pr.id=r.product_id WHERE r.tenant_id=? AND LOWER(r.treatment)=LOWER(?)').bind(tenantId, treat).all();
+            const recs:any = await env.aura_db.prepare('SELECT r.product_id, r.qty, pr.cost_per_unit, pr.name AS pname, pr.stock AS pstock, pr.unit AS punit FROM inventory_recipes r LEFT JOIN inventory_products pr ON pr.id=r.product_id WHERE r.tenant_id=? AND LOWER(r.treatment)=LOWER(?)').bind(tenantId, treat).all();
             for (const rc of (recs.results||[])) {
               const q = Number(rc.qty)||0; if (q<=0 || !rc.product_id) continue;
               invCost += (Number(rc.cost_per_unit)||0) * q;
-              await env.aura_db.prepare('UPDATE inventory_products SET stock=stock-?, updated_at=? WHERE id=? AND tenant_id=?').bind(q, Date.now(), rc.product_id, tenantId).run();
-              await env.aura_db.prepare('INSERT INTO inventory_moves (id,tenant_id,product_id,delta,reason,ref,actor,created_at) VALUES (?,?,?,?,?,?,?,?)').bind('mv_'+Math.random().toString(36).slice(2,10), tenantId, rc.product_id, -q, 'consumo-tratamiento', treat, b.actor||'sistema', Date.now()).run();
+              const have = Number(rc.pstock)||0; const realQ = Math.min(q, Math.max(0,have)); if (have < q) stockWarnings.push((rc.pname||'Producto')+': quedaban '+have+', se necesitaban '+q);
+              await env.aura_db.prepare('UPDATE inventory_products SET stock=MAX(0,stock-?), updated_at=? WHERE id=? AND tenant_id=?').bind(q, Date.now(), rc.product_id, tenantId).run();
+              await env.aura_db.prepare('INSERT INTO inventory_moves (id,tenant_id,product_id,delta,reason,ref,actor,created_at,appt_id) VALUES (?,?,?,?,?,?,?,?,?)').bind('mv_'+Math.random().toString(36).slice(2,10), tenantId, rc.product_id, -realQ, 'consumo-tratamiento', treat, b.actor||'sistema', Date.now(), apptId||null).run();
             }
           }
         } catch(e){}
@@ -2782,13 +2784,14 @@ export default {
           const sold = Array.isArray(b.sold_products) ? b.sold_products : [];
           for (const sp of sold) {
             const pid = sp.product_id; const q = Number(sp.qty)||0; if (!pid || q<=0) continue;
-            const pr:any = await env.aura_db.prepare('SELECT name,sale_price,cost_per_unit FROM inventory_products WHERE id=? AND tenant_id=?').bind(pid, tenantId).first();
+            const pr:any = await env.aura_db.prepare('SELECT name,sale_price,cost_per_unit,stock FROM inventory_products WHERE id=? AND tenant_id=?').bind(pid, tenantId).first();
             if (!pr) continue;
             const lineEur = (sp.price!=null ? Number(sp.price) : (Number(pr.sale_price)||0)) * q;
             soldExtra += lineEur;
             invCost += (Number(pr.cost_per_unit)||0) * q;
-            await env.aura_db.prepare('UPDATE inventory_products SET stock=stock-?, updated_at=? WHERE id=? AND tenant_id=?').bind(q, Date.now(), pid, tenantId).run();
-            await env.aura_db.prepare('INSERT INTO inventory_moves (id,tenant_id,product_id,delta,reason,ref,actor,created_at) VALUES (?,?,?,?,?,?,?,?)').bind('mv_'+Math.random().toString(36).slice(2,10), tenantId, pid, -q, 'venta-mostrador', (pr.name||''), b.actor||'panel', Date.now()).run();
+            const haveS = Number((pr as any).stock)||0; const realS = Math.min(q, Math.max(0,haveS)); if (haveS < q) stockWarnings.push((pr.name||'Producto')+': quedaban '+haveS+', se vendían '+q);
+            await env.aura_db.prepare('UPDATE inventory_products SET stock=MAX(0,stock-?), updated_at=? WHERE id=? AND tenant_id=?').bind(q, Date.now(), pid, tenantId).run();
+            await env.aura_db.prepare('INSERT INTO inventory_moves (id,tenant_id,product_id,delta,reason,ref,actor,created_at,appt_id) VALUES (?,?,?,?,?,?,?,?,?)').bind('mv_'+Math.random().toString(36).slice(2,10), tenantId, pid, -realS, 'venta-mostrador', (pr.name||''), b.actor||'panel', Date.now(), apptId||null).run();
           }
         } catch(e){}
         // Reseña automática en Google: si la clínica tiene enlace, pedir reseña al paciente tras la visita
@@ -2859,7 +2862,7 @@ export default {
           await env.aura_db.prepare("INSERT INTO appointments (id,tenant_id,lead_id,treatment,date_iso,duration_min,status) VALUES (?,?,?,?,?,?,?)").bind(nid, tenantId, leadId, 'Revisión / '+tname, b.next_date, 30, 'booked').run();
           // recall queda informado pero sin SMS (ya tiene cita) — se marca recall_sms_sent=1 para que el motor no lo envíe
           await env.aura_db.prepare("UPDATE leads SET recall_date=?, recall_type='venta', recall_sms_sent=1 WHERE id=?").bind(b.next_date.slice(0,10), leadId).run();
-          return json({ ok:true, result:'client_rebooked', next_appt: nid, attribution, amount });
+          return json({ ok:true, result:'client_rebooked', next_appt: nid, attribution, amount, stock_warning: stockWarnings.length? stockWarnings.join('; ') : null });
         }
         let recallMsg = '{clinica}: {nombre}, tu tratamiento ya pide un repaso para seguir luciéndolo. Resérvalo gratis aquí: {link}';
         if (nm.includes('labio')) recallMsg = '{clinica}: {nombre}, tus labios ya están perdiendo volumen. No esperes a que bajen del todo: te guardo hueco para mantenerlos perfectos. Reserva en 1 toque: {link}';
@@ -2875,7 +2878,7 @@ export default {
             if (pts>0) await env.aura_db.prepare("INSERT INTO points_ledger (id,tenant_id,lead_id,delta,reason,created_at) VALUES (?,?,?,?,?,?)").bind('pt_'+uid(), tenantId, leadId, pts, 'compra', new Date().toISOString()).run();
           }
         } catch(e){}
-        return json({ ok:true, result:'client', recall_date: rd.toISOString().slice(0,10), attribution, amount });
+        return json({ ok:true, result:'client', recall_date: rd.toISOString().slice(0,10), attribution, amount, stock_warning: stockWarnings.length? stockWarnings.join('; ') : null });
       }
 
       // PROFESIONALES (recursos del calendario)
@@ -2996,6 +2999,37 @@ export default {
         await env.aura_db.prepare('UPDATE appointments SET date_iso=?'+(b.professional_id?', professional_id=?':'')+' WHERE id=?')
           .bind(...(b.professional_id?[b.date_iso,b.professional_id,b.appointment_id]:[b.date_iso,b.appointment_id])).run();
         return json({ ok:true });
+      }
+
+      // REVERTIR VISITA COBRADA: devuelve stock descontado, borra el cobro y vuelve a dejar la cita reservada
+      if (p === '/api/visit-revert' && req.method === 'POST') {
+        const b:any = await req.json();
+        const apptId = b.appointment_id; const tenantId = b.tenant_id;
+        if (!apptId) return json({ error:'missing appointment' }, 400);
+        try { await ensureInventorySchema(env); } catch(e){}
+        let restored:string[] = [];
+        try {
+          const mv:any = await env.aura_db.prepare("SELECT product_id, delta FROM inventory_moves WHERE tenant_id=? AND appt_id=? AND delta<0").bind(tenantId, apptId).all();
+          for (const m of (mv.results||[])) {
+            const back = Math.abs(Number(m.delta)||0); if (back<=0 || !m.product_id) continue;
+            await env.aura_db.prepare('UPDATE inventory_products SET stock=stock+?, updated_at=? WHERE id=? AND tenant_id=?').bind(back, Date.now(), m.product_id, tenantId).run();
+            await env.aura_db.prepare('INSERT INTO inventory_moves (id,tenant_id,product_id,delta,reason,ref,actor,created_at,appt_id) VALUES (?,?,?,?,?,?,?,?,?)').bind('mv_'+Math.random().toString(36).slice(2,10), tenantId, m.product_id, back, 'devolucion-anulacion', 'revert', b.actor||'panel', Date.now(), apptId).run();
+            const pr:any = await env.aura_db.prepare('SELECT name FROM inventory_products WHERE id=?').bind(m.product_id).first();
+            restored.push((pr?pr.name:'Producto')+' +'+back);
+          }
+          // marcar esos movimientos como ya revertidos (cambia appt_id para no doble-revertir)
+          await env.aura_db.prepare("UPDATE inventory_moves SET appt_id=? WHERE tenant_id=? AND appt_id=? AND delta<0").bind(apptId+'_reverted', tenantId, apptId).run();
+        } catch(e){}
+        // borrar el cobro de esta visita (treatments_log del lead+tenant más reciente para esa cita)
+        try {
+          const ap:any = await env.aura_db.prepare('SELECT lead_id FROM appointments WHERE id=?').bind(apptId).first();
+          if (ap && ap.lead_id) {
+            await env.aura_db.prepare("DELETE FROM treatments_log WHERE id IN (SELECT id FROM treatments_log WHERE lead_id=? AND tenant_id=? ORDER BY date_iso DESC LIMIT 1)").bind(ap.lead_id, tenantId).run();
+          }
+        } catch(e){}
+        // devolver la cita a 'booked' (anular el cobro, no la cita)
+        try { await env.aura_db.prepare("UPDATE appointments SET status='booked' WHERE id=? AND tenant_id=?").bind(apptId, tenantId).run(); } catch(e){}
+        return json({ ok:true, restored: restored.length? restored.join(', ') : 'sin stock que devolver' });
       }
 
       // Consultations
