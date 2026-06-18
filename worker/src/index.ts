@@ -2773,6 +2773,21 @@ export default {
             }
           }
         } catch(e){}
+        // VENTA DE PRODUCTO SUELTO en caja: descuenta inventory_products, registra movimiento y suma a caja
+        let soldExtra = 0;
+        try {
+          await ensureInventorySchema(env);
+          const sold = Array.isArray(b.sold_products) ? b.sold_products : [];
+          for (const sp of sold) {
+            const pid = sp.product_id; const q = Number(sp.qty)||0; if (!pid || q<=0) continue;
+            const pr:any = await env.aura_db.prepare('SELECT name,sale_price FROM inventory_products WHERE id=? AND tenant_id=?').bind(pid, tenantId).first();
+            if (!pr) continue;
+            const lineEur = (sp.price!=null ? Number(sp.price) : (Number(pr.sale_price)||0)) * q;
+            soldExtra += lineEur;
+            await env.aura_db.prepare('UPDATE inventory_products SET stock=stock-?, updated_at=? WHERE id=? AND tenant_id=?').bind(q, Date.now(), pid, tenantId).run();
+            await env.aura_db.prepare('INSERT INTO inventory_moves (id,tenant_id,product_id,delta,reason,ref,actor,created_at) VALUES (?,?,?,?,?,?,?,?)').bind('mv_'+Math.random().toString(36).slice(2,10), tenantId, pid, -q, 'venta-mostrador', (pr.name||''), b.actor||'panel', Date.now()).run();
+          }
+        } catch(e){}
         // Reseña automática en Google: si la clínica tiene enlace, pedir reseña al paciente tras la visita
         try {
           const tn: any = await env.aura_db.prepare('SELECT name,whatsapp,google_review_url FROM tenants WHERE id=?').bind(tenantId).first();
@@ -2788,7 +2803,7 @@ export default {
         } catch(e){}
         // Registrar tratamiento/pago si viene
         const tname = b.treatment || 'Tratamiento';
-        let amount = Number(b.amount)||0;
+        let amount = (Number(b.amount)||0) + (soldExtra||0);
         // Canje de puntos como descuento (recepción indica redeem_points)
         const redeemPts = Math.max(0, Math.round(Number(b.redeem_points)||0));
         if (redeemPts > 0) {

@@ -1862,7 +1862,7 @@ function openCloseVisit(apptId,leadId,treatment,name){
     +'<label style="font-size:.8rem;font-weight:600">Tratamiento realizado</label><input id="cvTreat" value="'+(treatment||'')+'" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin:.3rem 0 .8rem"/>'
     +'<label style="font-size:.8rem;font-weight:600">Importe pagado (€)</label><input id="cvAmount" type="number" placeholder="380" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin:.3rem 0 .6rem"/>'
     +'<label style="font-size:.8rem;font-weight:600">Método de pago</label><select id="cvMethod" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin:.3rem 0 .6rem">'+METODOS.map(m=>'<option value="'+m+'">'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>').join('')+'</select>'
-    +'<label style="font-size:.8rem;font-weight:600">Producto usado (opcional · descuenta stock)</label><div style="display:flex;gap:.4rem;margin:.3rem 0 .9rem"><select id="cvProduct" style="flex:2;padding:.6rem;border:1px solid var(--line);border-radius:9px"><option value="">Ninguno</option></select><input id="cvProductQty" type="number" placeholder="cant." value="1" style="flex:1;padding:.6rem;border:1px solid var(--line);border-radius:9px"/></div>'
+    +'<label style="font-size:.8rem;font-weight:600">🛍️ Vender producto (opcional · descuenta stock y suma a caja)</label><div id="cvSold" style="margin:.3rem 0 .4rem"></div><button type="button" onclick="addSoldRow()" style="width:100%;background:#f6fbf8;border:1px solid #d4ece0;color:#1f8c69;border-radius:9px;padding:.45rem;font-size:.78rem;font-weight:700;cursor:pointer;margin-bottom:.9rem">+ Añadir producto a la venta</button>'
     +'<div id="cvLoyBox" style="display:none;background:#f0ebff;border-radius:10px;padding:.7rem;margin-bottom:.9rem"></div>'
     +(function(){ var o=cashOffers(treatment); var nd=o.nextDays||30; var nm=(name||'').split(' ')[0]||''; var html='<div style="display:flex;align-items:center;gap:.4rem;font-size:.74rem;font-weight:800;color:#a8623a;margin:.2rem 0 .12rem"><span style="display:inline-grid;place-items:center;width:18px;height:18px;border-radius:6px;background:linear-gradient(135deg,#c98a5a,#a8623a);color:#fff;font-size:.62rem">✦</span> Antes de cobrar, dile esto (en orden)</div><div style="font-size:.7rem;color:var(--muted);margin:0 0 .55rem">Empieza por el 1. Si dice que no, pasa al 2. El 3 hazlo siempre.</div>';
       // PASO 1 — la GRANDE (pack con descuento)
@@ -1893,8 +1893,9 @@ function openCloseVisit(apptId,leadId,treatment,name){
   document.body.appendChild(ov);
   // Prerellenar la fecha de la siguiente cita con el intervalo recomendado por benchmark (fija)
   try{ var _o=cashOffers(treatment); var _nd=document.getElementById('cvNextDate'); if(_nd && _o && _o.nextDays){ _nd.value=nextDateISO(_o.nextDays); } }catch(e){}
-  // rellenar selector de productos del inventario
-  (async()=>{ try{ const r=await fetch(WORKER+'/api/products?tenant='+T); const d=await r.json(); const sel=document.getElementById('cvProduct'); if(sel&&d.products){ d.products.forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=p.name+' ('+(p.stock||0)+' '+(p.unit||'ud')+')'; sel.appendChild(o); }); } }catch(e){} })();
+  // cargar productos del inventario REAL para la venta suelta
+  window._cvSoldRows=[]; window._cvSoldProds=[];
+  (async()=>{ try{ const r=await fetch(WORKER+'/api/inv-products?tenant='+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}}); const d=await r.json(); window._cvSoldProds=(d.products||[]).filter(function(x){return x.active!==0;}); }catch(e){ window._cvSoldProds=[]; } })();
   // cargar saldo de puntos del paciente para ofrecer canje
   (async()=>{ try{ const tk=localStorage.getItem('aura_token')||''; const r=await fetch(WORKER+'/api/loyalty-balance?tenant='+T+'&lead='+leadId,{headers:{'Authorization':'Bearer '+tk}}); const d=await r.json(); const pts=d.points||0; const box=document.getElementById('cvLoyBox'); if(box && pts>0 && LOYCFG && LOYCFG.enabled!=0){ const eurPer100=Number(LOYCFG.eur_per_100pts)||10; const maxEur=(pts/100*eurPer100); box.style.display='block'; box.innerHTML='<label style="font-size:.8rem;font-weight:700;color:#5b3fc4;display:block;margin-bottom:.3rem">★ Tiene '+pts+' puntos ('+maxEur.toFixed(0)+'€ disponibles)</label><label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;cursor:pointer"><input type="checkbox" id="cvRedeem" onchange="document.getElementById(\'cvRedeemPts\').style.display=this.checked?\'block\':\'none\'"> Canjear puntos como descuento</label><input id="cvRedeemPts" type="number" value="'+pts+'" max="'+pts+'" style="display:none;width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px;margin-top:.4rem" placeholder="puntos a usar"/><div class="sub" style="margin:.3rem 0 0;font-size:.72rem">100 puntos = '+eurPer100+'€ de descuento</div>'; } }catch(e){} })();
 }
@@ -1907,6 +1908,12 @@ function applyUpsell(eur, btn){
   // pequeño destello en el importe
   amt.style.transition='background .3s'; amt.style.background='#eafaf2'; setTimeout(function(){ amt.style.background=''; }, 600);
 }
+// VENTA DE PRODUCTO SUELTO en el cierre de caja
+function addSoldRow(){ (window._cvSoldRows=window._cvSoldRows||[]).push({product_id:'',qty:1}); renderSoldRows(); }
+function renderSoldRows(){ var box=document.getElementById('cvSold'); if(!box)return; var prods=window._cvSoldProds||[]; var opts=prods.map(function(p){return '<option value="'+p.id+'" data-price="'+(p.sale_price||0)+'">'+escapeHtml(p.name)+' ('+(p.sale_price||0)+'€ · '+(p.stock||0)+' '+(p.unit||'ud')+')</option>';}).join('');
+  box.innerHTML=(window._cvSoldRows||[]).map(function(r,i){ return '<div style="display:flex;gap:.4rem;margin-bottom:.4rem;align-items:center"><select onchange="window._cvSoldRows['+i+'].product_id=this.value" style="flex:2;padding:.5rem;border:1px solid var(--line);border-radius:9px"><option value="">Producto…</option>'+opts.replace('value="'+r.product_id+'"','value="'+r.product_id+'" selected')+'</select><input type="number" min="1" value="'+(r.qty||1)+'" oninput="window._cvSoldRows['+i+'].qty=this.value" style="width:64px;padding:.5rem;border:1px solid var(--line);border-radius:9px"/><button type="button" class="vac-del" onclick="window._cvSoldRows.splice('+i+',1);renderSoldRows()">✕</button></div>'; }).join('');
+  if(!prods.length){ box.innerHTML='<div class="sub" style="font-size:.72rem;color:var(--muted)">Añade productos en Inventario para poder venderlos aquí.</div>'; }
+}
 let _cvSubmitting=false;
 async function doCloseVisit(apptId,leadId,attended){
   if(_cvSubmitting) return; // evita doble cobro por doble clic / toques repetidos
@@ -1914,8 +1921,7 @@ async function doCloseVisit(apptId,leadId,attended){
   const amount=document.getElementById('cvAmount')?document.getElementById('cvAmount').value:0;
   if(attended && (!amount || +amount<=0)){ if(!confirm('No has puesto importe. ¿Cerrar la visita con 0€ (sin cobro)?')) return; }
   const method=document.getElementById('cvMethod')?document.getElementById('cvMethod').value:null;
-  const product_id=document.getElementById('cvProduct')?document.getElementById('cvProduct').value:'';
-  const product_qty=document.getElementById('cvProductQty')?(+document.getElementById('cvProductQty').value||0):0;
+  var sold_products=(window._cvSoldRows||[]).filter(function(r){return r.product_id && (+r.qty>0);}).map(function(r){return {product_id:r.product_id, qty:+r.qty};});
   let redeemPts=0; const rc=document.getElementById('cvRedeem'); if(rc&&rc.checked){ redeemPts=+document.getElementById('cvRedeemPts').value||0; }
   let nextDate=null;
   const sel=document.querySelector('input[name="cvNext"]:checked');
@@ -1926,7 +1932,7 @@ async function doCloseVisit(apptId,leadId,attended){
   try{ var _btns=document.querySelectorAll('#cvOverlay button'); _btns.forEach(function(b){ b.disabled=true; b.style.opacity='.6'; b.style.pointerEvents='none'; }); var _vp=document.querySelector('#cvOverlay button[onclick*="true"]'); if(_vp&&attended){ _vp.textContent='Cobrando…'; } }catch(e){}
   // clave de idempotencia: si se reintenta, el backend no duplica el cobro
   var _idem=apptId+'_'+(attended?'1':'0');
-  try{ const _r=await fetch(WORKER+'/api/close-visit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,lead_id:leadId,appointment_id:apptId,attended:attended,treatment:treat,amount:amount,pay_status:'paid',method:method,product_id:product_id||null,product_qty:product_qty,next_date:nextDate,redeem_points:redeemPts,idem_key:_idem})}); const _d=await _r.json(); if(_d&&_d.attribution)attribution=_d.attribution; }catch(e){ _cvSubmitting=false; try{ var _bs=document.querySelectorAll('#cvOverlay button'); _bs.forEach(function(b){ b.disabled=false; b.style.opacity=''; b.style.pointerEvents=''; }); }catch(_){}; alert('No se pudo guardar. Revisa la conexión e inténtalo de nuevo.'); return; }
+  try{ const _r=await fetch(WORKER+'/api/close-visit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,lead_id:leadId,appointment_id:apptId,attended:attended,treatment:treat,amount:amount,pay_status:'paid',method:method,sold_products:sold_products,next_date:nextDate,redeem_points:redeemPts,idem_key:_idem})}); const _d=await _r.json(); if(_d&&_d.attribution)attribution=_d.attribution; }catch(e){ _cvSubmitting=false; try{ var _bs=document.querySelectorAll('#cvOverlay button'); _bs.forEach(function(b){ b.disabled=false; b.style.opacity=''; b.style.pointerEvents=''; }); }catch(_){}; alert('No se pudo guardar. Revisa la conexión e inténtalo de nuevo.'); return; }
   _cvSubmitting=false;
   const ov=document.getElementById('cvOverlay'); if(ov)ov.remove();
   // Si hubo upsell/cross-sell en caja, lo sumamos al marcador del día (mérito compartido) y avisamos
@@ -2496,12 +2502,41 @@ function renderVacations(){
 let CATALOG=[];
 async function loadCatalog(){
   try{const r=await fetch(WORKER+'/api/treatment-catalog?tenant='+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}});const d=await r.json();CATALOG=d.catalog||[];}catch(e){CATALOG=[];}
+  // recetas de consumo (por tratamiento) y productos del inventario
+  try{ var hr={'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')};
+    var rr=await fetch(WORKER+'/api/inv-recipes?tenant='+T,{headers:hr}); var rd=await rr.json(); window._tcRecipesArr=rd.recipes||[]; window._tcRecipes={}; (rd.recipes||[]).forEach(function(x){ var k=(x.treatment||'').toLowerCase(); (window._tcRecipes[k]=window._tcRecipes[k]||[]).push(x); });
+    var pr=await fetch(WORKER+'/api/inv-products?tenant='+T,{headers:hr}); var pd=await pr.json(); window._tcProducts=(pd.products||[]).filter(function(x){return x.active!==0;}); }catch(e){ window._tcRecipes=window._tcRecipes||{}; window._tcProducts=window._tcProducts||[]; }
   renderCatalog();
+}
+// EDITOR DE CONSUMO POR TRATAMIENTO (qué producto/s y cuánto consume)
+function editConsumo(id){
+  var t=(CATALOG||[]).find(function(x){return x.id===id;}); if(!t) return;
+  var prods=window._tcProducts||[];
+  if(!prods.length){ var ov0=document.createElement('div'); ov0.id='cnOverlay'; ov0.style.cssText='position:fixed;inset:0;background:rgba(15,16,17,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem'; ov0.innerHTML='<div style="background:#fff;border-radius:16px;max-width:380px;width:100%;padding:1.4rem"><h3 class="serif" style="margin:0 0 .4rem">Consumo de producto</h3><p class="sub" style="margin:0 0 1rem">Primero añade productos en la sección <b>Inventario</b>. Luego podrás indicar cuánto consume cada tratamiento.</p><button class="btn" onclick="document.getElementById(\'cnOverlay\').remove()">Entendido</button></div>'; document.body.appendChild(ov0); return; }
+  var cur=(window._tcRecipes&&window._tcRecipes[(t.name||'').toLowerCase()])||[];
+  var optsHtml=prods.map(function(p){return '<option value="'+p.id+'">'+escapeHtml(p.name)+' ('+(p.stock||0)+' '+(p.unit||'ud')+')</option>';}).join('');
+  window._cnRows=[]; (cur.length?cur:[{}]).forEach(function(r){ window._cnRows.push({product_id:r.product_id||'', qty:r.qty||'', rid:r.id||''}); });
+  var ov=document.createElement('div'); ov.id='cnOverlay'; ov.style.cssText='position:fixed;inset:0;background:rgba(15,16,17,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem';
+  ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:440px;width:100%;padding:1.4rem;max-height:90vh;overflow:auto"><h3 class="serif" style="margin:0 0 .2rem">📦 Consumo de producto</h3><p style="color:var(--muted);font-size:.8rem;margin:0 0 1rem">'+escapeHtml(t.name)+' · cuánto se gasta del inventario al hacer este tratamiento. Se descuenta solo al cobrar.</p><div id="cnRows"></div><button class="btn" style="width:100%;margin:.2rem 0 1rem;background:#fbf7ef;border-color:#e8d9bf;color:#9a5a16" onclick="addConsumoRow()">+ Añadir otro producto</button><div style="display:flex;gap:.5rem"><button class="btn" style="flex:1;background:var(--mint);border-color:var(--mint)" onclick="saveConsumo(\''+id+'\')">Guardar consumo</button><button class="btn" style="flex:1" onclick="document.getElementById(\'cnOverlay\').remove()">Cancelar</button></div></div>';
+  document.body.appendChild(ov); window._cnOpts=optsHtml; renderConsumoRows();
+}
+function renderConsumoRows(){ var box=document.getElementById('cnRows'); if(!box)return; box.innerHTML=(window._cnRows||[]).map(function(r,i){ return '<div style="display:flex;gap:.4rem;margin-bottom:.4rem;align-items:center"><select onchange="window._cnRows['+i+'].product_id=this.value" style="flex:2;padding:.5rem;border:1px solid var(--line);border-radius:9px"><option value="">Producto…</option>'+(window._cnOpts||'').replace('value="'+r.product_id+'"','value="'+r.product_id+'" selected')+'</select><input type="number" step="0.1" value="'+(r.qty||'')+'" oninput="window._cnRows['+i+'].qty=this.value" placeholder="cant." style="width:80px;padding:.5rem;border:1px solid var(--line);border-radius:9px"/><button class="vac-del" onclick="window._cnRows.splice('+i+',1);renderConsumoRows()">✕</button></div>'; }).join(''); }
+function addConsumoRow(){ (window._cnRows=window._cnRows||[]).push({product_id:'',qty:''}); renderConsumoRows(); }
+async function saveConsumo(id){
+  var t=(CATALOG||[]).find(function(x){return x.id===id;})||{}; var tn=t.name||'';
+  var hr={'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')};
+  // borrar recetas anteriores de este tratamiento y reescribir
+  var prev=(window._tcRecipesArr||[]).filter(function(x){return (x.treatment||'').toLowerCase()===tn.toLowerCase();});
+  try{ for(var j=0;j<prev.length;j++){ await fetch(WORKER+'/api/inv-recipe',{method:'POST',headers:hr,body:JSON.stringify({tenant_id:T,delete:prev[j].id})}); }
+    var rows=(window._cnRows||[]).filter(function(r){return r.product_id && (+r.qty>0);});
+    for(var k=0;k<rows.length;k++){ await fetch(WORKER+'/api/inv-recipe',{method:'POST',headers:hr,body:JSON.stringify({tenant_id:T,treatment:tn,product_id:rows[k].product_id,qty:+rows[k].qty})}); }
+  }catch(e){}
+  var ov=document.getElementById('cnOverlay'); if(ov)ov.remove(); if(typeof toast==='function')toast('Consumo guardado ✓'); loadCatalog();
 }
 function renderCatalog(){
   const c=document.getElementById('tcList');if(!c)return;
   if(!CATALOG.length){c.innerHTML='<div class="sub" style="color:var(--muted)">Aún no has añadido tratamientos. Añade los más comunes para agilizar la agenda.</div>';return;}
-  c.innerHTML=CATALOG.map(t=>{ var hasOffer=(t.upsell_label&&t.upsell_price>0)||(t.pack_label&&t.pack_price>0); var offTxt=hasOffer?('<div class="sub" style="margin:.2rem 0 0;color:#1f8c69;font-size:.72rem">💸 Oferta caja: '+[(t.upsell_label?(t.upsell_label+" (+"+t.upsell_price+"€)"):""),(t.pack_label?(t.pack_label+" "+t.pack_price+"€"):"")].filter(Boolean).join(" · ")+'</div>'):'<div class="sub" style="margin:.2rem 0 0;color:var(--muted);font-size:.72rem">Sin oferta de caja · usará la sugerida</div>'; return '<div style="display:flex;align-items:center;gap:.7rem;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;margin-bottom:.4rem"><span style="width:12px;height:12px;border-radius:50%;background:'+(t.color||'#9B7BFF')+';flex-shrink:0"></span><div style="flex:1;min-width:0"><b>'+t.name+'</b><div class="sub" style="margin:0">'+t.duration_min+' min · '+(t.price||0)+'€</div>'+offTxt+'</div><button class="vac-del" style="background:#eef6f1;color:#1f8c69;border-color:#cfe8db" onclick=\'editCashOffer("'+t.id+'")\'>Oferta</button><button class="vac-del" onclick="delTreatment(\''+t.id+'\')">Eliminar</button></div>'; }).join('');
+  c.innerHTML=CATALOG.map(t=>{ var hasOffer=(t.upsell_label&&t.upsell_price>0)||(t.pack_label&&t.pack_price>0); var offTxt=hasOffer?('<div class="sub" style="margin:.2rem 0 0;color:#1f8c69;font-size:.72rem">💸 Oferta caja: '+[(t.upsell_label?(t.upsell_label+" (+"+t.upsell_price+"€)"):""),(t.pack_label?(t.pack_label+" "+t.pack_price+"€"):"")].filter(Boolean).join(" · ")+'</div>'):'<div class="sub" style="margin:.2rem 0 0;color:var(--muted);font-size:.72rem">Sin oferta de caja · usará la sugerida</div>'; var rcTxt=(function(){ var rs=(window._tcRecipes&&window._tcRecipes[(t.name||'').toLowerCase()])||[]; if(!rs.length) return '<div class="sub" style="margin:.2rem 0 0;color:var(--muted);font-size:.72rem">Sin consumo definido · no descuenta stock</div>'; return '<div class="sub" style="margin:.2rem 0 0;color:#9a5a16;font-size:.72rem">📦 Consume: '+rs.map(function(x){return x.qty+' '+(x.unit||'')+' '+x.product_name;}).join(' · ')+'</div>'; })(); return '<div style="display:flex;align-items:center;gap:.7rem;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;margin-bottom:.4rem"><span style="width:12px;height:12px;border-radius:50%;background:'+(t.color||'#9B7BFF')+';flex-shrink:0"></span><div style="flex:1;min-width:0"><b>'+t.name+'</b><div class="sub" style="margin:0">'+t.duration_min+' min · '+(t.price||0)+'€</div>'+offTxt+rcTxt+'</div><button class="vac-del" style="background:#fbf2e6;color:#9a5a16;border-color:#e8d9bf" onclick=\'editConsumo("'+t.id+'")\'>Consumo</button><button class="vac-del" style="background:#eef6f1;color:#1f8c69;border-color:#cfe8db" onclick=\'editCashOffer("'+t.id+'")\'>Oferta</button><button class="vac-del" onclick="delTreatment(\''+t.id+'\')">Eliminar</button></div>'; }).join('');
 }
 function editCashOffer(id){
   var t=(CATALOG||[]).find(function(x){return x.id===id;}); if(!t) return;
