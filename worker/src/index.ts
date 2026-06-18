@@ -2759,15 +2759,17 @@ export default {
         } catch(e){}
         if (apptId) await env.aura_db.prepare("UPDATE appointments SET status='attended' WHERE id=?").bind(apptId).run();
         await env.aura_db.prepare("UPDATE leads SET status='client' WHERE id=?").bind(leadId).run();
-        // DESCUENTO AUTOMÁTICO DE STOCK según receta del tratamiento
+        // DESCUENTO AUTOMÁTICO DE STOCK según receta del tratamiento (+ coste real para el beneficio)
+        let invCost = 0;
         try {
           await ensureInventorySchema(env);
           let treat = b.treatment;
           if (!treat && apptId) { const ap:any = await env.aura_db.prepare('SELECT treatment FROM appointments WHERE id=?').bind(apptId).first(); treat = ap?ap.treatment:null; }
           if (treat) {
-            const recs:any = await env.aura_db.prepare('SELECT r.product_id, r.qty FROM inventory_recipes r WHERE r.tenant_id=? AND LOWER(r.treatment)=LOWER(?)').bind(tenantId, treat).all();
+            const recs:any = await env.aura_db.prepare('SELECT r.product_id, r.qty, pr.cost_per_unit FROM inventory_recipes r LEFT JOIN inventory_products pr ON pr.id=r.product_id WHERE r.tenant_id=? AND LOWER(r.treatment)=LOWER(?)').bind(tenantId, treat).all();
             for (const rc of (recs.results||[])) {
               const q = Number(rc.qty)||0; if (q<=0 || !rc.product_id) continue;
+              invCost += (Number(rc.cost_per_unit)||0) * q;
               await env.aura_db.prepare('UPDATE inventory_products SET stock=stock-?, updated_at=? WHERE id=? AND tenant_id=?').bind(q, Date.now(), rc.product_id, tenantId).run();
               await env.aura_db.prepare('INSERT INTO inventory_moves (id,tenant_id,product_id,delta,reason,ref,actor,created_at) VALUES (?,?,?,?,?,?,?,?)').bind('mv_'+Math.random().toString(36).slice(2,10), tenantId, rc.product_id, -q, 'consumo-tratamiento', treat, b.actor||'sistema', Date.now()).run();
             }
@@ -2780,10 +2782,11 @@ export default {
           const sold = Array.isArray(b.sold_products) ? b.sold_products : [];
           for (const sp of sold) {
             const pid = sp.product_id; const q = Number(sp.qty)||0; if (!pid || q<=0) continue;
-            const pr:any = await env.aura_db.prepare('SELECT name,sale_price FROM inventory_products WHERE id=? AND tenant_id=?').bind(pid, tenantId).first();
+            const pr:any = await env.aura_db.prepare('SELECT name,sale_price,cost_per_unit FROM inventory_products WHERE id=? AND tenant_id=?').bind(pid, tenantId).first();
             if (!pr) continue;
             const lineEur = (sp.price!=null ? Number(sp.price) : (Number(pr.sale_price)||0)) * q;
             soldExtra += lineEur;
+            invCost += (Number(pr.cost_per_unit)||0) * q;
             await env.aura_db.prepare('UPDATE inventory_products SET stock=stock-?, updated_at=? WHERE id=? AND tenant_id=?').bind(q, Date.now(), pid, tenantId).run();
             await env.aura_db.prepare('INSERT INTO inventory_moves (id,tenant_id,product_id,delta,reason,ref,actor,created_at) VALUES (?,?,?,?,?,?,?,?)').bind('mv_'+Math.random().toString(36).slice(2,10), tenantId, pid, -q, 'venta-mostrador', (pr.name||''), b.actor||'panel', Date.now()).run();
           }
@@ -2820,14 +2823,14 @@ export default {
             }
           } catch(e){}
         }
-        // Inventario ligero: descontar producto usado y calcular coste para el margen
-        let prodCost = 0;
+        // Coste de material para el margen: inventario real (receta + venta suelta) + compat producto viejo
+        let prodCost = invCost || 0;
         if (b.product_id && b.product_qty) {
           try {
             const prod: any = await env.aura_db.prepare('SELECT * FROM products WHERE id=? AND tenant_id=?').bind(b.product_id, tenantId).first();
             if (prod) {
               const qty = Number(b.product_qty)||0;
-              prodCost = (Number(prod.cost)||0) * qty;
+              prodCost += (Number(prod.cost)||0) * qty;
               await env.aura_db.prepare('UPDATE products SET stock = MAX(0, stock - ?) WHERE id=?').bind(qty, b.product_id).run();
             }
           } catch(e){}
