@@ -503,7 +503,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 
     <!-- PACIENTES -->
     <section class="view" id="v-pacientes">
-      <div class="top"><div><h1>Pacientes</h1><div class="sub2">Tu agenda de contactos: todos los que han pasado por tu clínica. Busca a cualquiera y abre su ficha para ver su historial y reservarle cita.</div></div></div>
+      <div class="top"><div><h1>Pacientes</h1><div class="sub2">Tu agenda de contactos: todos los que han pasado por tu clínica. Busca a cualquiera y abre su ficha para ver su historial y reservarle cita.</div></div><div><button class="btn" onclick="openConsentsHub()" style="white-space:nowrap">📝 Consentimientos firmados</button></div></div>
       <div class="card">
         <h3>Buscar paciente</h3>
         <p class="sub">¿Te escribió por WhatsApp? Pega el código (AURA-XXXXX), su nombre o su móvil.</p>
@@ -1531,6 +1531,31 @@ async function sendConsent(){
 async function resendConsent(id){
   // reenvía creando uno nuevo con la misma plantilla generica si hace falta; simplificado: reusar consent-send con generico
   alert('Para reenviar, vuelve a “Enviar a firmar” y elige la plantilla.');
+}
+// HUB GLOBAL: todos los consentimientos de la clínica (firmados y pendientes)
+async function openConsentsHub(){
+  var ov=document.createElement('div'); ov.id='chOv'; ov.style='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;display:grid;place-items:center;padding:1rem';
+  ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:680px;width:100%;padding:1.4rem;max-height:90vh;display:flex;flex-direction:column">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.3rem"><h3 class="serif" style="margin:0">📝 Consentimientos firmados</h3><button onclick="document.getElementById(\'chOv\').remove()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--muted)">×</button></div>'
+    +'<p class="sub" style="margin:0 0 .7rem">Registro legal de todos los consentimientos de tus pacientes, con firma, DNI, fecha e IP.</p>'
+    +'<input id="chSearch" placeholder="Buscar por paciente, tratamiento o DNI…" oninput="renderConsentsHub()" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:10px;margin-bottom:.7rem"/>'
+    +'<div id="chList" style="overflow:auto;flex:1"><div class="sub" style="padding:1rem;text-align:center">Cargando…</div></div></div>';
+  document.body.appendChild(ov);
+  try{ var r=await fetch(WORKER+'/api/consents?tenant='+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}}); var d=await r.json(); window._chAll=d.consents||[]; }catch(e){ window._chAll=[]; }
+  // mapear nombre de paciente por lead_id
+  renderConsentsHub();
+}
+function renderConsentsHub(){
+  var box=document.getElementById('chList'); if(!box)return; var all=window._chAll||[];
+  var qv=(document.getElementById('chSearch')?document.getElementById('chSearch').value:'').toLowerCase().trim();
+  var rows=all.filter(function(x){ if(!qv)return true; return ((x.signer_name||'')+' '+(x.title||'')+' '+(x.signer_dni||'')+' '+(x.lead_name||'')).toLowerCase().indexOf(qv)>=0; });
+  if(!rows.length){ box.innerHTML='<div class="sub" style="padding:1rem;text-align:center">'+(all.length?'Sin resultados.':'Aún no hay consentimientos. Envía uno desde la ficha de un paciente.')+'</div>'; return; }
+  var signed=all.filter(function(x){return x.status==='signed';}).length;
+  box.innerHTML='<div style="font-size:.78rem;color:var(--muted);margin-bottom:.5rem">'+all.length+' en total · <b style="color:#1f8c69">'+signed+' firmados</b> · '+(all.length-signed)+' pendientes</div>'+rows.map(function(x){ var s=x.status==='signed'; var when=s&&x.signed_at?new Date(x.signed_at).toLocaleString('es-ES',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}):''; return '<div style="display:flex;align-items:center;gap:.6rem;padding:.6rem 0;border-bottom:1px solid var(--line)">'
+    +'<div style="flex:1;min-width:0"><b style="font-weight:600">'+escapeHtml(x.title||'Consentimiento')+'</b><div style="font-size:.74rem;color:var(--muted)">'+escapeHtml(x.signer_name||x.lead_name||'Paciente')+(x.signer_dni?(' · DNI '+escapeHtml(x.signer_dni)):'')+'</div>'
+    +(s?('<div style="font-size:.72rem;color:#1f8c69">✓ Firmado '+when+(x.signed_ip?(' · IP '+x.signed_ip):'')+'</div>'):'<div style="font-size:.72rem;color:#c08a2e">⧰ Pendiente de firma</div>')+'</div>'
+    +(s&&x.signature_key?('<a href="'+WORKER+'/img/'+x.signature_key+'" target="_blank" style="font-size:.76rem;color:var(--terra);font-weight:700;text-decoration:none;white-space:nowrap">Ver firma</a>'):'')
+    +'</div>'; }).join('');
 }
 async function openDrawer(l){
   document.getElementById('dName').textContent=l.name||'—';

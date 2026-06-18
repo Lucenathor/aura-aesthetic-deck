@@ -2551,9 +2551,9 @@ export default {
       if (p === '/api/consents' && req.method === 'GET') {
         const tenant = url.searchParams.get('tenant'); const lead=url.searchParams.get('lead');
         if(!tenant) return json({error:'missing tenant'},400);
-        let q='SELECT * FROM consents_signed WHERE tenant_id=?'; const args:any[]=[tenant];
-        if(lead){ q+=' AND lead_id=?'; args.push(lead); }
-        q+=' ORDER BY created_at DESC';
+        let q='SELECT cs.*, l.name AS lead_name FROM consents_signed cs LEFT JOIN leads l ON l.id=cs.lead_id WHERE cs.tenant_id=?'; const args:any[]=[tenant];
+        if(lead){ q+=' AND cs.lead_id=?'; args.push(lead); }
+        q+=' ORDER BY cs.created_at DESC';
         const r:any = await env.aura_db.prepare(q).bind(...args).all();
         return json({ consents: r.results||[] });
       }
