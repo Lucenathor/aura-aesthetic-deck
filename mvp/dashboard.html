@@ -275,7 +275,16 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 .kcard .kscript-lbl{display:flex;align-items:center;justify-content:space-between;font-size:.64rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--st,var(--terra-d));margin-bottom:.25rem}
 .kcard .kscript-copy{border:none;background:transparent;color:var(--st,var(--terra-d));font-size:.64rem;font-weight:700;cursor:pointer;text-decoration:underline;padding:0;letter-spacing:.02em}
 .kcard .kscript-txt{font-size:.78rem;line-height:1.4;color:#3a322c;font-style:italic}
-.kcard .kgoal{margin-top:.5rem;font-size:.72rem;font-weight:700;color:#3a322c;background:color-mix(in srgb,var(--st,#b06d44) 12%,#fff);border-radius:9px;padding:.35rem .55rem}
+.kcard .kpot{flex:none;align-self:flex-start;font-family:'Inter Tight',sans-serif;font-weight:800;font-size:.78rem;color:#1f8c69;background:rgba(31,140,105,.12);border-radius:999px;padding:.2rem .5rem;white-space:nowrap}
+.kcard .kwhyrow{margin-top:.5rem}
+.kcard .kgoal{margin-top:.5rem;font-size:.74rem;font-weight:700;color:#3a322c;background:color-mix(in srgb,var(--st,#b06d44) 12%,#fff);border-radius:9px;padding:.4rem .55rem;line-height:1.3}
+.kcard .kscript-d{margin-top:.45rem}
+.kcard .kscript-d>summary{cursor:pointer;list-style:none;font-weight:800;color:var(--st,var(--terra-d));font-size:.74rem;padding:.4rem .55rem;background:#fbf7f0;border:1px dashed color-mix(in srgb,var(--st,#b06d44) 40%,#e6dccb);border-radius:9px;user-select:none}
+.kcard .kscript-d>summary::-webkit-details-marker{display:none}
+.kcard .kscript-d[open]>summary{border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom:none}
+.kcard .kscript-d .kscript{margin-top:0;border-top-left-radius:0;border-top-right-radius:0}
+.kcard .kacts-fixed{margin-top:.6rem}
+.kcard .kacts-fixed .kbtn.prim{display:block;text-align:center}
 .kcard .kobj{margin-top:.45rem;font-size:.74rem}
 .kcard .kobj>summary{cursor:pointer;list-style:none;font-weight:700;color:var(--st,var(--terra-d));font-size:.7rem;padding:.3rem .1rem;user-select:none}
 .kcard .kobj>summary::-webkit-details-marker{display:none}
@@ -2915,6 +2924,20 @@ let pipeTab = 'call'; // Pipeline = lista de llamadas del día (vista única, si
 function setPipeTab(t){ pipeTab='call'; renderKanban(); }
 // "minutos esperando" desde el último contacto, para ordenar por urgencia
 function waitMin(l){ const t=l.last_message_at?new Date(l.last_message_at).getTime():(l.created_at?new Date(l.created_at).getTime():Date.now()); return Math.max(0,(Date.now()-t)/60000); }
+// Importe potencial estimado de la llamada (benchmark de ticket medio por tratamiento en estética)
+function potentialEur(l, fase){
+  const t=(l.treatment||'').toLowerCase();
+  let base=120;
+  if(/labio|relleno|ácido|acido|hialur/.test(t)) base=290;
+  else if(/botox|toxina|entrecejo/.test(t)) base=220;
+  else if(/rino/.test(t)) base=350;
+  else if(/láser|laser|depila/.test(t)) base=180;
+  else if(/peeling|hidrata|vitamina|limpieza|facial/.test(t)) base=90;
+  else if(/meso/.test(t)) base=150;
+  else if(/hilo/.test(t)) base=400;
+  if(fase==='venta') base=Math.round(base*2.5); // un pack vale por varias sesiones
+  return base;
+}
 // === GUION DE LLAMADA por fase (optimizado para cerrar/vender) ===
 // Frase corta y directa que la recepcionista lee tal cual. Personalizada con nombre y tratamiento.
 function callScript(fase, l){
@@ -2954,19 +2977,26 @@ function actionCard(l, color, n, why, fase){
   const initial=(l.name||'?').trim().charAt(0).toUpperCase();
   const tel=(l.phone||'').replace(/\s/g,'');
   const c=document.createElement('div'); c.className='kcard big'; c.style.setProperty('--st',color); c.style.setProperty('--stbg',hexA(color,.12));
+  var sc=callScript(fase,l); var eur=potentialEur(l,fase);
+  var sayEsc=sc?sc.say.replace(/"/g,'&quot;'):'';
+  var objH=''; if(sc&&sc.obj&&sc.obj.length){ objH='<details class="kobj" onclick="event.stopPropagation()"><summary>🛡️ Si te dicen… (respuestas)</summary>'+sc.obj.map(function(o){ return '<div class="kobj-row"><div class="kobj-q">'+o.q+'</div><div class="kobj-a">'+o.a+'</div></div>'; }).join('')+'</details>'; }
+  var scriptH=''; if(sc){ scriptH='<div class="kgoal">🎯 '+sc.goal+'</div>'
+    +'<details class="kscript-d" onclick="event.stopPropagation()"><summary>📞 Ver qué decir</summary>'
+      +'<div class="kscript"><div class="kscript-lbl"><span>Di esto</span><button class="kscript-copy" onclick="event.stopPropagation();(navigator.clipboard&&navigator.clipboard.writeText(this.getAttribute(\'data-t\')));this.textContent=\'✓ copiado\';" data-t="'+sayEsc+'">copiar</button></div><div class="kscript-txt">'+sc.say+'</div></div>'+objH
+    +'</details>'; }
   c.innerHTML='<span class="knum">'+n+'</span>'
     +'<div class="ktop"><span class="kav" style="background:'+hexA(color,.16)+';color:'+color+'">'+initial+'</span>'
     +'<div style="min-width:0;flex:1"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(l.name||'—')+'</b>'
-    +'<div class="ktr" style="font-size:.74rem;color:var(--muted)">'+(l.treatment||'—')+'</div></div></div>'
-    +'<div><span class="kwhy">'+why+'</span></div>'
-    +(function(){ var sc=callScript(fase,l); if(!sc) return ''; var sayEsc=sc.say.replace(/"/g,'&quot;'); var objH=''; if(sc.obj&&sc.obj.length){ objH='<details class="kobj" onclick="event.stopPropagation()"><summary>🛡️ Si te dicen… (toca para ver respuestas)</summary>'+sc.obj.map(function(o){ return '<div class="kobj-row"><div class="kobj-q">'+o.q+'</div><div class="kobj-a">'+o.a+'</div></div>'; }).join('')+'</details>'; } return '<div class="kgoal">🎯 Objetivo: '+sc.goal+'</div><div class="kscript"><div class="kscript-lbl"><span>📞 Di esto</span><button class="kscript-copy" onclick="event.stopPropagation();(navigator.clipboard&&navigator.clipboard.writeText(this.getAttribute(\'data-t\')));this.textContent=\'✓ copiado\';" data-t="'+sayEsc+'">copiar</button></div><div class="kscript-txt">'+sc.say+'</div></div>'+objH; })()
-    +'<div class="kacts"><div style="flex-direction:column;gap:.4rem">'
+    +'<div class="ktr" style="font-size:.74rem;color:var(--muted)">'+(l.treatment||'—')+'</div></div>'
+    +'<span class="kpot">+'+eur+'€</span></div>'
+    +'<div class="kwhyrow"><span class="kwhy">'+why+'</span></div>'
+    +scriptH
+    +'<div class="kacts-fixed">'
     +'<a class="kbtn prim" href="tel:'+tel+'" onclick="event.stopPropagation()">☎ Llamar</a>'
-    +'<div style="display:flex;gap:.35rem">'
+    +'<div style="display:flex;gap:.35rem;margin-top:.4rem">'
       +'<button class="kbtn" style="background:#e8f6ee;color:#1f6b4f" onclick="event.stopPropagation();logCall(\''+l.id+'\',\'reservo\',\''+fase+'\')">✓ '+(fase==='venta'?'Vendió':'Reservó')+'</button>'
       +'<button class="kbtn ghost" onclick="event.stopPropagation();logCall(\''+l.id+'\',\'no_contesta\',\''+fase+'\')">No coge</button>'
       +'<button class="kbtn ghost" onclick="event.stopPropagation();logCall(\''+l.id+'\',\'no_interesado\',\''+fase+'\')">No quiere</button>'
-    +'</div>'
     +'</div></div>';
   c.onclick=()=>openDrawer(l);
   return c;
