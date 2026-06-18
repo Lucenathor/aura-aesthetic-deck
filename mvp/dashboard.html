@@ -2960,7 +2960,7 @@ function callScript(fase, l){
   // Devuelve { goal, say, obj:[{q,a}] } pensado para recepcionistas (no closers): objetivo claro, frase exacta y respuestas a objeciones.
   switch(fase){
     case 'llama':
-      return { goal:'Que reserve su valoración esta semana (no la dejes “para pensar”).', say:'“Hola '+nom+', soy [tu nombre], de la clínica. Vi que dejaste tus datos interesad@ en '+trat+' y quise llamarte yo personalmente para ayudarte. Cuéntame, ¿qué es lo que más te gustaría mejorar? … Perfecto, justo para eso te va a venir genial. Te reservo una valoración con nuestra doctora y, mira, me queda un hueco esta semana: ¿te viene mejor por la mañana o por la tarde?”',
+      return { goal:'Que reserve su valoración esta semana (no la dejes “para pensar”).', say:'“Hola '+nom+', soy [tu nombre], de la clínica. Vi que dejaste tus datos porque te interesaba '+trat+', y quise llamarte yo en persona para ayudarte. Cuéntame, ¿qué es lo que más te gustaría mejorar? … Perfecto, justo para eso te viene genial. Te reservo una primera valoración con nuestra doctora, sin compromiso. Mira, me queda un hueco esta semana: ¿te viene mejor por la mañana o por la tarde?”',
         obj:[ {q:'“Me lo tengo que pensar”', a:'“Te entiendo, '+nom+'. La valoración es justo para eso: sin compromiso, te explican qué te conviene y sales con toda la info para decidir tranquila. Reservarla no te compromete a nada y así te aseguras el hueco. ¿Te lo dejo el jueves o mejor el viernes?”'},
                {q:'“¿Cuánto cuesta?”', a:'“Buena pregunta. El precio exacto depende de lo que necesites tú en concreto, por eso la doctora lo valora en persona. Lo que sí te digo es que tenemos opciones y facilidades de pago para que se ajuste a ti. ¿Te reservo la valoración y lo ves todo sin compromiso?”'},
                {q:'“Ahora no puedo hablar”', a:'“Sin problema, '+nom+', será un momento. ¿Prefieres que te llame esta tarde o mañana a primera hora? Así te guardo el hueco mientras tanto.”'},
@@ -3087,7 +3087,7 @@ function renderKanban(){
   llamaYa.sort((a,b)=> (tw[a.temperature]??1)-(tw[b.temperature]??1) || waitMin(b)-waitMin(a));
   buildCallCol(k,{title:'LLAMA YA',icon:'☎',sub:'Hablaron y no reservaron · dinero caliente',color:'#e0392b',blink:true,pulse:'urgent',fase:'llama',
     items:llamaYa, empty:'✅ Nadie pendiente. ¡Buen trabajo!',
-    why:l=>{ const t=l.temperature==='hot'?'🔥 Muy interesada':(l.temperature==='warm'?'Interesada':'A repescar'); const m=waitMin(l); let esp=''; if(m>=60){ const h=Math.floor(m/60); esp = h>=24?(' · espera '+Math.floor(h/24)+'d'):(' · espera '+h+'h'); } return t+esp; }});
+    why:l=>{ const t=l.temperature==='hot'?'🔥 Contacto caliente':(l.temperature==='warm'?'👍 Con interés':'🔁 A repescar'); const m=waitMin(l); let esp=''; if(m>=60){ const h=Math.floor(m/60); esp = h>=24?(' · '+Math.floor(h/24)+' días esperando'):(' · '+h+'h esperando'); } return t+esp; }});
   // 2) RECUPERAR: no vino / canceló
   let recuperar = kLeads.filter(l=> (l.recover_state==='noshow'||l.recover_state==='cancel') && l.status!=='booked' && callable(l));
   recuperar.sort((a,b)=> (b.noshow_count||1)-(a.noshow_count||1));
@@ -3114,9 +3114,9 @@ function renderKanban(){
   // ordena por los que llevan más tiempo sin volver (más urgente recuperarlos antes de que se enfríen del todo) pero priorizando los de hasta ~120 días
   nuevaVenta.sort((a,b)=> a._lastVisit-b._lastVisit);
   nuevaVenta=nuevaVenta.slice(0,30);
-  buildCallCol(k,{title:'NUEVA VENTA',icon:'💸',sub:'Clientes que ya confían · propensos a un pack',color:'#1f8c69',pulse:'sale',fase:'venta',
+  buildCallCol(k,{title:'NUEVA VENTA',icon:'💸',sub:'Pacientes que ya confían · ofréceles un bono o pack',color:'#1f8c69',pulse:'sale',fase:'venta',
     items:nuevaVenta, empty:'✅ Sin oportunidades de pack ahora mismo',
-    why:l=>{ const dias=Math.floor((nowMs-l._lastVisit)/DAY); const m=dias>=60?'💰 Cliente · '+Math.floor(dias/30)+' meses sin volver':'💰 Cliente · '+dias+' días sin volver'; return m; }});
+    why:l=>{ const dias=Math.floor((nowMs-l._lastVisit)/DAY); const m=dias>=60?'💰 Ya es paciente · '+Math.floor(dias/30)+' meses sin volver':'💰 Ya es paciente · '+dias+' días sin volver'; return m; }});
   // marcador del día
   renderScoreboard({ llama:llamaYa.length, recup:recuperar.length, conf:confirmar.length, react:reactivar.length, venta:nuevaVenta.length, total:llamaYa.length+recuperar.length+confirmar.length+reactivar.length+nuevaVenta.length });
   // cascada de entrada
