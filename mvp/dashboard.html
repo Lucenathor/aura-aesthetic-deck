@@ -397,6 +397,12 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
   .agenda-pro-col{min-width:100px}
   .agenda-appt-sub{display:none}
 }
+/* ===== Pipeline responsive (móvil) ===== */
+@media(max-width:860px){
+  .kanban{height:auto;min-height:0;gap:.6rem;padding:.2rem .2rem 1rem;scroll-snap-type:x proximity}
+  .kcol{flex:0 0 84vw;max-width:340px;height:auto;max-height:calc(100vh - 230px);scroll-snap-align:start}
+  .kcol-body{max-height:calc(100vh - 300px)}
+}
 .mobile-head{display:none;align-items:center;justify-content:space-between;padding:.9rem .2rem 1rem;border-bottom:1px solid var(--line);margin-bottom:1rem}
 .mobile-head .wm{font-family:'Fraunces',serif;font-weight:500;font-size:1.5rem;letter-spacing:.2em;color:var(--terra-d)}
 .mobile-head .bell{position:relative;font-size:1.2rem;color:var(--ink-soft)}
