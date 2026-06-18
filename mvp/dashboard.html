@@ -229,10 +229,19 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 .kacts{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .22s cubic-bezier(.16,1,.3,1),opacity .2s;margin-top:0}
 .kacts>div{overflow:hidden;display:flex;gap:.4rem}
 .kcard:hover .kacts,.kcard:focus-within .kacts{grid-template-rows:1fr;opacity:1;margin-top:.55rem}
-.kbtn{flex:1;text-align:center;font-weight:700;font-size:.76rem;padding:.48rem;border-radius:9px;text-decoration:none;border:0;cursor:pointer;transition:filter .15s,transform .12s}
-.kbtn:active{transform:scale(.96)}
-.kbtn.prim{background:var(--st,var(--terra));color:#fff}.kbtn.prim:hover{filter:brightness(1.08)}
-.kbtn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink-soft)}.kbtn.ghost:hover{border-color:var(--st);color:var(--st)}
+.kbtn{position:relative;flex:1;text-align:center;font-weight:700;font-size:.76rem;padding:.48rem;border-radius:9px;text-decoration:none;border:0;cursor:pointer;transition:transform .16s cubic-bezier(.23,1,.32,1),box-shadow .16s,filter .16s,background .16s,border-color .16s,color .16s}
+.kbtn:active{transform:scale(.95)}
+.kbtn.prim{background:var(--st,var(--terra));color:#fff;box-shadow:0 4px 10px -4px var(--st,var(--terra))}
+.kbtn.prim:hover{filter:brightness(1.06);transform:translateY(-2px);box-shadow:0 10px 20px -6px var(--st,var(--terra))}
+.kbtn:not(.prim):hover{transform:translateY(-2px);box-shadow:0 8px 16px -8px rgba(42,33,28,.35)}
+.kbtn[style*='e8f6ee']:hover{background:#1f8c69!important;color:#fff!important}
+.kbtn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink-soft)}
+.kbtn.ghost:hover{border-color:var(--st);color:var(--st);background:color-mix(in srgb,var(--st,#b06d44) 7%,#fff)}
+/* tooltip al pasar el cursor: explica qué hace cada botón */
+.kbtn[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 7px);left:50%;transform:translateX(-50%) translateY(4px);background:#2a211c;color:#fff;font-size:.66rem;font-weight:600;letter-spacing:.01em;padding:.32rem .55rem;border-radius:7px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .16s,transform .16s;box-shadow:0 6px 16px -6px rgba(0,0,0,.45);z-index:20}
+.kbtn[data-tip]::before{content:'';position:absolute;bottom:calc(100% + 2px);left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#2a211c;opacity:0;transition:opacity .16s;z-index:20}
+.kbtn[data-tip]:hover::after{opacity:1;transform:translateX(-50%) translateY(0)}
+.kbtn[data-tip]:hover::before{opacity:1}
 .kcard.dropped{animation:kcardDrop .5s cubic-bezier(.16,1,.3,1)}
 @keyframes kcardDrop{0%{transform:scale(1.08);box-shadow:0 0 0 2px var(--st,var(--terra)),0 12px 24px -10px rgba(42,33,28,.5)}to{transform:scale(1)}}
 .kcol.flash{animation:colFlash .6s ease-out}
@@ -2992,11 +3001,11 @@ function actionCard(l, color, n, why, fase){
     +'<div class="kwhyrow"><span class="kwhy">'+why+'</span></div>'
     +scriptH
     +'<div class="kacts-fixed">'
-    +'<a class="kbtn prim" href="tel:'+tel+'" onclick="event.stopPropagation()">☎ Llamar</a>'
+    +'<a class="kbtn prim" data-tip="Llamar ahora a '+(l.name||'el paciente').split(' ')[0]+'" href="tel:'+tel+'" onclick="event.stopPropagation()">☎ Llamar</a>'
     +'<div style="display:flex;gap:.35rem;margin-top:.4rem">'
-      +'<button class="kbtn" style="background:#e8f6ee;color:#1f6b4f" onclick="event.stopPropagation();logCall(\''+l.id+'\',\'reservo\',\''+fase+'\')">✓ '+(fase==='venta'?'Vendió':'Reservó')+'</button>'
-      +'<button class="kbtn ghost" onclick="event.stopPropagation();logCall(\''+l.id+'\',\'no_contesta\',\''+fase+'\')">No coge</button>'
-      +'<button class="kbtn ghost" onclick="event.stopPropagation();logCall(\''+l.id+'\',\'no_interesado\',\''+fase+'\')">No quiere</button>'
+      +'<button class="kbtn" data-tip="'+(fase==='venta'?'Vendido · cuenta para AURA':'Reservó cita · cuenta para AURA')+'" style="background:#e8f6ee;color:#1f6b4f" onclick="event.stopPropagation();logCall(\''+l.id+'\',\'reservo\',\''+fase+'\')">✓ '+(fase==='venta'?'Vendió':'Reservó')+'</button>'
+      +'<button class="kbtn ghost" data-tip="No contesta · lo reintentas mañana" onclick="event.stopPropagation();logCall(\''+l.id+'\',\'no_contesta\',\''+fase+'\')">No coge</button>'
+      +'<button class="kbtn ghost" data-tip="No le interesa · sale de la lista" onclick="event.stopPropagation();logCall(\''+l.id+'\',\'no_interesado\',\''+fase+'\')">No quiere</button>'
     +'</div></div>';
   c.onclick=()=>openDrawer(l);
   return c;
