@@ -539,6 +539,18 @@ img{max-width:100%;display:block}
 /* Hero spotlight */
 .hero-spotlight{position:absolute;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle, rgba(255,107,90,.18), rgba(155,123,255,.10) 40%, transparent 70%);filter:blur(40px);pointer-events:none;top:-100px;left:-150px;z-index:-1}
 
+/* Franja de dolor */
+.pain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.1rem;margin-top:2.4rem}
+@media(max-width:760px){.pain-grid{grid-template-columns:1fr}}
+.pain-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:2rem 1.4rem;text-align:center;display:flex;flex-direction:column;align-items:center;gap:.6rem;box-shadow:0 10px 30px -22px rgba(42,33,28,.4)}
+.pain-ico{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#FFEDE8,#F0E6FF);display:grid;place-items:center;color:var(--accent)}
+.pain-ico svg{width:24px;height:24px}
+.pain-num{font-family:'Inter Tight',sans-serif;font-weight:800;font-size:1.9rem;color:var(--accent);line-height:1}
+.pain-txt{color:var(--muted);font-size:.95rem;line-height:1.5;max-width:240px}
+.pain-txt b{color:var(--ink);font-weight:700}
+.pain-banner{margin-top:1.6rem;background:linear-gradient(135deg,#FFF6E9,#FFEDE8);border:1px solid var(--line);border-radius:16px;padding:1.3rem 1.6rem;text-align:center;font-size:1.08rem;color:var(--ink);font-weight:500}
+.pain-banner b{color:var(--accent);font-weight:800}
+
 /* Logo wall */
 .logo-wall{margin:3.5rem 0 0;position:relative;overflow:hidden}
 .logo-wall .lead{display:block;text-align:center;font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:1.4rem}
@@ -949,22 +961,28 @@ img{max-width:100%;display:block}
 
   
   <!-- FRANJA DE DOLOR (cifras) -->
-  <section class="section" id="dolor" style="padding-top:1rem;padding-bottom:1rem">
-    <div class="reveal" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;text-align:center">
-      <div style="background:#fff;border:1px solid var(--line);border-radius:16px;padding:1.4rem 1rem">
-        <b style="font-family:'Inter Tight';font-size:2rem;color:var(--accent);display:block">1 de cada 4</b>
-        <span style="color:var(--muted);font-size:.92rem">citas se pierde por no-shows y olvidos de seguimiento</span>
+  <section class="section" id="dolor">
+    <span class="pill coral reveal">El problema</span>
+    <h2 class="reveal">Tu clínica pierde dinero <span class="serif">cada día</span> <span class="accent">sin que lo veas.</span></h2>
+    <p class="lead reveal">No es por falta de pacientes. Es por las fugas que nadie controla.</p>
+    <div class="pain-grid reveal stagger">
+      <div class="pain-card" style="--i:0">
+        <div class="pain-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></svg></div>
+        <b class="pain-num">1 de cada 4</b>
+        <span class="pain-txt">citas se pierde por <b>no-shows</b> y seguimientos que nadie hace</span>
       </div>
-      <div style="background:#fff;border:1px solid var(--line);border-radius:16px;padding:1.4rem 1rem">
-        <b style="font-family:'Inter Tight';font-size:2rem;color:var(--accent);display:block">El 80%</b>
-        <span style="color:var(--muted);font-size:.92rem">de la facturación está en pacientes que ya tienes, no en captar nuevos</span>
+      <div class="pain-card" style="--i:1">
+        <div class="pain-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <b class="pain-num">El 80%</b>
+        <span class="pain-txt">de tu facturación está en <b>pacientes que ya tienes</b>, no en captar nuevos</span>
       </div>
-      <div style="background:#fff;border:1px solid var(--line);border-radius:16px;padding:1.4rem 1rem">
-        <b style="font-family:'Inter Tight';font-size:2rem;color:var(--accent);display:block">Horas</b>
-        <span style="color:var(--muted);font-size:.92rem">al día en WhatsApp, agenda y cobros que podrías automatizar</span>
+      <div class="pain-card" style="--i:2">
+        <div class="pain-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+        <b class="pain-num">+2 h al día</b>
+        <span class="pain-txt">en <b>WhatsApp, agenda y cobros</b> que se podrían automatizar</span>
       </div>
     </div>
-    <p class="lead reveal" style="text-align:center;margin-top:1.6rem;font-weight:700;color:var(--ink)">AURA tapa esas fugas y te dice cuánto ganas de verdad. Y además, te trae clientes nuevos.</p>
+    <div class="pain-banner reveal">AURA <b>tapa esas fugas</b> y te dice cuánto ganas de verdad &mdash; y además, te trae clientes nuevos.</div>
   </section>
 <!-- SISTEMA OPERATIVO / NUEVAS CARACTERÍSTICAS -->
   <section class="section" id="sistema">
