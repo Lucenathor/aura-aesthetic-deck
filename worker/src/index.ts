@@ -2727,6 +2727,15 @@ export default {
           await env.aura_db.prepare("UPDATE leads SET status='noshow' WHERE id=?").bind(leadId).run();
           return json({ ok:true, result:'noshow' });
         }
+        // IDEMPOTENCIA anti doble cobro: si la cita YA está atendida, no reprocesar (devolver ok sin volver a cobrar/descontar stock)
+        if (apptId) {
+          try {
+            const apPrev:any = await env.aura_db.prepare('SELECT status FROM appointments WHERE id=?').bind(apptId).first();
+            if (apPrev && apPrev.status==='attended') {
+              return json({ ok:true, result:'already_closed', duplicate:true });
+            }
+          } catch(e){}
+        }
         // Vino: marcar cita atendida + lead cliente
         // ATRIBUCIÓN: ¿sin AURA esta venta no habría pasado? Leemos el estado ANTES de marcar cliente.
         let attribution = 'normal';

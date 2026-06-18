@@ -1791,8 +1791,22 @@ async function loadAppts(){
       tr.innerHTML=`<td><div style="font-weight:600">${a.lead_name||'—'}</div><div style="color:var(--muted);font-size:.74rem;margin-top:.1rem">${a.lead_phone||''}</div></td><td>${a.treatment||'—'}</td><td>${fechaTxt}</td><td><span style="background:${ebg};color:${ec};font-size:.72rem;font-weight:700;padding:.22rem .55rem;border-radius:7px">${estado}</span></td><td>${accion}</td>`;tb.appendChild(tr);});
   }catch(e){}
 }
+// Sugerencia de upsell/cross-sell según el tratamiento (benchmark estetica RepeatMD/Prospyr)
+function upsellFor(treatment){
+  const t=(treatment||'').toLowerCase();
+  if(/labio|relleno|ácido|acido|hialur/.test(t)) return {add:'Perfilado labial + skinbooster de hidratación', eur:90, say:'“Para que el resultado dure más y quede aún más natural, muchas clientas se añaden el perfilado + un skinbooster. ¿Te lo dejo todo hoy?”'};
+  if(/botox|toxina|entrecejo/.test(t)) return {add:'Sérum post-tóxina / skinbooster', eur:80, say:'“Para potenciar el resultado del bótox, te recomiendo un skinbooster que deja la piel luminosa. ¿Te lo añado?”'};
+  if(/rino/.test(t)) return {add:'Revisión a los 12 meses + skinbooster', eur:90, say:'“Te dejo agendada la revisión para mantener el resultado perfecto, y muchas aprovechan un skinbooster. ¿Te lo preparo?”'};
+  if(/láser|laser|depila|fotorr|fotorrejuv/.test(t)) return {add:'Infusión de vitamina C / sérum post-láser', eur:60, say:'“Ahora mismo la piel está receptiva: una infusión de vitamina C potencia el resultado del láser. ¿Te la añado hoy?”'};
+  if(/peeling/.test(t)) return {add:'Vitamina C + rutina home-care', eur:55, say:'“Una limpieza + vitamina C te deja la piel perfecta tras el peeling. ¿Te lo añado?”'};
+  if(/meso/.test(t)) return {add:'Skinbooster / bono mensual', eur:70, say:'“En bono mensual mantienes la luminosidad todo el año y te sale mejor. ¿Te lo cuento?”'};
+  if(/hilo/.test(t)) return {add:'Bótox de mantenimiento', eur:120, say:'“Combinar los hilos con un poco de bótox prolonga el efecto lifting. ¿Te reservo?”'};
+  if(/limpieza|facial|hidra|vitamina/.test(t)) return {add:'Booster de vitamina C / bono mensual', eur:40, say:'“Por solo unos euros más le añadimos un booster de vitamina C y el resultado luce mucho más. ¿Te lo añado?”'};
+  return {add:'Bono de mantenimiento', eur:0, say:'“Muchas clientas dejan reservado su mantenimiento hoy para no perder el resultado. ¿Te lo preparo?”'};
+}
 // RECEPCIÓN: cerrar visita
 function openCloseVisit(apptId,leadId,treatment,name){
+  _cvUpsellEur=0;
   const ov=document.createElement('div'); ov.id='cvOverlay';
   ov.style.cssText='position:fixed;inset:0;background:rgba(15,16,17,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem';
   ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:380px;width:100%;padding:1.4rem;box-shadow:0 20px 60px rgba(0,0,0,.25)">'
@@ -1807,6 +1821,12 @@ function openCloseVisit(apptId,leadId,treatment,name){
       +'<input id="cvNextDate" type="datetime-local" style="display:block;width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px;margin:.2rem 0 .5rem"/>'
       +'<label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;cursor:pointer;color:var(--muted)"><input type="radio" name="cvNext" value="recall" onchange="document.getElementById(\'cvNextDate\').style.display=\'none\'"> No la reserva ahora · avisar por SMS cuando toque</label></div>'
     +'<div id="cvLoyBox" style="display:none;background:#f0ebff;border-radius:10px;padding:.7rem;margin-bottom:.9rem"></div>'
+    +(function(){ var u=upsellFor(treatment); if(!u||!u.eur) return ''; var sayEsc=u.say.replace(/"/g,'&quot;'); return '<div id="cvUpsell" style="background:linear-gradient(135deg,#eafaf2,#dff3e8);border:1px solid #b6e3c9;border-radius:12px;padding:.75rem .8rem;margin-bottom:.9rem">'
+      +'<div style="font-size:.72rem;font-weight:800;color:#157a5b;letter-spacing:.02em;text-transform:uppercase;margin-bottom:.25rem">💡 Oportunidad de venta</div>'
+      +'<div style="font-size:.86rem;font-weight:700;color:#14543f">Súmale: '+u.add+' <span style="color:#1f8c69">(+'+u.eur+'€ aprox.)</span></div>'
+      +'<div style="font-size:.78rem;color:#2f4a40;font-style:italic;margin:.35rem 0 .5rem">'+u.say+'</div>'
+      +'<button type="button" id="cvUpsellBtn" onclick="applyUpsell('+u.eur+', this)" style="background:#1f8c69;color:#fff;border:none;border-radius:9px;padding:.4rem .8rem;font-size:.78rem;font-weight:700;cursor:pointer">+ Añadir al cobro (+'+u.eur+'€)</button>'
+      +'</div>'; })()
     +'<div style="display:flex;gap:.5rem"><button class="btn" style="flex:1;background:var(--mint);border-color:var(--mint)" onclick="doCloseVisit(\''+apptId+'\',\''+leadId+'\',true)">Vino y pagó</button><button class="btn" style="flex:1" onclick="doCloseVisit(\''+apptId+'\',\''+leadId+'\',false)">No vino</button></div>'
     +'<button onclick="document.getElementById(\'cvOverlay\').remove()" style="width:100%;background:none;border:none;color:var(--muted);font-size:.8rem;margin-top:.7rem;cursor:pointer">Cancelar</button></div>';
   document.body.appendChild(ov);
@@ -1815,7 +1835,18 @@ function openCloseVisit(apptId,leadId,treatment,name){
   // cargar saldo de puntos del paciente para ofrecer canje
   (async()=>{ try{ const tk=localStorage.getItem('aura_token')||''; const r=await fetch(WORKER+'/api/loyalty-balance?tenant='+T+'&lead='+leadId,{headers:{'Authorization':'Bearer '+tk}}); const d=await r.json(); const pts=d.points||0; const box=document.getElementById('cvLoyBox'); if(box && pts>0 && LOYCFG && LOYCFG.enabled!=0){ const eurPer100=Number(LOYCFG.eur_per_100pts)||10; const maxEur=(pts/100*eurPer100); box.style.display='block'; box.innerHTML='<label style="font-size:.8rem;font-weight:700;color:#5b3fc4;display:block;margin-bottom:.3rem">★ Tiene '+pts+' puntos ('+maxEur.toFixed(0)+'€ disponibles)</label><label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;cursor:pointer"><input type="checkbox" id="cvRedeem" onchange="document.getElementById(\'cvRedeemPts\').style.display=this.checked?\'block\':\'none\'"> Canjear puntos como descuento</label><input id="cvRedeemPts" type="number" value="'+pts+'" max="'+pts+'" style="display:none;width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px;margin-top:.4rem" placeholder="puntos a usar"/><div class="sub" style="margin:.3rem 0 0;font-size:.72rem">100 puntos = '+eurPer100+'€ de descuento</div>'; } }catch(e){} })();
 }
+// suma el upsell al importe del cobro y marca que hubo venta extra
+let _cvUpsellEur=0;
+function applyUpsell(eur, btn){
+  var amt=document.getElementById('cvAmount'); if(!amt) return;
+  var base=+amt.value||0; amt.value=base+eur; _cvUpsellEur+=eur;
+  if(btn){ btn.textContent='✓ Añadido (+'+eur+'€)'; btn.style.background='#157a5b'; btn.disabled=true; btn.style.cursor='default'; }
+  // pequeño destello en el importe
+  amt.style.transition='background .3s'; amt.style.background='#eafaf2'; setTimeout(function(){ amt.style.background=''; }, 600);
+}
+let _cvSubmitting=false;
 async function doCloseVisit(apptId,leadId,attended){
+  if(_cvSubmitting) return; // evita doble cobro por doble clic / toques repetidos
   const treat=document.getElementById('cvTreat')?document.getElementById('cvTreat').value:'';
   const amount=document.getElementById('cvAmount')?document.getElementById('cvAmount').value:0;
   if(attended && (!amount || +amount<=0)){ if(!confirm('No has puesto importe. ¿Cerrar la visita con 0€ (sin cobro)?')) return; }
@@ -1827,8 +1858,16 @@ async function doCloseVisit(apptId,leadId,attended){
   const sel=document.querySelector('input[name="cvNext"]:checked');
   if(attended && sel && sel.value==='book'){ const nd=document.getElementById('cvNextDate'); if(nd&&nd.value){ nextDate=nd.value; } }
   let attribution='normal';
-  try{ const _r=await fetch(WORKER+'/api/close-visit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,lead_id:leadId,appointment_id:apptId,attended:attended,treatment:treat,amount:amount,pay_status:'paid',method:method,product_id:product_id||null,product_qty:product_qty,next_date:nextDate,redeem_points:redeemPts})}); const _d=await _r.json(); if(_d&&_d.attribution)attribution=_d.attribution; }catch(e){}
+  // bloquea los botones del modal mientras se procesa (anti doble cobro)
+  _cvSubmitting=true;
+  try{ var _btns=document.querySelectorAll('#cvOverlay button'); _btns.forEach(function(b){ b.disabled=true; b.style.opacity='.6'; b.style.pointerEvents='none'; }); var _vp=document.querySelector('#cvOverlay button[onclick*="true"]'); if(_vp&&attended){ _vp.textContent='Cobrando…'; } }catch(e){}
+  // clave de idempotencia: si se reintenta, el backend no duplica el cobro
+  var _idem=apptId+'_'+(attended?'1':'0');
+  try{ const _r=await fetch(WORKER+'/api/close-visit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,lead_id:leadId,appointment_id:apptId,attended:attended,treatment:treat,amount:amount,pay_status:'paid',method:method,product_id:product_id||null,product_qty:product_qty,next_date:nextDate,redeem_points:redeemPts,idem_key:_idem})}); const _d=await _r.json(); if(_d&&_d.attribution)attribution=_d.attribution; }catch(e){ _cvSubmitting=false; try{ var _bs=document.querySelectorAll('#cvOverlay button'); _bs.forEach(function(b){ b.disabled=false; b.style.opacity=''; b.style.pointerEvents=''; }); }catch(_){}; alert('No se pudo guardar. Revisa la conexión e inténtalo de nuevo.'); return; }
+  _cvSubmitting=false;
   const ov=document.getElementById('cvOverlay'); if(ov)ov.remove();
+  // Si hubo upsell/cross-sell en caja, lo sumamos al marcador del día (mérito compartido) y avisamos
+  if(attended && _cvUpsellEur>0){ try{ if(typeof bumpDayBoard==='function') bumpDayBoard('venta', _cvUpsellEur); }catch(e){} try{ if(typeof toast==='function') toast('💸 +'+_cvUpsellEur+'€ extra en caja — ¡gran trabajo, tú y AURA!'); }catch(e){} }
   // Celebración dopamínica al cobrar (con mensaje según el origen real de la venta)
   if(attended && +amount>0){ celebrateCash(+amount, attribution, name); }
   loadAppts(); loadAgendaCal(true); if(typeof loadLeads==='function')loadLeads(); if(typeof loadKPIs==='function')loadKPIs();
