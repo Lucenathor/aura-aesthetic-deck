@@ -229,19 +229,23 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 .kacts{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .22s cubic-bezier(.16,1,.3,1),opacity .2s;margin-top:0}
 .kacts>div{overflow:hidden;display:flex;gap:.4rem}
 .kcard:hover .kacts,.kcard:focus-within .kacts{grid-template-rows:1fr;opacity:1;margin-top:.55rem}
-.kbtn{position:relative;flex:1;text-align:center;font-weight:700;font-size:.76rem;padding:.48rem;border-radius:9px;text-decoration:none;border:0;cursor:pointer;transition:transform .16s cubic-bezier(.23,1,.32,1),box-shadow .16s,filter .16s,background .16s,border-color .16s,color .16s}
+.kbtn{position:relative;flex:1;text-align:center;font-weight:700;font-size:.76rem;padding:.5rem;border-radius:9px;text-decoration:none;border:0;cursor:pointer;transition:transform .08s ease,filter .08s ease,background .08s ease,border-color .08s ease,color .08s ease}
 .kbtn:active{transform:scale(.95)}
-.kbtn.prim{background:var(--st,var(--terra));color:#fff;box-shadow:0 4px 10px -4px var(--st,var(--terra))}
-.kbtn.prim:hover{filter:brightness(1.06);transform:translateY(-2px);box-shadow:0 10px 20px -6px var(--st,var(--terra))}
-.kbtn:not(.prim):hover{transform:translateY(-2px);box-shadow:0 8px 16px -8px rgba(42,33,28,.35)}
+.kbtn.prim{background:var(--st,var(--terra));color:#fff;box-shadow:0 3px 8px -3px var(--st,var(--terra))}
+.kbtn.prim:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.kbtn:not(.prim):hover{transform:translateY(-1px)}
 .kbtn[style*='e8f6ee']:hover{background:#1f8c69!important;color:#fff!important}
 .kbtn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink-soft)}
-.kbtn.ghost:hover{border-color:var(--st);color:var(--st);background:color-mix(in srgb,var(--st,#b06d44) 7%,#fff)}
-/* tooltip al pasar el cursor: explica qué hace cada botón */
-.kbtn[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 7px);left:50%;transform:translateX(-50%) translateY(4px);background:#2a211c;color:#fff;font-size:.66rem;font-weight:600;letter-spacing:.01em;padding:.32rem .55rem;border-radius:7px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .16s,transform .16s;box-shadow:0 6px 16px -6px rgba(0,0,0,.45);z-index:20}
-.kbtn[data-tip]::before{content:'';position:absolute;bottom:calc(100% + 2px);left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#2a211c;opacity:0;transition:opacity .16s;z-index:20}
-.kbtn[data-tip]:hover::after{opacity:1;transform:translateX(-50%) translateY(0)}
-.kbtn[data-tip]:hover::before{opacity:1}
+.kbtn.ghost:hover{border-color:var(--st);color:var(--st);background:color-mix(in srgb,var(--st,#b06d44) 8%,#fff)}
+/* tooltip instantáneo: explica qué hace cada botón */
+.kbtn[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#2a211c;color:#fff;font-size:.66rem;font-weight:600;padding:.32rem .55rem;border-radius:7px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .08s ease;z-index:20}
+.kbtn[data-tip]:hover::after{opacity:1}
+/* botón de objeciones */
+.kcard .kobj-wrap{margin-top:.45rem}
+.kcard .kobj-btn{width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:9px;padding:.42rem .55rem;font-size:.74rem;font-weight:700;color:var(--st,var(--terra-d));cursor:pointer;transition:background .08s ease,border-color .08s ease}
+.kcard .kobj-btn:hover{background:color-mix(in srgb,var(--st,#b06d44) 8%,#fff);border-color:var(--st)}
+.kcard .kobj-btn.on{background:color-mix(in srgb,var(--st,#b06d44) 12%,#fff);border-color:var(--st)}
+.kcard .kobj-box{margin-top:.4rem;padding:.5rem .6rem;background:#fbf7f0;border-radius:9px}
 .kcard.dropped{animation:kcardDrop .5s cubic-bezier(.16,1,.3,1)}
 @keyframes kcardDrop{0%{transform:scale(1.08);box-shadow:0 0 0 2px var(--st,var(--terra)),0 12px 24px -10px rgba(42,33,28,.5)}to{transform:scale(1)}}
 .kcol.flash{animation:colFlash .6s ease-out}
@@ -2989,10 +2993,10 @@ function actionCard(l, color, n, why, fase){
   var sc=callScript(fase,l); var eur=potentialEur(l,fase);
   var sayEsc=sc?sc.say.replace(/"/g,'&quot;'):'';
   var objH=''; if(sc&&sc.obj&&sc.obj.length){ objH='<details class="kobj" onclick="event.stopPropagation()"><summary>🛡️ Si te dicen… (respuestas)</summary>'+sc.obj.map(function(o){ return '<div class="kobj-row"><div class="kobj-q">'+o.q+'</div><div class="kobj-a">'+o.a+'</div></div>'; }).join('')+'</details>'; }
-  var scriptH=''; if(sc){ scriptH='<div class="kgoal">🎯 '+sc.goal+'</div>'
-    +'<details class="kscript-d" onclick="event.stopPropagation()"><summary>📞 Ver qué decir</summary>'
-      +'<div class="kscript"><div class="kscript-lbl"><span>Di esto</span><button class="kscript-copy" onclick="event.stopPropagation();(navigator.clipboard&&navigator.clipboard.writeText(this.getAttribute(\'data-t\')));this.textContent=\'✓ copiado\';" data-t="'+sayEsc+'">copiar</button></div><div class="kscript-txt">'+sc.say+'</div></div>'+objH
-    +'</details>'; }
+  var scriptH=''; if(sc){ var objToggle = (sc.obj&&sc.obj.length)? '<button class="kobj-btn" onclick="event.stopPropagation();var b=this.parentNode.querySelector(\'.kobj-box\');var o=b.style.display!==\'block\';b.style.display=o?\'block\':\'none\';this.classList.toggle(\'on\',o);">🛡️ Si te dicen que no…</button><div class="kobj-box" style="display:none">'+sc.obj.map(function(o){ return '<div class="kobj-row"><div class="kobj-q">'+o.q+'</div><div class="kobj-a">'+o.a+'</div></div>'; }).join('')+'</div>' : '';
+    scriptH='<div class="kgoal">🎯 '+sc.goal+'</div>'
+    +'<div class="kscript"><div class="kscript-lbl"><span>📞 Di esto</span><button class="kscript-copy" onclick="event.stopPropagation();(navigator.clipboard&&navigator.clipboard.writeText(this.getAttribute(\'data-t\')));this.textContent=\'✓ copiado\';" data-t="'+sayEsc+'">copiar</button></div><div class="kscript-txt">'+sc.say+'</div></div>'
+    +'<div class="kobj-wrap" onclick="event.stopPropagation()">'+objToggle+'</div>'; }
   c.innerHTML='<span class="knum">'+n+'</span>'
     +'<div class="ktop"><span class="kav" style="background:'+hexA(color,.16)+';color:'+color+'">'+initial+'</span>'
     +'<div style="min-width:0;flex:1"><b style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(l.name||'—')+'</b>'
