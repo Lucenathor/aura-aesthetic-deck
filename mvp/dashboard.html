@@ -3337,8 +3337,8 @@ function waJidToNumber(jid){ return String(jid||'').replace(/@.*/,''); }
 function waIsPhone(s){ if(!s) return false; var d=String(s).replace(/\D/g,''); var raw=String(s).replace(/[^A-Za-z0-9]/g,''); return d.length>=7 && d.length<=15 && d.length>=raw.length*0.85; }
 function waFmtPhone(s){ var d=String(s||'').replace(/\D/g,''); if(!d) return ''; if(d.length>=11) return '+'+d.slice(0,d.length-9)+' '+d.slice(-9,-6)+' '+d.slice(-6,-3)+' '+d.slice(-3); if(d.length===9) return d.slice(0,3)+' '+d.slice(3,6)+' '+d.slice(6); return '+'+d; }
 // Nombre legible para mostrar: lead.name > pushName real > teléfono formateado > 'Contacto sin nombre'
-function waDisplayName(c){ if(!c) return 'Contacto'; var lead=c._lead; if(lead&&lead.name&&lead.name.trim()) return lead.name.trim(); var pn=(c.pushName||c.name||'').trim(); var phone=c.phone||waJidToNumber(c.id||c.chat_id||''); if(pn && !waIsPhone(pn) && pn!==waJidToNumber(c.id||'')) return pn; if(waIsPhone(phone)) return waFmtPhone(phone); if(waIsPhone(pn)) return waFmtPhone(pn); var d=String(phone||'').replace(/\D/g,''); if(d.length>=7) return '+'+d; return 'Contacto sin nombre'; }
-function waSubLine(c){ var phone=c.phone||waJidToNumber(c.id||c.chat_id||''); if(waIsPhone(phone)) return waFmtPhone(phone); var pn=(c.pushName||c.name||''); if(waIsPhone(pn)) return waFmtPhone(pn); var d=String(phone||'').replace(/\D/g,''); if(d.length>=7) return '+'+d; var dp=String(pn||'').replace(/\D/g,''); if(dp.length>=7) return '+'+dp; return 'WhatsApp'; }
+function waDisplayName(c){ if(!c) return 'Contacto'; var lead=c._lead; if(lead&&lead.name&&lead.name.trim()) return lead.name.trim(); var pn=(c.pushName||c.name||'').trim(); var phone=c.phone||waJidToNumber(c.id||c.chat_id||''); if(pn && !waIsPhone(pn) && pn!==waJidToNumber(c.id||'') && String(pn).replace(/\D/g,'').length<=15) return pn; if(waIsPhone(phone)) return waFmtPhone(phone); if(waIsPhone(pn)) return waFmtPhone(pn); var d=String(phone||'').replace(/\D/g,''); if(d.length>=7 && d.length<=15) return '+'+d; return 'Contacto sin nombre'; }
+function waSubLine(c){ var phone=c.phone||waJidToNumber(c.id||c.chat_id||''); if(waIsPhone(phone)) return waFmtPhone(phone); var pn=(c.pushName||c.name||''); if(waIsPhone(pn)) return waFmtPhone(pn); var d=String(phone||'').replace(/\D/g,''); if(d.length>=7 && d.length<=15) return '+'+d; var dp=String(pn||'').replace(/\D/g,''); if(dp.length>=7 && dp.length<=15) return '+'+dp; return 'WhatsApp'; }
 const WA_QUICK=[{label:'👋 Saludo',text:'¡Hola! Gracias por escribirnos 😊 ¿En qué podemos ayudarte?'},{label:'💰 Precios',text:'Te paso la información de precios. ¿Qué tratamiento te interesa?'},{label:'📅 Reservar',text:'¿Quieres que te reserve un hueco? Díme qué día y hora te viene mejor.'},{label:'✅ Confirmar cita',text:'Te confirmo tu cita. ¡Te esperamos!'},{label:'🙏 Gracias',text:'¡Gracias a ti! Cualquier cosa, aquí estamos.'}];
 function waQuickReply(i){ const q=WA_QUICK[i]; if(!q)return; const inp=document.getElementById('waInput'); if(inp){ inp.value=q.text; inp.focus(); } }
 function waInitials(n){ var s=(n||'').trim(); if(!s||s==='Contacto sin nombre'||s.charAt(0)==='+') return '👤'; return s.charAt(0).toUpperCase(); }
@@ -3369,6 +3369,8 @@ async function loadWaChats(silent){
   let r={}; try{ r=await waApi('/api/wa-chats'); }catch(e){ if(silent)return; }
   const next=(r&&r.chats)||[];
   if(silent && JSON.stringify(next.map(c=>[c.id,(c.lastMessage&&c.lastMessage.message&&c.lastMessage.message.conversation)||'',c.unread]))===JSON.stringify(_waChats.map(c=>[c.id,(c.lastMessage&&c.lastMessage.message&&c.lastMessage.message.conversation)||'',c.unread]))) return;
+  // Deduplicar: un mismo teléfono real puede venir en varios chat_id (mensajes salientes, IDs distintos). Conservamos el más reciente.
+  (function(){ var seen={}; var out=[]; (next||[]).forEach(function(c){ var ph=String(c.phone||'').replace(/\D/g,''); var key=(ph && ph.length>=7 && ph.length<=15)?('p'+ph):('id'+(c.id||Math.random())); if(seen[key]!==undefined){ /* ya hay uno (la lista viene ordenada por reciente), ignoramos el duplicado más antiguo */ return; } seen[key]=1; out.push(c); }); next.length=0; Array.prototype.push.apply(next,out); })();
   _waChats = next;
   if(!_waChats.length){ list.innerHTML='<div class="sub" style="padding:1.2rem;text-align:center">Aún no hay conversaciones.<br>Cuando un paciente te escriba, aparecerá aquí.</div>'; return; }
   list.innerHTML=_waChats.map(c=>{ const jid=c.id; const num=waJidToNumber(jid); const lead=c._lead; const name=waDisplayName(c); const lastRaw=(c.lastMessage&&c.lastMessage.message&&c.lastMessage.message.conversation)||''; const last=lastRaw||waSubLine(c); const known=!!lead; const t=waTime(c.timestamp); const un=c.unread||0;
@@ -3487,11 +3489,13 @@ async function waSaveToPatient(mid){ if(!_waActive){ return; } var phone=waJidTo
   try{ var r=await waApi('/api/wa-patient-media-save',{method:'POST',body:JSON.stringify({tenant_id:T, mid:mid, phone:phone, lead_id:leadId})}); if(r&&r.ok){ if(typeof toast==='function')toast('✓ Añadido a la ficha del paciente'); try{ if(typeof loadPatientMedia==='function'&&_waCtxLead) loadPatientMedia(leadId, phone); }catch(e){} } else { if(typeof toast==='function')toast('No se pudo guardar','error'); } }catch(e){ if(typeof toast==='function')toast('Error al guardar','error'); } }
 function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 async function refreshWaMsgs(initial){
-  if(!_waActive)return; const box=document.getElementById('waMsgs'); if(!box)return;
-  let r={}; try{ r=await waApi('/api/wa-messages?number='+encodeURIComponent(_waActive.jid)); }catch(e){ if(initial && box) box.innerHTML='<div class="sub" style="margin:auto;text-align:center">No se pudo cargar. Reintentando…</div>'; return; }
+  if(!_waActive)return; const reqJid=_waActive.jid; const box=document.getElementById('waMsgs'); if(!box)return;
+  let r={}; try{ r=await waApi('/api/wa-messages?number='+encodeURIComponent(reqJid)); }catch(e){ if(initial && box && _waActive && _waActive.jid===reqJid) box.innerHTML='<div class="sub" style="margin:auto;text-align:center">No se pudo cargar. Reintentando…</div>'; return; }
+  // ANTI-CARRERA: si el usuario cambió de chat mientras llegaba la respuesta, NO pintamos (evita mezclar mensajes de otro contacto)
+  if(!_waActive || _waActive.jid!==reqJid) return;
   const msgs=(r&&r.messages)||[]; const ids=msgs.map(m=>m.id||(m.key&&m.key.id)).join(',');
+  window._waPrecache[reqJid]=msgs; // actualiza caché del chat correcto
   if(ids===_waLastMsgIds) return; _waLastMsgIds=ids;
-  if(_waActive) window._waPrecache[_waActive.jid]=msgs; // actualiza caché
   if(!msgs.length){ box.innerHTML='<div class="sub" style="margin:auto;text-align:center">No hay mensajes aún en esta conversación.</div>'; return; }
   waRenderMsgs(msgs, initial);
 }
