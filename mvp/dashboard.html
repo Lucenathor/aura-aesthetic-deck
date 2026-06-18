@@ -3058,20 +3058,25 @@ function renderScoreboard(n){
   try{ if(typeof updateMiDia==='function') updateMiDia({llama:n.llama||0,recup:n.recup||0,conf:n.conf||0,react:n.react||0,total:n.total||0}, window.__citasHoy, window.__waUnread); }catch(e){}
   const host=document.getElementById('pipeScore'); if(!host) return;
   if(!n.total){ host.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:.8rem;align-items:center;background:#e8f6ee;border:1px solid #b6e3c9;color:#1f6b4f;border-radius:14px;padding:.7rem 1rem;font-weight:700;font-size:.9rem">✅ Todo al día. No hay nadie pendiente de llamar ahora mismo.'+dayBoardHtml()+'</div>'; return; }
-  host.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:.8rem;align-items:center;background:linear-gradient(135deg,#fffefb,#fbf4ee);border:1px solid rgba(42,33,28,.07);border-radius:18px;padding:.85rem 1.1rem;box-shadow:0 1px 2px rgba(42,33,28,.04),0 14px 32px -22px rgba(42,33,28,.45)">'
-    +'<div style="width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,var(--terra),var(--terra-d));display:grid;place-items:center;font-size:1.2rem;flex:none;box-shadow:0 6px 14px -6px var(--terra)">📞</div>'
-    +'<div><div style="font-weight:800;font-size:1.12rem;color:var(--ink);line-height:1.15">Hoy toca llamar a <span style="color:var(--terra-d)">'+n.total+'</span> '+(n.total===1?'persona':'personas')+'</div>'
-    +'<div style="font-size:.78rem;color:var(--muted);margin-top:.1rem">Empieza por la nº1 de cada columna · de izquierda a derecha</div></div>'
-    +'<div style="flex:1"></div>'
-    +scoreChip('☎ Llama ya',n.llama,'#e0392b')+scoreChip('↻ Recuperar',n.recup,'#d9822b')+scoreChip('✓ Confirmar',n.conf,'#c79a1e')+scoreChip('✦ Reactivar',n.react,'#7048e8')
-    +'</div>'
-    +dayBoardHtml();
+  host.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:.7rem 1.1rem;align-items:center;background:linear-gradient(135deg,#fffefb,#fbf4ee);border:1px solid rgba(42,33,28,.07);border-radius:18px;padding:.8rem 1.1rem;box-shadow:0 1px 2px rgba(42,33,28,.04),0 14px 32px -22px rgba(42,33,28,.45)">'
+    +'<div style="display:flex;align-items:center;gap:.6rem"><div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--terra),var(--terra-d));display:grid;place-items:center;font-size:1.15rem;flex:none;box-shadow:0 6px 14px -6px var(--terra)">📞</div>'
+    +'<div><div style="font-weight:800;font-size:1.05rem;color:var(--ink);line-height:1.15"><span style="color:var(--terra-d)">'+n.total+'</span> '+(n.total===1?'persona':'personas')+' por llamar hoy</div>'
+    +'<div style="font-size:.76rem;color:var(--muted);margin-top:.05rem">Empieza por la nº1 de cada columna</div></div></div>'
+    +'<div style="flex:1;min-width:1rem"></div>'
+    +dayBoardInline()
+    +'</div>';
 }
+// marcador del día en línea (a la derecha de la barra)
+function dayBoardInline(){ const d=getDayBoard(); const r=d.reservas||0, v=d.ventas||0, e=d.eur||0; const cerradas=r+v; return '<div id="dayBoard" style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center">'
+    +'<span style="font-size:.72rem;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:var(--muted)">🏆 Tu día</span>'
+    +'<span class="db-chip" style="background:'+hexA('#1f8c69',.12)+';color:#1f8c69">✅ '+cerradas+' '+(cerradas===1?'cerrada':'cerradas')+'</span>'
+    +'<span class="db-chip" style="background:'+hexA('#1f8c69',.16)+';color:#157a5b;font-weight:800">💰 '+eur(e)+' · tú y AURA</span>'
+    +'</div>'; }
 function scoreChip(label,val,color){ if(!val) return ''; return '<span style="display:inline-flex;align-items:center;gap:.35rem;background:'+hexA(color,.12)+';color:'+color+';font-weight:700;font-size:.8rem;padding:.3rem .7rem;border-radius:999px">'+label+' <b>'+val+'</b></span>'; }
 // ===== MARCADOR DEL DÍA (gamificación recepción) =====
 function dayKey(){ return 'aura_dia_'+(T||'')+'_'+new Date().toISOString().slice(0,10); }
 function getDayBoard(){ try{ return JSON.parse(localStorage.getItem(dayKey())||'{}'); }catch(e){ return {}; } }
-function bumpDayBoard(kind, eur){ const d=getDayBoard(); d.reservas=(d.reservas||0)+((kind==='reserva')?1:0); d.ventas=(d.ventas||0)+((kind==='venta')?1:0); d.eur=(d.eur||0)+(eur||0); localStorage.setItem(dayKey(), JSON.stringify(d)); var host=document.getElementById('dayBoard'); if(host){ host.outerHTML=dayBoardHtml(); var nh=document.getElementById('dayBoard'); if(nh){ nh.classList.add('db-pop'); setTimeout(function(){ nh&&nh.classList.remove('db-pop'); },600); } } }
+function bumpDayBoard(kind, eur){ const d=getDayBoard(); d.reservas=(d.reservas||0)+((kind==='reserva')?1:0); d.ventas=(d.ventas||0)+((kind==='venta')?1:0); d.eur=(d.eur||0)+(eur||0); localStorage.setItem(dayKey(), JSON.stringify(d)); var host=document.getElementById('dayBoard'); if(host){ host.outerHTML=dayBoardInline(); var nh=document.getElementById('dayBoard'); if(nh){ nh.classList.add('db-pop'); setTimeout(function(){ nh&&nh.classList.remove('db-pop'); },600); } } }
 function dayBoardHtml(){ const d=getDayBoard(); const r=d.reservas||0, v=d.ventas||0, e=d.eur||0; const cerradas=r+v; return '<div id="dayBoard" style="flex-basis:100%;margin-top:.7rem;display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;border-top:1px dashed rgba(42,33,28,.12);padding-top:.7rem">'
     +'<span style="font-size:.74rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)">🏆 Tu día</span>'
     +'<span class="db-chip" style="background:'+hexA('#1f8c69',.12)+';color:#1f8c69">✅ '+cerradas+' '+(cerradas===1?'cerrada':'cerradas')+'</span>'
