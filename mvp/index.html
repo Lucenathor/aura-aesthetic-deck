@@ -1954,8 +1954,11 @@ requestAnimationFrame(()=>{setTimeout(()=>{document.getElementById('h1Anim')?.cl
   ];
   const waSteps=[
     {me:0,t:'Hola, ¿cuánto cuesta el aumento de labios? 💋',think:300,d:1100},
-    {me:1,t:'¡Hola Laura! Desde 290€. ¿Te abro hueco esta semana? ✓✓',d:1300},
-    {me:0,t:'Genial, el jueves',think:700,d:1000}
+    {me:1,t:'¡Hola Laura! Desde 290€, con valoración previa de la doctora. ¿Te abro hueco esta semana? ✓✓',think:900,d:1500},
+    {me:0,t:'Sí porfa, mejor por la tarde',think:600,d:1100},
+    {me:1,t:'Hecho ✓ Te dejo el jueves a las 17:00. Te acabo de enviar la confirmación y un recordatorio el día antes 📅',think:950,d:1600},
+    {me:0,t:'Genial 🙌 Te paso una foto de cómo los quiero',think:600,d:1100},
+    {me:1,t:'📷 Foto guardada en tu ficha. La doctora la verá antes de tu cita. ¡Nos vemos el jueves, Laura!',think:1000,d:1700}
   ];
   let started=false;
   const io=new IntersectionObserver((es)=>{ es.forEach(e=>{ if(e.isIntersecting && !started){ started=true;
