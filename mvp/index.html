@@ -1908,8 +1908,10 @@ requestAnimationFrame(()=>{setTimeout(()=>{document.getElementById('h1Anim')?.cl
 (function animatedChats(){
   function runChat(el, steps, opt){
     if(!el) return; let alive=true;
-    const bub=(cls,html)=>{ const d=document.createElement('div'); d.className=cls; d.innerHTML=html; d.style.animation='none'; d.style.opacity='0'; d.style.transform='translateY(10px) scale(.98)'; d.style.transition='opacity .35s cubic-bezier(.23,1,.32,1), transform .35s cubic-bezier(.23,1,.32,1)'; el.appendChild(d); requestAnimationFrame(()=>{ d.style.opacity='1'; d.style.transform='none'; }); return d; };
-    const typing=()=>{ const d=document.createElement('div'); d.className='co-typing'; d.style.animation='none'; d.style.opacity='1'; d.innerHTML='<span></span><span></span><span></span>'; el.appendChild(d); return d; };
+    el.style.overflowY='auto'; el.style.scrollBehavior='smooth';
+    const toEnd=()=>{ el.scrollTop=el.scrollHeight; };
+    const bub=(cls,html)=>{ const d=document.createElement('div'); d.className=cls; d.innerHTML=html; d.style.animation='none'; d.style.opacity='0'; d.style.transform='translateY(10px) scale(.98)'; d.style.transition='opacity .35s cubic-bezier(.23,1,.32,1), transform .35s cubic-bezier(.23,1,.32,1)'; el.appendChild(d); requestAnimationFrame(()=>{ d.style.opacity='1'; d.style.transform='none'; toEnd(); }); return d; };
+    const typing=()=>{ const d=document.createElement('div'); d.className='co-typing'; d.style.animation='none'; d.style.opacity='1'; d.innerHTML='<span></span><span></span><span></span>'; el.appendChild(d); toEnd(); return d; };
     const wait=ms=>new Promise(r=>setTimeout(r,ms));
     async function loop(){
       while(alive){
@@ -1929,6 +1931,10 @@ requestAnimationFrame(()=>{setTimeout(()=>{document.getElementById('h1Anim')?.cl
   const coSteps=[
     {me:1,t:'crea un empleado, recepción, 1.500€',d:1000},
     {me:0,t:'Hecho ✓ Marta dada de alta en Equipo. Coste con SS: 1.950€/mes.',think:1000,d:1400},
+    {me:1,t:'crea una promo de botox: 3 zonas por 299€ este mes',d:1100},
+    {me:0,t:'Promo creada ✓ <b>Botox 3 zonas · 299€</b> activa hasta fin de mes. ¿La anuncio por WhatsApp a tus pacientes?',think:1000,d:1700},
+    {me:1,t:'reserva a Laura mañana a las 17:00',d:1000},
+    {me:0,t:'Cita reservada ✓ Laura · mañana 17:00. Le he enviado el recordatorio.',think:950,d:1500},
     {me:1,t:'¿cuánto he facturado este mes?',d:1000},
     {me:0,t:'Llevas <b>24.120€</b> en 110 cobros. Beneficio estimado: 9.270€.',think:1100,d:1800}
   ];
