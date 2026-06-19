@@ -346,7 +346,10 @@ img{max-width:100%;display:block}
 .pf-row.sub{font-size:.82rem}.pf-row.sub span,.pf-row.sub b{color:var(--muted)}
 .pf-row.total{margin-top:.2rem;font-size:1.05rem}.pf-row.total b{font-size:1.5rem}
 .pf-bar{height:7px;background:#EADfce;border-radius:4px;overflow:hidden;margin:.3rem 0}
-.pf-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:4px;animation:pfFill 1.4s .3s var(--ease) forwards}
+.pf-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:4px;transition:width 1.1s cubic-bezier(.23,1,.32,1)}
+.pf-row.total b.pop{animation:pfPop .5s cubic-bezier(.23,1,.32,1)}
+@keyframes pfPop{0%{transform:scale(1)}40%{transform:scale(1.14);text-shadow:0 0 18px rgba(31,140,105,.5)}100%{transform:scale(1)}}
+.pf-row{opacity:1}.pf-visual.run .pf-row{opacity:0;transform:translateY(8px);transition:opacity .4s var(--ease),transform .4s var(--ease)}.pf-visual.run .pf-row.show{opacity:1;transform:none}
 @keyframes pfFill{to{width:38%}}
 /* Pipeline guia de ventas */
 .pl-grid{display:grid;grid-template-columns:1fr;gap:1.1rem;margin-top:2.5rem}
@@ -1022,15 +1025,15 @@ img{max-width:100%;display:block}
     <div class="bento reveal" style="margin-top:1.2rem;grid-template-columns:1fr">
       <div class="b-card" style="--i:0">
         <div class="tag mint">Beneficio real</div>
-        <h3>No solo lo que entra en caja. Lo que <span class="accent">de verdad ganas.</span></h3>
-        <p>AURA descuenta sueldos, seguridad social, gastos fijos, IVA y marketing, y te dice tu beneficio neto real cada mes. Algo que casi ningún CRM de estética te da.</p>
-        <div class="visual" style="aspect-ratio:auto;background:linear-gradient(135deg,#FFF6E9,#E0F7EC);padding:1.8rem;display:flex;flex-direction:column;gap:.5rem">
-          <div class="pf-row"><span>Facturado</span><b>24.120€</b></div>
-          <div class="pf-row sub"><span>− Personal y seguridad social</span><b>−8.900€</b></div>
-          <div class="pf-row sub"><span>− Gastos fijos + marketing</span><b>−3.450€</b></div>
-          <div class="pf-row sub"><span>− IVA</span><b>−2.500€</b></div>
-          <div class="pf-bar"><i></i></div>
-          <div class="pf-row total"><span>Beneficio real</span><b class="accent">9.270€</b></div>
+        <h3>Todos los CRM te dicen lo que facturas. <span class="accent">Ninguno, lo que ganas.</span></h3>
+        <p>AURA prorratea sueldos, seguridad social, gastos fijos, marketing <b>e impuestos</b>, y te muestra tu <b>beneficio neto real</b> &mdash; día a día, no a fin de año. Eso casi ningún CRM de estética te lo da.</p>
+        <div class="visual pf-visual" id="pfCard" style="aspect-ratio:auto;background:linear-gradient(135deg,#FFF6E9,#E0F7EC);padding:1.8rem;display:flex;flex-direction:column;gap:.5rem">
+          <div class="pf-row"><span>Facturado</span><b class="pf-n" data-to="24120">0€</b></div>
+          <div class="pf-row sub"><span>− Personal y seguridad social</span><b class="pf-n" data-to="-8900">0€</b></div>
+          <div class="pf-row sub"><span>− Gastos fijos + marketing</span><b class="pf-n" data-to="-3450">0€</b></div>
+          <div class="pf-row sub"><span>− IVA e impuestos</span><b class="pf-n" data-to="-2500">0€</b></div>
+          <div class="pf-bar"><i id="pfBar"></i></div>
+          <div class="pf-row total"><span>Beneficio real</span><b class="accent pf-n pf-total" data-to="9270">0€</b></div>
         </div>
       </div>
     </div>
@@ -1980,6 +1983,26 @@ requestAnimationFrame(()=>{setTimeout(()=>{document.getElementById('h1Anim')?.cl
   }
   const io=new IntersectionObserver((es)=>{ es.forEach(e=>{ if(e.isIntersecting && !done){ done=true; const nums=sec.querySelectorAll('.pn-count'); nums.forEach((n,i)=>setTimeout(()=>countUp(n), 250+i*260)); } }); },{threshold:.4});
   io.observe(sec);
+})();
+
+/* === BENEFICIO REAL: animación espectacular === */
+(function profitAnim(){
+  const card=document.getElementById('pfCard'); if(!card) return;
+  let done=false;
+  const fmt=v=>{ const s=v<0?'−':''; return s+Math.abs(Math.round(v)).toLocaleString('es-ES')+'€'; };
+  function countTo(el,to,dur){ const t0=performance.now(); (function step(now){ const p=Math.min(1,(now-t0)/dur); const e=1-Math.pow(1-p,3); el.textContent=fmt(to*e); if(p<1)requestAnimationFrame(step); else el.textContent=fmt(to); })(performance.now()); }
+  async function run(){
+    card.classList.add('run');
+    const rows=[...card.querySelectorAll('.pf-row')];
+    const wait=ms=>new Promise(r=>setTimeout(r,ms));
+    for(let i=0;i<rows.length-1;i++){ rows[i].classList.add('show'); const n=rows[i].querySelector('.pf-n'); if(n)countTo(n,parseFloat(n.getAttribute('data-to')),900); await wait(650); }
+    const bar=document.getElementById('pfBar'); if(bar)bar.style.width='38%';
+    await wait(550);
+    const tot=rows[rows.length-1]; tot.classList.add('show'); const tn=tot.querySelector('.pf-n'); if(tn)countTo(tn,parseFloat(tn.getAttribute('data-to')),1100);
+    await wait(1150); if(tn)tn.classList.add('pop');
+  }
+  const io=new IntersectionObserver((es)=>{ es.forEach(e=>{ if(e.isIntersecting && !done){ done=true; run(); } }); },{threshold:.45});
+  io.observe(card);
 })();
 
 /* === HERO PRODUCT ANIM === */
