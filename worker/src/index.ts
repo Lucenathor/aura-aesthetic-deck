@@ -2544,7 +2544,10 @@ export default {
                 try {
                   const who = ev.sender?.attendee_name || (senderPhone?('+'+senderPhone):'');
                   const incUnread = fromMe ? 0 : 1;
-                  await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text, last_ts=excluded.last_ts, unread=wa_chats_meta.unread+"+incUnread+", name=COALESCE(NULLIF(wa_chats_meta.name,''),excluded.name), phone=COALESCE(NULLIF(wa_chats_meta.phone,''),excluded.phone), updated_at=excluded.updated_at").bind(tenantId, chatId, who, senderPhone, text||(att?'[adjunto]':''), ts, incUnread, Date.now()).run();
+                  // attendee_id del remitente: permite cargar su foto de inmediato (solo en 1a1; en grupos no sobreescribimos)
+                  const senderAttId = (!fromMe && ev.sender?.attendee_id) ? ev.sender.attendee_id : '';
+                  const isGroupEv = Array.isArray(ev.attendees) && ev.attendees.length>1;
+                  await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,attendee_id,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text, last_ts=excluded.last_ts, unread=wa_chats_meta.unread+"+incUnread+", name=COALESCE(NULLIF(wa_chats_meta.name,''),excluded.name), phone=COALESCE(NULLIF(wa_chats_meta.phone,''),excluded.phone), attendee_id=COALESCE(NULLIF(wa_chats_meta.attendee_id,''),NULLIF(excluded.attendee_id,'')), updated_at=excluded.updated_at").bind(tenantId, chatId, who, senderPhone, (isGroupEv?'':senderAttId), text||(att?'[adjunto]':''), ts, incUnread, Date.now()).run();
                 } catch(e){}
               }
             }
