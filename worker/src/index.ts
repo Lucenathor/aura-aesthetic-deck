@@ -1530,6 +1530,30 @@ export default {
           return json({ ok:true });
         }
 
+        // CONTRATOS FIRMADOS: contrato de servicio (clickwrap) por clinica. Sin ?id = todas las clinicas.
+        if (p === '/api/admin-contracts' && req.method === 'GET') {
+          await env.aura_db.prepare('CREATE TABLE IF NOT EXISTS legal_acceptances (id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT, signer_name TEXT, clinic_name TEXT, version TEXT, docs TEXT, ip TEXT, user_agent TEXT, accepted_at INTEGER)').run().catch(()=>{});
+          const id = url.searchParams.get('id')||'';
+          if (id) {
+            const r:any = await env.aura_db.prepare('SELECT * FROM legal_acceptances WHERE tenant_id=? ORDER BY accepted_at DESC').bind(id).all();
+            return json({ ok:true, contracts: r.results||[] });
+          }
+          // Vista global: el contrato vigente (mas reciente) de cada clinica + clinicas sin firmar
+          const ts:any = await env.aura_db.prepare("SELECT id,name,owner_name,email,created_at FROM tenants WHERE status!='archived' ORDER BY created_at DESC").all();
+          const out:any[] = [];
+          for (const t of (ts.results||[])) {
+            const la:any = await env.aura_db.prepare('SELECT * FROM legal_acceptances WHERE tenant_id=? ORDER BY accepted_at DESC LIMIT 1').bind(t.id).first().catch(()=>null);
+            const cnt:any = await env.aura_db.prepare('SELECT COUNT(*) c FROM legal_acceptances WHERE tenant_id=?').bind(t.id).first().catch(()=>null);
+            out.push({
+              tenant_id: t.id, clinic_name: t.name, owner_name: t.owner_name||'', email: t.email||'',
+              signed: !!la,
+              signer_name: la?la.signer_name:'', version: la?la.version:'', ip: la?la.ip:'',
+              accepted_at: la?la.accepted_at:null, signatures: cnt?cnt.c:0
+            });
+          }
+          return json({ ok:true, contracts: out });
+        }
+
         return json({ ok:false, error:'unknown_admin_endpoint' });
       }
 
@@ -2477,6 +2501,37 @@ export default {
           return json({ ok:true });
         }
         if (p === '/api/wa-webhook') { return json({ ok:true }); }
+
+        // SUGERENCIAS DE RESPUESTA (IA): 2-3 respuestas cortas para que recepción conteste con un clic.
+        if (p === '/api/wa-suggest' && req.method === 'POST') {
+          const b:any = await req.json().catch(()=>({}));
+          const t2 = b.tenant_id || tnt; if(!t2) return json({ ok:false, error:'missing tenant' });
+          const chatId = b.number || b.chat_id || '';
+          // Últimos mensajes del chat (BD), en orden cronológico
+          let msgs:any[] = [];
+          try{ const mr:any = await env.aura_db.prepare('SELECT from_me,text,mtype,ts FROM wa_messages WHERE tenant_id=? AND chat_id=? ORDER BY ts DESC LIMIT 12').bind(t2, chatId).all(); msgs = (mr.results||[]).reverse(); }catch(e){}
+          if(!msgs.length) return json({ ok:true, suggestions: [] });
+          // Si el último mensaje es nuestro, no hace falta sugerir
+          const last = msgs[msgs.length-1];
+          if(last && last.from_me===1) return json({ ok:true, suggestions: [] });
+          // Contexto de clínica y paciente
+          const tn:any = await env.aura_db.prepare('SELECT name, ai_system_prompt, whatsapp, address FROM tenants WHERE id=?').bind(t2).first().catch(()=>null);
+          const num = digits9(b.phone||'');
+          let leadCtx = '';
+          if(num){ try{ const lr:any = await env.aura_db.prepare('SELECT id,name,treatment,status,temperature FROM leads WHERE tenant_id=?').bind(t2).all(); for(const l of (lr.results||[])){ if(digits9(l.phone)===num){ leadCtx = 'Paciente: '+(l.name||'')+(l.treatment?(' · interesada en '+l.treatment):'')+(l.status?(' · estado '+l.status):''); break; } } }catch(e){} }
+          const transcript = msgs.map((m:any)=> (m.from_me===1?'Clínica: ':'Paciente: ') + (m.text|| (m.mtype&&m.mtype!=='text'?'['+m.mtype+']':'') ) ).filter(Boolean).join('\n');
+          const base = (tn?.ai_system_prompt) || 'Eres la recepción de una clínica estética en España. Hablas en español de España, con tono cercano, profesional y natural (tuteo). Nada de exclamaciones de más ni emojis excesivos.';
+          const sys = base + '\n\nTAREA: Propón 3 respuestas BREVES (máximo 1-2 frases cada una) que la recepción podría enviarle AHORA a la paciente por WhatsApp, respondiendo a su último mensaje. Suenan a persona real, no a bot. No inventes precios, horarios ni datos médicos que no aparezcan; si hace falta concretar, propón una respuesta que invite a llamar o pasar por recepción. Devuelve SOLO JSON: {"suggestions":["...","...","..."]}.';
+          const ctxLine = (tn?.name?('Clínica: '+tn.name+'. '):'') + leadCtx;
+          const userMsg = (ctxLine?ctxLine+'\n\n':'') + 'Conversación reciente (lo último es lo más nuevo):\n'+transcript;
+          let out:string[] = [];
+          try{
+            const raw = await runAI(env, [{role:'system',content:sys},{role:'user',content:userMsg}], true);
+            const parsed:any = JSON.parse(raw||'{}');
+            if(Array.isArray(parsed.suggestions)) out = parsed.suggestions.filter((s:any)=>typeof s==='string' && s.trim()).slice(0,3).map((s:string)=>s.trim());
+          }catch(e){}
+          return json({ ok:true, suggestions: out });
+        }
         return json({ error:'wa endpoint not found' }, 404);
       }
 

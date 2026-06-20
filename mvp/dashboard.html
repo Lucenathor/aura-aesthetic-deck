@@ -780,7 +780,8 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
     <!-- ADMINISTRACIÓN (solo super admin): onboarding de clínicas -->
     <section class="view" id="v-admin">
       <div class="top"><div><h1>Administración</h1><div class="sub2">Da de alta y configura clínicas llave en mano. Solo tú (Super Admin) ves esta sección. Cada clínica nace vacía y aislada.</div></div>
-        <div class="actions"><button class="btn prim" onclick="openNewClinic()">+ Nueva clínica</button></div></div>
+        <div class="actions"><button class="btn" onclick="adminOpenContracts()">Contratos firmados</button><button class="btn prim" onclick="openNewClinic()">+ Nueva clínica</button></div></div>
+      <div id="adminContracts" style="display:none"></div>
       <div id="adminListWrap">
         <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:.9rem">
           <input id="adminSearch" placeholder="Buscar clínica…" oninput="renderAdminList()" style="flex:1;min-width:180px;padding:.55rem .8rem;border:1px solid var(--line);border-radius:10px;font-size:.85rem"/>
@@ -2338,12 +2339,38 @@ function openApptCard(id){
   if(st!=='attended'&&st!=='noshow'){
     h+='<button class="btn prim" style="width:100%" onclick="closeApptCard();openCloseVisit(\''+a.id+'\',\''+a.lead_id+'\',\''+(a.treatment||'').replace(/\x27/g,"")+'\',\''+(a.lead_name||'').replace(/\x27/g,"")+'\')">Cerrar visita / Cobrar</button>';
   }
+  // Anular cobro: solo en visitas ya atendidas/cobradas y solo para owner/finance/superadmin
+  if(st==='attended' && CAN_FINANCE){
+    h+='<button class="btn" style="width:100%;margin-top:.5rem;border-color:#e7c2bb;color:#c0392b" onclick="anularCobro(\''+a.id+'\',\''+(a.lead_name||'').replace(/\x27/g,"")+'\')">Anular cobro de esta visita</button>';
+    h+='<div style="font-size:.68rem;color:var(--muted);margin-top:.35rem;line-height:1.4">Devuelve el material al stock, borra el cobro de la caja y deja la cita como reservada. Úsalo si te equivocaste al cobrar.</div>';
+  }
   h+='</div>';
   ov.innerHTML=h;
   document.body.appendChild(ov);
   requestAnimationFrame(()=>{ ov.style.opacity='1'; ov.classList.add('ap-open'); const pn=document.getElementById('apPanel'); if(pn&&window.innerWidth>860)pn.style.transform='translateX(0)'; });
 }
 function closeApptCard(){ const ov=document.getElementById('apOverlay'); if(!ov)return; ov.classList.remove('ap-open'); const pn=document.getElementById('apPanel'); if(pn&&window.innerWidth>860)pn.style.transform='translateX(100%)'; ov.style.opacity='0'; setTimeout(()=>ov.remove(),280); }
+// Anular el cobro de una visita ya cerrada (revierte stock, borra el cobro y deja la cita reservada)
+async function anularCobro(apptId, name){
+  const nom=(name||'esta visita').trim();
+  if(!confirm('¿Seguro que quieres anular el cobro de '+nom+'?\n\nSe devolverá el material al stock, se borrará el cobro de la caja del día y la cita volverá a quedar como reservada. Esta acción no se puede deshacer.')) return;
+  try{
+    const r=await fetch(WORKER+'/api/visit-revert',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,appointment_id:apptId,actor:(ROLE||'panel')})});
+    const d=await r.json();
+    if(d&&d.ok){
+      closeApptCard();
+      if(typeof toast==='function') toast('Cobro anulado · '+(d.restored||'sin stock que devolver'),'warn');
+      try{ if(typeof loadAppts==='function')loadAppts(); }catch(e){}
+      try{ if(typeof loadAgendaCal==='function')loadAgendaCal(true); }catch(e){}
+      try{ if(typeof loadLeads==='function')loadLeads(); }catch(e){}
+      try{ if(typeof loadKPIs==='function')loadKPIs(); }catch(e){}
+      try{ if(typeof loadCaja==='function')loadCaja(); }catch(e){}
+      try{ if(typeof loadInventory==='function')loadInventory(); }catch(e){}
+    } else {
+      if(typeof toast==='function') toast('No se pudo anular el cobro. Inténtalo de nuevo.','error'); else alert('No se pudo anular el cobro.');
+    }
+  }catch(e){ if(typeof toast==='function') toast('Error de conexión al anular el cobro.','error'); else alert('Error de conexión.'); }
+}
 // Crear cita manual (walk-in)
 function openNewAppt(iso, proId){
   const ov=document.createElement('div'); ov.id='naOverlay'; ov.style='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:grid;place-items:center;padding:1rem;overflow-y:auto';
@@ -3460,6 +3487,7 @@ async function openWaChat(jid, name){
   var hdrName=waDisplayName(chat.id?chat:{_lead:chat._lead,pushName:name,name:name,phone:chat.phone,id:jid}); var hdrSub=waSubLine(chat.id?chat:{phone:chat.phone,id:jid});
   convo.innerHTML='<div style="padding:.55rem 1rem;border-bottom:1px solid #e9e2d8;display:flex;align-items:center;gap:.65rem;background:#f7f4ee"><button class="wa-back-btn" onclick="waBackToList()" title="Volver" style="color:#54656f">‹</button>'+waAvatar(hdrName,chat.picture,42)+'<div style="min-width:0;flex:1"><b style="font-size:.95rem;color:#111b21">'+escapeHtml(hdrName)+'</b><div style="font-size:.72rem;color:#667781">'+escapeHtml(hdrSub)+'</div></div><button class="btn" onclick="waToggleCtx()" title="Ficha del paciente" style="padding:.3rem .5rem;font-size:.9rem">👤</button></div>'
     +'<div id="waMsgs" style="flex:1 1 0;min-height:0;overflow-y:auto;padding:1.2rem 8%;display:flex;flex-direction:column;gap:.25rem"><div class="sub" style="margin:auto">Cargando…</div></div>'
+    +'<div id="waSuggest" style="display:none;padding:.5rem .8rem 0;background:#f0f2f5"></div>'
     +'<div id="waQuick" style="display:flex;gap:.4rem;padding:.4rem .8rem 0;background:#f0f2f5;overflow-x:auto;white-space:nowrap">'+WA_QUICK.map((q,i)=>'<button onclick="waQuickReply('+i+')" style="flex:none;background:#fff;border:1px solid var(--line);border-radius:16px;padding:.3rem .7rem;font-size:.75rem;cursor:pointer;color:#1f6b4f">'+q.label+'</button>').join('')+'</div>'
     +'<div style="padding:.6rem .8rem;border-top:1px solid var(--line);display:flex;gap:.5rem;align-items:center;background:#f0f2f5">'
       +'<label style="cursor:pointer;font-size:1.3rem;color:#54656f" title="Adjuntar">📎<input type="file" id="waFile" style="display:none" onchange="waSendFile(this)"/></label>'
@@ -3554,7 +3582,26 @@ async function refreshWaMsgs(initial){
   if(ids===_waLastMsgIds) return; _waLastMsgIds=ids;
   if(!msgs.length){ box.innerHTML='<div class="sub" style="margin:auto;text-align:center">No hay mensajes aún en esta conversación.</div>'; return; }
   waRenderMsgs(msgs, initial);
+  // Sugerencias IA: solo si el último mensaje es del paciente (no nuestro)
+  try{ const lastM=msgs[msgs.length-1]; const lastMine=lastM&&(lastM.fromMe||(lastM.key&&lastM.key.fromMe)); if(!lastMine){ waLoadSuggest(reqJid); } else { waClearSuggest(); } }catch(e){}
 }
+// ===== RESPUESTAS SUGERIDAS POR IA =====
+function waClearSuggest(){ const s=document.getElementById('waSuggest'); if(s){ s.style.display='none'; s.innerHTML=''; } }
+async function waLoadSuggest(jid){
+  const s=document.getElementById('waSuggest'); if(!s||!_waActive||_waActive.jid!==jid) return;
+  s.style.display=''; s.innerHTML='<span style="font-size:.7rem;color:#8696a0;display:inline-flex;align-items:center;gap:.35rem"><span class="spinner" style="width:12px;height:12px;display:inline-block"></span> AURA está pensando respuestas…</span>';
+  let r={}; try{ r=await waApi('/api/wa-suggest',{method:'POST',body:JSON.stringify({tenant_id:T,number:jid,phone:waJidToNumber((_waActive&&_waActive.num)||jid)})}); }catch(e){ waClearSuggest(); return; }
+  // anti-carrera: si el usuario cambió de chat, no pintamos
+  if(!_waActive||_waActive.jid!==jid){ return; }
+  const sg=(r&&r.suggestions)||[];
+  if(!sg.length){ waClearSuggest(); return; }
+  window._waSuggest=sg;
+  s.innerHTML='<div style="font-size:.66rem;color:#8696a0;font-weight:700;letter-spacing:.02em;margin-bottom:.3rem;display:flex;align-items:center;gap:.3rem">✨ Sugerencias de AURA <span style="font-weight:400">· toca una para usarla</span></div>'
+    +'<div style="display:flex;gap:.4rem;flex-wrap:wrap">'
+    +sg.map(function(t,i){ return '<button onclick="waUseSuggest('+i+')" style="text-align:left;background:#fff;border:1px solid #cfe9dd;border-radius:14px;padding:.45rem .7rem;font-size:.78rem;cursor:pointer;color:#1f3b30;max-width:100%;line-height:1.35;transition:transform .12s var(--ease)" onmouseover="this.style.background=\'#f0faf5\'" onmouseout="this.style.background=\'#fff\'">'+escapeHtml(t)+'</button>'; }).join('')
+    +'</div>';
+}
+function waUseSuggest(i){ const sg=window._waSuggest||[]; const t=sg[i]; if(t==null) return; const inp=document.getElementById('waInput'); if(inp){ inp.value=t; inp.focus(); } waClearSuggest(); }
 function waRenderMsgs(msgs, initial){
   const box=document.getElementById('waMsgs'); if(!box) return;
   // ¿estaba el usuario pegado al fondo? (o es la primera carga). Si estaba leyendo arriba, NO le movemos.
@@ -3606,6 +3653,7 @@ async function uploadPatientMedia(input){ var f=input.files&&input.files[0]; if(
 async function delPatientMedia(id, leadId, phone){ if(!confirm('¿Eliminar esta foto de la ficha?'))return; try{ await waApi('/api/wa-patient-media-delete',{method:'POST',body:JSON.stringify({tenant_id:T, id:id})}); loadPatientMedia(leadId, phone); }catch(e){} }
 async function waSend(){
   const inp=document.getElementById('waInput'); if(!inp||!_waActive)return; const text=inp.value.trim(); if(!text)return; inp.value='';
+  try{ waClearSuggest(); }catch(e){}
   const box=document.getElementById('waMsgs'); if(box){ if(box.querySelector('.sub'))box.innerHTML=''; box.innerHTML+=waMsgBubble({fromMe:true,text,timestamp:Date.now()}); box.scrollTop=box.scrollHeight; }
   try{ await waApi('/api/wa-send',{method:'POST',body:JSON.stringify({tenant_id:T,jid:_waActive.jid,number:waJidToNumber(_waActive.jid),text})}); }catch(e){} setTimeout(()=>{_waLastMsgIds='';refreshWaMsgs();},1500);
 }
@@ -3845,6 +3893,58 @@ async function coToggleVoice(){
 
 // ===== ADMINISTRACIÓN (Super Admin): onboarding de clínicas =====
 async function adminApi(path, opts){ opts=opts||{}; opts.headers=Object.assign({'Authorization':'Bearer '+(localStorage.getItem('aura_token')||''),'Content-Type':'application/json'}, opts.headers||{}); const r=await fetch(WORKER+path, opts); return r.json(); }
+
+// ===== CONTRATOS FIRMADOS (Super Admin) =====
+function adminContractsBack(){ var c=document.getElementById('adminContracts'); if(c){ c.style.display='none'; c.innerHTML=''; } var lw=document.getElementById('adminListWrap'); if(lw)lw.style.display=''; var dt=document.getElementById('adminDetail'); }
+async function adminOpenContracts(){
+  var c=document.getElementById('adminContracts'); if(!c)return;
+  var lw=document.getElementById('adminListWrap'); if(lw)lw.style.display='none';
+  var dt=document.getElementById('adminDetail'); if(dt)dt.style.display='none';
+  c.style.display='';
+  c.innerHTML='<div style="color:var(--muted);font-size:.9rem;padding:1rem">Cargando contratos…</div>';
+  try{
+    var d=await adminApi('/api/admin-contracts');
+    var rows=(d&&d.contracts)||[];
+    var firmados=rows.filter(function(x){return x.signed;}).length;
+    var pend=rows.length-firmados;
+    var head='<div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1rem;flex-wrap:wrap">'
+      +'<button class="btn" style="font-size:.8rem" onclick="adminContractsBack()">← Volver</button>'
+      +'<div style="flex:1;min-width:160px"><div style="font-weight:800;font-size:1.15rem">Contratos firmados</div><div style="font-size:.76rem;color:var(--muted)">Contrato de servicio (aceptación legal) firmado por el dueño de cada clínica, con firmante, fecha, IP y versión.</div></div>'
+      +'<div style="font-size:.78rem;color:var(--muted);font-weight:600">'+firmados+' firmados · '+pend+' pendientes</div>'
+    +'</div>';
+    if(!rows.length){ c.innerHTML=head+'<div style="color:var(--muted);font-size:.9rem;padding:1rem 0">Aún no hay clínicas registradas.</div>'; return; }
+    var body=rows.map(function(x){
+      var nameJs=(x.clinic_name||'').replace(/\x27/g,'');
+      if(x.signed){
+        var fecha = x.accepted_at ? new Date(x.accepted_at).toLocaleString('es-ES',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+        var verExtra = (x.signatures>1) ? ('<button class="btn" style="font-size:.72rem" onclick="adminContractHistory(\''+x.tenant_id.replace(/\x27/g,"\\x27")+'\',\''+escapeHtml(nameJs)+'\')">Ver historial ('+x.signatures+')</button>') : '';
+        return '<div style="border:1px solid var(--line);border-radius:14px;padding:1rem 1.1rem;background:#fff;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">'
+          +'<div style="min-width:220px;flex:1"><div style="font-weight:700;font-size:1rem">'+escapeHtml(x.clinic_name||x.tenant_id)+' <span style="font-size:.72rem;color:#1f8c69;font-weight:700;margin-left:.3rem">✓ Firmado</span></div>'
+          +'<div style="font-size:.8rem;color:var(--ink);margin-top:.25rem">Firmado por <b>'+escapeHtml(x.signer_name||'—')+'</b></div>'
+          +'<div style="font-size:.76rem;color:var(--muted);margin-top:.15rem">'+fecha+' · versión '+escapeHtml(x.version||'1.0')+(x.ip?(' · IP '+escapeHtml(x.ip)):'')+'</div></div>'
+          +'<div style="display:flex;gap:.4rem;flex-wrap:wrap">'+verExtra+'</div>'
+        +'</div>';
+      }
+      return '<div style="border:1px solid #f0d9d2;border-radius:14px;padding:1rem 1.1rem;background:#fdf6f4;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">'
+        +'<div style="min-width:220px;flex:1"><div style="font-weight:700;font-size:1rem">'+escapeHtml(x.clinic_name||x.tenant_id)+' <span style="font-size:.72rem;color:#b0432e;font-weight:700;margin-left:.3rem">Pendiente</span></div>'
+        +'<div style="font-size:.76rem;color:var(--muted);margin-top:.2rem">'+(x.owner_name?('Propietario: '+escapeHtml(x.owner_name)+' · '):'')+escapeHtml(x.email||'sin email')+'</div>'
+        +'<div style="font-size:.74rem;color:#b0432e;margin-top:.2rem">El dueño aún no ha firmado el contrato (lo firmará en su primer acceso al panel).</div></div>'
+      +'</div>';
+    }).join('');
+    c.innerHTML=head+'<div style="display:grid;gap:.7rem">'+body+'</div>';
+  }catch(e){ c.innerHTML='<div style="color:#b0432e;padding:1rem">No se pudieron cargar los contratos. <a href="#" onclick="adminContractsBack();return false">Volver</a></div>'; }
+}
+async function adminContractHistory(tenantId, name){
+  try{
+    var d=await adminApi('/api/admin-contracts?id='+encodeURIComponent(tenantId));
+    var rows=(d&&d.contracts)||[];
+    var body=rows.map(function(r){
+      var fecha=r.accepted_at?new Date(r.accepted_at).toLocaleString('es-ES'):'—';
+      return '<div style="border-bottom:1px solid var(--line);padding:.6rem 0"><b>'+escapeHtml(r.signer_name||'—')+'</b> · v'+escapeHtml(r.version||'1.0')+'<div style="font-size:.74rem;color:var(--muted)">'+fecha+(r.ip?(' · IP '+escapeHtml(r.ip)):'')+'</div></div>';
+    }).join('');
+    if(typeof waModal==='function'){ waModal('Historial de firmas · '+name, '<div style="max-height:50vh;overflow:auto">'+(body||'<div style="color:var(--muted)">Sin registros</div>')+'</div>', null, null); }
+  }catch(e){ if(typeof toast==='function')toast('No se pudo cargar el historial','error'); }
+}
 var _adminClinics=[];
 var ADMIN_CHECK_ITEMS=[
   {k:'datos',label:'Datos y contacto',auto:true},
