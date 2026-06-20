@@ -324,6 +324,15 @@ img{max-width:100%;display:block}
 /* === SECTIONS === */
 .section{padding:7rem 0 1rem;position:relative}
 .mig-logo{padding:.5rem .9rem;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;font-family:'Inter Tight',sans-serif;font-weight:700;font-size:.92rem;letter-spacing:-.01em}
+/* Animacion seccion Migracion */
+.mig-anim{opacity:0;transform:translateY(10px) scale(.96);transition:opacity .5s var(--ease),transform .5s var(--ease)}
+#migracion.mig-in .mig-anim{opacity:1;transform:none}
+#migracion.mig-in .mig-anim:nth-child(2){transition-delay:.05s}#migracion.mig-in .mig-anim:nth-child(3){transition-delay:.12s}#migracion.mig-in .mig-anim:nth-child(4){transition-delay:.19s}#migracion.mig-in .mig-anim:nth-child(5){transition-delay:.26s}#migracion.mig-in .mig-anim:nth-child(6){transition-delay:.33s}#migracion.mig-in .mig-anim:nth-child(7){transition-delay:.4s}
+.mig-stat{opacity:0;transform:translateY(16px);transition:opacity .6s var(--ease),transform .6s var(--ease)}
+#migracion.mig-in .mig-stat{opacity:1;transform:none}
+#migracion.mig-in .mig-stat:nth-child(2){transition-delay:.12s}#migracion.mig-in .mig-stat:nth-child(3){transition-delay:.24s}
+#migracion.mig-in .mig-num{animation:migPop .5s var(--ease)}
+@keyframes migPop{0%{transform:scale(1)}45%{transform:scale(1.16)}100%{transform:scale(1)}}
 /* Mockups animados de caracteristicas estrella */
 @keyframes bubIn{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
 .co-b,.wa-b,.co-typing,.wa-pill{opacity:0;animation:bubIn .5s var(--ease) forwards}
@@ -1341,14 +1350,14 @@ img{max-width:100%;display:block}
       <span style="display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .9rem;border-radius:999px;background:rgba(164,229,205,.18);color:#A4E5CD;font-size:.72rem;font-weight:700;letter-spacing:.04em;border:1px solid rgba(164,229,205,.3)">⚡ Migración sin dolor</span>
       <h2 style="color:#fff;font-size:clamp(1.7rem,4vw,2.6rem);margin-top:1rem;max-width:760px">Cambiarte es lo único que te frena. <span style="font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;color:#FF6B5A">Lo hacemos por ti en 24h.</span></h2>
       <p style="color:rgba(255,255,255,.8);font-size:1.05rem;max-width:640px;margin-top:.9rem;line-height:1.55">Tú nos pasas el export de tu CRM actual y nosotros migramos pacientes, historial y citas a AURA. No tocas nada, no pierdes ni un dato y sigues atendiendo con normalidad. Al día siguiente entras y está todo dentro.</p>
-      <div style="display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.6rem;align-items:center">
+      <div id="migChips" style="display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.6rem;align-items:center">
         <span style="color:rgba(255,255,255,.55);font-size:.8rem;font-weight:600;letter-spacing:.04em;width:100%">Migramos desde:</span>
-        <span class="mig-logo">flowww</span><span class="mig-logo">Booksy</span><span class="mig-logo">AgendaPro</span><span class="mig-logo">Clinicminds</span><span class="mig-logo">MNprogram</span><span class="mig-logo">Klinikare</span><span class="mig-logo">Pabau</span><span class="mig-logo">Fresha</span><span class="mig-logo">Hoja de Excel</span><span class="mig-logo">y más…</span>
+        <span class="mig-logo mig-anim">Hoja de Excel</span><span class="mig-logo mig-anim">Hojas de cálculo</span><span class="mig-logo mig-anim">Papel y agenda</span><span class="mig-logo mig-anim">Tu CRM actual</span><span class="mig-logo mig-anim">Cualquier software</span><span class="mig-logo mig-anim">y más…</span>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-top:2rem">
-        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:1.1rem"><b style="font-family:'Inter Tight';font-size:1.7rem;color:#fff">24h</b><div style="color:rgba(255,255,255,.7);font-size:.86rem;margin-top:.2rem">y está todo dentro</div></div>
-        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:1.1rem"><b style="font-family:'Inter Tight';font-size:1.7rem;color:#fff">0€</b><div style="color:rgba(255,255,255,.7);font-size:.86rem;margin-top:.2rem">la migración va incluida</div></div>
-        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:1.1rem"><b style="font-family:'Inter Tight';font-size:1.7rem;color:#fff">0</b><div style="color:rgba(255,255,255,.7);font-size:.86rem;margin-top:.2rem">datos perdidos, garantizado</div></div>
+      <div id="migStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-top:2rem">
+        <div class="mig-stat" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:1.1rem"><b class="mig-num" data-to="24" data-suffix="h" style="font-family:'Inter Tight';font-size:1.7rem;color:#fff">24h</b><div style="color:rgba(255,255,255,.7);font-size:.86rem;margin-top:.2rem">y está todo dentro</div></div>
+        <div class="mig-stat" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:1.1rem"><b class="mig-num" data-to="0" data-suffix="€" style="font-family:'Inter Tight';font-size:1.7rem;color:#A4E5CD">0€</b><div style="color:rgba(255,255,255,.7);font-size:.86rem;margin-top:.2rem">la migración va incluida</div></div>
+        <div class="mig-stat" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:1.1rem"><b class="mig-num" data-to="0" data-suffix="" style="font-family:'Inter Tight';font-size:1.7rem;color:#fff">0</b><div style="color:rgba(255,255,255,.7);font-size:.86rem;margin-top:.2rem">datos perdidos, garantizado</div></div>
       </div>
       <a href="#composer" class="b" style="display:inline-flex;align-items:center;gap:.5rem;margin-top:2rem;padding:1rem 1.6rem;border-radius:14px;background:#FF6B5A;color:#fff;font-weight:700;font-size:.98rem">Quiero migrar mi clínica →</a>
       <span style="display:block;color:rgba(255,255,255,.5);font-size:.78rem;margin-top:.7rem">Nos encargamos nosotros · tú sigues atendiendo · sin cortes</span>
@@ -2188,6 +2197,26 @@ document.getElementById('aSubmit').onclick = async ()=>{
   };
   var v=null; try{ v=localStorage.getItem(KEY); }catch(e){}
   if(!v) show();
+})();
+</script>
+<script>
+(function(){
+  var sec=document.getElementById('migracion'); if(!sec) return;
+  function countUp(el){
+    var to=parseInt(el.getAttribute('data-to')||'0',10); var suf=el.getAttribute('data-suffix')||'';
+    if(to<=0){ el.textContent='0'+suf; return; }
+    var dur=900, t0=null;
+    function step(ts){ if(!t0)t0=ts; var p=Math.min((ts-t0)/dur,1); var v=Math.round(to*(1-Math.pow(1-p,3))); el.textContent=v+suf; if(p<1)requestAnimationFrame(step); }
+    requestAnimationFrame(step);
+  }
+  var done=false;
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting && !done){ done=true; sec.classList.add('mig-in');
+      setTimeout(function(){ sec.querySelectorAll('.mig-num').forEach(countUp); }, 260);
+      io.disconnect();
+    }});
+  },{threshold:.3});
+  io.observe(sec);
 })();
 </script>
 </body>
