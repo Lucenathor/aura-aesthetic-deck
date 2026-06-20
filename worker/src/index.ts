@@ -2510,7 +2510,7 @@ export default {
               if (tenantId) {
                 const chatId = ev.chat_id || '';
                 const msgId = ev.message_id || (chatId+'_'+(ev.timestamp||Date.now()));
-                const fromMe = !!(ev.account_info?.user_id && ev.sender?.attendee_provider_id && String(ev.account_info.user_id)===String(ev.sender.attendee_provider_id));
+                const fromMe = (ev.is_sender===1||ev.is_sender===true) || !!(ev.account_info?.user_id && ev.sender?.attendee_provider_id && String(ev.account_info.user_id)===String(ev.sender.attendee_provider_id));
                 const text = String(ev.message||'');
                 const att = (ev.attachments&&ev.attachments[0])||null;
                 // tipo real del adjunto (img/video/audio/sticker/file...) y att_id para el proxy de medios
@@ -2537,20 +2537,25 @@ export default {
         }
         if (p === '/api/wa-webhook') { return json({ ok:true }); }
 
-        // DIAGNOSTICO/ALTA del webhook de mensajeria en Unipile (tiempo real). GET lista, POST crea si falta.
+        // DIAGNOSTICO/ALTA del webhook de mensajeria en Unipile (tiempo real). GET lista, POST crea/recrea.
         if (p === '/api/wa-webhook-setup') {
           const hookUrl = 'https://aura-chat-worker.adrian-7b9.workers.dev/api/wa-webhook';
-          // listar webhooks existentes
           const list = await uni('/api/v1/webhooks');
           const items = (list.data?.items)||(Array.isArray(list.data)?list.data:[]);
-          const existing = (items||[]).find((w:any)=> String(w.request_url||w.url||'').indexOf('/api/wa-webhook')>=0 && String(w.source||'').toLowerCase()==='messaging');
+          const matches = (items||[]).filter((w:any)=> String(w.request_url||w.url||'').indexOf('/api/wa-webhook')>=0);
+          const hasJsonHeader = (w:any)=> Array.isArray(w.headers) && w.headers.some((h:any)=> String(h.key||h.name||'').toLowerCase()==='content-type');
+          const good = matches.find((w:any)=> w.enabled!==false && hasJsonHeader(w));
           if (req.method === 'GET') {
-            return json({ ok:true, configured: !!existing, hook_url: hookUrl, webhooks: items });
+            return json({ ok:true, configured: matches.length>0, has_json_header: matches.some(hasJsonHeader), hook_url: hookUrl, webhooks: items });
           }
-          // POST: crea el webhook si no existe
-          if (existing) return json({ ok:true, already:true, webhook: existing });
+          const force = url.searchParams.get('force')==='1';
+          // Si ya hay uno correcto y no se fuerza, no tocamos nada
+          if (good && !force) return json({ ok:true, already:true, webhook: good });
+          // Borrar los webhooks de AURA que no tengan el header correcto (o todos si force)
+          for (const w of matches){ const id=w.id||w.webhook_id; if(!id) continue; if(force || !hasJsonHeader(w)){ try{ await uni('/api/v1/webhooks/'+encodeURIComponent(id),'DELETE'); }catch(e){} } }
+          // Crear el webhook correcto con header Content-Type JSON
           const created = await uni('/api/v1/webhooks','POST',{ request_url: hookUrl, source:'messaging', name:'AURA mensajes', headers:[{ key:'Content-Type', value:'application/json' }] });
-          return json({ ok: created.ok, created: created.data, hook_url: hookUrl });
+          return json({ ok: created.ok, created: created.data, hook_url: hookUrl, removed: matches.length });
         }
 
         // SUGERENCIAS DE RESPUESTA (IA): 2-3 respuestas cortas para que recepción conteste con un clic.
