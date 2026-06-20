@@ -2253,6 +2253,13 @@ export default {
             return new Response(buf, { headers: { 'content-type': ct, 'cache-control':'public, max-age=86400', 'access-control-allow-origin':'*' } });
           }catch(e){ return new Response('error', { status:500 }); }
         }
+        // DEBUG: JSON crudo de los primeros chats de Unipile (para inspeccionar campos de fecha/orden)
+        if (p === '/api/wa-debug-chats' && req.method === 'GET') {
+          const acc = await acctOf(tnt||''); if(!acc) return json({ ok:false, error:'no account' });
+          const r = await uni('/api/v1/chats?account_id='+acc+'&limit=5');
+          const items = (r.data?.items)||[];
+          return json({ ok:true, sample: items.map((c:any)=>({ id:c.id, name:c.name, timestamp:c.timestamp, last_message:c.last_message, keys:Object.keys(c) })) });
+        }
         // Estado de conexión
         if (p === '/api/wa-status' && req.method === 'GET') {
           if(!tnt) return json({error:'missing tenant'},400);
@@ -2286,6 +2293,7 @@ export default {
           const top = items.slice(0,50);
           // attendee NO-self de cada chat (de ahi sacamos nombre real y attendee_id para la foto)
           const att = await Promise.all(top.map((c:any)=> uni('/api/v1/chats/'+encodeURIComponent(c.id)+'/attendees').then((a:any)=>{ const items=(a.data?.items||[]); const it=items.find((x:any)=>x.is_self!==1)||items[0]; return { att:it||null, count:items.length }; }).catch(()=>({att:null,count:0})) ));
+          const nowBase = Date.now();
           for (let i=0;i<top.length;i++){ const c=top[i]; const a=(att[i]&&att[i].att)||{}; const attCount=(att[i]&&att[i].count)||0;
             const isGroup = attCount>2 || /@g\.us/i.test(String(c.provider_id||c.id||'')) || !!c.is_group;
             // Telefono real: specifics.phone_number / public_identifier / provider_id (nunca @lid, que es ID interno sin telefono)
@@ -2297,8 +2305,14 @@ export default {
             const realName = isGroup ? (groupName || 'Grupo') : (a.name || groupName || (phoneRaw?('+'+phoneRaw):''));
             // attendee_id para la foto via proxy (1a1: id del contacto; grupo: id del chat)
             const attendeeId = isGroup ? c.id : (a.id || a.attendee_id || '');
-            const last=c.last_message?.text||c.snippet||''; const ts=c.timestamp?Date.parse(c.timestamp):Date.now();
+            const last=c.last_message?.text||c.snippet||'';
+            // ORDEN como en la app de WhatsApp: Unipile YA devuelve los chats por actividad reciente (primero=mas nuevo)
+            // y su 'timestamp' es la hora de la ultima actividad (en UTC; el front la pasa a hora local). Usamos ese
+            // timestamp tal cual; si faltara, respetamos el orden devolviendo nowBase - i para no desordenar.
+            let ts = c.timestamp ? Date.parse(c.timestamp) : NaN;
+            if(!ts || isNaN(ts)) ts = nowBase - i*60000;
             try { await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,attendee_id,is_group,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET name=COALESCE(NULLIF(excluded.name,''),wa_chats_meta.name), phone=COALESCE(NULLIF(excluded.phone,''),wa_chats_meta.phone), attendee_id=COALESCE(NULLIF(excluded.attendee_id,''),wa_chats_meta.attendee_id), is_group=excluded.is_group, last_text=excluded.last_text, last_ts=excluded.last_ts, unread=excluded.unread, updated_at=excluded.updated_at").bind(t,c.id,realName,phoneRaw,attendeeId,isGroup?1:0,last,ts,c.unread_count||0,Date.now()).run(); } catch(e){}
+          // tras un sync completo, los chats que YA NO estan entre los recientes no deben quedar arriba con ts inflado: nada que hacer aqui porque siempre sobrescribimos last_ts del set actual.
           }
         };
         // Lista de chats: SERVIDA DESDE LA BD de AURA (escalable). Sincroniza la 1ª vez si está vacía.
