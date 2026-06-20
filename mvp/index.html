@@ -355,10 +355,10 @@ img{max-width:100%;display:block}
 .pf-row{opacity:1}.pf-visual.run .pf-row{opacity:0;transform:translateY(8px);transition:opacity .4s var(--ease),transform .4s var(--ease)}.pf-visual.run .pf-row.show{opacity:1;transform:none}
 @keyframes pfFill{to{width:38%}}
 /* Imagenes flotantes ladeadas en tarjetas 'Y ademas' */
-.feat-card{position:relative;overflow:visible;padding-bottom:5.5rem}
-.feat-img{position:absolute;right:-14px;bottom:-22px;width:150px;height:auto;transform:rotate(7deg);filter:drop-shadow(0 16px 26px rgba(31,32,36,.20));pointer-events:none;transition:transform .4s var(--ease)}
-.feat-card:hover .feat-img{transform:rotate(3deg) translateY(-4px) scale(1.04)}
-@media(max-width:760px){.feat-card{padding-bottom:4.5rem}.feat-img{width:118px;right:-8px;bottom:-16px}}
+.feat-card{position:relative;overflow:visible;padding-bottom:6.5rem}
+.feat-img{position:absolute;right:-10px;bottom:-18px;width:118px;height:auto;transform:rotate(6deg);filter:drop-shadow(0 14px 24px rgba(31,32,36,.18));pointer-events:none;transition:transform .4s var(--ease);z-index:2}
+.feat-card:hover .feat-img{transform:rotate(3deg) translateY(-4px) scale(1.05)}
+@media(max-width:760px){.feat-card{padding-bottom:5.5rem}.feat-img{width:100px;right:-6px;bottom:-14px}}
 /* Pipeline guia de ventas */
 .pl-grid{display:grid;grid-template-columns:1fr;gap:1.1rem;margin-top:2.5rem}
 @media(min-width:820px){.pl-grid{grid-template-columns:repeat(3,1fr)}}
