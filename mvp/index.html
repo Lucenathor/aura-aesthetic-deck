@@ -358,15 +358,15 @@ img{max-width:100%;display:block}
 /* Tarjetas con imagen flotante: reservamos espacio abajo para que la imagen asome sin tapar el texto */
 .b-card.feat-card{position:relative;overflow:visible;padding-bottom:8.5rem}
 .feat-card{position:relative;overflow:visible;padding-bottom:8.5rem}
-.feat-img{position:absolute;bottom:-14px;width:150px;height:auto;filter:drop-shadow(0 16px 28px rgba(31,32,36,.20));pointer-events:none;transition:transform .45s var(--ease);z-index:2}
-/* Cada una con orientacion y posicion distinta */
-.feat-img.fi-1{right:14px;transform:rotate(-7deg)}
-.feat-img.fi-2{left:50%;margin-left:-78px;bottom:-6px;width:156px;transform:rotate(1deg)}
-.feat-img.fi-3{right:10px;width:200px;bottom:-10px;transform:rotate(6deg)}
+.feat-img{position:absolute;bottom:0;width:150px;height:auto;filter:drop-shadow(0 16px 28px rgba(31,32,36,.20));pointer-events:none;transition:transform .45s var(--ease);z-index:2}
+/* Cada una con orientacion y posicion distinta. Verticales mas estrechas para no subir tanto. */
+.feat-img.fi-1{right:16px;width:138px;transform:rotate(-7deg)}
+.feat-img.fi-2{left:50%;margin-left:-66px;width:132px;transform:rotate(1deg)}
+.feat-img.fi-3{right:10px;width:215px;bottom:24px;transform:rotate(6deg)}
 .feat-card:hover .feat-img.fi-1{transform:rotate(-4deg) translateY(-5px) scale(1.03)}
 .feat-card:hover .feat-img.fi-2{transform:rotate(0deg) translateY(-5px) scale(1.03)}
 .feat-card:hover .feat-img.fi-3{transform:rotate(3deg) translateY(-5px) scale(1.03)}
-@media(max-width:760px){.b-card.feat-card{padding-bottom:7rem}.feat-card{padding-bottom:7rem}.feat-img{width:120px}.feat-img.fi-2{width:124px;margin-left:-62px}.feat-img.fi-3{width:160px}}
+@media(max-width:760px){.b-card.feat-card{padding-bottom:6.5rem}.feat-card{padding-bottom:6.5rem}.feat-img.fi-1{width:112px}.feat-img.fi-2{width:108px;margin-left:-54px}.feat-img.fi-3{width:170px;bottom:18px}}
 /* Pipeline guia de ventas */
 .pl-grid{display:grid;grid-template-columns:1fr;gap:1.1rem;margin-top:2.5rem}
 @media(min-width:820px){.pl-grid{grid-template-columns:repeat(3,1fr)}}
