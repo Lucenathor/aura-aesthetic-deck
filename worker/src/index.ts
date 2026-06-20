@@ -2320,8 +2320,10 @@ export default {
           if(!tnt) return json({error:'missing tenant'},400);
           const acc = await acctOf(tnt); if(!acc) return json({ chats:[] });
           const wantSync = url.searchParams.get('sync')==='1';
-          let metaRes:any = await env.aura_db.prepare('SELECT * FROM wa_chats_meta WHERE tenant_id=? ORDER BY last_ts DESC LIMIT 50').bind(tnt).all();
-          if(!(metaRes.results||[]).length || wantSync){ try{ await syncChats(tnt, acc); }catch(e){} metaRes = await env.aura_db.prepare('SELECT * FROM wa_chats_meta WHERE tenant_id=? ORDER BY last_ts DESC LIMIT 50').bind(tnt).all(); }
+          // La lista sale SIEMPRE de NUESTRA BD (acumulada por sync inicial + webhook). WhatsApp no permite
+          // resync de historial en Unipile, asi que la persistencia propia es la fuente de verdad y nunca pierde chats.
+          let metaRes:any = await env.aura_db.prepare('SELECT * FROM wa_chats_meta WHERE tenant_id=? ORDER BY last_ts DESC LIMIT 200').bind(tnt).all();
+          if(!(metaRes.results||[]).length || wantSync){ try{ await syncChats(tnt, acc); }catch(e){} metaRes = await env.aura_db.prepare('SELECT * FROM wa_chats_meta WHERE tenant_id=? ORDER BY last_ts DESC LIMIT 200').bind(tnt).all(); }
           const byPhone:any = {};
           try { const leadsRes:any = await env.aura_db.prepare('SELECT id,name,phone,treatment,status,temperature FROM leads WHERE tenant_id=?').bind(tnt).all(); for (const l of (leadsRes.results||[])) { const k=digits9(l.phone); if(k) byPhone[k]=l; } } catch(e){}
           const chats = (metaRes.results||[]).map((m:any)=>{ const num=digits9(m.phone||''); const lead=byPhone[num];
@@ -3246,19 +3248,34 @@ async function runWaSync(env: Env): Promise<void> {
   const UKEY = env.UNIPILE_KEY || '';
   if (!UKEY) return;
   const uni = async (path:string) => { try { const r=await fetch(UNI+path,{ headers:{ 'X-API-KEY':UKEY, 'accept':'application/json' } }); const t=await r.text(); try{return JSON.parse(t);}catch{return null;} } catch{ return null; } };
+  const digits9 = (s:any)=> String(s||'').replace(/@.*/,'').replace(/\D/g,'').slice(-9);
   let cfgs:any;
   try { cfgs = await env.aura_db.prepare('SELECT tenant_id, instance FROM wa_config').all(); } catch { return; }
   for (const c of (cfgs?.results||[])) {
     const t=c.tenant_id, acc=c.instance; if(!acc) continue;
-    const r = await uni('/api/v1/chats?account_id='+acc+'&limit=15'); const items=(r?.items)||[];
-    for (const chat of items.slice(0,15)) {
+    // Traemos hasta 80 chats (lo que Unipile tenga indexado) y los ACUMULAMOS en BD sin perder los antiguos.
+    const r = await uni('/api/v1/chats?account_id='+acc+'&limit=80'); const items=(r?.items)||[];
+    const top = items.slice(0,60);
+    for (const chat of top) {
       const ts = chat.timestamp?Date.parse(chat.timestamp):Date.now();
-      const last = chat.last_message?.text||'';
-      try { await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,last_text,last_ts,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text, last_ts=MAX(wa_chats_meta.last_ts,excluded.last_ts), updated_at=excluded.updated_at").bind(t, chat.id, last, ts, Date.now()).run(); } catch(e){}
+      const last = chat.last_message?.text||chat.snippet||'';
+      // attendee no-self -> nombre real, attendee_id (foto) y telefono
+      let realName='', attendeeId='', phoneRaw='', isGroup=false;
+      try{
+        const a = await uni('/api/v1/chats/'+encodeURIComponent(chat.id)+'/attendees');
+        const ats=(a?.items)||[]; const it=ats.find((x:any)=>x.is_self!==1)||ats[0]||{};
+        isGroup = ats.length>2 || /@g\.us/i.test(String(chat.provider_id||chat.id||'')) || !!chat.is_group;
+        const cands=[ it.specifics?.phone_number, it.public_identifier, it.attendee_provider_id, it.provider_id, chat.provider_id ];
+        for(const cd of cands){ const s=String(cd||''); if(/@lid/i.test(s)) continue; const dg=s.replace(/@.*/,'').replace(/\D/g,''); if(dg.length>=7&&dg.length<=15){ phoneRaw=dg; break; } }
+        const groupName = chat.name||chat.subject||chat.title||'';
+        realName = isGroup ? (groupName||'Grupo') : (it.name||groupName||(phoneRaw?('+'+phoneRaw):''));
+        attendeeId = isGroup ? chat.id : (it.id||it.attendee_id||'');
+      }catch(e){}
+      try { await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,attendee_id,is_group,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET name=COALESCE(NULLIF(excluded.name,''),wa_chats_meta.name), phone=COALESCE(NULLIF(excluded.phone,''),wa_chats_meta.phone), attendee_id=COALESCE(NULLIF(excluded.attendee_id,''),wa_chats_meta.attendee_id), is_group=excluded.is_group, last_text=excluded.last_text, last_ts=MAX(wa_chats_meta.last_ts,excluded.last_ts), unread=excluded.unread, updated_at=excluded.updated_at").bind(t, chat.id, realName, phoneRaw, attendeeId, isGroup?1:0, last, ts, chat.unread_count||0, Date.now()).run(); } catch(e){}
       // trae últimos mensajes y deduplica
       const mr = await uni('/api/v1/chats/'+encodeURIComponent(chat.id)+'/messages?limit=20'); const msgs=(mr?.items)||[];
-      for (const m of msgs){ const att=(m.attachments&&m.attachments[0])||null; const mtype=att?String(att.type||'file').toLowerCase():'text'; const murl=att?(att.url||null):null; const mname=att?(att.file_name||att.name||null):null; const mts=m.timestamp?Date.parse(m.timestamp):Date.now(); const fromMe=(m.is_sender===1||m.is_sender===true)?1:0;
-        try{ await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(m.id||(chat.id+'_'+mts), t, chat.id, fromMe, m.text||'', mtype, murl, mname, mts, Date.now()).run(); }catch(e){}
+      for (const m of msgs){ const att=(m.attachments&&m.attachments[0])||null; const attId=att?(att.id||att.attachment_id||null):null; const mtype=att?String(att.type||att.mimetype||'file').toLowerCase():'text'; let murl=att?(att.url||null):null; if(murl&&/^att:\/\//i.test(String(murl)))murl=null; const mid=m.id||(chat.id+'_'+(m.timestamp?Date.parse(m.timestamp):Date.now())); if(att&&!murl) murl='/api/wa-media?mid='+encodeURIComponent(mid)+'&aid='+encodeURIComponent(attId||'0')+'&t='+encodeURIComponent(t); const mname=att?(att.file_name||att.name||null):null; const mts=m.timestamp?Date.parse(m.timestamp):Date.now(); const fromMe=(m.is_sender===1||m.is_sender===true)?1:0; let txt=m.text||''; if(/Unipile cannot display this type of message/i.test(txt)){ txt=''; }
+        try{ await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,att_id,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(mid, t, chat.id, fromMe, txt, mtype, murl, mname, attId, mts, Date.now()).run(); }catch(e){}
       }
     }
   }
