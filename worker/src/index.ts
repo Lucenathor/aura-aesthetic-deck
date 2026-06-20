@@ -410,6 +410,9 @@ async function ensureWaSchema(env: Env) {
   try { await env.aura_db.exec("CREATE INDEX IF NOT EXISTS idx_wa_msg_chat ON wa_messages (tenant_id, chat_id, ts)"); } catch(e){}
   // Metadatos de cada chat para construir la lista sin recorrer Unipile cada vez
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS wa_chats_meta (tenant_id TEXT, chat_id TEXT, name TEXT, phone TEXT, picture TEXT, last_text TEXT, last_ts INTEGER, unread INTEGER DEFAULT 0, updated_at INTEGER, PRIMARY KEY (tenant_id, chat_id))"); } catch(e){}
+  // attendee_id: id del contacto en Unipile para descargar su foto via /chat_attendees/{id}/picture
+  try { await env.aura_db.exec('ALTER TABLE wa_chats_meta ADD COLUMN attendee_id TEXT'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE wa_chats_meta ADD COLUMN is_group INTEGER DEFAULT 0'); } catch(e){}
   __waReady = true;
 }
 let __invReady = false;
@@ -660,7 +663,7 @@ export default {
       ]);
       // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
       const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar','/api/portal-clients']);
-      const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p)) || (p==='/api/packs' && req.method==='POST') || (p.startsWith('/api/wa-') && p!=='/api/wa-webhook' && p!=='/api/wa-media') || p.startsWith('/api/inv-') || p==='/api/copilot';
+      const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p)) || (p==='/api/packs' && req.method==='POST') || (p.startsWith('/api/wa-') && p!=='/api/wa-webhook' && p!=='/api/wa-media' && p!=='/api/wa-avatar') || p.startsWith('/api/inv-') || p==='/api/copilot';
       if (mustGuard) {
         // tenant solicitado: de query (?tenant=) o del body para POST
         let tenantReq = url.searchParams.get('tenant') || url.searchParams.get('tenant_id');
@@ -2237,6 +2240,19 @@ export default {
             return new Response(buf, { headers: { 'content-type': ct, 'cache-control':'public, max-age=86400', 'access-control-allow-origin':'*' } });
           }catch(e){ return new Response('error', { status:500 }); }
         }
+        // PROXY DE FOTO DE CONTACTO/GRUPO: descarga la imagen del attendee (o del chat para grupos) y la sirve.
+        if (p === '/api/wa-avatar' && req.method === 'GET') {
+          const aid = url.searchParams.get('aid')||'';
+          const t2 = url.searchParams.get('t')||'';
+          if(!aid) return new Response('missing aid', { status:400 });
+          try{
+            const ar = await fetch(UNI+'/api/v1/chat_attendees/'+encodeURIComponent(aid)+'/picture', { headers:{ 'X-API-KEY': UKEY } });
+            if(!ar.ok) return new Response('no picture', { status:404 });
+            const ct = ar.headers.get('content-type') || 'image/jpeg';
+            const buf = await ar.arrayBuffer();
+            return new Response(buf, { headers: { 'content-type': ct, 'cache-control':'public, max-age=86400', 'access-control-allow-origin':'*' } });
+          }catch(e){ return new Response('error', { status:500 }); }
+        }
         // Estado de conexión
         if (p === '/api/wa-status' && req.method === 'GET') {
           if(!tnt) return json({error:'missing tenant'},400);
@@ -2265,31 +2281,39 @@ export default {
         }
         // Sincroniza chats desde Unipile a wa_chats_meta (nombre/teléfono reales). Se usa en carga inicial y en cron.
         const syncChats = async (t:string, acc:string) => {
-          const r = await uni('/api/v1/chats?account_id='+acc+'&limit=50');
+          const r = await uni('/api/v1/chats?account_id='+acc+'&limit=80');
           const items = (r.data?.items)||[];
-          const top = items.slice(0,25);
-          const att = await Promise.all(top.map((c:any)=> uni('/api/v1/chats/'+encodeURIComponent(c.id)+'/attendees').then((a:any)=>{ const it=(a.data?.items||[]).find((x:any)=>x.is_self!==1)||(a.data?.items||[])[0]; return it||null; }).catch(()=>null) ));
-          // intenta obtener foto de perfil de cada contacto (cuando WhatsApp la expone)
-          const pics = await Promise.all(att.map((a:any)=>{ const pid=a?.public_identifier||a?.provider_id; if(!pid) return Promise.resolve(null); return uni('/api/v1/users/'+encodeURIComponent(pid)+'?account_id='+acc).then((u:any)=> u.data?.profile_picture_url||u.data?.picture_url||null).catch(()=>null); }));
-          for (let i=0;i<top.length;i++){ const c=top[i]; const a=att[i]||{};
-            // Extracción robusta del teléfono. PRIORIDAD: specifics.phone_number y public_identifier (traen el tel real),
-            // NUNCA provider_id cuando es '...@lid' (ID interno de WhatsApp sin teléfono).
+          const top = items.slice(0,50);
+          // attendee NO-self de cada chat (de ahi sacamos nombre real y attendee_id para la foto)
+          const att = await Promise.all(top.map((c:any)=> uni('/api/v1/chats/'+encodeURIComponent(c.id)+'/attendees').then((a:any)=>{ const items=(a.data?.items||[]); const it=items.find((x:any)=>x.is_self!==1)||items[0]; return { att:it||null, count:items.length }; }).catch(()=>({att:null,count:0})) ));
+          for (let i=0;i<top.length;i++){ const c=top[i]; const a=(att[i]&&att[i].att)||{}; const attCount=(att[i]&&att[i].count)||0;
+            const isGroup = attCount>2 || /@g\.us/i.test(String(c.provider_id||c.id||'')) || !!c.is_group;
+            // Telefono real: specifics.phone_number / public_identifier / provider_id (nunca @lid, que es ID interno sin telefono)
             const candidates = [ a.specifics?.phone_number, a.public_identifier, a.attendee_provider_id, a.provider_id, c.provider_id, c.attendee_provider_id ];
             let phoneRaw = '';
             for (const cand of candidates){ const s=String(cand||''); if(/@lid/i.test(s)) continue; const dgs=s.replace(/@.*/,'').replace(/\D/g,''); if(dgs.length>=7 && dgs.length<=15){ phoneRaw=dgs; break; } }
-            const realName=a.name||(phoneRaw?('+'+phoneRaw):''); const last=c.last_message?.text||c.snippet||''; const ts=c.timestamp?Date.parse(c.timestamp):Date.now(); const pic=pics[i]||a.picture_url||a.profile_picture_url||null;
-            try { await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,picture,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET name=COALESCE(NULLIF(excluded.name,''),wa_chats_meta.name), phone=COALESCE(NULLIF(excluded.phone,''),wa_chats_meta.phone), picture=COALESCE(excluded.picture,wa_chats_meta.picture), last_text=excluded.last_text, last_ts=excluded.last_ts, updated_at=excluded.updated_at").bind(t,c.id,realName,phoneRaw,pic,last,ts,c.unread_count||0,Date.now()).run(); } catch(e){}
+            // Nombre: para grupos el nombre del chat; para 1a1 el nombre del attendee; si no, el telefono
+            const groupName = c.name || c.subject || c.title || '';
+            const realName = isGroup ? (groupName || 'Grupo') : (a.name || groupName || (phoneRaw?('+'+phoneRaw):''));
+            // attendee_id para la foto via proxy (1a1: id del contacto; grupo: id del chat)
+            const attendeeId = isGroup ? c.id : (a.id || a.attendee_id || '');
+            const last=c.last_message?.text||c.snippet||''; const ts=c.timestamp?Date.parse(c.timestamp):Date.now();
+            try { await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,attendee_id,is_group,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET name=COALESCE(NULLIF(excluded.name,''),wa_chats_meta.name), phone=COALESCE(NULLIF(excluded.phone,''),wa_chats_meta.phone), attendee_id=COALESCE(NULLIF(excluded.attendee_id,''),wa_chats_meta.attendee_id), is_group=excluded.is_group, last_text=excluded.last_text, last_ts=excluded.last_ts, unread=excluded.unread, updated_at=excluded.updated_at").bind(t,c.id,realName,phoneRaw,attendeeId,isGroup?1:0,last,ts,c.unread_count||0,Date.now()).run(); } catch(e){}
           }
         };
         // Lista de chats: SERVIDA DESDE LA BD de AURA (escalable). Sincroniza la 1ª vez si está vacía.
         if (p === '/api/wa-chats' && req.method === 'GET') {
           if(!tnt) return json({error:'missing tenant'},400);
           const acc = await acctOf(tnt); if(!acc) return json({ chats:[] });
+          const wantSync = url.searchParams.get('sync')==='1';
           let metaRes:any = await env.aura_db.prepare('SELECT * FROM wa_chats_meta WHERE tenant_id=? ORDER BY last_ts DESC LIMIT 50').bind(tnt).all();
-          if(!(metaRes.results||[]).length){ try{ await syncChats(tnt, acc); }catch(e){} metaRes = await env.aura_db.prepare('SELECT * FROM wa_chats_meta WHERE tenant_id=? ORDER BY last_ts DESC LIMIT 50').bind(tnt).all(); }
+          if(!(metaRes.results||[]).length || wantSync){ try{ await syncChats(tnt, acc); }catch(e){} metaRes = await env.aura_db.prepare('SELECT * FROM wa_chats_meta WHERE tenant_id=? ORDER BY last_ts DESC LIMIT 50').bind(tnt).all(); }
           const byPhone:any = {};
           try { const leadsRes:any = await env.aura_db.prepare('SELECT id,name,phone,treatment,status,temperature FROM leads WHERE tenant_id=?').bind(tnt).all(); for (const l of (leadsRes.results||[])) { const k=digits9(l.phone); if(k) byPhone[k]=l; } } catch(e){}
-          const chats = (metaRes.results||[]).map((m:any)=>{ const num=digits9(m.phone||''); const lead=byPhone[num]; return { remoteJid:m.chat_id, id:m.chat_id, chat_id:m.chat_id, pushName:m.name, name:m.name, phone:m.phone, picture:m.picture||null, timestamp:m.last_ts||null, unread:m.unread||0, lastMessage:{ message:{ conversation:m.last_text||'' } }, _lead: lead?{ id:lead.id, name:lead.name, treatment:lead.treatment, status:lead.status, temperature:lead.temperature }:undefined }; });
+          const chats = (metaRes.results||[]).map((m:any)=>{ const num=digits9(m.phone||''); const lead=byPhone[num];
+            // Foto via proxy de Unipile (chat_attendees/{id}/picture). Solo si tenemos attendee_id.
+            const pic = m.attendee_id ? ('/api/wa-avatar?aid='+encodeURIComponent(m.attendee_id)+'&t='+encodeURIComponent(tnt)) : (m.picture||null);
+            return { remoteJid:m.chat_id, id:m.chat_id, chat_id:m.chat_id, pushName:m.name, name:m.name, phone:m.phone, picture:pic, is_group:!!m.is_group, timestamp:m.last_ts||null, unread:m.unread||0, lastMessage:{ message:{ conversation:m.last_text||'' } }, _lead: lead?{ id:lead.id, name:lead.name, treatment:lead.treatment, status:lead.status, temperature:lead.temperature }:undefined }; });
           return json({ chats });
         }
         // Ficha del paciente por número
@@ -2374,15 +2398,22 @@ export default {
               const r = await uni('/api/v1/chats/'+encodeURIComponent(chatId)+'/messages?limit=60');
               const items = (r.data?.items)||[];
               for (const m of items){ const att=(m.attachments&&m.attachments[0])||null;
-                const mtype=att?String(att.type||att.mimetype||att.mime_type||'file').toLowerCase():'text';
-                const directUrl=att?(att.url||att.download_url||att.public_url||att.file_url||(att.data&&att.data.url)||null):null;
                 const attId=att?(att.id||att.attachment_id||null):null;
+                // tipo: del attachment; si no hay attachment pero el mensaje declara tipo de medio, respetarlo
+                let mtype = att ? String(att.type||att.mimetype||att.mime_type||'file').toLowerCase() : String(m.message_type||m.type||'text').toLowerCase();
+                if(!att && (mtype==='text'||mtype==='chat'||mtype==='conversation'||!mtype)) mtype='text';
+                // url directa solo si NO es el esquema att:// (que no es descargable directamente)
+                let directUrl=att?(att.url||att.download_url||att.public_url||att.file_url||(att.data&&att.data.url)||null):null;
+                if(directUrl && /^att:\/\//i.test(String(directUrl))) directUrl=null;
                 const mname=att?(att.file_name||att.name||att.filename||null):null;
                 const mid=m.id||(chatId+'_'+(m.timestamp?Date.parse(m.timestamp):Date.now()));
+                // si hay attachment (aunque la url venga att://), servimos por nuestro proxy con mid+aid
                 const murl = directUrl || (att ? ('/api/wa-media?mid='+encodeURIComponent(mid)+'&aid='+encodeURIComponent(attId||'0')+'&t='+encodeURIComponent(tnt)) : null);
                 const ts=m.timestamp?Date.parse(m.timestamp):Date.now(); const fromMe=(m.is_sender===1||m.is_sender===true)?1:0;
+                // el placeholder de Unipile no es un texto real: lo limpiamos para que el front muestre el tipo de medio
+                let txt = m.text||''; if(/Unipile cannot display this type of message/i.test(txt)){ txt=''; if(mtype==='text') mtype='file'; }
                 // INSERT OR REPLACE: inserta o reemplaza por message_id (PK), rellenando medios
-                try{ await env.aura_db.prepare("INSERT OR REPLACE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,att_id,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(mid, tnt, chatId, fromMe, m.text||'', mtype, murl, mname, attId, ts, Date.now()).run(); }catch(e){}
+                try{ await env.aura_db.prepare("INSERT OR REPLACE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,att_id,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(mid, tnt, chatId, fromMe, txt, mtype, murl, mname, attId, ts, Date.now()).run(); }catch(e){}
               }
               // Rellena el TELÉFONO del chat desde el remitente de un mensaje entrante (dato 100% fiable de esta conversación).
               // Busca un identificador con formato 'numero@s.whatsapp.net' (ignora '@lid', que es ID interno sin teléfono).
@@ -2482,13 +2513,17 @@ export default {
                 const fromMe = !!(ev.account_info?.user_id && ev.sender?.attendee_provider_id && String(ev.account_info.user_id)===String(ev.sender.attendee_provider_id));
                 const text = String(ev.message||'');
                 const att = (ev.attachments&&ev.attachments[0])||null;
-                const mtype = att ? String(att.type||'file').toLowerCase() : 'text';
-                const murl = att ? (att.url||null) : null;
-                const mname = att ? (att.file_name||att.name||null) : null;
+                // tipo real del adjunto (img/video/audio/sticker/file...) y att_id para el proxy de medios
+                const mtype = att ? String(att.type||att.mimetype||att.mime_type||'file').toLowerCase() : 'text';
+                const attId = att ? (att.id||att.attachment_id||null) : null;
+                // la url 'att://...' de Unipile no es descargable directa: usamos nuestro proxy con mid+aid
+                const directUrl = att ? (att.url && !/^att:\/\//i.test(String(att.url)) ? att.url : null) : null;
+                const murl = att ? (directUrl || ('/api/wa-media?mid='+encodeURIComponent(msgId)+'&aid='+encodeURIComponent(attId||'0')+'&t='+encodeURIComponent(tenantId))) : null;
+                const mname = att ? (att.file_name||att.name||att.filename||null) : null;
                 const ts = ev.timestamp ? Date.parse(ev.timestamp) : Date.now();
-                const senderPhone = (ev.sender?.attendee_provider_id||ev.provider_id||'').replace(/@.*/,'');
-                // dedupe por message_id (INSERT OR IGNORE)
-                try { await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(msgId, tenantId, chatId, fromMe?1:0, text, mtype, murl, mname, ts, Date.now()).run(); } catch(e){}
+                const senderPhone = (ev.sender?.attendee_provider_id||ev.provider_id||'').replace(/@.*/,'').replace(/\D/g,'');
+                // dedupe por message_id (INSERT OR REPLACE para rellenar att_id/murl si llega mas completo)
+                try { await env.aura_db.prepare("INSERT OR REPLACE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,att_id,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(msgId, tenantId, chatId, fromMe?1:0, text, mtype, murl, mname, attId, ts, Date.now()).run(); } catch(e){}
                 // actualiza metadatos del chat (nombre, último texto, no leídos)
                 try {
                   const who = ev.sender?.attendee_name || (senderPhone?('+'+senderPhone):'');
@@ -2501,6 +2536,22 @@ export default {
           return json({ ok:true });
         }
         if (p === '/api/wa-webhook') { return json({ ok:true }); }
+
+        // DIAGNOSTICO/ALTA del webhook de mensajeria en Unipile (tiempo real). GET lista, POST crea si falta.
+        if (p === '/api/wa-webhook-setup') {
+          const hookUrl = 'https://aura-chat-worker.adrian-7b9.workers.dev/api/wa-webhook';
+          // listar webhooks existentes
+          const list = await uni('/api/v1/webhooks');
+          const items = (list.data?.items)||(Array.isArray(list.data)?list.data:[]);
+          const existing = (items||[]).find((w:any)=> String(w.request_url||w.url||'').indexOf('/api/wa-webhook')>=0 && String(w.source||'').toLowerCase()==='messaging');
+          if (req.method === 'GET') {
+            return json({ ok:true, configured: !!existing, hook_url: hookUrl, webhooks: items });
+          }
+          // POST: crea el webhook si no existe
+          if (existing) return json({ ok:true, already:true, webhook: existing });
+          const created = await uni('/api/v1/webhooks','POST',{ request_url: hookUrl, source:'messaging', name:'AURA mensajes', headers:[{ key:'Content-Type', value:'application/json' }] });
+          return json({ ok: created.ok, created: created.data, hook_url: hookUrl });
+        }
 
         // SUGERENCIAS DE RESPUESTA (IA): 2-3 respuestas cortas para que recepción conteste con un clic.
         if (p === '/api/wa-suggest' && req.method === 'POST') {

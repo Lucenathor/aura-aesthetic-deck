@@ -3428,7 +3428,11 @@ function waInitials(n){ var s=(n||'').trim(); if(!s||s==='Contacto sin nombre'||
 // Paleta amable y variada: el color sale de la inicial/nombre para que sea estable por contacto
 var WA_AV_GRAD=['#F2A65A,#E76F51','#7FB069,#52796F','#6C9BD1,#3D5A80','#C08497,#8E5572','#E9C46A,#E76F51','#9D8DF1,#6C5CE7','#56C2A8,#1F8C69','#F4978E,#C9485B','#7AC7C4,#3A8A8C','#E5989B,#B5838D'];
 function waColorFor(name){ var s=String(name||'?'); var h=0; for(var i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))>>>0; } return WA_AV_GRAD[h%WA_AV_GRAD.length]; }
-function waAvatar(name,pic,size){ size=size||44; if(pic) return '<img src="'+pic+'" onerror="this.style.display=\'none\'" style="width:'+size+'px;height:'+size+'px;border-radius:50%;object-fit:cover;flex:none"/>'; var ini=waInitials(name); var grad=waColorFor(name); return '<span style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:linear-gradient(135deg,'+grad+');color:#fff;display:grid;place-items:center;font-weight:700;flex:none;font-size:'+(ini.length>1?size/2.4:size/2.4)+'px;box-shadow:0 2px 6px rgba(0,0,0,.12)">'+ini+'</span>'; }
+function waAvatar(name,pic,size){ size=size||44; var ini=waInitials(name); var grad=waColorFor(name);
+  var fallback='<span style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:linear-gradient(135deg,'+grad+');color:#fff;display:grid;place-items:center;font-weight:700;flex:none;font-size:'+(size/2.4)+'px;box-shadow:0 2px 6px rgba(0,0,0,.12)">'+ini+'</span>';
+  if(pic){ var src=pic; if(typeof src==='string' && src.charAt(0)==='/') src=WORKER+src; 
+    return '<span style="position:relative;width:'+size+'px;height:'+size+'px;flex:none;display:inline-block">'+fallback.replace('width:'+size+'px;height:'+size+'px;border-radius:50%','position:absolute;inset:0;width:'+size+'px;height:'+size+'px;border-radius:50%')+'<img src="'+src+'" loading="lazy" onerror="this.remove()" style="position:absolute;inset:0;width:'+size+'px;height:'+size+'px;border-radius:50%;object-fit:cover"/></span>'; }
+  return fallback; }
 function waTime(ts){ if(!ts)return''; try{ const d=new Date(ts); return d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}); }catch(e){return'';} }
 function waDateLabel(ts){ if(!ts)return''; try{ const d=new Date(ts), h=new Date(), y=new Date(Date.now()-864e5); if(d.toDateString()===h.toDateString())return'Hoy'; if(d.toDateString()===y.toDateString())return'Ayer'; return d.toLocaleDateString('es-ES',{day:'numeric',month:'long'}); }catch(e){return'';} }
 function renderWaInbox(){
@@ -3436,7 +3440,7 @@ function renderWaInbox(){
   const body=document.getElementById('waBody');
   body.innerHTML='<div class="card" style="padding:0;overflow:hidden;border-radius:16px"><div id="waGrid" class="wa-grid">'
     +'<div id="waColList" class="wa-col-list" style="border-right:1px solid var(--line);display:flex;flex-direction:column;background:#fff;min-width:0">'
-      +'<div style="padding:.6rem .8rem;border-bottom:1px solid var(--line);display:flex;gap:.4rem;align-items:center"><input id="waSearch" placeholder="Buscar paciente o número…" oninput="filterWaChats(this.value)" style="flex:1;padding:.55rem .9rem;border:1px solid var(--line);border-radius:22px;font-size:.85rem;background:var(--bg2)"/><button class="btn prim" title="Nuevo chat" onclick="waNewChat()" style="border-radius:50%;width:36px;height:36px;padding:0;font-size:1.1rem;flex:none">+</button></div>'
+      +'<div style="padding:.6rem .8rem;border-bottom:1px solid var(--line);display:flex;gap:.4rem;align-items:center"><input id="waSearch" placeholder="Buscar paciente o número…" oninput="filterWaChats(this.value)" style="flex:1;padding:.55rem .9rem;border:1px solid var(--line);border-radius:22px;font-size:.85rem;background:var(--bg2)"/><button class="btn" title="Recargar contactos y fotos" onclick="waResync(this)" style="border-radius:50%;width:36px;height:36px;padding:0;font-size:1rem;flex:none">↻</button><button class="btn prim" title="Nuevo chat" onclick="waNewChat()" style="border-radius:50%;width:36px;height:36px;padding:0;font-size:1.1rem;flex:none">+</button></div>'
       +'<div id="waChatList" style="flex:1;overflow-y:auto"><div class="sub" style="padding:1rem">Cargando conversaciones…</div></div>'
     +'</div>'
     +'<div id="waConvo" class="wa-col-chat" style="display:flex;flex-direction:column;min-width:0;background:#efeae2;background-image:linear-gradient(rgba(229,221,213,.6),rgba(229,221,213,.6))"><div style="margin:auto;text-align:center;color:#667781;padding:2rem"><div style="font-size:3rem;margin-bottom:.5rem">💬</div><p>Elige una conversación para empezar a responder.</p></div></div>'
@@ -3444,9 +3448,10 @@ function renderWaInbox(){
     +'</div></div>';
   loadWaChats();
   if(window._waChatPoll)clearInterval(window._waChatPoll);
-  window._waChatPoll=setInterval(()=>{ const sec=document.getElementById('sec-whatsapp'); if(!sec||!sec.classList.contains('on')){clearInterval(window._waChatPoll);return;} loadWaChats(true); if(_waActive)refreshWaMsgs(); }, 5000);
+  window._waChatPoll=setInterval(()=>{ const sec=document.getElementById('sec-whatsapp'); if(!sec||!sec.classList.contains('on')){clearInterval(window._waChatPoll);return;} loadWaChats(true); if(_waActive)refreshWaMsgs(); }, 3000);
 }
 function filterWaChats(q){ q=(q||'').toLowerCase(); document.querySelectorAll('#waChatList .wa-chat').forEach(el=>{ const t=el.getAttribute('data-search')||''; el.style.display = t.includes(q)?'flex':'none'; }); }
+async function waResync(btn){ try{ if(btn){ btn.disabled=true; btn.style.opacity='.5'; btn.textContent='⏳'; } if(typeof toast==='function')toast('Recargando contactos y fotos…'); try{ await waApi('/api/wa-chats?sync=1'); }catch(e){} await loadWaChats(); if(typeof toast==='function')toast('Contactos actualizados ✓'); }finally{ if(btn){ btn.disabled=false; btn.style.opacity=''; btn.textContent='↻'; } } }
 async function loadWaChats(silent){
   const list=document.getElementById('waChatList'); if(!list)return;
   let r={}; try{ r=await waApi('/api/wa-chats'); }catch(e){ if(silent)return; }
