@@ -429,6 +429,17 @@ img{max-width:100%;display:block}
 .pl-stat:hover{transform:translateY(-3px);box-shadow:0 14px 30px -18px rgba(15,16,17,.2)}
 .pl-stat b{display:block;font-family:'Inter Tight';font-weight:800;font-size:1.6rem;color:var(--accent);line-height:1}
 .pl-stat span{font-size:.8rem;color:var(--muted);margin-top:.25rem;display:block}
+/* Animacion de las 3 stats del pipeline */
+.pl-stat{opacity:0;transform:translateY(18px)}
+.pl-bottom.pls-in .pl-stat{opacity:1;transform:none;transition:opacity .6s var(--ease),transform .6s var(--ease)}
+.pl-bottom.pls-in .pl-stat:nth-child(2){transition-delay:.12s}.pl-bottom.pls-in .pl-stat:nth-child(3){transition-delay:.24s}
+.pl-bottom.pls-in .pl-num{animation:plPop .55s var(--ease)}
+@keyframes plPop{0%{transform:scale(1)}45%{transform:scale(1.18)}100%{transform:scale(1)}}
+/* Subrayado rojo dibujado bajo 'Cualquiera' */
+.pl-underline{position:relative;display:inline-block}
+.pl-underline::after{content:'';position:absolute;left:0;right:0;bottom:-.12em;height:.16em;border-radius:2px;background:#FF2D2D;transform:scaleX(0);transform-origin:left center;transition:transform .7s var(--ease)}
+.pl-bottom.pls-in .pl-underline::after{transform:scaleX(1);transition-delay:.5s}
+@media(prefers-reduced-motion:reduce){.pl-stat{opacity:1;transform:none}.pl-underline::after{transform:scaleX(1)}}
 .section .pill{display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .9rem;border-radius:999px;background:rgba(155,123,255,.10);color:var(--accent-2);font-size:.7rem;font-weight:600;letter-spacing:.04em;border:1px solid rgba(155,123,255,.22)}
 .section .pill.coral{background:rgba(255,107,90,.10);color:var(--accent);border-color:rgba(255,107,90,.22)}
 .section .pill.mint{background:rgba(164,229,205,.18);color:#1f8c69;border-color:rgba(164,229,205,.45)}
@@ -1301,10 +1312,10 @@ img{max-width:100%;display:block}
         <div class="pl-foot"><span class="pl-money">+<b class="pl-eur" data-to="390">0</b>€ potencial</span><span class="pl-go">Renovar bono →</span></div>
       </div>
     </div>
-    <div class="pl-bottom reveal">
-      <div class="pl-stat"><b>+32%</b><span>ticket medio con sugerencias</span></div>
-      <div class="pl-stat"><b>0</b><span>oportunidades de venta perdidas</span></div>
-      <div class="pl-stat"><b>Cualquiera</b><span>puede vender, sepa o no</span></div>
+    <div class="pl-bottom reveal" id="plStats">
+      <div class="pl-stat"><b class="pl-num" data-to="32" data-prefix="+" data-suffix="%">+0%</b><span>ticket medio con sugerencias</span></div>
+      <div class="pl-stat"><b class="pl-num" data-to="0" data-prefix="" data-suffix="">0</b><span>oportunidades de venta perdidas</span></div>
+      <div class="pl-stat"><b><span class="pl-underline">Cualquiera</span></b><span>puede vender, sepa o no</span></div>
     </div>
   </section>
 
@@ -2216,6 +2227,11 @@ document.getElementById('aSubmit').onclick = async ()=>{
 })();
 </script>
 <script>
+(function(){
+  var box=document.getElementById('plStats'); if(!box) return;
+  function cu(el){ var to=parseInt(el.getAttribute('data-to')||'0',10); var pre=el.getAttribute('data-prefix')||''; var suf=el.getAttribute('data-suffix')||''; if(to<=0){ el.textContent=pre+'0'+suf; return; } var dur=900,t0=null; function st(ts){ if(!t0)t0=ts; var p=Math.min((ts-t0)/dur,1); var v=Math.round(to*(1-Math.pow(1-p,3))); el.textContent=pre+v+suf; if(p<1)requestAnimationFrame(st); } requestAnimationFrame(st); }
+  var d=false; var io=new IntersectionObserver(function(es){ es.forEach(function(e){ if(e.isIntersecting&&!d){ d=true; box.classList.add('pls-in'); setTimeout(function(){ box.querySelectorAll('.pl-num').forEach(cu); },150); io.disconnect(); } }); },{threshold:.4}); io.observe(box);
+})();
 (function(){
   var sec=document.getElementById('migracion'); if(!sec) return;
   function countUp(el){
