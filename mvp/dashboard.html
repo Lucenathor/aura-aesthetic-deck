@@ -1292,7 +1292,7 @@ document.addEventListener('click',(e)=>{
 function restoreSection(){
   let v=(location.hash||'').replace('#',''); 
   if(!v){ try{ v=localStorage.getItem('aura_section')||'resumen'; }catch(e){ v='resumen'; } }
-  const valid=['resumen','pacientes','pipeline','agenda','caja','embudo','equipo','ajustes'];
+  const valid=['resumen','pacientes','pipeline','agenda','caja','embudo','equipo','ajustes','whatsapp','inventario','portal','facturacion','admin'];
   if(!valid.includes(v))v='resumen';
   goSection(v,false);
 }
