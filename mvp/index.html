@@ -333,6 +333,17 @@ img{max-width:100%;display:block}
 #migracion.mig-in .mig-stat:nth-child(2){transition-delay:.12s}#migracion.mig-in .mig-stat:nth-child(3){transition-delay:.24s}
 #migracion.mig-in .mig-num{animation:migPop .5s var(--ease)}
 @keyframes migPop{0%{transform:scale(1)}45%{transform:scale(1.16)}100%{transform:scale(1)}}
+/* Layout 2 columnas + imagen animada */
+.mig-layout{display:grid;grid-template-columns:1fr;gap:1.5rem;align-items:center}
+@media(min-width:980px){.mig-layout{grid-template-columns:1.05fr .95fr;gap:2.2rem}}
+.mig-visual{position:relative;border-radius:18px;overflow:hidden;opacity:0;transform:translateY(24px) scale(.97);transition:opacity .8s var(--ease),transform .8s var(--ease)}
+#migracion.mig-in .mig-visual{opacity:1;transform:none}
+.mig-visual img{width:100%;height:auto;display:block;border-radius:18px}
+/* Brillo de flujo que recorre la imagen (sensacion de datos migrando) */
+.mig-flow{position:absolute;top:0;left:-40%;width:35%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,107,90,.28),rgba(164,229,205,.22),transparent);filter:blur(8px);pointer-events:none;opacity:0}
+#migracion.mig-in .mig-flow{animation:migSweep 3.2s 1s ease-in-out infinite}
+@keyframes migSweep{0%{left:-40%;opacity:0}15%{opacity:1}85%{opacity:1}100%{left:110%;opacity:0}}
+@media(prefers-reduced-motion:reduce){.mig-flow{display:none}}
 /* Mockups animados de caracteristicas estrella */
 @keyframes bubIn{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
 .co-b,.wa-b,.co-typing,.wa-pill{opacity:0;animation:bubIn .5s var(--ease) forwards}
@@ -1347,6 +1358,8 @@ img{max-width:100%;display:block}
   <!-- MIGRACIÓN 24H -->
   <section class="section" id="migracion">
     <div style="background:linear-gradient(135deg,var(--ink) 0%,#1F2024 100%);border-radius:24px;padding:3rem 2rem;color:#fff;position:relative;overflow:hidden">
+      <div class="mig-layout">
+      <div class="mig-copy">
       <span style="display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .9rem;border-radius:999px;background:rgba(164,229,205,.18);color:#A4E5CD;font-size:.72rem;font-weight:700;letter-spacing:.04em;border:1px solid rgba(164,229,205,.3)">⚡ Migración sin dolor</span>
       <h2 style="color:#fff;font-size:clamp(1.7rem,4vw,2.6rem);margin-top:1rem;max-width:760px">Cambiarte es lo único que te frena. <span style="font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;color:#FF6B5A">Lo hacemos por ti en 24h.</span></h2>
       <p style="color:rgba(255,255,255,.8);font-size:1.05rem;max-width:640px;margin-top:.9rem;line-height:1.55">Tú nos pasas el export de tu CRM actual y nosotros migramos pacientes, historial y citas a AURA. No tocas nada, no pierdes ni un dato y sigues atendiendo con normalidad. Al día siguiente entras y está todo dentro.</p>
@@ -1361,6 +1374,9 @@ img{max-width:100%;display:block}
       </div>
       <a href="#composer" class="b" style="display:inline-flex;align-items:center;gap:.5rem;margin-top:2rem;padding:1rem 1.6rem;border-radius:14px;background:#FF6B5A;color:#fff;font-weight:700;font-size:.98rem">Quiero migrar mi clínica →</a>
       <span style="display:block;color:rgba(255,255,255,.5);font-size:.78rem;margin-top:.7rem">Nos encargamos nosotros · tú sigues atendiendo · sin cortes</span>
+      </div>
+      <div class="mig-visual"><img src="/assets/migracion.png?v=1" alt="Migración de datos a AURA en 24 horas" loading="lazy"><span class="mig-flow"></span></div>
+      </div>
     </div>
   </section>
 
