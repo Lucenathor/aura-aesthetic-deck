@@ -355,11 +355,12 @@ img{max-width:100%;display:block}
 .pf-row{opacity:1}.pf-visual.run .pf-row{opacity:0;transform:translateY(8px);transition:opacity .4s var(--ease),transform .4s var(--ease)}.pf-visual.run .pf-row.show{opacity:1;transform:none}
 @keyframes pfFill{to{width:38%}}
 /* Imagenes flotantes ladeadas en tarjetas 'Y ademas' */
-.b-card.feat-card{position:relative;overflow:visible;padding-bottom:11rem}
-.feat-card{position:relative;overflow:visible;padding-bottom:11rem}
-.feat-img{position:absolute;right:-18px;bottom:-26px;width:280px;height:auto;transform:rotate(6deg);filter:drop-shadow(0 22px 38px rgba(31,32,36,.24));pointer-events:none;transition:transform .4s var(--ease);z-index:2}
-.feat-card:hover .feat-img{transform:rotate(3deg) translateY(-6px) scale(1.04)}
-@media(max-width:760px){.b-card.feat-card{padding-bottom:8rem}.feat-card{padding-bottom:8rem}.feat-img{width:175px;right:-10px;bottom:-18px}}
+.b-card.feat-card{position:relative;overflow:visible;display:flex;flex-direction:column}
+.feat-card{position:relative;overflow:visible;display:flex;flex-direction:column}
+/* La imagen va en el flujo, debajo del texto: nunca lo tapa. Grande, ladeada y con sombra. */
+.feat-img{display:block;width:88%;max-width:300px;height:auto;margin:1.4rem auto -1.2rem;transform:rotate(-3deg);filter:drop-shadow(0 20px 34px rgba(31,32,36,.22));pointer-events:none;transition:transform .4s var(--ease)}
+.feat-card:hover .feat-img{transform:rotate(-1deg) translateY(-4px) scale(1.02)}
+@media(max-width:760px){.feat-img{width:80%;max-width:240px;margin:1.2rem auto -1rem}}
 /* Pipeline guia de ventas */
 .pl-grid{display:grid;grid-template-columns:1fr;gap:1.1rem;margin-top:2.5rem}
 @media(min-width:820px){.pl-grid{grid-template-columns:repeat(3,1fr)}}
