@@ -340,6 +340,12 @@ img{max-width:100%;display:block}
 #migracion.mig-in .mig-visual{opacity:1;transform:none}
 .mig-visual img{width:100%;height:auto;display:block}
 /* Brillo de flujo que recorre la imagen (sensacion de datos migrando) */
+/* Subrayado a mano (coral) bajo 'Lo hacemos por ti en 24h.' */
+.mig-pencil{position:relative;display:inline-block}
+.mig-pencil-svg{position:absolute;left:0;right:0;bottom:-.16em;width:100%;height:.5em;overflow:visible}
+.mig-pencil-svg path{fill:none;stroke:#FF6B5A;stroke-width:3;stroke-linecap:round;stroke-dasharray:420;stroke-dashoffset:420;transition:stroke-dashoffset .9s var(--ease)}
+#migracion.mig-in .mig-pencil-svg path{stroke-dashoffset:0;transition-delay:.45s}
+@media(prefers-reduced-motion:reduce){.mig-pencil-svg path{stroke-dashoffset:0}}
 /* Anotacion a mano sobre el panel. La imagen lleva un padding-top que reserva sitio para la nota. */
 .mig-visual{padding-top:96px}
 .mig-note{position:absolute;top:0;left:6px;z-index:5;pointer-events:none;opacity:0;transform:translateY(8px) rotate(-3deg);transition:opacity .6s var(--ease),transform .6s var(--ease)}
@@ -1384,7 +1390,7 @@ img{max-width:100%;display:block}
       <div class="mig-layout">
       <div class="mig-copy">
       <span style="display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .9rem;border-radius:999px;background:rgba(164,229,205,.18);color:#A4E5CD;font-size:.72rem;font-weight:700;letter-spacing:.04em;border:1px solid rgba(164,229,205,.3)">⚡ Migración sin dolor</span>
-      <h2 style="color:#fff;font-size:clamp(1.7rem,4vw,2.6rem);margin-top:1rem;max-width:760px">Cambiarte es lo único que te frena. <span style="font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;color:#FF6B5A">Lo hacemos por ti en 24h.</span></h2>
+      <h2 style="color:#fff;font-size:clamp(1.7rem,4vw,2.6rem);margin-top:1rem;max-width:760px">Cambiarte es lo único que te frena. <span class="mig-pencil" style="font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;color:#FF6B5A">Lo hacemos por ti en 24h.<svg class="mig-pencil-svg" viewBox="0 0 320 14" preserveAspectRatio="none" aria-hidden="true"><path d="M4 8 C 60 3, 120 12, 175 7 S 280 3, 316 9"/></svg></span></h2>
       <p style="color:rgba(255,255,255,.8);font-size:1.05rem;max-width:640px;margin-top:.9rem;line-height:1.55">Tú nos pasas el export de tu CRM actual y nosotros migramos pacientes, historial y citas a AURA. No tocas nada, no pierdes ni un dato y sigues atendiendo con normalidad. Al día siguiente entras y está todo dentro.</p>
       <div id="migChips" style="display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1.6rem;align-items:center">
         <span style="color:rgba(255,255,255,.55);font-size:.8rem;font-weight:600;letter-spacing:.04em;width:100%">Migramos desde:</span>
