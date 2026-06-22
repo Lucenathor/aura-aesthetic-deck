@@ -744,19 +744,14 @@ img{max-width:100%;display:block}
 .flow-vis .agenda .row:last-child{border:0}
 .flow-vis .agenda .row .h{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink-soft);width:38px;font-size:.66rem}
 .flow-vis .agenda .row .slot{flex:1;height:18px;background:#FAF6EB;border-radius:5px}
-.flow-vis .agenda .row .slot{transition:opacity .4s var(--ease)}
-/* Slots vacios entran escalonados cuando la tarjeta es visible */
-.flow-step.s4 .agenda .row .slot{opacity:0}
-.flow-step.s4.in .agenda .row .slot{opacity:1}
-.flow-step.s4.in .agenda .row:nth-child(1) .slot{transition-delay:.1s}
-.flow-step.s4.in .agenda .row:nth-child(2) .slot{transition-delay:.22s}
-.flow-step.s4.in .agenda .row:nth-child(4) .slot{transition-delay:.34s}
-.flow-vis .agenda .row.booked .slot{background:linear-gradient(90deg,var(--mint),#7FCBAA);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.66rem;width:0;opacity:0}
-.flow-step.s4.in .agenda .row.booked .slot{animation:bookIn .7s .6s var(--ease) forwards}
-@keyframes bookIn{0%{opacity:0;width:0}60%{opacity:1;width:100%}70%{transform:scale(1.04)}100%{opacity:1;width:100%;transform:scale(1)}}
-.flow-vis .agenda .row.booked .slot::before{content:"✓ reservada";white-space:nowrap;opacity:0}
-.flow-step.s4.in .agenda .row.booked .slot::before{animation:bookTxt .3s 1.15s var(--ease) forwards}
-@keyframes bookTxt{to{opacity:1}}
+/* Agenda viva: la fila reservada va rotando (controlada por JS) */
+.flow-vis .agenda .row .slot{position:relative;overflow:hidden;transition:transform .25s var(--ease)}
+.flow-vis .agenda .row .slot .fill{position:absolute;inset:0;border-radius:5px;background:linear-gradient(90deg,var(--mint),#7FCBAA);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.66rem;transform:scaleX(0);transform-origin:left center;transition:transform .55s var(--ease);white-space:nowrap}
+.flow-vis .agenda .row .slot .fill::before{content:"✓ reservada";opacity:0;transition:opacity .25s var(--ease) .3s}
+.flow-vis .agenda .row.booked .slot .fill{transform:scaleX(1)}
+.flow-vis .agenda .row.booked .slot .fill::before{opacity:1}
+.flow-vis .agenda .row.booked{animation:bookPop .5s var(--ease)}
+@keyframes bookPop{0%{transform:translateX(0)}30%{transform:translateX(1px)}100%{transform:translateX(0)}}
 /* Badge LIVE con punto pulsante */
 .flow-step.s4 .tag{display:inline-flex;align-items:center;gap:.34rem}
 .flow-step.s4 .tag::before{content:"";width:6px;height:6px;border-radius:50%;background:#e5392e;box-shadow:0 0 0 0 rgba(229,57,46,.5)}
@@ -1269,11 +1264,11 @@ img{max-width:100%;display:block}
           <h4>Activas</h4>
           <p>Agendas 30 min y lo ponemos en producción.</p>
           <div class="flow-vis">
-            <div class="agenda">
-              <div class="row"><span class="h">10:30</span><span class="slot"></span></div>
-              <div class="row"><span class="h">11:00</span><span class="slot"></span></div>
-              <div class="row booked"><span class="h">12:00</span><span class="slot"></span></div>
-              <div class="row"><span class="h">13:30</span><span class="slot"></span></div>
+            <div class="agenda" id="liveAgenda">
+              <div class="row"><span class="h">10:30</span><span class="slot"><span class="fill"></span></span></div>
+              <div class="row"><span class="h">11:00</span><span class="slot"><span class="fill"></span></span></div>
+              <div class="row booked"><span class="h">12:00</span><span class="slot"><span class="fill"></span></span></div>
+              <div class="row"><span class="h">13:30</span><span class="slot"><span class="fill"></span></span></div>
             </div>
           </div>
         </div>
@@ -1716,6 +1711,20 @@ const cardIO = new IntersectionObserver(entries=>{
 document.querySelectorAll('.b-card').forEach(el=>cardIO.observe(el));
 const stepIO=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');stepIO.unobserve(e.target);}});},{threshold:.35});
 document.querySelectorAll('.flow-step').forEach(el=>stepIO.observe(el));
+/* Agenda viva en bucle: la reserva va saltando de hora en hora mientras es visible */
+(function liveAgenda(){
+  var ag=document.getElementById('liveAgenda'); if(!ag) return;
+  var rows=[].slice.call(ag.querySelectorAll('.row'));
+  var order=[2,0,3,1]; var i=0; var visible=false; var timer=null;
+  function tick(){
+    rows.forEach(function(r){r.classList.remove('booked');});
+    rows[order[i%order.length]].classList.add('booked');
+    i++;
+  }
+  function start(){ if(timer) return; tick(); timer=setInterval(function(){ if(visible) tick(); }, 2200); }
+  var io=new IntersectionObserver(function(es){ es.forEach(function(e){ visible=e.isIntersecting; if(visible) start(); }); },{threshold:.3});
+  io.observe(ag);
+})();
 
 /* === QUIZ MOCK ANIMACIÓN EN BUCLE === */
 (function quizLoop(){
