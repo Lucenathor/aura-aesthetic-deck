@@ -727,16 +727,27 @@ img{max-width:100%;display:block}
 
 /* VIS 3: mini phone with finger */
 .flow-vis .mini-phone{position:relative;width:78px;height:120px;background:#0F1011;border-radius:14px;padding:6px;margin:0 auto;box-shadow:0 8px 18px rgba(15,16,17,.18)}
-.flow-vis .mini-phone .scr{background:#FCF8F2;border-radius:9px;height:100%;padding:6px 4px;display:flex;flex-direction:column;gap:3px}
-.flow-vis .mini-phone .scr i{display:block;background:#F4EDDF;border-radius:3px;height:5px}
-.flow-vis .mini-phone .scr i:nth-child(1){width:60%;background:var(--accent);height:8px;margin-bottom:2px}
-.flow-vis .mini-phone .scr i:nth-child(2){width:100%}
-.flow-vis .mini-phone .scr i:nth-child(3){width:80%}
-.flow-vis .mini-phone .scr i:nth-child(4){width:90%;background:var(--accent-2);margin-top:auto;height:10px;border-radius:4px}
-.flow-vis .finger{position:absolute;bottom:-8px;right:-12px;width:32px;height:32px;background:#FFE5DF;border:2px solid var(--accent);border-radius:50%;animation:tap 1.6s infinite}
-@keyframes tap{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.82);opacity:.7}}
-.flow-vis .finger::after{content:"";position:absolute;inset:-6px;border:2px solid var(--accent);border-radius:50%;opacity:0;animation:ring 1.6s infinite}
-@keyframes ring{0%{transform:scale(.6);opacity:.6}100%{transform:scale(1.6);opacity:0}}
+.flow-vis .mini-phone .mp-screens{position:relative;background:#FCF8F2;border-radius:9px;height:100%;overflow:hidden}
+.flow-vis .mini-phone .mp-scr{position:absolute;inset:0;padding:8px 6px;display:flex;flex-direction:column;gap:4px}
+.flow-vis .mp-title{font-size:5px;font-weight:700;color:var(--ink);line-height:1.2;margin-bottom:2px}
+.flow-vis .mp-opt{font-size:4.5px;font-weight:600;color:var(--ink-soft);background:#F4EDDF;border-radius:4px;padding:4px 5px;display:block}
+.flow-vis .mp-opt.o1{border:1.5px solid transparent}
+/* pantalla pregunta y pantalla hecho, alternan en bucle */
+.flow-vis .mp-q{animation:mpQ 4.4s infinite}
+.flow-vis .mp-done{opacity:0;align-items:center;justify-content:center;text-align:center;animation:mpDone 4.4s infinite}
+.flow-vis .mp-check{width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,var(--mint),#7FCBAA);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;box-shadow:0 3px 8px rgba(31,140,105,.3)}
+.flow-vis .mp-done-t{font-size:5.5px;font-weight:800;color:#1f8c69;margin-top:4px}
+.flow-vis .mp-done-s{font-size:4.5px;color:var(--ink-soft)}
+/* resaltado de la opcion elegida */
+.flow-vis .mp-q .o1{animation:mpPick 4.4s infinite}
+@keyframes mpPick{0%,30%{background:#F4EDDF;border-color:transparent;color:var(--ink-soft)}38%,55%{background:rgba(255,107,90,.16);border-color:var(--accent);color:var(--accent)}60%,100%{background:#F4EDDF;border-color:transparent;color:var(--ink-soft)}}
+@keyframes mpQ{0%,55%{opacity:1}62%,92%{opacity:0}100%{opacity:1}}
+@keyframes mpDone{0%,58%{opacity:0;transform:scale(.96)}66%,90%{opacity:1;transform:scale(1)}97%,100%{opacity:0}}
+/* dedo: se mueve a la opcion, toca, y desaparece */
+.flow-vis .finger{position:absolute;width:26px;height:26px;background:rgba(255,107,90,.18);border:2px solid var(--accent);border-radius:50%;left:50%;top:50%;margin:-13px 0 0 -13px;animation:mpFinger 4.4s infinite}
+@keyframes mpFinger{0%,18%{transform:translate(20px,26px) scale(.8);opacity:0}26%{opacity:1}38%{transform:translate(-2px,4px) scale(1);opacity:1}46%{transform:translate(-2px,4px) scale(.78);opacity:1}54%{transform:translate(-2px,4px) scale(1);opacity:.9}60%,100%{transform:translate(-2px,4px) scale(1);opacity:0}}
+.flow-vis .finger::after{content:"";position:absolute;inset:-5px;border:2px solid var(--accent);border-radius:50%;opacity:0;animation:ring 4.4s infinite}
+@keyframes ring{0%,40%{transform:scale(.6);opacity:0}46%{opacity:.6;transform:scale(.6)}58%{transform:scale(1.7);opacity:0}100%{opacity:0}}
 
 /* VIS 4: agenda con check */
 .flow-vis .agenda{background:#fff;border:1px solid var(--line);border-radius:10px;padding:.55rem .7rem;font-size:.72rem}
@@ -1241,7 +1252,13 @@ img{max-width:100%;display:block}
           <h4>Pruebas</h4>
           <p>Recorres tu embudo demo como una paciente.</p>
           <div class="flow-vis">
-            <div class="mini-phone"><div class="scr"><i></i><i></i><i></i><i></i></div><div class="finger"></div></div>
+            <div class="mini-phone">
+              <div class="mp-screens">
+                <div class="mp-scr mp-q"><span class="mp-title">¿Qué te gustaría mejorar?</span><span class="mp-opt o1">Mis labios</span><span class="mp-opt o2">Mi piel</span></div>
+                <div class="mp-scr mp-done"><span class="mp-check">✓</span><span class="mp-done-t">¡Cita reservada!</span><span class="mp-done-s">jue 12:00</span></div>
+              </div>
+              <div class="finger"></div>
+            </div>
           </div>
         </div>
 
