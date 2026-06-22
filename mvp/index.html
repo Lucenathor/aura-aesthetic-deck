@@ -340,16 +340,18 @@ img{max-width:100%;display:block}
 #migracion.mig-in .mig-visual{opacity:1;transform:none}
 .mig-visual img{width:100%;height:auto;display:block}
 /* Brillo de flujo que recorre la imagen (sensacion de datos migrando) */
-/* Anotacion a mano sobre el panel */
-.mig-note{position:absolute;top:-26px;left:-8px;z-index:5;pointer-events:none;opacity:0;transform:translateY(8px) rotate(-2deg);transition:opacity .6s var(--ease),transform .6s var(--ease)}
-#migracion.mig-in .mig-note{opacity:1;transform:rotate(-2deg);transition-delay:.7s}
-.mig-note-txt{display:block;font-family:'Caveat','Segoe Script',cursive;font-weight:700;color:#fff;font-size:1.55rem;line-height:1.05;text-shadow:0 2px 10px rgba(0,0,0,.35)}
-.mig-note-txt small{font-size:1.05rem;opacity:.9}
-.mig-note-arrow{width:84px;height:64px;margin-left:46px;margin-top:2px;display:block}
-.mig-note-arrow path{stroke-dasharray:240;stroke-dashoffset:240;transition:stroke-dashoffset 1s var(--ease)}
+/* Anotacion a mano sobre el panel. La imagen lleva un padding-top que reserva sitio para la nota. */
+.mig-visual{padding-top:96px}
+.mig-note{position:absolute;top:0;left:6px;z-index:5;pointer-events:none;opacity:0;transform:translateY(8px) rotate(-3deg);transition:opacity .6s var(--ease),transform .6s var(--ease)}
+#migracion.mig-in .mig-note{opacity:1;transform:rotate(-3deg);transition-delay:.7s}
+.mig-note-txt{display:block;font-family:'Caveat','Segoe Script',cursive;font-weight:700;color:#fff;font-size:1.7rem;line-height:1.02;text-shadow:0 2px 12px rgba(0,0,0,.45)}
+.mig-note-txt small{font-size:1.1rem;opacity:.92}
+.mig-note-arrow{width:96px;height:70px;margin-left:120px;margin-top:-6px;display:block;overflow:visible}
+.mig-note-arrow path{stroke-dasharray:260;stroke-dashoffset:260;transition:stroke-dashoffset 1s var(--ease)}
 #migracion.mig-in .mig-note-arrow path{stroke-dashoffset:0;transition-delay:1s}
-@media(max-width:980px){.mig-note{top:-18px;left:4px}.mig-note-txt{font-size:1.25rem}.mig-note-arrow{width:64px;height:48px;margin-left:30px}}
-.mig-flow{position:absolute;top:0;left:-40%;width:35%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,107,90,.28),rgba(164,229,205,.22),transparent);filter:blur(8px);pointer-events:none;opacity:0}
+@media(max-width:980px){.mig-visual{padding-top:84px}.mig-note{left:2px}.mig-note-txt{font-size:1.45rem}.mig-note-txt small{font-size:1rem}.mig-note-arrow{width:78px;height:56px;margin-left:96px}}
+@media(max-width:520px){.mig-visual{padding-top:74px}.mig-note-txt{font-size:1.25rem}.mig-note-arrow{width:64px;height:46px;margin-left:74px}}
+.mig-flow{position:absolute;top:96px;left:-40%;width:35%;height:calc(100% - 96px);background:linear-gradient(100deg,transparent,rgba(255,107,90,.28),rgba(164,229,205,.22),transparent);filter:blur(8px);pointer-events:none;opacity:0}
 #migracion.mig-in .mig-flow{animation:migSweep 3.2s 1s ease-in-out infinite}
 @keyframes migSweep{0%{left:-40%;opacity:0}15%{opacity:1}85%{opacity:1}100%{left:110%;opacity:0}}
 @media(prefers-reduced-motion:reduce){.mig-flow{display:none}}
@@ -1399,7 +1401,7 @@ img{max-width:100%;display:block}
       <div class="mig-visual"><img src="/assets/migracion-real.png?v=5" alt="Panel real de AURA tras la migración" loading="lazy"><span class="mig-flow"></span>
         <div class="mig-note">
           <span class="mig-note-txt">Uno de nuestros clientes<br><small>(este mes)</small></span>
-          <svg class="mig-note-arrow" viewBox="0 0 120 90" fill="none" aria-hidden="true"><path d="M6 10 C 70 6, 112 24, 100 70" stroke="#fff" stroke-width="4" stroke-linecap="round"/><path d="M86 60 L102 74 L110 54" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="mig-note-arrow" viewBox="0 0 120 96" fill="none" aria-hidden="true"><path d="M8 8 C 80 0, 120 30, 92 84" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/><path d="M74 70 L92 88 L104 66" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
       </div>
       </div>
