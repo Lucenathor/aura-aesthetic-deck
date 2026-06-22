@@ -357,9 +357,9 @@ img{max-width:100%;display:block}
 #migracion.mig-in .mig-note-arrow path{stroke-dashoffset:0;transition-delay:1s}
 @media(max-width:980px){.mig-visual{padding-top:84px}.mig-note{left:2px}.mig-note-txt{font-size:1.45rem}.mig-note-txt small{font-size:1rem}.mig-note-arrow{width:78px;height:56px;margin-left:96px}}
 @media(max-width:520px){.mig-visual{padding-top:74px}.mig-note-txt{font-size:1.25rem}.mig-note-arrow{width:64px;height:46px;margin-left:74px}}
-.mig-flow{position:absolute;top:96px;left:-40%;width:35%;height:calc(100% - 96px);background:linear-gradient(100deg,transparent,rgba(255,107,90,.28),rgba(164,229,205,.22),transparent);filter:blur(8px);pointer-events:none;opacity:0}
-#migracion.mig-in .mig-flow{animation:migSweep 3.2s 1s ease-in-out infinite}
-@keyframes migSweep{0%{left:-40%;opacity:0}15%{opacity:1}85%{opacity:1}100%{left:110%;opacity:0}}
+.mig-flow{position:absolute;top:96px;left:0;width:26%;height:calc(100% - 96px);background:linear-gradient(100deg,transparent,rgba(255,107,90,.26),rgba(164,229,205,.2),transparent);filter:blur(8px);pointer-events:none;opacity:0}
+#migracion.mig-in .mig-flow{animation:migSweep 3.4s 1.2s ease-in-out infinite}
+@keyframes migSweep{0%{left:-2%;opacity:0}12%{opacity:1}88%{opacity:1}100%{left:76%;opacity:0}}
 @media(prefers-reduced-motion:reduce){.mig-flow{display:none}}
 /* Mockups animados de caracteristicas estrella */
 @keyframes bubIn{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
