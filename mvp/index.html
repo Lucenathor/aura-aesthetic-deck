@@ -336,9 +336,9 @@ img{max-width:100%;display:block}
 /* Layout 2 columnas + imagen animada */
 .mig-layout{display:grid;grid-template-columns:1fr;gap:1.5rem;align-items:center}
 @media(min-width:980px){.mig-layout{grid-template-columns:1.05fr .95fr;gap:2.2rem}}
-.mig-visual{position:relative;border-radius:18px;overflow:hidden;opacity:0;transform:translateY(24px) scale(.97);transition:opacity .8s var(--ease),transform .8s var(--ease)}
+.mig-visual{position:relative;opacity:0;transform:translateY(24px) scale(.97);transition:opacity .8s var(--ease),transform .8s var(--ease)}
 #migracion.mig-in .mig-visual{opacity:1;transform:none}
-.mig-visual img{width:100%;height:auto;display:block;border-radius:18px}
+.mig-visual img{width:100%;height:auto;display:block}
 /* Brillo de flujo que recorre la imagen (sensacion de datos migrando) */
 .mig-flow{position:absolute;top:0;left:-40%;width:35%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,107,90,.28),rgba(164,229,205,.22),transparent);filter:blur(8px);pointer-events:none;opacity:0}
 #migracion.mig-in .mig-flow{animation:migSweep 3.2s 1s ease-in-out infinite}
@@ -1387,7 +1387,7 @@ img{max-width:100%;display:block}
       <a href="#composer" class="b" style="display:inline-flex;align-items:center;gap:.5rem;margin-top:2rem;padding:1rem 1.6rem;border-radius:14px;background:#FF6B5A;color:#fff;font-weight:700;font-size:.98rem">Quiero migrar mi clínica →</a>
       <span style="display:block;color:rgba(255,255,255,.5);font-size:.78rem;margin-top:.7rem">Nos encargamos nosotros · tú sigues atendiendo · sin cortes</span>
       </div>
-      <div class="mig-visual"><img src="/assets/migracion.webp?v=2" alt="Migración de datos a AURA en 24 horas" loading="lazy"><span class="mig-flow"></span></div>
+      <div class="mig-visual"><img src="/assets/migracion-real.png?v=3" alt="Migración de datos al panel real de AURA en 24 horas" loading="lazy"><span class="mig-flow"></span></div>
       </div>
     </div>
   </section>
