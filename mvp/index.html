@@ -744,9 +744,24 @@ img{max-width:100%;display:block}
 .flow-vis .agenda .row:last-child{border:0}
 .flow-vis .agenda .row .h{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink-soft);width:38px;font-size:.66rem}
 .flow-vis .agenda .row .slot{flex:1;height:18px;background:#FAF6EB;border-radius:5px}
-.flow-vis .agenda .row.booked .slot{background:linear-gradient(90deg,var(--mint),#7FCBAA);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.66rem;animation:bookIn .8s 1s var(--ease) backwards}
-@keyframes bookIn{from{opacity:0;width:0}to{opacity:1;width:100%}}
-.flow-vis .agenda .row.booked .slot::before{content:"✓ reservada";white-space:nowrap}
+.flow-vis .agenda .row .slot{transition:opacity .4s var(--ease)}
+/* Slots vacios entran escalonados cuando la tarjeta es visible */
+.flow-step.s4 .agenda .row .slot{opacity:0}
+.flow-step.s4.in .agenda .row .slot{opacity:1}
+.flow-step.s4.in .agenda .row:nth-child(1) .slot{transition-delay:.1s}
+.flow-step.s4.in .agenda .row:nth-child(2) .slot{transition-delay:.22s}
+.flow-step.s4.in .agenda .row:nth-child(4) .slot{transition-delay:.34s}
+.flow-vis .agenda .row.booked .slot{background:linear-gradient(90deg,var(--mint),#7FCBAA);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.66rem;width:0;opacity:0}
+.flow-step.s4.in .agenda .row.booked .slot{animation:bookIn .7s .6s var(--ease) forwards}
+@keyframes bookIn{0%{opacity:0;width:0}60%{opacity:1;width:100%}70%{transform:scale(1.04)}100%{opacity:1;width:100%;transform:scale(1)}}
+.flow-vis .agenda .row.booked .slot::before{content:"✓ reservada";white-space:nowrap;opacity:0}
+.flow-step.s4.in .agenda .row.booked .slot::before{animation:bookTxt .3s 1.15s var(--ease) forwards}
+@keyframes bookTxt{to{opacity:1}}
+/* Badge LIVE con punto pulsante */
+.flow-step.s4 .tag{display:inline-flex;align-items:center;gap:.34rem}
+.flow-step.s4 .tag::before{content:"";width:6px;height:6px;border-radius:50%;background:#e5392e;box-shadow:0 0 0 0 rgba(229,57,46,.5)}
+.flow-step.s4.in .tag::before{animation:livePulse 1.8s ease-in-out infinite}
+@keyframes livePulse{0%{box-shadow:0 0 0 0 rgba(229,57,46,.5)}70%{box-shadow:0 0 0 7px rgba(229,57,46,0)}100%{box-shadow:0 0 0 0 rgba(229,57,46,0)}}
 
 /* === FLECHAS entre steps === */
 .flow-arrow{pointer-events:none;display:block;position:relative}
@@ -1699,6 +1714,8 @@ const cardIO = new IntersectionObserver(entries=>{
   entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');cardIO.unobserve(e.target);}});
 },{threshold:.25});
 document.querySelectorAll('.b-card').forEach(el=>cardIO.observe(el));
+const stepIO=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');stepIO.unobserve(e.target);}});},{threshold:.35});
+document.querySelectorAll('.flow-step').forEach(el=>stepIO.observe(el));
 
 /* === QUIZ MOCK ANIMACIÓN EN BUCLE === */
 (function quizLoop(){
