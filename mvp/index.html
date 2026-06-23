@@ -52,12 +52,9 @@ img{max-width:100%;display:block}
 .nav{display:flex;align-items:center;justify-content:space-between;padding:1.4rem 0;position:sticky;top:0;background:rgba(251,248,242,.85);backdrop-filter:blur(18px);z-index:50;border-bottom:1px solid transparent;transition:border-color .3s}
 .nav.scrolled{border-bottom-color:var(--line)}
 .brand{display:flex;align-items:center;gap:.55rem;font-family:'Inter Tight',sans-serif;font-size:1.18rem;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
-.brand .aura-mark{width:32px;height:32px;object-fit:contain;display:block;transition:transform .4s var(--ease,ease)}
-.brand:hover .aura-mark{transform:rotate(10deg) scale(1.05)}
-.brand .brand-txt{display:flex;flex-direction:column;line-height:1}
-.brand .bt-name{font-family:'Inter Tight',sans-serif;font-weight:800;font-size:1.18rem;letter-spacing:-.02em;color:var(--ink)}
-.brand .bt-tag{font-size:.6rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#5b5048;margin-top:.12rem}
-@media(max-width:760px){.brand .aura-mark{width:28px;height:28px}.brand .bt-name{font-size:1.05rem}.brand .bt-tag{font-size:.56rem;letter-spacing:.12em}}
+.brand .brand-logo{height:40px;width:auto;object-fit:contain;display:block;transition:transform .4s var(--ease,ease)}
+.brand:hover .brand-logo{transform:scale(1.04)}
+@media(max-width:760px){.brand .brand-logo{height:34px}}
 .nav .links{display:none;gap:1.8rem;color:var(--ink-soft);font-size:.92rem;font-weight:500}
 .nav .links a:hover{color:var(--accent)}
 .nav .right{display:flex;gap:.6rem;align-items:center}
@@ -924,8 +921,7 @@ img{max-width:100%;display:block}
   <!-- NAV -->
   <header class="nav" id="nav">
     <a href="/" class="brand">
-      <img class="aura-mark" src="/assets/aura-ring.png" alt="AURA" width="32" height="32"/>
-      <span class="brand-txt"><span class="bt-name">AURA</span><span class="bt-tag">Clínicas Estéticas</span></span>
+      <img class="brand-logo" src="/assets/aura-horizontal.png" alt="AURA · Clínicas Estéticas"/>
     </a>
     <nav class="links">
       <a href="#how">Cómo funciona</a>
@@ -955,7 +951,7 @@ img{max-width:100%;display:block}
           <span class="word" style="--i:4">pacientes </span>
           <span class="word" style="--i:5">por </span>
           <span class="word" style="--i:6">WhatsApp.</span><br>
-          <span class="word accent glow" style="--i:7">AURA los convierte en citas y ventas</span><span class="serif">.</span>
+          <span class="word accent glow" style="--i:7">AURA los convierte en citas y ventas.</span>
         </h1>
         <p class="sub">Cada lead que espera se enfría. Cada paciente antiguo sin seguimiento es dinero olvidado. Cada cita sin confirmar es un hueco vacío.<br><br><strong>AURA responde, agenda, reactiva pacientes y le dice a tu equipo qué vender.</strong><br><br>Escribe el nombre de tu clínica y mira tu demo en 30 segundos.</p>
 
