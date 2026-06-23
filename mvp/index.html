@@ -73,8 +73,12 @@ img{max-width:100%;display:block}
 .eyebrow i{width:7px;height:7px;background:var(--accent);border-radius:50%;animation:p 1.6s infinite}
 @keyframes p{50%{box-shadow:0 0 0 6px rgba(255,107,90,.18)}}
 
-.h1{font-size:clamp(2.6rem,7.4vw,5.4rem);line-height:1;margin:1.4rem 0 1rem;letter-spacing:-.028em;font-weight:800}
+.h1{font-size:clamp(2.4rem,7vw,5.4rem);line-height:1.02;margin:1.4rem 0 1rem;letter-spacing:-.028em;font-weight:800;overflow-wrap:break-word;word-break:break-word;hyphens:auto}
 .h1 .accent{color:var(--accent)}
+.h1 .word.glow{color:var(--accent);text-shadow:0 0 12px rgba(255,107,90,.55),0 0 28px rgba(255,107,90,.35)}
+.h1.in .word.glow{animation:neonGlow 2.6s ease-in-out 1s infinite}
+@keyframes neonGlow{0%,100%{text-shadow:0 0 10px rgba(255,107,90,.4),0 0 22px rgba(255,107,90,.25)}50%{text-shadow:0 0 18px rgba(255,107,90,.85),0 0 40px rgba(255,107,90,.55),0 0 60px rgba(255,107,90,.3)}}
+@media(prefers-reduced-motion:reduce){.h1.in .word.glow{animation:none}}
 .h1 .serif{font-family:'Instrument Serif',serif;font-weight:400;font-style:italic;letter-spacing:-.01em;color:var(--ink-soft)}
 
 .sub{font-size:1.08rem;color:var(--ink-soft);margin-bottom:1.6rem;max-width:560px;line-height:1.55}
@@ -938,15 +942,18 @@ img{max-width:100%;display:block}
       <div>
         <span class="eyebrow"><i></i> Para clínicas que pierden pacientes por WhatsApp</span>
         <h1 class="h1" id="h1Anim">
-          <span class="word" style="--i:0">Deja&nbsp;</span>
-          <span class="word" style="--i:1">de&nbsp;</span>
-          <span class="word" style="--i:2">perder&nbsp;</span>
-          <span class="word" style="--i:3">pacientes&nbsp;</span>
-          <span class="word" style="--i:4">por&nbsp;</span>
+          <span class="word" style="--i:0">Deja </span>
+          <span class="word" style="--i:1">de </span>
+          <span class="word" style="--i:2">perder </span>
+          <span class="word" style="--i:3">pacientes </span>
+          <span class="word" style="--i:4">por </span>
           <span class="word" style="--i:5">WhatsApp.</span><br>
-          <span class="word" style="--i:6">AURA&nbsp;los&nbsp;capta,&nbsp;responde,&nbsp;agenda&nbsp;</span>
-          <span class="word accent" style="--i:7">y&nbsp;ayuda</span>
-          <span class="word accent" style="--i:8">&nbsp;a&nbsp;vender</span><span class="serif">.</span>
+          <span class="word" style="--i:6">AURA </span>
+          <span class="word" style="--i:7">los </span>
+          <span class="word" style="--i:8">capta, </span>
+          <span class="word" style="--i:9">responde, </span>
+          <span class="word" style="--i:10">agenda </span>
+          <span class="word accent glow" style="--i:11">y ayuda a vender</span><span class="serif">.</span>
         </h1>
         <p class="sub">Cada lead que tarda en recibir respuesta se enfría. Cada paciente antiguo sin seguimiento es dinero olvidado. Cada cita que no se confirma es un hueco vacío. <strong>AURA convierte anuncios, WhatsApps, pacientes antiguos y visitas en citas, ventas y oportunidades claras</strong> para tu clínica estética. Escribe el nombre de tu clínica y mira en 30 segundos dónde se te está escapando el dinero.</p>
 
