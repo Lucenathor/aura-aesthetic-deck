@@ -240,8 +240,10 @@ img{max-width:100%;display:block}
 .ugc.in .ugc-vid.next .nf-badge{animation:badgePulse 2.4s ease-in-out 1.2s infinite}
 @keyframes badgePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
 @media(prefers-reduced-motion:reduce){.ugc.in .ugc-vid.next .next-fan,.ugc.in .ugc-vid.next .nf-badge{animation:none}}
-.ugc-vid.next b{font-family:'Inter Tight';font-weight:800;font-size:1.08rem;line-height:1.15;max-width:90%}
-.ugc-vid.next span{font-size:.78rem;color:var(--muted);max-width:88%;line-height:1.35}
+.ugc-vid.next .next-tag{display:inline-flex;align-items:center;gap:.35rem;font-size:.74rem;font-weight:800;letter-spacing:.01em;color:#1f8c69;background:rgba(164,229,205,.28);border:1px solid rgba(164,229,205,.6);padding:.32rem .7rem;border-radius:999px;margin-bottom:.7rem}
+.ugc-vid.next .next-tag svg{width:14px;height:14px}
+.ugc-vid.next b{font-family:'Inter Tight';font-weight:800;font-size:1.5rem;line-height:1.12;max-width:96%;letter-spacing:-.02em}
+.ugc-vid.next span{font-size:.92rem;color:var(--ink-soft);max-width:92%;line-height:1.4;margin-top:.3rem}
 .ugc-next .ugc-cap{font-style:normal;font-weight:600;color:var(--muted)}
 
 /* === FUNNEL DEMO INTERACTIVA === */
@@ -1369,8 +1371,9 @@ img{max-width:100%;display:block}
             <span class="nf nf2" style="background-image:url('/assets/ugc2.webp')"></span>
             <span class="nf nf1" style="background-image:url('/assets/ugc1.webp')"><span class="nf-badge">+5</span></span>
           </div>
-          <b>5 anuncios nuevos cada mes</b>
-          <span>Creativos frescos en vídeo, sin que muevas un dedo. Siempre tienes con qué anunciarte.</span>
+          <span class="next-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg> Probados y funcionando</span>
+          <b>5 anuncios nuevos<br>cada mes</b>
+          <span>Creativos en vídeo, sin que muevas un dedo.</span>
         </div>
         <div class="ugc-cap">Sin grabar · sin actores · sin editar</div>
       </div>
