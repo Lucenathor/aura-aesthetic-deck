@@ -53,6 +53,10 @@ img{max-width:100%;display:block}
 .nav.scrolled{border-bottom-color:var(--line)}
 .brand{display:flex;align-items:center;gap:.55rem;font-family:'Inter Tight',sans-serif;font-size:1.18rem;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
 .brand svg{flex:none;width:30px;height:30px}
+.aura-mark .aura-orbit{transform-origin:16px 16px;animation:auraBreath 6s var(--ease,ease-in-out) infinite}
+@keyframes auraBreath{0%,100%{transform:rotate(0deg) scale(1)}50%{transform:rotate(8deg) scale(1.04)}}
+.brand:hover .aura-orbit{animation-duration:3s}
+@media(prefers-reduced-motion:reduce){.aura-mark .aura-orbit{animation:none}}
 .nav .links{display:none;gap:1.8rem;color:var(--ink-soft);font-size:.92rem;font-weight:500}
 .nav .links a:hover{color:var(--accent)}
 .nav .right{display:flex;gap:.6rem;align-items:center}
@@ -897,10 +901,23 @@ img{max-width:100%;display:block}
   <!-- NAV -->
   <header class="nav" id="nav">
     <a href="/" class="brand">
-      <svg viewBox="0 0 32 32" fill="none">
-        <circle cx="11" cy="16" r="9" fill="#FF6B5A"/>
-        <circle cx="21" cy="16" r="9" fill="#9B7BFF" fill-opacity="0.85"/>
-        <circle cx="16" cy="11" r="5" fill="#A4E5CD" fill-opacity="0.92"/>
+      <svg class="aura-mark" viewBox="0 0 32 32" fill="none">
+        <defs>
+          <radialGradient id="agCoral" cx="35%" cy="35%" r="75%">
+            <stop offset="0%" stop-color="#FF8E72"/><stop offset="100%" stop-color="#FF5A47"/>
+          </radialGradient>
+          <radialGradient id="agViolet" cx="65%" cy="35%" r="75%">
+            <stop offset="0%" stop-color="#B49BFF"/><stop offset="100%" stop-color="#8A66F5"/>
+          </radialGradient>
+          <radialGradient id="agMint" cx="50%" cy="35%" r="75%">
+            <stop offset="0%" stop-color="#BFF0DB"/><stop offset="100%" stop-color="#86D9B6"/>
+          </radialGradient>
+        </defs>
+        <g class="aura-orbit">
+          <circle cx="12.5" cy="17" r="8.5" fill="url(#agCoral)" style="mix-blend-mode:multiply"/>
+          <circle cx="19.5" cy="17" r="8.5" fill="url(#agViolet)" style="mix-blend-mode:multiply"/>
+          <circle cx="16" cy="11" r="6" fill="url(#agMint)" style="mix-blend-mode:multiply"/>
+        </g>
       </svg>
       AURA
     </a>
