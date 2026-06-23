@@ -52,9 +52,9 @@ img{max-width:100%;display:block}
 .nav{display:flex;align-items:center;justify-content:space-between;padding:1.4rem 0;position:sticky;top:0;background:rgba(251,248,242,.85);backdrop-filter:blur(18px);z-index:50;border-bottom:1px solid transparent;transition:border-color .3s}
 .nav.scrolled{border-bottom-color:var(--line)}
 .brand{display:flex;align-items:center;gap:.55rem;font-family:'Inter Tight',sans-serif;font-size:1.18rem;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
-.brand .brand-logo{height:48px;width:auto;object-fit:contain;display:block;transition:transform .4s var(--ease,ease)}
+.brand .brand-logo{height:58px;width:auto;object-fit:contain;display:block;transition:transform .4s var(--ease,ease)}
 .brand:hover .brand-logo{transform:scale(1.04)}
-@media(max-width:760px){.brand .brand-logo{height:40px}}
+@media(max-width:760px){.brand .brand-logo{height:46px}}
 .nav .links{display:none;gap:1.8rem;color:var(--ink-soft);font-size:.92rem;font-weight:500}
 .nav .links a:hover{color:var(--accent)}
 .nav .right{display:flex;gap:.6rem;align-items:center}
@@ -560,6 +560,18 @@ img{max-width:100%;display:block}
 .footer .l a:hover{color:var(--ink)}
 
 /* OVERLAY GENERADOR */
+/* CTA flotante fijo con borde neon giratorio */
+@property --scang{syntax:'<angle>';inherits:false;initial-value:0deg}
+.sticky-cta{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(140%);z-index:80;padding:3px;border-radius:999px;opacity:0;pointer-events:none;transition:transform .45s var(--ease,cubic-bezier(.23,1,.32,1)),opacity .35s ease;background:conic-gradient(from var(--scang),#FF6B5A,#9B7BFF,#A4E5CD,#FF6B5A);animation:scSpin 3.2s linear infinite;box-shadow:0 12px 32px -10px rgba(15,16,17,.45)}
+.sticky-cta.show{transform:translateX(-50%) translateY(0);opacity:1;pointer-events:auto}
+@keyframes scSpin{to{--scang:360deg}}
+.sticky-cta .sc-inner{display:inline-flex;align-items:center;gap:.45rem;background:var(--ink,#0F1011);color:#fff;font-weight:700;font-size:.95rem;padding:.85rem 1.5rem;border-radius:999px}
+.sticky-cta:active{transform:translateX(-50%) translateY(0) scale(.97)}
+@media(prefers-reduced-motion:reduce){.sticky-cta{animation:none;background:var(--accent)}}
+/* Borde neon giratorio en el boton del hero */
+.composer .submit{position:relative}
+.composer #rowName .submit::before{content:"";position:absolute;inset:-3px;border-radius:inherit;padding:3px;background:conic-gradient(from var(--scang),#FF6B5A,#9B7BFF,#A4E5CD,#FF6B5A);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:scSpin 3.2s linear infinite;opacity:.9;pointer-events:none}
+@media(prefers-reduced-motion:reduce){.composer #rowName .submit::before{animation:none}}
 .gen-ov{position:fixed;inset:0;background:rgba(15,16,17,.7);backdrop-filter:blur(14px);z-index:90;display:none;align-items:center;justify-content:center;padding:24px}
 .gen-ov.show{display:flex}
 .gen-card{max-width:520px;width:100%;background:#fff;border-radius:24px;padding:2rem 1.5rem 1.6rem;text-align:center;border:1px solid var(--line);box-shadow:0 30px 80px -10px rgba(0,0,0,.3)}
@@ -1513,6 +1525,9 @@ img{max-width:100%;display:block}
   </footer>
 </div>
 
+<!-- CTA FLOTANTE (aparece al hacer scroll) -->
+<a href="#composer" class="sticky-cta" id="stickyCta" aria-label="Ver mi demo"><span class="sc-inner">Ver mi demo <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span></a>
+
 <!-- OVERLAY GENERADOR -->
 <div class="gen-ov" id="genOv">
   <div class="gen-card">
@@ -2267,6 +2282,17 @@ document.querySelectorAll('.count').forEach(el=>{const cur=el.textContent;el.dat
 window.addEventListener('scroll',()=>{
   document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 20);
 },{passive:true});
+
+/* CTA flotante: aparece cuando el composer del hero sale de pantalla */
+(function(){
+  var cta=document.getElementById('stickyCta');
+  var comp=document.getElementById('composer');
+  if(!cta||!comp) return;
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(e){ cta.classList.toggle('show', !e.isIntersecting && window.scrollY>200); });
+  },{threshold:0});
+  io.observe(comp);
+})();
 
 /* Agendar consultoría */
 function buildSlots(){
