@@ -688,6 +688,15 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
         <button class="btn prim" style="margin-top:.6rem" onclick="saveReviewUrl()">Guardar enlace</button>
         <span id="gRevMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
       </div>
+      <div class="card" id="callCard">
+        <h3>Llamadas desde el panel</h3>
+        <p class="sub">Llama a tus pacientes con un clic desde su ficha. AURA hace sonar primero el teléfono de recepción y, al descolgar, te conecta con el paciente. La llamada se graba, se transcribe y AURA te deja un resumen con la próxima acción.</p>
+        <div class="field"><label>Teléfono de recepción (al que AURA te llama primero)</label><input id="callAgentPhone" placeholder="+34 6XX XXX XXX"/></div>
+        <div class="field"><label>Número español de la clínica (se muestra al paciente)</label><input id="callFromNumber" placeholder="+34 9XX XXX XXX (lo da de alta AURA)"/></div>
+        <p class="sub" style="margin-top:.4rem;font-size:.8rem" id="callCfgHint">Deja el número de la clínica vacío para usar el número AURA por defecto. La llamada avisa de que puede grabarse (cumplimiento RGPD).</p>
+        <button class="btn prim" style="margin-top:.6rem" onclick="saveCallConfig()">Guardar</button>
+        <span id="callCfgMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
+      </div>
       <div class="card" id="loyaltyCard">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
           <h3 style="margin:0">Programa de puntos y recompensas</h3>
@@ -902,6 +911,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
     <button class="btn prim" style="flex:1;min-width:120px;padding:.5rem;font-size:.82rem" onclick="addClinicalNote()">🩺 Nueva visita</button>
     <button class="btn" style="flex:1;min-width:120px;padding:.5rem;font-size:.82rem" onclick="addTreatment()">💶 Cobro</button>
     <button class="btn" style="flex:1;min-width:120px;padding:.5rem;font-size:.82rem" id="dWaBtn" onclick="drawerWhatsApp()">💬 WhatsApp</button>
+    <button class="btn" style="flex:1;min-width:120px;padding:.5rem;font-size:.82rem" id="dCallBtn" onclick="drawerCall()">☎ Llamar</button>
   </div>
   <!-- Métricas del cliente (visitas, ticket medio…) -->
   <div id="dStats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-top:1rem"></div>
@@ -918,6 +928,8 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
   </details>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-top:1.2rem;margin-bottom:.4rem"><h4 class="serif" style="font-size:1.05rem;margin:0">Tratamientos y pagos</h4><button class="btn" style="padding:.3rem .6rem;font-size:.78rem" onclick="addTreatment()">+ Añadir</button></div>
   <div id="dTreatments"></div>
+  <!-- HISTORIAL DE LLAMADAS (grabación + transcripción + resumen IA) -->
+  <div id="dCallsBox" style="margin-top:1.2rem"></div>
   <!-- Guión de llamada de NUEVA VENTA (recall) -->
   <div id="dSaleBox" style="display:none;margin-top:1.2rem;background:#f3efff;border:1px solid #cdbcff;border-radius:12px;padding:.9rem">
     <div style="font-weight:700;color:#6b4fd0;font-size:.92rem;margin-bottom:.4rem">🟣 Llamada de nueva venta — toca retoque</div>
@@ -1607,8 +1619,41 @@ async function loadClinical(leadId, phone){ _clLead=leadId; _clPhone=phone||'';
   // Próxima cita en la cabecera (desde wa-patient por teléfono)
   try{ if(phone){ var pr=await clApi('/api/wa-patient?number='+encodeURIComponent(phone)); var na=pr&&pr.next_appt; var nx=document.getElementById('dNextAppt'); if(nx){ if(na){ var dd=new Date(na.date_iso); nx.textContent=dd.toLocaleDateString('es-ES',{day:'numeric',month:'short'})+' '+dd.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}); nx.style.color=(na.status==='confirmed')?'#1f8c69':'#b06a2e'; } else { nx.textContent='Sin cita'; nx.style.color='var(--muted)'; } } } }catch(e){}
   loadClinicalGallery(leadId, phone);
+  try{ loadCalls(leadId); }catch(e){}
 }
 function drawerWhatsApp(){ var ph=(_curLead&&_curLead.phone)||_clPhone||''; if(!ph){ if(typeof toast==='function')toast('Sin teléfono','error'); return; } var d=String(ph).replace(/\D/g,''); window.open('https://wa.me/'+d,'_blank'); }
+async function drawerCall(){
+  var lead=_curLead||{}; var ph=(lead.phone)||_clPhone||'';
+  if(!ph){ if(typeof toast==='function')toast('El paciente no tiene teléfono','error'); return; }
+  var btn=document.getElementById('dCallBtn'); if(btn){ btn.disabled=true; btn.textContent='☎ Llamando…'; }
+  try{
+    var d=await clApi('/api/call-start',{method:'POST',body:JSON.stringify({tenant_id:T, lead_id:lead.id||'', to:ph})});
+    if(d&&d.ok){ if(typeof toast==='function')toast(d.message||'Suena tu teléfono… descuelga para hablar.','success'); setTimeout(function(){ loadCalls(lead.id); }, 4000); var n=0; var iv=setInterval(function(){ n++; loadCalls(lead.id); if(n>=6) clearInterval(iv); }, 12000); }
+    else { var msg=(d&&d.message)|| (d&&d.error==='twilio_no_config'?'Twilio aún no está configurado.': (d&&d.error==='no_agent'?'Configura el teléfono de recepción en Ajustes.': (d&&d.error==='no_from'?'Falta el número español de la clínica.':'No se pudo iniciar la llamada.'))); if(typeof toast==='function')toast(msg,'error'); else alert(msg); }
+  }catch(e){ if(typeof toast==='function')toast('Error al llamar','error'); }
+  if(btn){ btn.disabled=false; btn.textContent='☎ Llamar'; }
+}
+function _callOutcome(o){ return ({reservo:'✅ Reservó',interesado:'🟡 Interesado',no_interesado:'❌ No interesado',no_contesta:'📞 No contesta'})[o]||''; }
+async function loadCalls(leadId){
+  leadId=leadId||(_curLead&&_curLead.id); var box=document.getElementById('dCallsBox'); if(!box||!leadId) return;
+  var d; try{ d=await clApi('/api/call-list?lead_id='+encodeURIComponent(leadId),{}); }catch(e){ return; }
+  var calls=(d&&d.calls)||[]; if(!calls.length){ box.innerHTML=''; return; }
+  var html='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem"><h4 class="serif" style="font-size:1.05rem;margin:0">Llamadas</h4></div>';
+  html+=calls.map(function(c){
+    var when=c.created_at?new Date(c.created_at).toLocaleString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+    var dur=c.duration?(Math.floor(c.duration/60)+':'+('0'+(c.duration%60)).slice(-2)):'';
+    var oc=_callOutcome(c.outcome);
+    var inner='<div style="background:var(--bg2);border-radius:12px;padding:.7rem .8rem;margin-bottom:.5rem">';
+    inner+='<div style="display:flex;justify-content:space-between;align-items:center;font-size:.78rem;color:var(--muted)"><span>☎ '+when+(dur?(' · '+dur):'')+'</span>'+(oc?('<span style="font-weight:700">'+oc+'</span>'):'')+'</div>';
+    if(c.summary){ inner+='<div style="font-size:.86rem;color:#3a342e;margin-top:.4rem;line-height:1.45">'+escapeHtml(c.summary)+'</div>'; }
+    if(c.next_action){ inner+='<div style="font-size:.8rem;color:#6b4fd0;margin-top:.35rem"><b>Próxima acción:</b> '+escapeHtml(c.next_action)+'</div>'; }
+    if(c.recording_url){ inner+='<audio controls preload="none" style="width:100%;margin-top:.5rem;height:34px" src="'+c.recording_url+'"></audio>'; }
+    if(c.transcript){ inner+='<details style="margin-top:.4rem"><summary style="cursor:pointer;font-size:.78rem;color:var(--muted)">Ver transcripción</summary><div style="font-size:.8rem;color:#5a534c;margin-top:.35rem;line-height:1.5;white-space:pre-wrap">'+escapeHtml(c.transcript)+'</div></details>'; }
+    else if(!c.summary){ inner+='<div style="font-size:.76rem;color:var(--muted);margin-top:.35rem">Procesando grabación y resumen…</div>'; }
+    inner+='</div>'; return inner;
+  }).join('');
+  box.innerHTML=html;
+}
 // Cabecera clínica: banner de alergia + resumen (como los grandes muestran lo crítico arriba)
 function renderClSummary(c, notes){ var box=document.getElementById('clSummary'); if(!box)return; c=c||{};
   var chips=[];
@@ -2644,6 +2689,13 @@ async function saveReviewUrl(){
   try{await fetch(WORKER+'/api/tenant-meta',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,google_review_url:i.value.trim()})});
     m.style.color='#1f8c69';m.textContent='Guardado ✓';setTimeout(()=>m.textContent='',2000);}catch(e){m.style.color='#b45309';m.textContent='Error al guardar';}
 }
+async function loadCallConfig(){
+  try{ const d=await clApi('/api/call-config',{}); const a=document.getElementById('callAgentPhone'); const f=document.getElementById('callFromNumber'); const h=document.getElementById('callCfgHint'); if(a)a.value=d.call_agent_phone||''; if(f)f.value=d.call_from_number||''; if(h && d && d.configured===false){ h.innerHTML='⚠️ Las llamadas aún no están activas: AURA debe dar de alta el número español. '+(d.global_from?('Número AURA disponible: '+d.global_from):'Contáctanos para activarlo.'); } }catch(e){}
+}
+async function saveCallConfig(){
+  const a=document.getElementById('callAgentPhone'); const f=document.getElementById('callFromNumber'); const m=document.getElementById('callCfgMsg'); if(!a)return;
+  try{ await clApi('/api/call-config',{method:'POST',body:JSON.stringify({tenant_id:T, call_agent_phone:a.value.trim(), call_from_number:f.value.trim()})}); if(m){ m.style.color='#1f8c69'; m.textContent='Guardado ✓'; setTimeout(()=>m.textContent='',2000); } }catch(e){ if(m){ m.style.color='#b45309'; m.textContent='Error al guardar'; } }
+}
 let LOYCFG=null;
 async function loadLoyalty(){
   try{const r=await fetch(WORKER+'/api/loyalty-config?tenant='+T);const d=await r.json();LOYCFG=d.config||{};
@@ -2703,7 +2755,7 @@ async function savePack(){
 async function delPack(id){ if(!confirm('¿Eliminar este pack?'))return;
   await fetch(WORKER+'/api/packs',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,id,delete:true})});loadPacks();
 }
-async function loadCal(){ await Promise.all([loadSchedule(),loadVacations(),loadCatalog(),loadReviewUrl(),loadLoyalty()]); renderPortalQR(); loadPacks(); }
+async function loadCal(){ await Promise.all([loadSchedule(),loadVacations(),loadCatalog(),loadReviewUrl(),loadLoyalty()]); renderPortalQR(); loadPacks(); try{ loadCallConfig(); }catch(e){} }
 // ===== CLINIC OS lite: Caja, Bonos, Inventario =====
 const METODOS=['efectivo','tarjeta','bizum','transferencia','link'];
 function eur(n){ return (Math.round((n||0)*100)/100).toLocaleString('es-ES')+'€'; }

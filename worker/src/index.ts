@@ -26,6 +26,9 @@ interface Env {
   EVOLUTION_KEY?: string;
   UNIPILE_DSN?: string;
   UNIPILE_KEY?: string;
+  TWILIO_ACCOUNT_SID?: string;
+  TWILIO_AUTH_TOKEN?: string;
+  TWILIO_FROM_NUMBER?: string;
 }
 interface R2Bucket {
   put(key: string, value: string|ArrayBuffer|ReadableStream, opts?: any): Promise<any>;
@@ -415,6 +418,19 @@ async function ensureWaSchema(env: Env) {
   try { await env.aura_db.exec('ALTER TABLE wa_chats_meta ADD COLUMN is_group INTEGER DEFAULT 0'); } catch(e){}
   __waReady = true;
 }
+let __callsReady = false;
+async function ensureCallsSchema(env: Env) {
+  if (__callsReady) return;
+  // Registro de llamadas (click-to-call Twilio): grabación, transcripción y resumen IA por paciente
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS calls (id TEXT PRIMARY KEY, tenant_id TEXT, lead_id TEXT, agent TEXT, direction TEXT DEFAULT 'outbound', from_num TEXT, to_num TEXT, status TEXT, duration INTEGER DEFAULT 0, recording_url TEXT, transcript TEXT, summary TEXT, next_action TEXT, outcome TEXT, twilio_sid TEXT, created_at INTEGER, updated_at INTEGER)"); } catch(e){}
+  try { await env.aura_db.exec('CREATE INDEX IF NOT EXISTS idx_calls_lead ON calls (tenant_id, lead_id, created_at)'); } catch(e){}
+  try { await env.aura_db.exec('CREATE INDEX IF NOT EXISTS idx_calls_sid ON calls (twilio_sid)'); } catch(e){}
+  // Teléfono de la recepción al que AURA llama primero (click-to-call de dos patas)
+  try { await env.aura_db.exec('ALTER TABLE tenants ADD COLUMN call_agent_phone TEXT'); } catch(e){}
+  // Caller ID español por clínica (si no, se usa TWILIO_FROM_NUMBER global)
+  try { await env.aura_db.exec('ALTER TABLE tenants ADD COLUMN call_from_number TEXT'); } catch(e){}
+  __callsReady = true;
+}
 let __invReady = false;
 async function ensureInventorySchema(env: Env) {
   if (__invReady) return;
@@ -663,7 +679,7 @@ export default {
       ]);
       // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
       const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar','/api/portal-clients']);
-      const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p)) || (p==='/api/packs' && req.method==='POST') || (p.startsWith('/api/wa-') && p!=='/api/wa-webhook' && p!=='/api/wa-media' && p!=='/api/wa-avatar') || p.startsWith('/api/inv-') || p==='/api/copilot';
+      const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p)) || (p==='/api/packs' && req.method==='POST') || (p.startsWith('/api/wa-') && p!=='/api/wa-webhook' && p!=='/api/wa-media' && p!=='/api/wa-avatar') || (p.startsWith('/api/call-') && p!=='/api/call-twiml' && p!=='/api/call-status' && p!=='/api/call-recording') || p.startsWith('/api/inv-') || p==='/api/copilot';
       if (mustGuard) {
         // tenant solicitado: de query (?tenant=) o del body para POST
         let tenantReq = url.searchParams.get('tenant') || url.searchParams.get('tenant_id');
@@ -2105,6 +2121,145 @@ export default {
           return json({ ok:true, low: low.results||[], expiring: exp.results||[] });
         }
         return json({ ok:false, error:'unknown_inv_endpoint' });
+      }
+
+      // ============ LLAMADAS (click-to-call Twilio) ============
+      // Config: teléfono de recepción + caller id de la clínica
+      if (p === '/api/call-config') {
+        await ensureCallsSchema(env);
+        const tenantSolicitado = (url.searchParams.get('tenant') || url.searchParams.get('tenant_id') || '') || null;
+        const ctx = await resolveCopilotTenant(env, req, url, tenantSolicitado);
+        if (ctx.error) return json({ ok:false, error: ctx.error }, 401);
+        const tid = ctx.tenant as string;
+        if (req.method === 'POST') {
+          const b:any = await req.json().catch(()=>({}));
+          const agent = (b.call_agent_phone||'').toString().replace(/[^0-9+]/g,'').slice(0,20);
+          const from = (b.call_from_number||'').toString().replace(/[^0-9+]/g,'').slice(0,20);
+          await env.aura_db.prepare('UPDATE tenants SET call_agent_phone=?, call_from_number=? WHERE id=?').bind(agent||null, from||null, tid).run();
+          return json({ ok:true });
+        }
+        const t:any = await env.aura_db.prepare('SELECT call_agent_phone, call_from_number FROM tenants WHERE id=?').bind(tid).first();
+        const ready = !!(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && (t?.call_from_number || env.TWILIO_FROM_NUMBER));
+        return json({ ok:true, call_agent_phone: t?.call_agent_phone||'', call_from_number: t?.call_from_number||'', global_from: env.TWILIO_FROM_NUMBER||'', configured: ready });
+      }
+
+      // Iniciar llamada: AURA llama al teléfono de recepción y al descolgar conecta con el paciente
+      if (p === '/api/call-start' && req.method === 'POST') {
+        await ensureCallsSchema(env);
+        const b:any = await req.json().catch(()=>({}));
+        const tenantSolicitado = (b.tenant_id || url.searchParams.get('tenant') || '') || null;
+        const ctx = await resolveCopilotTenant(env, req, url, tenantSolicitado);
+        if (ctx.error) return json({ ok:false, error: ctx.error }, 401);
+        const tid = ctx.tenant as string;
+        if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN) return json({ ok:false, error:'twilio_no_config', message:'Falta configurar Twilio (SID/Token).' });
+        const t:any = await env.aura_db.prepare('SELECT call_agent_phone, call_from_number, whatsapp, name FROM tenants WHERE id=?').bind(tid).first();
+        const fromNum = (t?.call_from_number || env.TWILIO_FROM_NUMBER || '').toString();
+        if (!fromNum) return json({ ok:false, error:'no_from', message:'No hay número español configurado para llamar.' });
+        const agentPhone = (b.agent_phone || t?.call_agent_phone || '').toString().replace(/[^0-9+]/g,'');
+        if (!agentPhone) return json({ ok:false, error:'no_agent', message:'Configura el teléfono de recepción al que AURA debe llamar primero.' });
+        // Teléfono del paciente
+        let toNum = (b.to||'').toString().replace(/[^0-9+]/g,'');
+        let leadId = (b.lead_id||'').toString();
+        let leadName = '';
+        if (leadId) { const l:any = await env.aura_db.prepare('SELECT name,phone FROM leads WHERE id=? AND tenant_id=?').bind(leadId, tid).first(); if(l){ if(!toNum) toNum=String(l.phone||'').replace(/[^0-9+]/g,''); leadName=l.name||''; } }
+        if (!toNum) return json({ ok:false, error:'no_to', message:'El paciente no tiene teléfono.' });
+        if (!toNum.startsWith('+')) { toNum = toNum.length===9 ? ('+34'+toNum) : ('+'+toNum); }
+        let agentE164 = agentPhone.startsWith('+') ? agentPhone : (agentPhone.length===9 ? '+34'+agentPhone : '+'+agentPhone);
+        const callId = 'call_'+Math.random().toString(36).slice(2,12);
+        const base = url.origin;
+        // TwiML: cuando la recepción descuelga, se reproduce el aviso y se marca al paciente con grabación
+        const twimlUrl = base + '/api/call-twiml?call_id='+callId+'&to='+encodeURIComponent(toNum)+'&from='+encodeURIComponent(fromNum);
+        const statusUrl = base + '/api/call-status?call_id='+callId;
+        const form = new URLSearchParams();
+        form.set('To', agentE164);           // 1ª pata: llamamos a recepción
+        form.set('From', fromNum);           // mostramos el número de la clínica
+        form.set('Url', twimlUrl);           // al descolgar, este TwiML conecta con el paciente
+        form.set('StatusCallback', statusUrl);
+        form.set('StatusCallbackEvent', 'completed');
+        const tw = await fetch('https://api.twilio.com/2010-04-01/Accounts/'+env.TWILIO_ACCOUNT_SID+'/Calls.json', {
+          method:'POST', headers:{ 'Authorization':'Basic '+btoa(env.TWILIO_ACCOUNT_SID+':'+env.TWILIO_AUTH_TOKEN), 'Content-Type':'application/x-www-form-urlencoded' }, body: form.toString()
+        });
+        const twd:any = await tw.json().catch(()=>({}));
+        if (!tw.ok) return json({ ok:false, error:'twilio_error', detail: twd && (twd.message||twd.error_message) || ('HTTP '+tw.status) });
+        const now = Date.now();
+        await env.aura_db.prepare('INSERT INTO calls (id,tenant_id,lead_id,agent,direction,from_num,to_num,status,twilio_sid,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
+          .bind(callId, tid, leadId||null, ctx.email||'', 'outbound', fromNum, toNum, 'ringing', twd.sid||null, now, now).run();
+        return json({ ok:true, call_id: callId, to: toNum, lead_name: leadName, message:'Suena tu teléfono… descuelga para hablar con '+(leadName||'el paciente')+'.' });
+      }
+
+      // TwiML que ejecuta Twilio cuando la recepción descuelga: aviso de grabación + marcar al paciente
+      if (p === '/api/call-twiml') {
+        const toNum = url.searchParams.get('to')||'';
+        const fromNum = url.searchParams.get('from')||'';
+        const callId = url.searchParams.get('call_id')||'';
+        const recCb = url.origin + '/api/call-recording?call_id='+callId;
+        const xml = '<?xml version="1.0" encoding="UTF-8"?>'
+          + '<Response>'
+          + '<Say language="es-ES" voice="Polly.Conchita">Conectando. Esta llamada puede ser grabada por motivos de calidad.</Say>'
+          + '<Dial callerId="'+fromNum+'" record="record-from-answer-dual" recordingStatusCallback="'+recCb+'" recordingStatusCallbackEvent="completed">'
+          + '<Number>'+toNum+'</Number>'
+          + '</Dial>'
+          + '</Response>';
+        return new Response(xml, { headers: { 'Content-Type':'text/xml', ...CORS } });
+      }
+
+      // Webhook de fin de llamada (duración/estado)
+      if (p === '/api/call-status' && req.method === 'POST') {
+        await ensureCallsSchema(env);
+        const callId = url.searchParams.get('call_id')||'';
+        let dur = 0, st = '';
+        try { const f = await req.formData(); dur = parseInt(String(f.get('CallDuration')||f.get('DialCallDuration')||'0'),10)||0; st = String(f.get('CallStatus')||'completed'); } catch(e){}
+        if (callId) { try { await env.aura_db.prepare('UPDATE calls SET status=?, duration=?, updated_at=? WHERE id=?').bind(st||'completed', dur, Date.now(), callId).run(); } catch(e){} }
+        return new Response('<Response/>', { headers:{ 'Content-Type':'text/xml', ...CORS } });
+      }
+
+      // Webhook de grabación lista: descarga audio, transcribe (Whisper) y resume (LLM)
+      if (p === '/api/call-recording' && req.method === 'POST') {
+        await ensureCallsSchema(env);
+        const callId = url.searchParams.get('call_id')||'';
+        let recUrl = '';
+        try { const f = await req.formData(); recUrl = String(f.get('RecordingUrl')||''); } catch(e){}
+        if (!callId || !recUrl) return new Response('<Response/>', { headers:{ 'Content-Type':'text/xml', ...CORS } });
+        // Guardamos la URL de grabación ya mismo
+        try { await env.aura_db.prepare('UPDATE calls SET recording_url=?, updated_at=? WHERE id=?').bind(recUrl+'.mp3', Date.now(), callId).run(); } catch(e){}
+        // Procesado IA en segundo plano (no bloquear la respuesta a Twilio)
+        const _bg = (async()=>{
+          try {
+            if (!env.OPENAI_KEY) return;
+            // Descargar audio (requiere auth de Twilio)
+            const ar = await fetch(recUrl+'.mp3', { headers:{ 'Authorization':'Basic '+btoa((env.TWILIO_ACCOUNT_SID||'')+':'+(env.TWILIO_AUTH_TOKEN||'')) } });
+            if (!ar.ok) return;
+            const buf = await ar.arrayBuffer();
+            const fd = new FormData();
+            fd.append('file', new Blob([buf], { type:'audio/mpeg' }), 'call.mp3');
+            fd.append('model','whisper-1'); fd.append('language','es'); fd.append('response_format','json');
+            const wr = await fetch('https://api.openai.com/v1/audio/transcriptions', { method:'POST', headers:{ Authorization:`Bearer ${env.OPENAI_KEY}` }, body: fd });
+            const wd:any = await wr.json().catch(()=>({}));
+            const transcript = (wd && wd.text) ? String(wd.text).trim() : '';
+            let summary='', nextAction='', outcome='';
+            if (transcript) {
+              const sys = 'Eres asistente de una clínica estética. A partir de la TRANSCRIPCIÓN de una llamada entre recepción y un paciente, devuelve SOLO un JSON con: {"summary": resumen breve en español (2-3 frases), "outcome": uno de [reservo, interesado, no_interesado, no_contesta, otro], "next_action": próxima acción concreta y breve}. Sin exclamaciones excesivas.';
+              try { const raw = await runAI(env, [{role:'system',content:sys},{role:'user',content:transcript.slice(0,6000)}], true); const j = JSON.parse(raw||'{}'); summary=j.summary||''; nextAction=j.next_action||''; outcome=j.outcome||''; } catch(e){}
+            }
+            await env.aura_db.prepare('UPDATE calls SET transcript=?, summary=?, next_action=?, outcome=?, updated_at=? WHERE id=?').bind(transcript||null, summary||null, nextAction||null, outcome||null, Date.now(), callId).run();
+          } catch(e){ console.error('call-recording-ai', e); }
+        })();
+        if (ctx && ctx.waitUntil) ctx.waitUntil(_bg); else await _bg;
+        return new Response('<Response/>', { headers:{ 'Content-Type':'text/xml', ...CORS } });
+      }
+
+      // Historial de llamadas de un paciente
+      if (p === '/api/call-list' && req.method === 'GET') {
+        await ensureCallsSchema(env);
+        const tenantSolicitado = (url.searchParams.get('tenant') || url.searchParams.get('tenant_id') || '') || null;
+        const ctx = await resolveCopilotTenant(env, req, url, tenantSolicitado);
+        if (ctx.error) return json({ ok:false, error: ctx.error }, 401);
+        const tid = ctx.tenant as string;
+        const leadId = url.searchParams.get('lead_id')||'';
+        let r:any;
+        if (leadId) r = await env.aura_db.prepare('SELECT * FROM calls WHERE tenant_id=? AND lead_id=? ORDER BY created_at DESC LIMIT 50').bind(tid, leadId).all();
+        else r = await env.aura_db.prepare('SELECT * FROM calls WHERE tenant_id=? ORDER BY created_at DESC LIMIT 100').bind(tid).all();
+        return json({ ok:true, calls: r.results||[] });
       }
 
       // ============ TRANSCRIPCIÓN DE VOZ (Whisper) ============
