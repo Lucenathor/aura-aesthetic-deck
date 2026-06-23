@@ -223,20 +223,19 @@ img{max-width:100%;display:block}
 .ugc-metrics .um-roas{margin-left:auto;background:linear-gradient(135deg,var(--mint),#7FCBAA);color:#08361f;font-family:'Inter Tight';font-weight:800;font-size:clamp(.66rem,3.4cqw,.78rem);padding:.2rem clamp(.35rem,2cqw,.5rem);border-radius:8px;box-shadow:0 2px 8px rgba(31,140,105,.4);white-space:nowrap}
 .ugc.in .ugc-metrics .um-roas{animation:roasPop .6s var(--ease)}
 @keyframes roasPop{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
-.ugc-vid.next{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem;background:linear-gradient(160deg,var(--accent),var(--accent-2));color:#fff;text-align:center;padding:1.4rem 1rem;border:0}
-.ugc-vid.next .next-pill{display:inline-flex;align-items:center;gap:.34rem;font-size:.66rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;background:rgba(255,255,255,.22);padding:.3rem .7rem;border-radius:999px;margin-bottom:.4rem}
-.ugc-vid.next .next-pill svg{width:13px;height:13px}
-.ugc-vid.next .next-num{font-family:'Inter Tight';font-weight:900;font-size:3.4rem;line-height:.95;letter-spacing:-.03em;text-shadow:0 4px 18px rgba(0,0,0,.18)}
-.ugc-vid.next b{font-family:'Inter Tight';font-weight:800;font-size:1.15rem;line-height:1.1}
-.ugc-vid.next span{font-size:.78rem;opacity:.9;max-width:80%}
-.ugc-vid.next .next-thumbs{display:flex;gap:.4rem;margin-top:1rem}
-.ugc-vid.next .next-thumbs i{width:18px;height:30px;border-radius:5px;background:rgba(255,255,255,.28);border:1px solid rgba(255,255,255,.4);display:block;animation:nextPop .5s var(--ease) backwards}
-.ugc.in .ugc-vid.next .next-thumbs i:nth-child(1){animation-delay:.1s}
-.ugc.in .ugc-vid.next .next-thumbs i:nth-child(2){animation-delay:.2s}
-.ugc.in .ugc-vid.next .next-thumbs i:nth-child(3){animation-delay:.3s}
-.ugc.in .ugc-vid.next .next-thumbs i:nth-child(4){animation-delay:.4s}
-.ugc.in .ugc-vid.next .next-thumbs i:nth-child(5){animation-delay:.5s}
-@keyframes nextPop{from{opacity:0;transform:translateY(8px) scale(.8)}to{opacity:1;transform:none}}
+.ugc-vid.next{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.35rem;background:linear-gradient(165deg,#FFF4EF,#F3ECFF);color:var(--ink);text-align:center;padding:1.4rem 1.1rem;border:1px solid var(--line)}
+.ugc-vid.next .next-fan{position:relative;width:130px;height:150px;margin-bottom:1rem}
+.ugc-vid.next .nf{position:absolute;left:50%;top:50%;width:92px;height:128px;border-radius:12px;background-size:cover;background-position:center;box-shadow:0 10px 24px -10px rgba(15,16,17,.4);border:2px solid #fff}
+.ugc-vid.next .nf1{transform:translate(-50%,-50%) rotate(-3deg);z-index:3}
+.ugc-vid.next .nf2{transform:translate(-64%,-52%) rotate(-12deg);z-index:2;opacity:.96}
+.ugc-vid.next .nf3{transform:translate(-36%,-52%) rotate(9deg);z-index:1;opacity:.92}
+.ugc.in .ugc-vid.next .nf2{animation:fanL .7s var(--ease) .1s backwards}
+.ugc.in .ugc-vid.next .nf3{animation:fanR .7s var(--ease) .2s backwards}
+@keyframes fanL{from{transform:translate(-50%,-50%) rotate(0);opacity:0}}
+@keyframes fanR{from{transform:translate(-50%,-50%) rotate(0);opacity:0}}
+.ugc-vid.next .nf-badge{position:absolute;top:-10px;right:-10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-family:'Inter Tight';font-weight:800;font-size:.86rem;padding:.25rem .5rem;border-radius:999px;box-shadow:0 4px 12px rgba(255,107,90,.45);border:2px solid #fff}
+.ugc-vid.next b{font-family:'Inter Tight';font-weight:800;font-size:1.08rem;line-height:1.15;max-width:90%}
+.ugc-vid.next span{font-size:.78rem;color:var(--muted);max-width:88%;line-height:1.35}
 .ugc-next .ugc-cap{font-style:normal;font-weight:600;color:var(--muted)}
 
 /* === FUNNEL DEMO INTERACTIVA === */
@@ -1359,11 +1358,13 @@ img{max-width:100%;display:block}
       </div>
       <div class="ugc ugc-next">
         <div class="ugc-vid next">
-          <span class="next-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg> Cada mes</span>
-          <div class="next-num">+5</div>
-          <b>anuncios nuevos</b>
-          <span>listos para lanzar, automático</span>
-          <div class="next-thumbs"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="next-fan">
+            <span class="nf nf3" style="background-image:url('/assets/ugc3.webp')"></span>
+            <span class="nf nf2" style="background-image:url('/assets/ugc2.webp')"></span>
+            <span class="nf nf1" style="background-image:url('/assets/ugc1.webp')"><span class="nf-badge">+5</span></span>
+          </div>
+          <b>5 anuncios nuevos al mes</b>
+          <span>nuevos creativos en vídeo, listos para lanzar</span>
         </div>
         <div class="ugc-cap">Sin grabar · sin actores · sin editar</div>
       </div>
