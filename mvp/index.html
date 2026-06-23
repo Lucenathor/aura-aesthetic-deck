@@ -52,11 +52,11 @@ img{max-width:100%;display:block}
 .nav{display:flex;align-items:center;justify-content:space-between;padding:1.4rem 0;position:sticky;top:0;background:rgba(251,248,242,.85);backdrop-filter:blur(18px);z-index:50;border-bottom:1px solid transparent;transition:border-color .3s}
 .nav.scrolled{border-bottom-color:var(--line)}
 .brand{display:flex;align-items:center;gap:.55rem;font-family:'Inter Tight',sans-serif;font-size:1.18rem;font-weight:800;letter-spacing:-.02em;color:var(--ink)}
-.brand svg{flex:none;width:30px;height:30px}
-.aura-mark .aura-orbit{transform-origin:16px 16px;animation:auraBreath 6s var(--ease,ease-in-out) infinite}
-@keyframes auraBreath{0%,100%{transform:rotate(0deg) scale(1)}50%{transform:rotate(8deg) scale(1.04)}}
-.brand:hover .aura-orbit{animation-duration:3s}
-@media(prefers-reduced-motion:reduce){.aura-mark .aura-orbit{animation:none}}
+.brand svg,.brand img.aura-mark{flex:none;width:30px;height:30px;object-fit:contain}
+.hero-logo{display:block;width:auto;height:96px;object-fit:contain;margin-bottom:1.4rem}
+@media(max-width:760px){.hero-logo{height:74px;margin:0 auto 1.1rem}}
+.aura-mark{transition:transform .4s var(--ease,ease)}
+.brand:hover .aura-mark{transform:rotate(12deg) scale(1.06)}
 .nav .links{display:none;gap:1.8rem;color:var(--ink-soft);font-size:.92rem;font-weight:500}
 .nav .links a:hover{color:var(--accent)}
 .nav .right{display:flex;gap:.6rem;align-items:center}
@@ -901,24 +901,7 @@ img{max-width:100%;display:block}
   <!-- NAV -->
   <header class="nav" id="nav">
     <a href="/" class="brand">
-      <svg class="aura-mark" viewBox="0 0 32 32" fill="none">
-        <defs>
-          <radialGradient id="agCoral" cx="35%" cy="35%" r="75%">
-            <stop offset="0%" stop-color="#FF8E72"/><stop offset="100%" stop-color="#FF5A47"/>
-          </radialGradient>
-          <radialGradient id="agViolet" cx="65%" cy="35%" r="75%">
-            <stop offset="0%" stop-color="#B49BFF"/><stop offset="100%" stop-color="#8A66F5"/>
-          </radialGradient>
-          <radialGradient id="agMint" cx="50%" cy="35%" r="75%">
-            <stop offset="0%" stop-color="#BFF0DB"/><stop offset="100%" stop-color="#86D9B6"/>
-          </radialGradient>
-        </defs>
-        <g class="aura-orbit">
-          <circle cx="12.5" cy="17" r="8.5" fill="url(#agCoral)" style="mix-blend-mode:multiply"/>
-          <circle cx="19.5" cy="17" r="8.5" fill="url(#agViolet)" style="mix-blend-mode:multiply"/>
-          <circle cx="16" cy="11" r="6" fill="url(#agMint)" style="mix-blend-mode:multiply"/>
-        </g>
-      </svg>
+      <img class="aura-mark" src="/assets/aura-ring.png" alt="AURA" width="30" height="30"/>
       AURA
     </a>
     <nav class="links">
@@ -940,6 +923,7 @@ img{max-width:100%;display:block}
     <div class="hero-grid">
       <!-- LEFT -->
       <div>
+        <img class="hero-logo reveal" src="/assets/aura-vertical.png" alt="AURA · Clínicas Estéticas" width="168" height="141"/>
         <span class="eyebrow"><i></i> El sistema operativo nº1 para clínicas estéticas</span>
         <h1 class="h1" id="h1Anim">
           <span class="word" style="--i:0">Tu&nbsp;</span>
@@ -1495,7 +1479,7 @@ img{max-width:100%;display:block}
 
   <!-- FOOTER -->
   <footer class="footer">
-    <div>AURA · embudos IA para clínica estética<br><span style="font-size:.74rem">&copy; 2026 THOR GROUP AL-FZCO</span></div>
+    <div><img src="/assets/aura-horizontal.png" alt="AURA · Clínicas Estéticas" style="height:34px;width:auto;object-fit:contain;display:block;margin-bottom:.6rem"/>embudos IA para clínica estética<br><span style="font-size:.74rem">&copy; 2026 THOR GROUP AL-FZCO</span></div>
     <div class="l">
       <a href="/dashboard?t=clinica-elvira">Dashboard demo</a>
       <a href="/c/clinica-elvira">Embudo demo</a>
