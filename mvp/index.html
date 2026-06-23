@@ -233,7 +233,13 @@ img{max-width:100%;display:block}
 .ugc.in .ugc-vid.next .nf3{animation:fanR .7s var(--ease) .2s backwards}
 @keyframes fanL{from{transform:translate(-50%,-50%) rotate(0);opacity:0}}
 @keyframes fanR{from{transform:translate(-50%,-50%) rotate(0);opacity:0}}
+.ugc-vid.next .next-fan{transform-origin:50% 90%}
+.ugc.in .ugc-vid.next .next-fan{animation:fanSway 5s ease-in-out 1s infinite}
+@keyframes fanSway{0%,100%{transform:rotate(0deg)}25%{transform:rotate(-1.5deg)}75%{transform:rotate(1.5deg)}}
 .ugc-vid.next .nf-badge{position:absolute;top:-10px;right:-10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-family:'Inter Tight';font-weight:800;font-size:.86rem;padding:.25rem .5rem;border-radius:999px;box-shadow:0 4px 12px rgba(255,107,90,.45);border:2px solid #fff}
+.ugc.in .ugc-vid.next .nf-badge{animation:badgePulse 2.4s ease-in-out 1.2s infinite}
+@keyframes badgePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+@media(prefers-reduced-motion:reduce){.ugc.in .ugc-vid.next .next-fan,.ugc.in .ugc-vid.next .nf-badge{animation:none}}
 .ugc-vid.next b{font-family:'Inter Tight';font-weight:800;font-size:1.08rem;line-height:1.15;max-width:90%}
 .ugc-vid.next span{font-size:.78rem;color:var(--muted);max-width:88%;line-height:1.35}
 .ugc-next .ugc-cap{font-style:normal;font-weight:600;color:var(--muted)}
@@ -1363,8 +1369,8 @@ img{max-width:100%;display:block}
             <span class="nf nf2" style="background-image:url('/assets/ugc2.webp')"></span>
             <span class="nf nf1" style="background-image:url('/assets/ugc1.webp')"><span class="nf-badge">+5</span></span>
           </div>
-          <b>5 anuncios nuevos al mes</b>
-          <span>nuevos creativos en vídeo, listos para lanzar</span>
+          <b>5 anuncios nuevos cada mes</b>
+          <span>Creativos frescos en vídeo, sin que muevas un dedo. Siempre tienes con qué anunciarte.</span>
         </div>
         <div class="ugc-cap">Sin grabar · sin actores · sin editar</div>
       </div>
