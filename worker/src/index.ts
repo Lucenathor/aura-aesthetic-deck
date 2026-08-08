@@ -3302,6 +3302,77 @@ export default {
         return json({ ok:true });
       }
 
+      // ═══════════════════════════════════════════════════════════════
+      // IMPORTACIÓN MASIVA (Pacientes, Productos, Tratamientos)
+      // ═══════════════════════════════════════════════════════════════
+
+      if (p === '/api/import-leads' && req.method === 'POST') {
+        const b:any = await req.json();
+        const records:any[] = b.records || [];
+        if (!records.length) return json({ error:'no records' }, 400);
+        const tid = b.tenant_id || tenant;
+        let created = 0, duplicates = 0;
+        for (const r of records) {
+          if (!r.name) continue;
+          const phone = (r.phone||'').replace(/[\s\-\(\)\.]/g,'');
+          // Dedup by phone
+          if (phone) {
+            const existing:any = await env.aura_db.prepare("SELECT id FROM leads WHERE tenant_id=? AND phone=?").bind(tid, phone).first();
+            if (existing) { duplicates++; continue; }
+          }
+          const id = 'l_' + crypto.randomUUID().replace(/-/g,'').slice(0,14);
+          const now = new Date().toISOString();
+          await env.aura_db.prepare(
+            "INSERT INTO leads (id, tenant_id, name, phone, email, status, source, notes, treatment, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)"
+          ).bind(id, tid, r.name, phone||null, r.email||null, 'imported', r.source||'importación', r.notes||null, r.treatment||null, now).run();
+          created++;
+        }
+        return json({ ok:true, created, duplicates, total:records.length });
+      }
+
+      if (p === '/api/import-products' && req.method === 'POST') {
+        const b:any = await req.json();
+        const records:any[] = b.records || [];
+        if (!records.length) return json({ error:'no records' }, 400);
+        const tid = b.tenant_id || tenant;
+        try { await ensureInventorySchema(env); } catch(e){}
+        let created = 0, duplicates = 0;
+        for (const r of records) {
+          if (!r.name) continue;
+          // Dedup by name (case-insensitive)
+          const existing:any = await env.aura_db.prepare("SELECT id FROM inventory_products WHERE tenant_id=? AND LOWER(name)=LOWER(?)").bind(tid, r.name.trim()).first();
+          if (existing) { duplicates++; continue; }
+          const id = 'prod_' + crypto.randomUUID().replace(/-/g,'').slice(0,10);
+          const now = Date.now();
+          await env.aura_db.prepare(
+            "INSERT INTO inventory_products (id, tenant_id, name, sale_price, stock, category, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)"
+          ).bind(id, tid, r.name.trim(), parseFloat(r.price)||0, parseInt(r.stock)||0, r.category||'servicio', now, now).run();
+          created++;
+        }
+        return json({ ok:true, created, duplicates, total:records.length });
+      }
+
+      if (p === '/api/import-treatments' && req.method === 'POST') {
+        const b:any = await req.json();
+        const records:any[] = b.records || [];
+        if (!records.length) return json({ error:'no records' }, 400);
+        const tid = b.tenant_id || tenant;
+        try { await ensureInventorySchema(env); } catch(e){}
+        let created = 0, duplicates = 0;
+        const colors=['#9B7BFF','#FF6B5A','#34a877','#d9a23a','#3a8fd9','#c0568f'];
+        for (const r of records) {
+          if (!r.name) continue;
+          const existing:any = await env.aura_db.prepare("SELECT id FROM treatment_catalog WHERE tenant_id=? AND LOWER(name)=LOWER(?)").bind(tid, r.name.trim()).first();
+          if (existing) { duplicates++; continue; }
+          const id = 'tc_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+          await env.aura_db.prepare(
+            'INSERT INTO treatment_catalog (id,tenant_id,name,duration_min,price,color,created_at) VALUES (?,?,?,?,?,?,?)'
+          ).bind(id, tid, r.name.trim(), parseInt(r.duration)||30, parseFloat(r.price)||0, colors[created%colors.length], Date.now()).run();
+          created++;
+        }
+        return json({ ok:true, created, duplicates, total:records.length });
+      }
+
       // REVERTIR VISITA COBRADA: devuelve stock descontado, borra el cobro y vuelve a dejar la cita reservada
       if (p === '/api/visit-revert' && req.method === 'POST') {
         const b:any = await req.json();

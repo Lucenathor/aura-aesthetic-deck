@@ -787,6 +787,16 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
         </div>
         <div id="smsMsg" style="font-size:.82rem;margin-top:.6rem;color:#1f8c69"></div>
       </div>
+      <div class="card" id="importCard">
+        <h3>Importar datos</h3>
+        <p class="sub">Sube un archivo Excel o CSV con tus pacientes, productos o tratamientos. AURA detecta las columnas automáticamente, te muestra una vista previa y solo importa los datos válidos. Ideal para migrar desde otro software.</p>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin:.7rem 0">
+          <button class="btn prim" onclick="openImporter('leads')">📋 Importar pacientes</button>
+          <button class="btn" onclick="openImporter('products')">📦 Importar productos</button>
+          <button class="btn" onclick="openImporter('treatments')">💉 Importar tratamientos</button>
+        </div>
+        <div style="font-size:.78rem;color:var(--muted);margin-top:.3rem">Formatos: .csv, .xlsx, .xls · Máximo 5.000 filas por importación · Deduplicación automática por teléfono (pacientes) o nombre (productos)</div>
+      </div>
     </section>
 
     <!-- ADMINISTRACIÓN (solo super admin): onboarding de clínicas -->
@@ -4338,8 +4348,361 @@ async function buySms(){
     msg.style.color='#c0392b'; msg.textContent=d.error||'No se pudo iniciar el pago';
   }catch(e){ msg.style.color='#c0392b'; msg.textContent='Error al iniciar el pago'; }
 }
-// al volver de Stripe con ?sms=ok
 (function(){ if(new URLSearchParams(location.search).get('sms')==='ok'){ setTimeout(()=>{ const m=document.getElementById('smsMsg'); if(m){m.style.color='#1f8c69';m.textContent='Pago confirmado. Tus 1.000 SMS se han añadido.';} loadSmsCredits&&loadSmsCredits(); }, 800); } })();
+
+// ═══════════════════════════════════════════════════════════════════════
+// IMPORTADOR DE DATOS (Pacientes, Productos, Tratamientos)
+// Flujo: Upload → Preview → Map → Validate → Import (estilo HubSpot/Cliniko)
+// ═══════════════════════════════════════════════════════════════════════
+const IMPORT_FIELDS = {
+  leads: {
+    label: 'Pacientes',
+    required: ['name'],
+    fields: [
+      {key:'name', label:'Nombre completo', hint:'María García López'},
+      {key:'phone', label:'Teléfono', hint:'+34 612 345 678'},
+      {key:'email', label:'Email', hint:'maria@email.com'},
+      {key:'treatment', label:'Tratamiento favorito', hint:'Aumento de labios'},
+      {key:'notes', label:'Notas', hint:'Alérgica a lidocaína'},
+      {key:'source', label:'Origen', hint:'Instagram, Recomendación...'},
+      {key:'last_visit', label:'Última visita', hint:'2025-03-15'}
+    ],
+    dedup: 'phone',
+    dedupLabel: 'teléfono'
+  },
+  products: {
+    label: 'Productos',
+    required: ['name'],
+    fields: [
+      {key:'name', label:'Nombre del producto', hint:'Crema hidratante SPF50'},
+      {key:'price', label:'Precio (€)', hint:'45.00'},
+      {key:'stock', label:'Stock actual', hint:'12'},
+      {key:'category', label:'Categoría', hint:'Cosmética, Inyectables...'},
+      {key:'supplier', label:'Proveedor', hint:'Allergan'}
+    ],
+    dedup: 'name',
+    dedupLabel: 'nombre'
+  },
+  treatments: {
+    label: 'Tratamientos',
+    required: ['name'],
+    fields: [
+      {key:'name', label:'Nombre del tratamiento', hint:'Bótox frente'},
+      {key:'duration', label:'Duración (min)', hint:'30'},
+      {key:'price', label:'Precio (€)', hint:'350'},
+      {key:'category', label:'Categoría', hint:'Inyectables, Láser...'}
+    ],
+    dedup: 'name',
+    dedupLabel: 'nombre'
+  }
+};
+let _impType='', _impData=[], _impHeaders=[], _impMapping={}, _impValid=[], _impErrors=[];
+
+function openImporter(type){
+  _impType=type; _impData=[]; _impHeaders=[]; _impMapping={}; _impValid=[]; _impErrors=[];
+  const cfg=IMPORT_FIELDS[type];
+  const ov=document.createElement('div'); ov.id='impOverlay';
+  ov.style='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;display:grid;place-items:center;padding:1rem;overflow-y:auto';
+  ov.onclick=e=>{if(e.target===ov)closeImporter();};
+  let h='<div id="impModal" style="background:#fff;border-radius:16px;max-width:780px;width:100%;max-height:90vh;overflow-y:auto;padding:2rem;box-shadow:0 20px 60px rgba(0,0,0,.2)">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem"><h2 class="serif" style="margin:0;font-size:1.4rem">Importar '+cfg.label+'</h2><button onclick="closeImporter()" style="background:none;border:0;font-size:1.5rem;cursor:pointer;color:var(--muted)">×</button></div>';
+  // Step indicator
+  h+='<div id="impSteps" style="display:flex;gap:.3rem;margin-bottom:1.5rem">';
+  ['Subir archivo','Vista previa','Mapear columnas','Validar e importar'].forEach((s,i)=>{
+    h+='<div class="imp-step'+(i===0?' active':'')+'" data-step="'+i+'"><span class="imp-step-n">'+(i+1)+'</span> '+s+'</div>';
+  });
+  h+='</div>';
+  // Step 1: Upload
+  h+='<div id="impStep0" class="imp-body">';
+  h+='<div id="impDropzone" style="border:2px dashed var(--line);border-radius:14px;padding:3rem 2rem;text-align:center;cursor:pointer;transition:border-color .2s,background .2s" ondragover="event.preventDefault();this.style.borderColor=\'var(--terra)\';this.style.background=\'#fdf8f6\'" ondragleave="this.style.borderColor=\'var(--line)\';this.style.background=\'#fff\'" ondrop="handleImpDrop(event)" onclick="document.getElementById(\'impFileInput\').click()">';
+  h+='<div style="font-size:2.5rem;margin-bottom:.5rem">📄</div>';
+  h+='<div style="font-size:1rem;font-weight:600;color:var(--ink)">Arrastra tu archivo aquí</div>';
+  h+='<div style="font-size:.85rem;color:var(--muted);margin-top:.3rem">o haz clic para seleccionar · CSV, XLSX, XLS</div>';
+  h+='</div>';
+  h+='<input type="file" id="impFileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleImpFile(this.files[0])"/>';
+  h+='<div id="impFileInfo" style="display:none;margin-top:1rem;padding:.8rem;background:#f0fdf4;border-radius:10px;font-size:.85rem"></div>';
+  h+='<div style="margin-top:1.2rem;padding:1rem;background:#faf8f5;border-radius:12px;font-size:.82rem;color:var(--muted)">';
+  h+='<b>Campos que puedes importar:</b><br>';
+  cfg.fields.forEach(f=>{ h+='<span style="display:inline-block;margin:.2rem .3rem;padding:.2rem .5rem;background:#fff;border:1px solid var(--line);border-radius:6px;font-size:.78rem">'+f.label+(cfg.required.includes(f.key)?' <span style="color:#c0392b">*</span>':'')+'</span>'; });
+  h+='<br><span style="font-size:.75rem">* = obligatorio</span>';
+  h+='</div></div>';
+  // Step 2: Preview (hidden)
+  h+='<div id="impStep1" class="imp-body" style="display:none"><div id="impPreview"></div></div>';
+  // Step 3: Mapping (hidden)
+  h+='<div id="impStep2" class="imp-body" style="display:none"><div id="impMapBody"></div></div>';
+  // Step 4: Validate & Import (hidden)
+  h+='<div id="impStep3" class="imp-body" style="display:none"><div id="impValidBody"></div></div>';
+  h+='</div>';
+  ov.innerHTML=h;
+  document.body.appendChild(ov);
+  // Add styles if not present
+  if(!document.getElementById('impStyles')){
+    const st=document.createElement('style'); st.id='impStyles';
+    st.textContent='.imp-step{flex:1;text-align:center;padding:.5rem .3rem;border-radius:8px;font-size:.75rem;color:var(--muted);background:#f5f5f5;transition:all .2s}.imp-step.active{background:var(--terra);color:#fff;font-weight:600}.imp-step.done{background:#d1fae5;color:#065f46}.imp-step-n{display:inline-block;width:18px;height:18px;line-height:18px;border-radius:50%;background:rgba(0,0,0,.1);font-size:.7rem;font-weight:700;margin-right:.2rem}.imp-step.active .imp-step-n{background:rgba(255,255,255,.3)}.imp-body{min-height:200px}.imp-table{width:100%;border-collapse:collapse;font-size:.78rem;margin:.8rem 0}.imp-table th,.imp-table td{padding:.4rem .5rem;border:1px solid var(--line);text-align:left}.imp-table th{background:#f9fafb;font-weight:600;font-size:.72rem;text-transform:uppercase;color:var(--muted)}.imp-table tr:nth-child(even){background:#fafafa}.imp-map-row{display:flex;align-items:center;gap:.8rem;padding:.6rem 0;border-bottom:1px solid var(--line)}.imp-map-col{flex:1;font-weight:600;font-size:.85rem}.imp-map-arrow{color:var(--muted);font-size:1.1rem}.imp-map-sel{flex:1}.imp-map-sel select{width:100%;padding:.45rem .6rem;border:1px solid var(--line);border-radius:8px;font-size:.82rem}.imp-stat{display:inline-flex;align-items:center;gap:.3rem;padding:.4rem .8rem;border-radius:8px;font-size:.85rem;font-weight:600}.imp-stat.ok{background:#d1fae5;color:#065f46}.imp-stat.warn{background:#fef3c7;color:#92400e}.imp-stat.err{background:#fee2e2;color:#991b1b}';
+    document.head.appendChild(st);
+  }
+}
+function closeImporter(){ const ov=document.getElementById('impOverlay'); if(ov)ov.remove(); }
+
+function handleImpDrop(e){ e.preventDefault(); e.currentTarget.style.borderColor='var(--line)'; e.currentTarget.style.background='#fff'; const f=e.dataTransfer.files[0]; if(f)handleImpFile(f); }
+
+async function handleImpFile(file){
+  if(!file)return;
+  const ext=file.name.split('.').pop().toLowerCase();
+  if(!['csv','xlsx','xls'].includes(ext)){ toast('Formato no soportado. Usa CSV o Excel.','error'); return; }
+  const info=document.getElementById('impFileInfo');
+  info.style.display='block'; info.innerHTML='⏳ Leyendo <b>'+file.name+'</b> ('+Math.round(file.size/1024)+' KB)…';
+  try{
+    if(ext==='csv'){
+      const text=await file.text();
+      parseCSV(text);
+    } else {
+      // XLSX: use SheetJS from CDN
+      if(!window.XLSX){
+        await loadScript('https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js');
+      }
+      const ab=await file.arrayBuffer();
+      const wb=XLSX.read(ab,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const csv=XLSX.utils.sheet_to_csv(ws);
+      parseCSV(csv);
+    }
+    info.innerHTML='✅ <b>'+file.name+'</b> · '+_impData.length+' filas · '+_impHeaders.length+' columnas';
+    // Auto-advance to preview
+    setTimeout(()=>showImpStep(1),400);
+  }catch(e){ info.innerHTML='❌ Error al leer el archivo: '+e.message; info.style.background='#fee2e2'; }
+}
+
+function loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
+
+function parseCSV(text){
+  // Smart delimiter detection
+  const firstLine=text.split('\n')[0]||'';
+  const delim=firstLine.split(';').length > firstLine.split(',').length ? ';' : ',';
+  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l);
+  if(lines.length<2){ throw new Error('El archivo necesita al menos una cabecera y una fila de datos.'); }
+  _impHeaders=splitCSVLine(lines[0],delim);
+  _impData=[];
+  for(let i=1;i<lines.length&&i<=5000;i++){
+    const cells=splitCSVLine(lines[i],delim);
+    if(cells.length>0 && cells.some(c=>c.trim())) _impData.push(cells);
+  }
+}
+function splitCSVLine(line,delim){
+  const result=[]; let current=''; let inQuotes=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(c==='"'){ inQuotes=!inQuotes; }
+    else if(c===delim && !inQuotes){ result.push(current.trim()); current=''; }
+    else { current+=c; }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function showImpStep(step){
+  for(let i=0;i<4;i++){
+    const el=document.getElementById('impStep'+i); if(el)el.style.display=i===step?'block':'none';
+  }
+  document.querySelectorAll('.imp-step').forEach((el,i)=>{
+    el.classList.remove('active','done');
+    if(i<step)el.classList.add('done');
+    if(i===step)el.classList.add('active');
+  });
+  if(step===1) renderImpPreview();
+  if(step===2) renderImpMapping();
+  if(step===3) renderImpValidation();
+}
+
+function renderImpPreview(){
+  const wrap=document.getElementById('impPreview');
+  const preview=_impData.slice(0,8);
+  let h='<p style="font-size:.9rem;margin-bottom:.8rem">Vista previa de las primeras filas. Verifica que los datos se leen correctamente.</p>';
+  h+='<div style="overflow-x:auto"><table class="imp-table"><thead><tr>';
+  _impHeaders.forEach(hd=>{ h+='<th>'+hd+'</th>'; });
+  h+='</tr></thead><tbody>';
+  preview.forEach(row=>{
+    h+='<tr>';
+    _impHeaders.forEach((_,i)=>{ h+='<td>'+(row[i]||'<span style="color:#ccc">—</span>')+'</td>'; });
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+  if(_impData.length>8) h+='<div style="font-size:.8rem;color:var(--muted);margin-top:.4rem">…y '+(_impData.length-8)+' filas más</div>';
+  h+='<div style="display:flex;gap:.6rem;margin-top:1.2rem;justify-content:flex-end">';
+  h+='<button class="btn" onclick="showImpStep(0)">← Volver</button>';
+  h+='<button class="btn prim" onclick="showImpStep(2)">Mapear columnas →</button>';
+  h+='</div>';
+  wrap.innerHTML=h;
+}
+
+function renderImpMapping(){
+  const wrap=document.getElementById('impMapBody');
+  const cfg=IMPORT_FIELDS[_impType];
+  // Auto-mapping: fuzzy match header names to field keys/labels
+  _impMapping={};
+  cfg.fields.forEach(f=>{
+    const match=_impHeaders.findIndex(h=>{
+      const hl=h.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const fl=f.label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const fk=f.key.toLowerCase();
+      return hl===fk || hl===fl || hl.includes(fk) || fk.includes(hl) || hl.includes(fl.split(' ')[0]);
+    });
+    if(match>=0) _impMapping[f.key]=match;
+  });
+  // Also try common aliases
+  const aliases={name:['nombre','name','paciente','cliente','client','patient','nombre completo','full name'],phone:['telefono','teléfono','phone','tel','móvil','movil','mobile','celular'],email:['email','correo','e-mail','mail'],treatment:['tratamiento','treatment','servicio','service'],notes:['notas','notes','observaciones','comentarios'],source:['origen','source','canal','fuente'],last_visit:['ultima visita','última visita','last visit','fecha'],price:['precio','price','pvp','importe'],stock:['stock','cantidad','qty','unidades'],category:['categoria','categoría','category','tipo'],supplier:['proveedor','supplier','marca','brand'],duration:['duracion','duración','duration','tiempo','min','minutos']};
+  cfg.fields.forEach(f=>{
+    if(_impMapping[f.key]!==undefined) return;
+    const al=aliases[f.key]||[];
+    const match=_impHeaders.findIndex(h=>{
+      const hl=h.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+      return al.some(a=>hl===a||hl.includes(a));
+    });
+    if(match>=0) _impMapping[f.key]=match;
+  });
+
+  let h='<p style="font-size:.9rem;margin-bottom:.5rem">Conecta cada columna de tu archivo con el campo correspondiente en AURA. Hemos detectado automáticamente las coincidencias.</p>';
+  h+='<div style="margin:1rem 0">';
+  cfg.fields.forEach(f=>{
+    const isReq=cfg.required.includes(f.key);
+    h+='<div class="imp-map-row">';
+    h+='<div class="imp-map-col">'+f.label+(isReq?' <span style="color:#c0392b">*</span>':'')+'<br><span style="font-size:.72rem;color:var(--muted)">ej: '+f.hint+'</span></div>';
+    h+='<div class="imp-map-arrow">→</div>';
+    h+='<div class="imp-map-sel"><select onchange="_impMapping[\''+f.key+'\']=this.value===\'\'?undefined:parseInt(this.value)">';
+    h+='<option value="">— No importar —</option>';
+    _impHeaders.forEach((hd,i)=>{
+      const sel=_impMapping[f.key]===i?'selected':'';
+      h+='<option value="'+i+'" '+sel+'>'+hd+'</option>';
+    });
+    h+='</select></div></div>';
+  });
+  h+='</div>';
+  h+='<div style="display:flex;gap:.6rem;margin-top:1.2rem;justify-content:flex-end">';
+  h+='<button class="btn" onclick="showImpStep(1)">← Volver</button>';
+  h+='<button class="btn prim" onclick="showImpStep(3)">Validar e importar →</button>';
+  h+='</div>';
+  wrap.innerHTML=h;
+}
+
+function renderImpValidation(){
+  const wrap=document.getElementById('impValidBody');
+  const cfg=IMPORT_FIELDS[_impType];
+  _impValid=[]; _impErrors=[];
+  const seen=new Set();
+
+  _impData.forEach((row,idx)=>{
+    const record={}; let errors=[];
+    cfg.fields.forEach(f=>{
+      const colIdx=_impMapping[f.key];
+      record[f.key]=(colIdx!==undefined && row[colIdx]!==undefined) ? row[colIdx].trim() : '';
+    });
+    // Required check
+    cfg.required.forEach(rk=>{
+      if(!record[rk]) errors.push('Falta "'+cfg.fields.find(f=>f.key===rk).label+'"');
+    });
+    // Phone validation for leads
+    if(_impType==='leads' && record.phone){
+      let ph=record.phone.replace(/[\s\-\(\)\.]/g,'');
+      if(!ph.startsWith('+'))ph='+34'+ph.replace(/^0+/,'');
+      if(ph.length<9) errors.push('Teléfono muy corto');
+      record.phone=ph;
+    }
+    // Price/stock validation for products/treatments
+    if(record.price && isNaN(parseFloat(record.price))) errors.push('Precio no es número');
+    if(record.stock && isNaN(parseInt(record.stock))) errors.push('Stock no es número');
+    if(record.duration && isNaN(parseInt(record.duration))) errors.push('Duración no es número');
+    // Dedup
+    const dedupKey=cfg.dedup;
+    if(record[dedupKey]){
+      const dk=record[dedupKey].toLowerCase().trim();
+      if(seen.has(dk)){ errors.push('Duplicado ('+cfg.dedupLabel+')'); }
+      else { seen.add(dk); }
+    }
+    if(errors.length>0){ _impErrors.push({row:idx+2, record, errors}); }
+    else { _impValid.push(record); }
+  });
+
+  let h='<div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem">';
+  h+='<div class="imp-stat ok">✓ '+_impValid.length+' válidos</div>';
+  if(_impErrors.length) h+='<div class="imp-stat err">✕ '+_impErrors.length+' con errores</div>';
+  h+='<div class="imp-stat" style="background:#f0f4ff;color:#1e40af">Total: '+_impData.length+' filas</div>';
+  h+='</div>';
+
+  if(_impErrors.length>0){
+    h+='<details style="margin-bottom:1rem"><summary style="cursor:pointer;font-size:.85rem;font-weight:600;color:#991b1b">Ver filas con errores ('+_impErrors.length+')</summary>';
+    h+='<div style="max-height:200px;overflow-y:auto;margin-top:.5rem"><table class="imp-table"><thead><tr><th>Fila</th><th>Datos</th><th>Error</th></tr></thead><tbody>';
+    _impErrors.slice(0,50).forEach(e=>{
+      h+='<tr><td>'+e.row+'</td><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis">'+Object.values(e.record).filter(v=>v).join(' · ')+'</td><td style="color:#991b1b">'+e.errors.join(', ')+'</td></tr>';
+    });
+    h+='</tbody></table></div></details>';
+  }
+
+  if(_impValid.length>0){
+    h+='<p style="font-size:.9rem;margin-bottom:.5rem">Vista previa de los primeros registros válidos:</p>';
+    h+='<div style="overflow-x:auto;max-height:180px"><table class="imp-table"><thead><tr>';
+    const cfg2=IMPORT_FIELDS[_impType];
+    cfg2.fields.forEach(f=>{ if(_impMapping[f.key]!==undefined) h+='<th>'+f.label+'</th>'; });
+    h+='</tr></thead><tbody>';
+    _impValid.slice(0,5).forEach(r=>{
+      h+='<tr>';
+      cfg2.fields.forEach(f=>{ if(_impMapping[f.key]!==undefined) h+='<td>'+(r[f.key]||'—')+'</td>'; });
+      h+='</tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+
+  h+='<div id="impResult" style="margin-top:1rem"></div>';
+  h+='<div style="display:flex;gap:.6rem;margin-top:1.2rem;justify-content:flex-end">';
+  h+='<button class="btn" onclick="showImpStep(2)">← Volver</button>';
+  if(_impErrors.length>0) h+='<button class="btn" onclick="downloadImpErrors()">Descargar errores (CSV)</button>';
+  h+='<button class="btn prim" onclick="executeImport()" '+(_impValid.length===0?'disabled':'')+'>Importar '+_impValid.length+' '+cfg.label.toLowerCase()+' →</button>';
+  h+='</div>';
+  wrap.innerHTML=h;
+}
+
+function downloadImpErrors(){
+  const cfg=IMPORT_FIELDS[_impType];
+  let csv='Fila,'+cfg.fields.map(f=>f.label).join(',')+',Errores\n';
+  _impErrors.forEach(e=>{
+    csv+=e.row+','+cfg.fields.map(f=>'"'+(e.record[f.key]||'').replace(/"/g,'""')+'"').join(',')+','+ '"'+e.errors.join('; ')+'"'+'\n';
+  });
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='errores_importacion.csv'; a.click();
+}
+
+async function executeImport(){
+  const res=document.getElementById('impResult');
+  res.innerHTML='<div style="padding:1rem;background:#f0f4ff;border-radius:10px;font-size:.9rem">⏳ Importando '+_impValid.length+' registros… No cierres esta ventana.</div>';
+  try{
+    const endpoint=_impType==='leads'?'/api/import-leads':(_impType==='products'?'/api/import-products':'/api/import-treatments');
+    const r=await fetch(WORKER+endpoint,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},
+      body:JSON.stringify({tenant_id:T, records:_impValid})
+    });
+    const d=await r.json();
+    if(d&&d.ok){
+      const created=d.created||_impValid.length;
+      const dupes=d.duplicates||0;
+      res.innerHTML='<div style="padding:1.2rem;background:#d1fae5;border-radius:12px;text-align:center">'
+        +'<div style="font-size:2rem;margin-bottom:.3rem">🎉</div>'
+        +'<div style="font-size:1.1rem;font-weight:700;color:#065f46">Importación completada</div>'
+        +'<div style="font-size:.9rem;color:#065f46;margin-top:.3rem">'+created+' registros creados'+(dupes?' · '+dupes+' duplicados omitidos':'')+'</div>'
+        +'<button class="btn prim" style="margin-top:1rem" onclick="closeImporter();'
+        +(_impType==='leads'?'loadLeads();':'')
+        +(_impType==='products'?'loadInventory();':'')
+        +'">Cerrar ✓</button></div>';
+      // Refresh relevant data
+      try{ if(_impType==='leads'&&typeof loadLeads==='function')loadLeads(); }catch(e){}
+      try{ if(_impType==='products'&&typeof loadInventory==='function')loadInventory(); }catch(e){}
+    } else {
+      res.innerHTML='<div style="padding:1rem;background:#fee2e2;border-radius:10px;font-size:.9rem;color:#991b1b">❌ Error: '+(d.error||'No se pudo importar. Inténtalo de nuevo.')+'</div>';
+    }
+  }catch(e){
+    res.innerHTML='<div style="padding:1rem;background:#fee2e2;border-radius:10px;font-size:.9rem;color:#991b1b">❌ Error de conexión. Verifica tu internet e inténtalo de nuevo.</div>';
+  }
+}
+
 async function __auraInit(){
   const ok=await guard(); if(!ok)return;
   try{ const fl=document.getElementById('funnelLink'); if(fl)fl.href='/c/'+T; }catch(e){}
