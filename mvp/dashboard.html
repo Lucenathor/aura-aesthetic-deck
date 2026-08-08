@@ -794,8 +794,9 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
           <button class="btn prim" onclick="openImporter('leads')">📋 Importar pacientes</button>
           <button class="btn" onclick="openImporter('products')">📦 Importar productos</button>
           <button class="btn" onclick="openImporter('treatments')">💉 Importar tratamientos</button>
+          <button class="btn" onclick="openImporter('historial')">📊 Importar historial de visitas</button>
         </div>
-        <div style="font-size:.78rem;color:var(--muted);margin-top:.3rem">Formatos: .csv, .xlsx, .xls · Máximo 5.000 filas por importación · Deduplicación automática por teléfono (pacientes) o nombre (productos)</div>
+        <div style="font-size:.78rem;color:var(--muted);margin-top:.3rem">Formatos: .csv, .xlsx, .xls · Máximo 5.000 filas por importación · Deduplicación automática por teléfono (pacientes) o nombre (productos) · Importa también el gasto histórico, notas clínicas, alergias y más</div>
       </div>
     </section>
 
@@ -4362,13 +4363,46 @@ const IMPORT_FIELDS = {
       {key:'name', label:'Nombre completo', hint:'María García López'},
       {key:'phone', label:'Teléfono', hint:'+34 612 345 678'},
       {key:'email', label:'Email', hint:'maria@email.com'},
+      {key:'dni', label:'DNI / NIE / Pasaporte', hint:'12345678A'},
+      {key:'birthdate', label:'Fecha de nacimiento', hint:'1985-06-15'},
+      {key:'address', label:'Dirección', hint:'C/ Gran Vía 42, Madrid'},
+      {key:'city', label:'Ciudad', hint:'Madrid'},
+      {key:'postal_code', label:'Código postal', hint:'28013'},
+      {key:'gender', label:'Género', hint:'Mujer, Hombre, Otro'},
       {key:'treatment', label:'Tratamiento favorito', hint:'Aumento de labios'},
-      {key:'notes', label:'Notas', hint:'Alérgica a lidocaína'},
-      {key:'source', label:'Origen', hint:'Instagram, Recomendación...'},
-      {key:'last_visit', label:'Última visita', hint:'2025-03-15'}
+      {key:'allergies', label:'Alergias', hint:'Lidocaína, Látex...'},
+      {key:'medical_notes', label:'Antecedentes médicos', hint:'Diabetes tipo 2, Hipertensión...'},
+      {key:'notes', label:'Notas generales', hint:'Prefiere citas por la tarde'},
+      {key:'source', label:'Origen / Canal', hint:'Instagram, Recomendación, Google...'},
+      {key:'total_spent', label:'Gasto total (€)', hint:'2450.00'},
+      {key:'visit_count', label:'Nº de visitas anteriores', hint:'8'},
+      {key:'last_visit', label:'Fecha última visita', hint:'2025-03-15'},
+      {key:'next_appointment', label:'Próxima cita (si tiene)', hint:'2026-09-10'},
+      {key:'tags', label:'Etiquetas', hint:'VIP, Bono activo, Recall...'},
+      {key:'professional', label:'Profesional asignado', hint:'Dra. Elena Ruiz'},
+      {key:'consent_signed', label:'Consentimiento firmado', hint:'Sí, No'},
+      {key:'referral', label:'Referido por', hint:'Ana Martínez'}
     ],
     dedup: 'phone',
     dedupLabel: 'teléfono'
+  },
+  historial: {
+    label: 'Historial de visitas',
+    required: ['patient_name','treatment','amount'],
+    fields: [
+      {key:'patient_name', label:'Nombre del paciente', hint:'María García López'},
+      {key:'patient_phone', label:'Teléfono del paciente', hint:'+34 612 345 678'},
+      {key:'treatment', label:'Tratamiento realizado', hint:'Bótox frente'},
+      {key:'amount', label:'Importe cobrado (€)', hint:'350.00'},
+      {key:'date', label:'Fecha de la visita', hint:'2025-03-15'},
+      {key:'method', label:'Método de pago', hint:'Tarjeta, Efectivo, Bizum...'},
+      {key:'professional', label:'Profesional', hint:'Dra. Elena Ruiz'},
+      {key:'notes', label:'Notas de la visita', hint:'Retoque en 15 días'},
+      {key:'areas', label:'Zonas tratadas', hint:'Frente, Entrecejo, Patas de gallo'},
+      {key:'products_used', label:'Productos utilizados', hint:'Vistabel 50u, Crema post'}
+    ],
+    dedup: '',
+    dedupLabel: ''
   },
   products: {
     label: 'Productos',
@@ -4550,7 +4584,7 @@ function renderImpMapping(){
     if(match>=0) _impMapping[f.key]=match;
   });
   // Also try common aliases
-  const aliases={name:['nombre','name','paciente','cliente','client','patient','nombre completo','full name'],phone:['telefono','teléfono','phone','tel','móvil','movil','mobile','celular'],email:['email','correo','e-mail','mail'],treatment:['tratamiento','treatment','servicio','service'],notes:['notas','notes','observaciones','comentarios'],source:['origen','source','canal','fuente'],last_visit:['ultima visita','última visita','last visit','fecha'],price:['precio','price','pvp','importe'],stock:['stock','cantidad','qty','unidades'],category:['categoria','categoría','category','tipo'],supplier:['proveedor','supplier','marca','brand'],duration:['duracion','duración','duration','tiempo','min','minutos']};
+  const aliases={name:['nombre','name','paciente','cliente','client','patient','nombre completo','full name','nombre y apellidos'],phone:['telefono','teléfono','phone','tel','móvil','movil','mobile','celular','whatsapp'],email:['email','correo','e-mail','mail','correo electronico','correo electrónico'],dni:['dni','nie','pasaporte','nif','documento','id document','identification'],birthdate:['nacimiento','fecha de nacimiento','birthdate','birthday','cumpleaños','fecha nacimiento','dob','f. nacimiento'],address:['direccion','dirección','address','domicilio','calle'],city:['ciudad','city','localidad','poblacion','población'],postal_code:['codigo postal','código postal','cp','postal code','zip'],gender:['genero','género','gender','sexo'],treatment:['tratamiento','treatment','servicio','service','tratamiento favorito'],allergies:['alergias','allergies','alergia','allergy'],medical_notes:['antecedentes','antecedentes medicos','antecedentes médicos','medical notes','historial medico','historial médico','patologias','patologías'],notes:['notas','notes','observaciones','comentarios','nota'],source:['origen','source','canal','fuente','como nos conocio','cómo nos conoció'],total_spent:['gasto total','total spent','gasto','total gastado','importe total','facturado'],visit_count:['visitas','numero de visitas','nº visitas','visit count','num visitas','total visitas'],last_visit:['ultima visita','última visita','last visit','fecha ultima visita'],next_appointment:['proxima cita','próxima cita','next appointment','siguiente cita'],tags:['etiquetas','tags','labels','categorias'],professional:['profesional','professional','doctor','doctora','medico','médico','terapeuta'],consent_signed:['consentimiento','consent','firmado','consent signed'],referral:['referido','referral','recomendado por','referred by'],price:['precio','price','pvp','importe','amount','cobrado'],stock:['stock','cantidad','qty','unidades'],category:['categoria','categoría','category','tipo'],supplier:['proveedor','supplier','marca','brand'],duration:['duracion','duración','duration','tiempo','min','minutos'],patient_name:['nombre paciente','paciente','patient name','nombre del paciente','cliente'],patient_phone:['telefono paciente','teléfono paciente','phone','tel paciente'],amount:['importe','amount','precio','cobrado','total','pvp'],date:['fecha','date','fecha visita','visit date','dia','día'],method:['metodo','método','method','forma de pago','pago','payment'],areas:['zonas','areas','zona tratada','zonas tratadas'],products_used:['productos','products','productos usados','material','productos utilizados']};
   cfg.fields.forEach(f=>{
     if(_impMapping[f.key]!==undefined) return;
     const al=aliases[f.key]||[];
@@ -4674,7 +4708,7 @@ async function executeImport(){
   const res=document.getElementById('impResult');
   res.innerHTML='<div style="padding:1rem;background:#f0f4ff;border-radius:10px;font-size:.9rem">⏳ Importando '+_impValid.length+' registros… No cierres esta ventana.</div>';
   try{
-    const endpoint=_impType==='leads'?'/api/import-leads':(_impType==='products'?'/api/import-products':'/api/import-treatments');
+    const endpoint=_impType==='leads'?'/api/import-leads':(_impType==='historial'?'/api/import-historial':(_impType==='products'?'/api/import-products':'/api/import-treatments'));
     const r=await fetch(WORKER+endpoint,{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},
@@ -4687,14 +4721,16 @@ async function executeImport(){
       res.innerHTML='<div style="padding:1.2rem;background:#d1fae5;border-radius:12px;text-align:center">'
         +'<div style="font-size:2rem;margin-bottom:.3rem">🎉</div>'
         +'<div style="font-size:1.1rem;font-weight:700;color:#065f46">Importación completada</div>'
-        +'<div style="font-size:.9rem;color:#065f46;margin-top:.3rem">'+created+' registros creados'+(dupes?' · '+dupes+' duplicados omitidos':'')+'</div>'
+        +'<div style="font-size:.9rem;color:#065f46;margin-top:.3rem">'+created+' registros creados'+(dupes?' · '+dupes+' duplicados omitidos':'')+(d.leads_not_found?' · '+d.leads_not_found+' pacientes no encontrados':'')+'</div>'
         +'<button class="btn prim" style="margin-top:1rem" onclick="closeImporter();'
         +(_impType==='leads'?'loadLeads();':'')
         +(_impType==='products'?'loadInventory();':'')
+        +(_impType==='historial'?'loadLeads();loadCaja();':'')
         +'">Cerrar ✓</button></div>';
       // Refresh relevant data
       try{ if(_impType==='leads'&&typeof loadLeads==='function')loadLeads(); }catch(e){}
       try{ if(_impType==='products'&&typeof loadInventory==='function')loadInventory(); }catch(e){}
+      try{ if(_impType==='historial'&&typeof loadLeads==='function'){loadLeads();loadCaja();} }catch(e){}
     } else {
       res.innerHTML='<div style="padding:1rem;background:#fee2e2;border-radius:10px;font-size:.9rem;color:#991b1b">❌ Error: '+(d.error||'No se pudo importar. Inténtalo de nuevo.')+'</div>';
     }

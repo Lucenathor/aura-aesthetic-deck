@@ -3311,6 +3311,9 @@ export default {
         const records:any[] = b.records || [];
         if (!records.length) return json({ error:'no records' }, 400);
         const tid = b.tenant_id || tenant;
+        // Ensure extra columns exist (safe migration)
+        const extraCols = ['dni TEXT','birthdate TEXT','address TEXT','city TEXT','postal_code TEXT','gender TEXT','allergies TEXT','medical_notes TEXT','total_spent REAL DEFAULT 0','visit_count INTEGER DEFAULT 0','last_visit_date TEXT','tags TEXT','professional TEXT','consent_signed INTEGER DEFAULT 0','referral TEXT'];
+        for (const col of extraCols) { try { await env.aura_db.exec('ALTER TABLE leads ADD COLUMN '+col); } catch(e){} }
         let created = 0, duplicates = 0;
         for (const r of records) {
           if (!r.name) continue;
@@ -3323,11 +3326,60 @@ export default {
           const id = 'l_' + crypto.randomUUID().replace(/-/g,'').slice(0,14);
           const now = new Date().toISOString();
           await env.aura_db.prepare(
-            "INSERT INTO leads (id, tenant_id, name, phone, email, status, source, notes, treatment, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)"
-          ).bind(id, tid, r.name, phone||null, r.email||null, 'imported', r.source||'importación', r.notes||null, r.treatment||null, now).run();
+            "INSERT INTO leads (id, tenant_id, name, phone, email, status, source, notes, treatment, created_at, dni, birthdate, address, city, postal_code, gender, allergies, medical_notes, total_spent, visit_count, last_visit_date, tags, professional, consent_signed, referral) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+          ).bind(id, tid, r.name, phone||null, r.email||null, 'imported', r.source||'importación', r.notes||null, r.treatment||null, now, r.dni||null, r.birthdate||null, r.address||null, r.city||null, r.postal_code||null, r.gender||null, r.allergies||null, r.medical_notes||null, parseFloat(r.total_spent)||0, parseInt(r.visit_count)||0, r.last_visit||null, r.tags||null, r.professional||null, (r.consent_signed&&r.consent_signed.toLowerCase&&(r.consent_signed.toLowerCase()==='sí'||r.consent_signed.toLowerCase()==='si'||r.consent_signed==='1'))?1:0, r.referral||null).run();
           created++;
         }
         return json({ ok:true, created, duplicates, total:records.length });
+      }
+
+      // IMPORTAR HISTORIAL DE VISITAS (treatments_log)
+      if (p === '/api/import-historial' && req.method === 'POST') {
+        const b:any = await req.json();
+        const records:any[] = b.records || [];
+        if (!records.length) return json({ error:'no records' }, 400);
+        const tid = b.tenant_id || tenant;
+        let created = 0, skipped = 0, leadsNotFound = 0;
+        for (const r of records) {
+          if (!r.treatment || !r.amount) { skipped++; continue; }
+          // Find lead by name or phone
+          let leadId:string|null = null;
+          const ph = (r.patient_phone||'').replace(/[\s\-\(\)\.]/g,'');
+          if (ph) {
+            const ld:any = await env.aura_db.prepare("SELECT id FROM leads WHERE tenant_id=? AND replace(replace(phone,' ',''),'+','') LIKE ?").bind(tid, '%'+ph.slice(-9)).first();
+            if (ld) leadId = ld.id;
+          }
+          if (!leadId && r.patient_name) {
+            const ld:any = await env.aura_db.prepare("SELECT id FROM leads WHERE tenant_id=? AND LOWER(name)=LOWER(?)").bind(tid, r.patient_name.trim()).first();
+            if (ld) leadId = ld.id;
+          }
+          if (!leadId) { leadsNotFound++; continue; }
+          const logId = 'tl_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+          const dateIso = r.date || new Date().toISOString().slice(0,10);
+          await env.aura_db.prepare(
+            "INSERT INTO treatments_log (id, tenant_id, lead_id, name, amount, pay_status, date_iso, method, cost) VALUES (?,?,?,?,?,?,?,?,?)"
+          ).bind(logId, tid, leadId, r.treatment, parseFloat(r.amount)||0, 'paid', dateIso, r.method||'importado', 0).run();
+          created++;
+          // Update lead total_spent and visit_count
+          try { await env.aura_db.exec("ALTER TABLE leads ADD COLUMN total_spent REAL DEFAULT 0"); } catch(e){}
+          try { await env.aura_db.exec("ALTER TABLE leads ADD COLUMN visit_count INTEGER DEFAULT 0"); } catch(e){}
+          await env.aura_db.prepare("UPDATE leads SET total_spent=COALESCE(total_spent,0)+?, visit_count=COALESCE(visit_count,0)+1 WHERE id=?").bind(parseFloat(r.amount)||0, leadId).run();
+        }
+        // Also create clinical_notes if notes/areas provided
+        try { await ensureInventorySchema(env); } catch(e){}
+        for (const r of records) {
+          if (!r.notes && !r.areas && !r.products_used) continue;
+          let leadId:string|null = null;
+          const ph = (r.patient_phone||'').replace(/[\s\-\(\)\.]/g,'');
+          if (ph) { const ld:any = await env.aura_db.prepare("SELECT id FROM leads WHERE tenant_id=? AND replace(replace(phone,' ',''),'+','') LIKE ?").bind(tid, '%'+ph.slice(-9)).first(); if (ld) leadId = ld.id; }
+          if (!leadId && r.patient_name) { const ld:any = await env.aura_db.prepare("SELECT id FROM leads WHERE tenant_id=? AND LOWER(name)=LOWER(?)").bind(tid, r.patient_name.trim()).first(); if (ld) leadId = ld.id; }
+          if (!leadId) continue;
+          const noteId = 'cn_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+          await env.aura_db.prepare(
+            "INSERT INTO clinical_notes (id, tenant_id, lead_id, visit_date, professional, treatment, areas, product, note, created_at, created_by) VALUES (?,?,?,?,?,?,?,?,?,?,?)"
+          ).bind(noteId, tid, leadId, r.date||'', r.professional||'', r.treatment||'', r.areas||'', r.products_used||'', r.notes||'', Date.now(), 'importación').run();
+        }
+        return json({ ok:true, created, skipped, leads_not_found: leadsNotFound, total:records.length });
       }
 
       if (p === '/api/import-products' && req.method === 'POST') {
