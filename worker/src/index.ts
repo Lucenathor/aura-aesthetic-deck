@@ -668,7 +668,7 @@ export default {
       // El embudo público del paciente y el chat NO están aquí (deben funcionar sin sesión).
       // Siempre protegidos (cualquier método): datos sensibles del panel.
       const TENANT_GUARDED = new Set<string>([
-        '/api/lead-stage','/api/lead-meta','/api/lead-search',
+        '/api/lead-stage','/api/lead-meta','/api/lead-update','/api/lead-search',
         '/api/treatments','/api/close-visit','/api/visit-revert','/api/professionals','/api/blocks',
         '/api/waitlist','/api/pipeline','/api/products','/api/bonos','/api/cashbox','/api/profit',
         '/api/recovered','/api/business-costs','/api/schedule-by-day','/api/vacations',
@@ -1714,6 +1714,61 @@ export default {
       }
 
       // Métricas de embudo real (por funnel o agregado)
+      // MÉTRICAS AVANZADAS (gráficas del dashboard)
+      if (p === '/api/advanced-metrics' && req.method === 'GET') {
+        const tid = url.searchParams.get('tenant') || tenant;
+        if (!tid) return json({ error:'missing tenant' }, 400);
+        const now = new Date();
+        const metrics: any = {};
+
+        // 1. Facturación últimos 6 meses
+        try {
+          const months: any[] = [];
+          for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const ym = d.toISOString().slice(0, 7); // YYYY-MM
+            const label = d.toLocaleDateString('es-ES', { month: 'short' }).replace('.','');
+            const r: any = await env.aura_db.prepare("SELECT COALESCE(SUM(amount),0) t FROM treatments_log WHERE tenant_id=? AND pay_status='paid' AND substr(date_iso,1,7)=?").bind(tid, ym).first();
+            months.push({ month: label, total: Math.round(r?.t || 0) });
+          }
+          metrics.revenue_months = months;
+        } catch(e) { metrics.revenue_months = []; }
+
+        // 2. Pacientes nuevos vs recurrentes (este mes)
+        try {
+          const ym = now.toISOString().slice(0, 7);
+          const newP: any = await env.aura_db.prepare("SELECT COUNT(*) c FROM leads WHERE tenant_id=? AND substr(created_at,1,7)=?").bind(tid, ym).first();
+          const totalP: any = await env.aura_db.prepare("SELECT COUNT(*) c FROM leads WHERE tenant_id=?").bind(tid).first();
+          const newCount = newP?.c || 0;
+          const returning = Math.max(0, (totalP?.c || 0) - newCount);
+          metrics.patient_split = { new_patients: newCount, returning };
+        } catch(e) { metrics.patient_split = { new_patients: 0, returning: 0 }; }
+
+        // 3. Tasa de conversión últimos 6 meses (leads → booked/attended)
+        try {
+          const months: any[] = [];
+          for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const ym = d.toISOString().slice(0, 7);
+            const label = d.toLocaleDateString('es-ES', { month: 'short' }).replace('.','');
+            const total: any = await env.aura_db.prepare("SELECT COUNT(*) c FROM leads WHERE tenant_id=? AND substr(created_at,1,7)=?").bind(tid, ym).first();
+            const booked: any = await env.aura_db.prepare("SELECT COUNT(*) c FROM leads WHERE tenant_id=? AND substr(created_at,1,7)=? AND status IN ('booked','attended','client')").bind(tid, ym).first();
+            const rate = (total?.c > 0) ? Math.round((booked?.c || 0) / total.c * 100) : 0;
+            months.push({ month: label, rate });
+          }
+          metrics.conversion_months = months;
+        } catch(e) { metrics.conversion_months = []; }
+
+        // 4. Top 5 tratamientos por ingresos (este mes)
+        try {
+          const ym = now.toISOString().slice(0, 7);
+          const r: any = await env.aura_db.prepare("SELECT name, COALESCE(SUM(amount),0) revenue, COUNT(*) cnt FROM treatments_log WHERE tenant_id=? AND pay_status='paid' AND substr(date_iso,1,7)=? GROUP BY name ORDER BY revenue DESC LIMIT 5").bind(tid, ym).all();
+          metrics.top_treatments = (r.results || []).map((x: any) => ({ name: x.name || 'Sin nombre', revenue: Math.round(x.revenue || 0), count: x.cnt || 0 }));
+        } catch(e) { metrics.top_treatments = []; }
+
+        return json({ ok: true, metrics });
+      }
+
       if (p === '/api/funnel-metrics' && req.method === 'GET') {
         const tenant = url.searchParams.get('tenant');
         const funnel = url.searchParams.get('funnel'); // opcional
@@ -1853,6 +1908,24 @@ export default {
           await env.aura_db.prepare('UPDATE leads SET notes=?, recall_date=?, recall_note=?, tags=? WHERE id=?')
             .bind(b.notes||null, b.recall_date||null, b.recall_note||null, b.tags||null, b.lead_id).run();
         }
+        return json({ ok:true });
+      }
+      // EDITAR PACIENTE (todos los campos)
+      if (p === '/api/lead-update' && req.method === 'POST') {
+        const b:any = await req.json();
+        if (!b.lead_id) return json({ error:'missing lead_id' }, 400);
+        // Ensure extra columns exist
+        const extraCols = ['dni TEXT','birthdate TEXT','address TEXT','city TEXT','postal_code TEXT','gender TEXT','allergies TEXT','medical_notes TEXT','total_spent REAL DEFAULT 0','visit_count INTEGER DEFAULT 0','last_visit_date TEXT','tags TEXT','professional TEXT','consent_signed INTEGER DEFAULT 0','referral TEXT'];
+        for (const col of extraCols) { try { await env.aura_db.exec('ALTER TABLE leads ADD COLUMN '+col); } catch(e){} }
+        const allowed = ['name','phone','email','dni','birthdate','gender','address','city','postal_code','treatment','allergies','medical_notes','source','professional','referral','notes','tags'];
+        const sets:string[] = []; const vals:any[] = [];
+        allowed.forEach(k => {
+          if (b[k] !== undefined) { sets.push(k+'=?'); vals.push(b[k]||null); }
+        });
+        if (!sets.length) return json({ ok:true });
+        sets.push('updated_at=?'); vals.push(new Date().toISOString());
+        vals.push(b.lead_id);
+        await env.aura_db.prepare('UPDATE leads SET '+sets.join(',')+' WHERE id=?').bind(...vals).run();
         return json({ ok:true });
       }
       // ===== HISTORIA CLÍNICA =====

@@ -7,6 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <title>AURA · Panel de tu clínica</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png"/><link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png"/><link rel="icon" href="/favicon.ico"/><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
@@ -495,12 +496,35 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
           </select>
         </div>
         <div id="trend" style="margin:1rem 0"></div>
-        <div id="funnelChart" style="margin-top:.6rem"></div>
+      <div id="funnelChart" style="margin-top:.6rem"></div>
       </div>
       <div class="card">
         <h3>Próximas citas</h3>
         <div id="nextAppts" style="margin-top:.6rem"></div>
       </div>
+      </div>
+      <!-- MÉTRICAS AVANZADAS: Facturación, Conversión, Nuevos vs Recurrentes -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem" id="advMetrics">
+        <div class="card">
+          <h3>Facturación mensual</h3>
+          <p class="sub">Ingresos cobrados por mes (últimos 6 meses)</p>
+          <div style="height:200px;margin-top:.8rem"><canvas id="chartRevenue"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Pacientes nuevos vs recurrentes</h3>
+          <p class="sub">Distribución este mes</p>
+          <div style="height:200px;margin-top:.8rem"><canvas id="chartPatients"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Tasa de conversión</h3>
+          <p class="sub">De lead a cita reservada (últimos 6 meses)</p>
+          <div style="height:200px;margin-top:.8rem"><canvas id="chartConversion"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Top tratamientos</h3>
+          <p class="sub">Los más vendidos este mes</p>
+          <div style="height:200px;margin-top:.8rem"><canvas id="chartTopTreat"></canvas></div>
+        </div>
       </div>
     </section>
 
@@ -926,8 +950,23 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
   </div>
   <!-- Métricas del cliente (visitas, ticket medio…) -->
   <div id="dStats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-top:1rem"></div>
+  <!-- DATOS PERSONALES AMPLIADOS (plegable) -->
+  <details id="dPersonalDetails" style="margin-top:1rem;background:var(--bg2);border-radius:12px;padding:.2rem .2rem">
+    <summary style="cursor:pointer;font-size:.82rem;font-weight:600;color:var(--muted);padding:.55rem .7rem;list-style:none">▸ Datos personales</summary>
+    <div style="padding:.2rem .7rem .7rem;display:grid;grid-template-columns:1fr 1fr;gap:.4rem .8rem;font-size:.82rem">
+      <div><small style="color:var(--muted)">DNI / NIE</small><div id="dDni" style="font-weight:600;color:var(--ink)">—</div></div>
+      <div><small style="color:var(--muted)">Fecha nacimiento</small><div id="dBirthdate" style="font-weight:600;color:var(--ink)">—</div></div>
+      <div><small style="color:var(--muted)">Género</small><div id="dGender" style="font-weight:600;color:var(--ink)">—</div></div>
+      <div><small style="color:var(--muted)">Referido por</small><div id="dReferral" style="font-weight:600;color:var(--ink)">—</div></div>
+      <div style="grid-column:1/-1"><small style="color:var(--muted)">Dirección</small><div id="dAddress" style="font-weight:600;color:var(--ink)">—</div></div>
+      <div><small style="color:var(--muted)">Ciudad</small><div id="dCity" style="font-weight:600;color:var(--ink)">—</div></div>
+      <div><small style="color:var(--muted)">C.P.</small><div id="dPostalCode" style="font-weight:600;color:var(--ink)">—</div></div>
+      <div><small style="color:var(--muted)">Profesional asignado</small><div id="dProfessional" style="font-weight:600;color:var(--ink)">—</div></div>
+      <div><small style="color:var(--muted)">Consentimiento</small><div id="dConsent" style="font-weight:600;color:var(--ink)">—</div></div>
+    </div>
+  </details>
   <!-- ORIGEN / MARKETING (plegado: no es lo primero que necesita el profesional) -->
-  <details style="margin-top:1rem;background:var(--bg2);border-radius:12px;padding:.2rem .2rem">
+  <details style="margin-top:.6rem;background:var(--bg2);border-radius:12px;padding:.2rem .2rem">
     <summary style="cursor:pointer;font-size:.82rem;font-weight:600;color:var(--muted);padding:.55rem .7rem;list-style:none">▸ Origen y marketing</summary>
     <div class="meta" style="padding:.2rem .7rem .7rem">
       <div><small>tratamiento de interés</small><b id="dT">—</b></div>
@@ -1580,13 +1619,19 @@ function renderConsentsHub(){
 }
 async function openDrawer(l){
   document.getElementById('dName').textContent=l.name||'—';
-  document.getElementById('dMeta').textContent=`${l.phone||''} · ${l.email||''}`;
+  document.getElementById('dMeta').innerHTML=`${l.phone||''} · ${l.email||''} <button onclick="openEditPatient()" style="background:none;border:1px solid var(--line);border-radius:6px;padding:.15rem .4rem;font-size:.7rem;color:var(--terra);cursor:pointer;margin-left:.5rem;font-weight:600">✎ Editar</button>`;
   document.getElementById('dT').textContent=l.treatment||'—';
   document.getElementById('dP').textContent=l.plazo||'—';
   document.getElementById('dO').textContent=l.objecion||'—';
   document.getElementById('dS').textContent=`${l.quiz_score||0} · ${l.temperature||'cold'}`;
   document.getElementById('dRef').innerHTML=(l.ref||'—')+(l.wa_opened?' <span style="background:rgba(37,211,102,.15);color:#1f8c69;font-size:.7rem;font-weight:700;padding:.15rem .45rem;border-radius:6px;margin-left:.3rem">pulsó WhatsApp</span>':'');
   document.getElementById('dThread').innerHTML='<small style="color:var(--muted)">cargando…</small>';
+  // Rellenar datos personales ampliados
+  const _s=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v||'—';};
+  _s('dDni',l.dni); _s('dGender',l.gender); _s('dReferral',l.referral);
+  _s('dBirthdate',l.birthdate?new Date(l.birthdate+'T12:00').toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}):'');
+  _s('dAddress',l.address); _s('dCity',l.city); _s('dPostalCode',l.postal_code);
+  _s('dProfessional',l.professional); _s('dConsent',l.consent_signed?'✓ Firmado':'Pendiente');
   try{
     const r=await fetch(WORKER+'/api/messages?lead='+l.id); const d=await r.json();
     const wrap=document.getElementById('dThread');wrap.innerHTML='';
@@ -1783,6 +1828,85 @@ async function saveLeadMeta(){
   if(!_curLead)return; const m=document.getElementById('dMetaMsg'); m.textContent='Guardando…';
   const body={lead_id:_curLead.id, notes:document.getElementById('dNotes').value, recall_date:document.getElementById('dRecallDate').value, recall_note:document.getElementById('dRecallNote').value, tags:_curTags.join(',')};
   try{ await fetch(WORKER+'/api/lead-meta',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); Object.assign(_curLead,body); m.textContent='Ficha guardada ✓'; setTimeout(()=>m.textContent='',2500); }catch(e){ m.textContent='Error'; }
+}
+// ===== EDITAR PACIENTE (modal completo) =====
+function openEditPatient(){
+  if(!_curLead) return;
+  const l=_curLead;
+  const ov=document.createElement('div'); ov.id='editPatientOv';
+  ov.style='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:700;display:grid;place-items:center;padding:1rem;overflow-y:auto';
+  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+  let h='<div style="background:#fff;border-radius:16px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;padding:2rem;box-shadow:0 20px 60px rgba(0,0,0,.2)">';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem"><h2 class="serif" style="margin:0;font-size:1.3rem">Editar paciente</h2><button onclick="document.getElementById(\'editPatientOv\').remove()" style="background:none;border:0;font-size:1.5rem;cursor:pointer;color:var(--muted)">×</button></div>';
+  const fields=[
+    {k:'name',l:'Nombre completo',v:l.name||'',type:'text',full:true},
+    {k:'phone',l:'Teléfono',v:l.phone||'',type:'tel'},
+    {k:'email',l:'Email',v:l.email||'',type:'email'},
+    {k:'dni',l:'DNI / NIE / Pasaporte',v:l.dni||'',type:'text'},
+    {k:'birthdate',l:'Fecha de nacimiento',v:l.birthdate||'',type:'date'},
+    {k:'gender',l:'Género',v:l.gender||'',type:'select',opts:['','Mujer','Hombre','Otro']},
+    {k:'address',l:'Dirección',v:l.address||'',type:'text',full:true},
+    {k:'city',l:'Ciudad',v:l.city||'',type:'text'},
+    {k:'postal_code',l:'Código postal',v:l.postal_code||'',type:'text'},
+    {k:'treatment',l:'Tratamiento favorito',v:l.treatment||'',type:'text'},
+    {k:'allergies',l:'Alergias',v:l.allergies||'',type:'text',full:true},
+    {k:'medical_notes',l:'Antecedentes médicos',v:l.medical_notes||'',type:'textarea',full:true},
+    {k:'source',l:'Origen / Canal',v:l.source||'',type:'text'},
+    {k:'professional',l:'Profesional asignado',v:l.professional||'',type:'text'},
+    {k:'referral',l:'Referido por',v:l.referral||'',type:'text'},
+    {k:'notes',l:'Notas generales',v:l.notes||'',type:'textarea',full:true}
+  ];
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem .8rem">';
+  fields.forEach(f=>{
+    const style=f.full?'grid-column:1/-1':'';
+    h+='<div style="'+style+'">';
+    h+='<label style="font-size:.72rem;color:var(--muted);font-weight:600">'+f.l+'</label>';
+    if(f.type==='textarea'){
+      h+='<textarea id="ep_'+f.k+'" rows="2" style="width:100%;padding:.5rem .6rem;border:1px solid var(--line);border-radius:8px;font-size:.84rem;font-family:inherit;resize:vertical">'+escapeHtml(f.v)+'</textarea>';
+    } else if(f.type==='select'){
+      h+='<select id="ep_'+f.k+'" style="width:100%;padding:.5rem .6rem;border:1px solid var(--line);border-radius:8px;font-size:.84rem">';
+      f.opts.forEach(o=>{ h+='<option value="'+o+'"'+(f.v===o?' selected':'')+'>'+( o||'— Sin especificar —')+'</option>'; });
+      h+='</select>';
+    } else {
+      h+='<input id="ep_'+f.k+'" type="'+f.type+'" value="'+escapeHtml(f.v)+'" style="width:100%;padding:.5rem .6rem;border:1px solid var(--line);border-radius:8px;font-size:.84rem"/>';
+    }
+    h+='</div>';
+  });
+  h+='</div>';
+  h+='<div id="epMsg" style="margin-top:.8rem;font-size:.85rem;text-align:center"></div>';
+  h+='<div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1.2rem">';
+  h+='<button class="btn" onclick="document.getElementById(\'editPatientOv\').remove()">Cancelar</button>';
+  h+='<button class="btn prim" onclick="saveEditPatient()">Guardar cambios</button>';
+  h+='</div></div>';
+  ov.innerHTML=h;
+  document.body.appendChild(ov);
+}
+async function saveEditPatient(){
+  if(!_curLead)return;
+  const msg=document.getElementById('epMsg'); msg.textContent='Guardando…'; msg.style.color='var(--muted)';
+  const keys=['name','phone','email','dni','birthdate','gender','address','city','postal_code','treatment','allergies','medical_notes','source','professional','referral','notes'];
+  const body={lead_id:_curLead.id, tenant_id:T};
+  keys.forEach(k=>{
+    const el=document.getElementById('ep_'+k);
+    if(el) body[k]=el.value.trim();
+  });
+  try{
+    const r=await fetch(WORKER+'/api/lead-update',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify(body)});
+    const d=await r.json();
+    if(d&&d.ok){
+      msg.textContent='✓ Guardado'; msg.style.color='#1f8c69';
+      Object.assign(_curLead, body);
+      // Refresh drawer header
+      document.getElementById('dName').textContent=body.name||'—';
+      document.getElementById('dMeta').innerHTML=`${body.phone||''} · ${body.email||''} <button onclick="openEditPatient()" style="background:none;border:1px solid var(--line);border-radius:6px;padding:.15rem .4rem;font-size:.7rem;color:var(--terra);cursor:pointer;margin-left:.5rem;font-weight:600">✎ Editar</button>`;
+      const _s=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v||'—';};
+      _s('dDni',body.dni); _s('dGender',body.gender); _s('dReferral',body.referral);
+      _s('dBirthdate',body.birthdate?new Date(body.birthdate+'T12:00').toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}):'');
+      _s('dAddress',body.address); _s('dCity',body.city); _s('dPostalCode',body.postal_code);
+      _s('dProfessional',body.professional);
+      setTimeout(()=>{ document.getElementById('editPatientOv')?.remove(); },600);
+    } else { msg.textContent='Error: '+(d.error||'No se pudo guardar'); msg.style.color='#c0392b'; }
+  }catch(e){ msg.textContent='Error de conexión'; msg.style.color='#c0392b'; }
 }
 function closeDrawer(){document.getElementById('drawer').classList.remove('on');}
 let _curLead=null;
@@ -4324,7 +4448,42 @@ async function adminDelNote(nid){
   await adminApi('/api/admin-note-delete',{method:'POST',body:JSON.stringify({ id:nid })}); adminLoadNotes();
 }
 
-function loadAll(){loadKPIs();loadLeads();loadAppts();loadPipeline();loadSmsCredits();}
+function loadAll(){loadKPIs();loadLeads();loadAppts();loadPipeline();loadSmsCredits();loadAdvancedMetrics();}
+
+// ===== MÉTRICAS AVANZADAS (gráficas Chart.js) =====
+async function loadAdvancedMetrics(){
+  if(typeof Chart==='undefined') return; // Chart.js aún no cargó
+  try{
+    const r=await fetch(WORKER+'/api/advanced-metrics?tenant='+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}});
+    const d=await r.json(); if(!d.ok) return;
+    const m=d.metrics||{};
+    // 1. Facturación mensual (bar chart)
+    const revCtx=document.getElementById('chartRevenue');
+    if(revCtx&&m.revenue_months){
+      if(window._chartRev) window._chartRev.destroy();
+      window._chartRev=new Chart(revCtx,{type:'bar',data:{labels:m.revenue_months.map(x=>x.month),datasets:[{label:'Facturación (€)',data:m.revenue_months.map(x=>x.total),backgroundColor:'rgba(176,93,68,0.7)',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v+'€'}}}}});
+    }
+    // 2. Pacientes nuevos vs recurrentes (doughnut)
+    const patCtx=document.getElementById('chartPatients');
+    if(patCtx&&m.patient_split){
+      if(window._chartPat) window._chartPat.destroy();
+      window._chartPat=new Chart(patCtx,{type:'doughnut',data:{labels:['Nuevos','Recurrentes'],datasets:[{data:[m.patient_split.new_patients,m.patient_split.returning],backgroundColor:['#B05D44','#34a877']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+    }
+    // 3. Tasa de conversión (line chart)
+    const convCtx=document.getElementById('chartConversion');
+    if(convCtx&&m.conversion_months){
+      if(window._chartConv) window._chartConv.destroy();
+      window._chartConv=new Chart(convCtx,{type:'line',data:{labels:m.conversion_months.map(x=>x.month),datasets:[{label:'Conversión %',data:m.conversion_months.map(x=>x.rate),borderColor:'#6b4fd0',backgroundColor:'rgba(107,79,208,0.1)',fill:true,tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}}});
+    }
+    // 4. Top tratamientos (horizontal bar)
+    const treatCtx=document.getElementById('chartTopTreat');
+    if(treatCtx&&m.top_treatments&&m.top_treatments.length){
+      if(window._chartTreat) window._chartTreat.destroy();
+      const colors=['#B05D44','#34a877','#6b4fd0','#d9a23a','#3a8fd9'];
+      window._chartTreat=new Chart(treatCtx,{type:'bar',data:{labels:m.top_treatments.map(x=>x.name.length>18?x.name.slice(0,18)+'…':x.name),datasets:[{label:'Ingresos (€)',data:m.top_treatments.map(x=>x.revenue),backgroundColor:m.top_treatments.map((_,i)=>colors[i%colors.length]),borderRadius:6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{callback:v=>v+'€'}}}}});
+    }
+  }catch(e){ console.error('advMetrics',e); }
+}
 
 // ===== SMS créditos =====
 async function loadSmsCredits(){
