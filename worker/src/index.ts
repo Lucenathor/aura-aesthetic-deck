@@ -3286,6 +3286,22 @@ export default {
         return json({ ok:true });
       }
 
+      // CANCELAR CITA desde el panel (staff auth)
+      if (p === '/api/appt-cancel-panel' && req.method === 'POST') {
+        const b:any = await req.json();
+        if (!b.appointment_id) return json({ error:'missing appointment_id' }, 400);
+        await env.aura_db.prepare("UPDATE appointments SET status='cancelled', confirmed=-1 WHERE id=? AND tenant_id=?").bind(b.appointment_id, b.tenant_id||tenant).run();
+        return json({ ok:true });
+      }
+
+      // CONFIRMAR CITA desde el panel (staff auth)
+      if (p === '/api/appt-confirm-panel' && req.method === 'POST') {
+        const b:any = await req.json();
+        if (!b.appointment_id) return json({ error:'missing appointment_id' }, 400);
+        await env.aura_db.prepare("UPDATE appointments SET status='confirmed', confirmed=1 WHERE id=? AND tenant_id=?").bind(b.appointment_id, b.tenant_id||tenant).run();
+        return json({ ok:true });
+      }
+
       // REVERTIR VISITA COBRADA: devuelve stock descontado, borra el cobro y vuelve a dejar la cita reservada
       if (p === '/api/visit-revert' && req.method === 'POST') {
         const b:any = await req.json();

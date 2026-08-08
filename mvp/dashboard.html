@@ -2385,7 +2385,13 @@ function openApptCard(id){
   h+='</div>';
   h+='<button class="btn" style="width:100%;margin-bottom:.5rem" onclick="closeApptCard();openDrawer(\''+a.lead_id+'\')">Ver ficha completa del paciente</button>';
   if(st!=='attended'&&st!=='noshow'){
-    h+='<button class="btn prim" style="width:100%" onclick="closeApptCard();openCloseVisit(\''+a.id+'\',\''+a.lead_id+'\',\''+(a.treatment||'').replace(/\x27/g,"")+'\',\''+(a.lead_name||'').replace(/\x27/g,"")+'\')">Cerrar visita / Cobrar</button>';
+    h+='<button class="btn prim" style="width:100%" onclick="closeApptCard();setTimeout(function(){openCloseVisit(\''+a.id+'\',\''+a.lead_id+'\',\''+(a.treatment||'').replace(/\x27/g,"")+'\',\''+(a.lead_name||'').replace(/\x27/g,"")+'\')},310)">Cerrar visita / Cobrar</button>';
+    if(st==='booked'||st==='pending'){
+      h+='<button class="btn" style="width:100%;margin-top:.5rem;background:#e8f5e9;border-color:#34a877;color:#217a52;font-weight:600" onclick="confirmApptPanel(\''+a.id+'\')">✓ Confirmar cita</button>';
+    }
+    if(st!=='cancelled'){
+      h+='<button class="btn" style="width:100%;margin-top:.5rem;border-color:#e7c2bb;color:#c0392b" onclick="cancelApptPanel(\''+a.id+'\',\''+(a.lead_name||'').replace(/\x27/g,"")+'\')">✕ Cancelar cita</button>';
+    }
   }
   // Anular cobro: solo en visitas ya atendidas/cobradas y solo para owner/finance/superadmin
   if(st==='attended' && CAN_FINANCE){
@@ -2418,6 +2424,38 @@ async function anularCobro(apptId, name){
       if(typeof toast==='function') toast('No se pudo anular el cobro. Inténtalo de nuevo.','error'); else alert('No se pudo anular el cobro.');
     }
   }catch(e){ if(typeof toast==='function') toast('Error de conexión al anular el cobro.','error'); else alert('Error de conexión.'); }
+}
+// Cancelar cita desde el panel (staff)
+async function cancelApptPanel(apptId, name){
+  const nom=(name||'esta cita').trim();
+  if(!confirm('¿Cancelar la cita de '+nom+'?\n\nLa cita quedará marcada como cancelada y se liberará el hueco en la agenda.')) return;
+  try{
+    const r=await fetch(WORKER+'/api/appt-cancel-panel',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,appointment_id:apptId})});
+    const d=await r.json();
+    if(d&&d.ok){
+      closeApptCard();
+      if(typeof toast==='function') toast('Cita cancelada','warn');
+      try{ loadAgendaCal(true); }catch(e){}
+      try{ loadAppts(); }catch(e){}
+    } else {
+      if(typeof toast==='function') toast('No se pudo cancelar la cita.','error'); else alert('No se pudo cancelar.');
+    }
+  }catch(e){ if(typeof toast==='function') toast('Error de conexión.','error'); else alert('Error de conexión.'); }
+}
+// Confirmar cita desde el panel (staff)
+async function confirmApptPanel(apptId){
+  try{
+    const r=await fetch(WORKER+'/api/appt-confirm-panel',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,appointment_id:apptId})});
+    const d=await r.json();
+    if(d&&d.ok){
+      closeApptCard();
+      if(typeof toast==='function') toast('Cita confirmada ✓','ok');
+      try{ loadAgendaCal(true); }catch(e){}
+      try{ loadAppts(); }catch(e){}
+    } else {
+      if(typeof toast==='function') toast('No se pudo confirmar.','error'); else alert('Error al confirmar.');
+    }
+  }catch(e){ if(typeof toast==='function') toast('Error de conexión.','error'); else alert('Error de conexión.'); }
 }
 // Crear cita manual (walk-in)
 function openNewAppt(iso, proId){
