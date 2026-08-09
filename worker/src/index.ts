@@ -457,6 +457,7 @@ async function ensureInventorySchema(env: Env) {
   try { await env.aura_db.exec('ALTER TABLE treatment_catalog ADD COLUMN pack_price REAL DEFAULT 0'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE treatment_catalog ADD COLUMN pack_original REAL DEFAULT 0'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE treatment_catalog ADD COLUMN next_days INTEGER DEFAULT 0'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE funnels ADD COLUMN treatment_name TEXT'); } catch(e){}
   __invReady = true;
 }
 
@@ -672,7 +673,7 @@ export default {
         '/api/treatments','/api/close-visit','/api/visit-revert','/api/professionals','/api/blocks',
         '/api/waitlist','/api/pipeline','/api/products','/api/bonos','/api/cashbox','/api/profit',
         '/api/recovered','/api/business-costs','/api/schedule-by-day','/api/vacations',
-        '/api/sms-templates','/api/team','/api/funnel-save','/api/funnel-edit',
+        '/api/sms-templates','/api/team','/api/funnel-save','/api/funnel-edit','/api/funnel-delete',
         '/api/consent-templates','/api/consent-send','/api/consents','/api/treatment-catalog','/api/tenant-meta',
         '/api/loyalty-adjust','/api/loyalty-balance',
         '/api/clinical','/api/clinical-note'
@@ -1022,11 +1023,18 @@ export default {
       if (p === '/api/funnel-save' && req.method === 'POST') {
         const b: any = await req.json();
         const tenant = b.tenant_id; const treatment = b.treatment || 'labios';
+        // Upsert: crear si no existe (check first to avoid duplicates)
+        const existing: any = await env.aura_db.prepare('SELECT id FROM funnels WHERE tenant_id=? AND treatment=?').bind(tenant, treatment).first();
+        if (!existing) {
+          const fid = crypto.randomUUID();
+          await env.aura_db.prepare('INSERT INTO funnels (id, tenant_id, treatment, headline, subheadline, lead_magnet, price_from, treatment_name, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').bind(fid, tenant, treatment, b.headline||'', b.subheadline||'', b.lead_magnet||'', b.price_from||'', b.treatment_name||'', 'active').run();
+        }
         const sets: string[] = []; const vals: any[] = [];
         if (b.headline !== undefined) { sets.push('headline=?'); vals.push(b.headline); }
         if (b.subheadline !== undefined) { sets.push('subheadline=?'); vals.push(b.subheadline); }
         if (b.lead_magnet !== undefined) { sets.push('lead_magnet=?'); vals.push(b.lead_magnet); }
         if (b.price_from !== undefined) { sets.push('price_from=?'); vals.push(b.price_from); }
+        if (b.treatment_name !== undefined) { sets.push('treatment_name=?'); vals.push(b.treatment_name); }
         if (sets.length) { vals.push(tenant, treatment); await env.aura_db.prepare(`UPDATE funnels SET ${sets.join(',')} WHERE tenant_id=? AND treatment=?`).bind(...vals).run(); }
         const tsets: string[] = []; const tvals: any[] = [];
         if (b.brand_primary !== undefined) { tsets.push('brand_primary=?'); tvals.push(b.brand_primary); }
@@ -1057,6 +1065,14 @@ export default {
         ['name','brand_primary','brand_accent'].forEach(k=>{ if(changes[k]!==undefined){ ts.push(k+'=?'); tv.push(changes[k]); } });
         if (ts.length){ tv.push(tenant); try{ await env.aura_db.prepare(`UPDATE tenants SET ${ts.join(',')} WHERE id=?`).bind(...tv).run(); }catch(e){} }
         return json({ ok: true, changes, applied: Object.keys(changes) });
+      }
+
+      // FUNNEL-DELETE: desactivar un embudo
+      if (p === '/api/funnel-delete' && req.method === 'POST') {
+        const b: any = await req.json();
+        const tenant = b.tenant_id; const treatment = b.treatment;
+        await env.aura_db.prepare('DELETE FROM funnels WHERE tenant_id=? AND treatment=?').bind(tenant, treatment).run();
+        return json({ ok: true });
       }
 
       // CONTENT: leer el contenido editable del embudo del tenant

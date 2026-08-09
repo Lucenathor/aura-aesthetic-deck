@@ -845,42 +845,93 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 
     <!-- EMBUDO / EDITOR v2 -->
     <section class="view" id="v-embudo">
-      <div class="top"><div><h1>Editor de embudos</h1><div class="sub2">Personaliza la página que ve la clienta antes de reservar (textos, fotos, ofertas). Lo editas aquí y lo ves en vivo al lado.</div></div>
-        <div class="actions"><a class="btn" id="funnelOpen" target="_blank">Abrir en grande →</a><button class="btn" onclick="copyFunnel()">Copiar enlace</button></div>
-      </div>
-      <input id="funnelUrl" type="hidden"/>
-      <!-- barra: selector de embudo + pantalla -->
-      <div class="ed-bar">
-        <div class="ed-funnels" id="edFunnels"></div>
-        <div style="display:flex;align-items:center;gap:.6rem">
-          <div class="ed-undo"><button id="btnUndo" class="ed-icbtn" title="Deshacer" onclick="undoEdit()" disabled>↶</button><button id="btnRedo" class="ed-icbtn" title="Rehacer" onclick="redoEdit()" disabled>↷</button></div>
-          <span id="edSaveState" class="ed-savestate">Guardado</span>
+      <!-- VISTA GALERÍA (por defecto) -->
+      <div id="funnelGalleryView">
+        <div class="top"><div><h1>Embudos de captación</h1><div class="sub2">Activa embudos preconfigurados para tus tratamientos estrella o crea uno personalizado. Cada embudo genera su propia landing, quiz y chat IA.</div></div>
+          <div class="actions"><button class="btn prim" onclick="openCreateFunnel()">+ Crear embudo</button></div>
         </div>
-        <div class="ed-screens" id="edScreens">
-          <button class="ed-screen on" data-s="hero">Portada</button>
-          <button class="ed-screen" data-s="quiz">Quiz</button>
-          <button class="ed-screen" data-s="result">Resultado</button>
-          <button class="ed-screen" data-s="chat">Chat</button>
-        </div>
-      </div>
-      <div class="ed-split">
-        <!-- preview en vivo -->
-        <div class="ed-preview">
-          <div class="ed-device">
-            <div class="ed-phone"><iframe id="edFrame" title="preview"></iframe></div>
+
+        <!-- MIS EMBUDOS ACTIVOS -->
+        <div class="card" id="myFunnelsCard">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+            <div><h3 style="margin:0">Mis embudos activos</h3><p class="sub" style="margin:.2rem 0 0">Los embudos que están captando pacientes ahora mismo.</p></div>
           </div>
-          <div class="ed-prev-foot"><span id="edPrevHint">Vista previa en vivo · se actualiza al guardar</span><button class="btn" style="padding:.4rem .8rem;font-size:.8rem" onclick="reloadPrev()">Refrescar</button></div>
-        </div>
-        <!-- panel contextual -->
-        <div class="ed-panel">
-          <div class="ed-ai">
-            <div class="ed-ai-h">Editar con IA</div>
-            <div style="display:flex;gap:.4rem;margin-top:.4rem"><input id="editMsg" placeholder="Describe el cambio…" style="flex:1" onkeydown="if(event.key==='Enter')askEdit()"/><button class="btn prim" style="padding:.6rem .9rem" onclick="askEdit()">✨</button></div>
-            <div id="editLog" style="font-size:.8rem;margin-top:.5rem;color:var(--ink-soft)"></div>
+          <div id="myFunnelsList" style="margin-top:1rem"></div>
+          <div id="myFunnelsEmpty" style="display:none;text-align:center;padding:2rem 1rem;color:var(--muted)">
+            <p style="font-size:2rem;margin:0">🧲</p>
+            <p style="margin:.5rem 0 0"><b>Aún no tienes embudos activos</b></p>
+            <p style="font-size:.85rem;margin:.3rem 0 0">Activa una plantilla de abajo o crea uno personalizado.</p>
           </div>
-          <div id="edPanelBody"></div>
-          <input type="file" id="imgFile" accept="image/*" style="display:none"/>
-          <div id="edSaveBar" class="ed-savebar"><span id="edMsg"></span></div>
+        </div>
+
+        <!-- PLANTILLAS PRECONFIGURADAS -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+            <div><h3 style="margin:0">Plantillas listas para usar</h3><p class="sub" style="margin:.2rem 0 0">Los 5 tratamientos que más se anuncian en Meta Ads. Activar = listo para captar.</p></div>
+          </div>
+          <div id="funnelTemplates" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-top:1.2rem"></div>
+        </div>
+      </div>
+
+      <!-- VISTA EDITOR (se muestra al editar un embudo) -->
+      <div id="funnelEditorView" style="display:none">
+        <div class="top"><div><h1 id="editorTitle">Editor de embudo</h1><div class="sub2">Personaliza la página que ve la clienta antes de reservar (textos, fotos, ofertas).</div></div>
+          <div class="actions"><button class="btn" onclick="backToGallery()">← Volver</button><a class="btn" id="funnelOpen" target="_blank">Abrir en grande →</a><button class="btn" onclick="copyFunnel()">Copiar enlace</button></div>
+        </div>
+        <input id="funnelUrl" type="hidden"/>
+        <div class="ed-bar">
+          <div class="ed-funnels" id="edFunnels"></div>
+          <div style="display:flex;align-items:center;gap:.6rem">
+            <div class="ed-undo"><button id="btnUndo" class="ed-icbtn" title="Deshacer" onclick="undoEdit()" disabled>↶</button><button id="btnRedo" class="ed-icbtn" title="Rehacer" onclick="redoEdit()" disabled>↷</button></div>
+            <span id="edSaveState" class="ed-savestate">Guardado</span>
+          </div>
+          <div class="ed-screens" id="edScreens">
+            <button class="ed-screen on" data-s="hero">Portada</button>
+            <button class="ed-screen" data-s="quiz">Quiz</button>
+            <button class="ed-screen" data-s="result">Resultado</button>
+            <button class="ed-screen" data-s="chat">Chat</button>
+          </div>
+        </div>
+        <div class="ed-split">
+          <div class="ed-preview">
+            <div class="ed-device">
+              <div class="ed-phone"><iframe id="edFrame" title="preview"></iframe></div>
+            </div>
+            <div class="ed-prev-foot"><span id="edPrevHint">Vista previa en vivo · se actualiza al guardar</span><button class="btn" style="padding:.4rem .8rem;font-size:.8rem" onclick="reloadPrev()">Refrescar</button></div>
+          </div>
+          <div class="ed-panel">
+            <div class="ed-ai">
+              <div class="ed-ai-h">Editar con IA</div>
+              <div style="display:flex;gap:.4rem;margin-top:.4rem"><input id="editMsg" placeholder="Describe el cambio…" style="flex:1" onkeydown="if(event.key==='Enter')askEdit()"/><button class="btn prim" style="padding:.6rem .9rem" onclick="askEdit()">✨</button></div>
+              <div id="editLog" style="font-size:.8rem;margin-top:.5rem;color:var(--ink-soft)"></div>
+            </div>
+            <div id="edPanelBody"></div>
+            <input type="file" id="imgFile" accept="image/*" style="display:none"/>
+            <div id="edSaveBar" class="ed-savebar"><span id="edMsg"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODAL CREAR EMBUDO PERSONALIZADO -->
+      <div id="createFunnelModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:1rem">
+        <div style="background:#fff;border-radius:16px;max-width:520px;width:100%;padding:2rem;position:relative;max-height:90vh;overflow-y:auto">
+          <button onclick="closeCreateFunnel()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--muted)">✕</button>
+          <h2 style="margin:0 0 .3rem">Crear embudo personalizado</h2>
+          <p style="color:var(--muted);font-size:.88rem;margin:0 0 1.2rem">Configura tu embudo paso a paso. Podrás editarlo después.</p>
+          <div class="field"><label>Nombre del tratamiento *</label><input id="cf_name" placeholder="Ej: Bótox preventivo, Peeling químico…"/></div>
+          <div class="field" style="margin-top:.8rem"><label>Titular de la portada</label><input id="cf_headline" placeholder="Ej: Tu piel sin arrugas, de forma natural."/></div>
+          <div class="field" style="margin-top:.8rem"><label>Subtítulo / promesa</label><textarea id="cf_sub" rows="2" placeholder="Ej: Responde 4 preguntas y te diseñamos un plan personalizado."></textarea></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-top:.8rem">
+            <div class="field"><label>Precio desde (€)</label><input id="cf_price" type="number" placeholder="250"/></div>
+            <div class="field"><label>Duración (min)</label><input id="cf_duration" type="number" placeholder="30"/></div>
+          </div>
+          <div class="field" style="margin-top:.8rem"><label>Pregunta 1 del quiz</label><input id="cf_q1" placeholder="Ej: ¿Qué te gustaría mejorar?"/></div>
+          <div class="field" style="margin-top:.5rem"><label>Opciones (separadas por coma)</label><input id="cf_q1o" placeholder="Ej: Arrugas frente, Patas de gallo, Entrecejo"/></div>
+          <div class="field" style="margin-top:.8rem"><label>Pregunta 2 del quiz</label><input id="cf_q2" placeholder="Ej: ¿Es tu primera vez?"/></div>
+          <div class="field" style="margin-top:.5rem"><label>Opciones</label><input id="cf_q2o" placeholder="Ej: Sí es mi primera vez, Ya me lo he hecho antes"/></div>
+          <div class="field" style="margin-top:.8rem"><label>Pregunta 3 del quiz</label><input id="cf_q3" placeholder="Ej: ¿Para cuándo lo quieres?"/></div>
+          <div class="field" style="margin-top:.5rem"><label>Opciones</label><input id="cf_q3o" placeholder="Ej: Lo antes posible, En las próximas semanas, Solo informarme"/></div>
+          <button class="btn prim" style="width:100%;margin-top:1.2rem;padding:.8rem" onclick="createCustomFunnel()">Crear embudo →</button>
         </div>
       </div>
     </section>
@@ -1312,7 +1363,7 @@ function goSection(v,push){
   if(v==='pacientes')loadLeads();
   if(v==='pipeline')loadPipeline();
   if(v==='equipo'){ loadTeam(); try{ loadEmployees(); }catch(e){} }
-  if(v==='embudo')loadEditor();
+  if(v==='embudo'){showGallery();loadFunnelGallery();}
   if(v==='agenda')loadAgendaCal();
   if(v==='caja')loadCaja();
   if(v==='ajustes'){loadSmsTpl();loadSmsCredits();try{ if(typeof buildTimeline==='function')buildTimeline(); }catch(e){}}
@@ -3168,6 +3219,152 @@ function undoEdit(){ if(HPTR<=0)return; HPTR--; EDDATA.content=JSON.parse(HIST[H
 function redoEdit(){ if(HPTR>=HIST.length-1)return; HPTR++; EDDATA.content=JSON.parse(HIST[HPTR]); updUndo(); renderPanel(true); pushContent(); reloadPrev(); }
 document.addEventListener('keydown',e=>{ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='z'){ if(document.getElementById('v-embudo').classList.contains('on')){ e.preventDefault(); if(e.shiftKey)redoEdit(); else undoEdit(); } } });
 const SCREEN_MAP={hero:'',quiz:'#quiz',result:'#result',chat:'#chat'};
+// === SISTEMA DE EMBUDOS: GALERÍA + PLANTILLAS ===
+const FUNNEL_TEMPLATES=[
+  {id:'labios',name:'Aumento de labios',img:'assets/funnel-labios.png',desc:'El tratamiento más viral. Quiz de 4 preguntas + chat IA + reserva.',price:'250-450',cat:'Inyectables',
+   headline:'Tus labios, naturales y perfectos.',sub:'Responde 4 preguntas y diseñamos tu resultado ideal. Valoración gratuita.',lead:'Verás cómo quedarían tus labios + cuánto costaría',price_from:'380',
+   q1:{pregunta:'¿Qué te gustaría conseguir?',opciones:['Más hidratación y jugosidad','Un poco más de volumen, natural','Definir mejor el contorno','Corregir asimetría']},
+   q3:{pregunta:'¿Cómo los quieres?',opciones:['Muy naturales, que no se note','Con un toque más marcado','No lo tengo claro aún']},
+   q4:{pregunta:'¿Para cuándo te gustaría?',opciones:['Lo antes posible','Tengo un evento próximo','En las próximas semanas','Solo me estoy informando']},
+   q5:{pregunta:'¿Cuál es tu mayor duda?',opciones:['Que se note artificial','Que duela','El precio','Ninguna, lo tengo claro']}},
+  {id:'botox',name:'Bótox antiarrugas',img:'assets/funnel-botox.png',desc:'Rejuvenecimiento facial express. Quiz + valoración + reserva automática.',price:'200-400',cat:'Inyectables',
+   headline:'Adiós arrugas, hola juventud.',sub:'Descubre en 30 segundos si el bótox es para ti. Valoración sin compromiso.',lead:'Plan personalizado antiarrugas + precio cerrado',price_from:'250',
+   q1:{pregunta:'¿Qué zona te preocupa más?',opciones:['Frente / líneas horizontales','Entrecejo / ceño fruncido','Patas de gallo','Varias zonas']},
+   q3:{pregunta:'¿Es tu primera vez con bótox?',opciones:['Sí, es mi primera vez','Ya me lo he puesto antes','Me lo puse hace mucho']},
+   q4:{pregunta:'¿Para cuándo lo necesitas?',opciones:['Lo antes posible','Tengo un evento próximo','En las próximas semanas','Solo me informo']},
+   q5:{pregunta:'¿Tu mayor duda?',opciones:['Que se note raro','Que duela','El precio','Que no dure lo suficiente']}},
+  {id:'rellenos',name:'Rellenos faciales',img:'assets/funnel-rellenos.png',desc:'Pómulos, surcos, ojeras, mentón. Armonización completa con quiz inteligente.',price:'300-600',cat:'Inyectables',
+   headline:'Tu rostro, en su mejor versión.',sub:'Cuéntanos qué quieres mejorar y te proponemos un plan a medida. Sin compromiso.',lead:'Diagnóstico facial personalizado + presupuesto',price_from:'350',
+   q1:{pregunta:'¿Qué zona quieres tratar?',opciones:['Pómulos / volumen','Surcos nasogenianos','Ojeras / valle de lágrima','Mentón / mandíbula','Varias zonas']},
+   q3:{pregunta:'¿Qué resultado buscas?',opciones:['Muy sutil, que no se note','Un cambio visible pero natural','Quiero un cambio notable']},
+   q4:{pregunta:'¿Para cuándo?',opciones:['Lo antes posible','Tengo un evento','En las próximas semanas','Solo me informo']},
+   q5:{pregunta:'¿Tu mayor preocupación?',opciones:['Que se vea artificial','Moratones o hinchazón','El precio','Que no me guste el resultado']}},
+  {id:'depilacion',name:'Depilación láser',img:'assets/funnel-depilacion.png',desc:'Pack de sesiones con precio cerrado. Quiz de zona + tipo de piel + reserva.',price:'50-200/sesión',cat:'Láser',
+   headline:'Piel suave para siempre.',sub:'Descubre tu plan de depilación láser personalizado en 30 segundos.',lead:'Presupuesto cerrado para tu zona + primera sesión',price_from:'89',
+   q1:{pregunta:'¿Qué zona quieres depilar?',opciones:['Piernas completas','Axilas + ingles','Cuerpo completo','Facial','Brazos']},
+   q3:{pregunta:'¿Tu tipo de piel?',opciones:['Clara','Media','Morena','Oscura']},
+   q4:{pregunta:'¿Has probado láser antes?',opciones:['Nunca, es mi primera vez','Sí pero no terminé','Sí, quiero retocar']},
+   q5:{pregunta:'¿Qué es lo más importante para ti?',opciones:['Que no duela','Resultados rápidos','El mejor precio','Tecnología de última generación']}},
+  {id:'armonizacion',name:'Armonización facial',img:'assets/funnel-armonizacion.png',desc:'Pack premium: labios + nariz + mentón + pómulos. Transformación completa sin cirugía.',price:'800-2500',cat:'Premium',
+   headline:'Tu cara, en perfecta armonía.',sub:'Diseñamos tu armonización facial completa. Cuéntanos tu objetivo y te hacemos una propuesta.',lead:'Diseño facial personalizado + plan de tratamiento',price_from:'990',
+   q1:{pregunta:'¿Qué te gustaría mejorar?',opciones:['Perfil (nariz + mentón)','Volumen (labios + pómulos)','Todo el conjunto','Corregir asimetrías']},
+   q3:{pregunta:'¿Cuánto cambio buscas?',opciones:['Sutil, que nadie lo note','Notable pero natural','Un cambio importante']},
+   q4:{pregunta:'¿Presupuesto orientativo?',opciones:['Hasta 1.000€','1.000-2.000€','Más de 2.000€','Necesito orientación']},
+   q5:{pregunta:'¿Para cuándo?',opciones:['Lo antes posible','Próximas semanas','Próximos meses','Solo me informo']}}
+];
+
+let _galleryFunnels=[];
+function showGallery(){ document.getElementById('funnelGalleryView').style.display=''; document.getElementById('funnelEditorView').style.display='none'; }
+function showEditor(){ document.getElementById('funnelGalleryView').style.display='none'; document.getElementById('funnelEditorView').style.display=''; }
+function backToGallery(){ showGallery(); renderGallery(); }
+
+async function loadFunnelGallery(){
+  try{
+    const r=await fetch(WORKER+'/api/tenant/'+T); const d=await r.json();
+    EDDATA.tenant=d.tenant||{}; EDDATA.funnels=d.funnels||[];
+    _galleryFunnels=(d.funnels||[]).filter(f=>f.treatment&&f.treatment!=='generic');
+  }catch(e){ _galleryFunnels=[]; }
+  renderGallery();
+}
+
+function renderGallery(){
+  // Mis embudos activos
+  const list=document.getElementById('myFunnelsList');
+  const empty=document.getElementById('myFunnelsEmpty');
+  if(!_galleryFunnels.length){ list.innerHTML=''; empty.style.display=''; }
+  else{
+    empty.style.display='none';
+    list.innerHTML=_galleryFunnels.map(f=>{
+      const tpl=FUNNEL_TEMPLATES.find(t=>t.id===f.treatment);
+      const name=f.headline||f.treatment_name||(tpl?tpl.name:f.treatment);
+      const img=tpl?tpl.img:'assets/funnel-labios.png';
+      const url=location.origin.replace('aura-mvp.pages.dev','aura-mvp.pages.dev')+'/c/'+T+'?t='+f.treatment;
+      return '<div style="display:flex;align-items:center;gap:1rem;padding:.8rem;border:1px solid var(--line);border-radius:12px;margin-bottom:.6rem">'
+        +'<img src="'+img+'" style="width:80px;height:50px;object-fit:cover;border-radius:8px"/>'
+        +'<div style="flex:1;min-width:0"><b style="font-size:.95rem">'+esc(name)+'</b>'
+        +'<div style="font-size:.8rem;color:var(--muted);margin-top:.15rem">'+esc(f.treatment)+' · '+(f.price_from?f.price_from+'€':'—')+'</div></div>'
+        +'<div style="display:flex;gap:.4rem;flex-shrink:0">'
+        +'<button class="btn" style="padding:.4rem .7rem;font-size:.8rem" onclick="editFunnel(\''+f.treatment+'\')">✎ Editar</button>'
+        +'<button class="btn" style="padding:.4rem .7rem;font-size:.8rem" onclick="copyLink(\''+url+'\')">🔗</button>'
+        +'<button class="btn" style="padding:.4rem .7rem;font-size:.8rem;color:#c0392b" onclick="deleteFunnel(\''+f.treatment+'\')">✕</button>'
+        +'</div></div>';
+    }).join('');
+  }
+  // Plantillas
+  const tpl=document.getElementById('funnelTemplates');
+  tpl.innerHTML=FUNNEL_TEMPLATES.map(t=>{
+    const active=_galleryFunnels.some(f=>f.treatment===t.id);
+    return '<div style="border:1px solid var(--line);border-radius:14px;overflow:hidden;transition:box-shadow .2s">'
+      +'<img src="'+t.img+'" style="width:100%;height:140px;object-fit:cover"/>'
+      +'<div style="padding:1rem">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between"><b style="font-size:1rem">'+t.name+'</b><span style="font-size:.75rem;padding:.2rem .5rem;border-radius:99px;background:'+(active?'#d4edda;color:#155724':'#f0f0f0;color:var(--muted)')+'">'+( active?'✓ Activo':'Disponible')+'</span></div>'
+      +'<p style="font-size:.83rem;color:var(--muted);margin:.4rem 0">'+t.desc+'</p>'
+      +'<div style="font-size:.82rem;margin:.4rem 0"><span style="background:var(--bg);padding:.2rem .5rem;border-radius:6px;margin-right:.4rem">'+t.cat+'</span><span style="color:var(--ink-soft)">'+t.price+'</span></div>'
+      +(active
+        ?'<button class="btn" style="width:100%;margin-top:.8rem;padding:.55rem" onclick="editFunnel(\''+t.id+'\')">✎ Editar embudo</button>'
+        :'<button class="btn prim" style="width:100%;margin-top:.8rem;padding:.55rem" onclick="activateTemplate(\''+t.id+'\')">Activar embudo →</button>')
+      +'</div></div>';
+  }).join('');
+}
+
+async function activateTemplate(id){
+  const tpl=FUNNEL_TEMPLATES.find(t=>t.id===id); if(!tpl)return;
+  try{
+    await fetch(WORKER+'/api/funnel-save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      tenant_id:T, treatment:tpl.id, headline:tpl.headline, subheadline:tpl.sub, lead_magnet:tpl.lead, price_from:tpl.price_from, treatment_name:tpl.name
+    })});
+    // Guardar preguntas del quiz
+    const content={hero_title:tpl.headline,hero_sub:tpl.sub,lead_magnet:tpl.lead,price:tpl.price_from};
+    if(tpl.q1)content.q1=tpl.q1; if(tpl.q3)content.q3=tpl.q3; if(tpl.q4)content.q4=tpl.q4; if(tpl.q5)content.q5=tpl.q5;
+    await fetch(WORKER+'/api/content',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,treatment:tpl.id,content})});
+  }catch(e){}
+  await loadFunnelGallery();
+}
+
+function editFunnel(treatment){
+  EDFUNNEL=treatment;
+  try{localStorage.setItem('aura_ed_funnel',treatment);}catch(e){}
+  const tpl=FUNNEL_TEMPLATES.find(t=>t.id===treatment);
+  document.getElementById('editorTitle').textContent='Editor: '+(tpl?tpl.name:treatment);
+  showEditor();
+  loadEditor();
+}
+
+async function deleteFunnel(treatment){
+  if(!confirm('¿Desactivar el embudo "'+treatment+'"? No se borran los leads que ya captó.'))return;
+  try{ await fetch(WORKER+'/api/funnel-delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,treatment})}); }catch(e){}
+  await loadFunnelGallery();
+}
+
+function copyLink(url){ navigator.clipboard.writeText(url).then(()=>alert('Enlace copiado ✓')).catch(()=>{}); }
+
+function openCreateFunnel(){ document.getElementById('createFunnelModal').style.display='flex'; }
+function closeCreateFunnel(){ document.getElementById('createFunnelModal').style.display='none'; }
+async function createCustomFunnel(){
+  const name=document.getElementById('cf_name').value.trim(); if(!name){ alert('Escribe el nombre del tratamiento'); return; }
+  const slug=name.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+  const headline=document.getElementById('cf_headline').value.trim()||name;
+  const sub=document.getElementById('cf_sub').value.trim()||'Responde unas preguntas y te hacemos una propuesta personalizada.';
+  const price=document.getElementById('cf_price').value||'0';
+  try{
+    await fetch(WORKER+'/api/funnel-save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      tenant_id:T, treatment:slug, headline, subheadline:sub, lead_magnet:'Valoración personalizada + presupuesto', price_from:price, treatment_name:name
+    })});
+    // Guardar quiz si lo rellenó
+    const content={hero_title:headline,hero_sub:sub,price};
+    const q1p=document.getElementById('cf_q1').value.trim(); const q1o=document.getElementById('cf_q1o').value.trim();
+    const q2p=document.getElementById('cf_q2').value.trim(); const q2o=document.getElementById('cf_q2o').value.trim();
+    const q3p=document.getElementById('cf_q3').value.trim(); const q3o=document.getElementById('cf_q3o').value.trim();
+    if(q1p) content.q1={pregunta:q1p,opciones:q1o?q1o.split(',').map(s=>s.trim()):[]};
+    if(q2p) content.q3={pregunta:q2p,opciones:q2o?q2o.split(',').map(s=>s.trim()):[]};
+    if(q3p) content.q4={pregunta:q3p,opciones:q3o?q3o.split(',').map(s=>s.trim()):[]};
+    await fetch(WORKER+'/api/content',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,treatment:slug,content})});
+  }catch(e){}
+  closeCreateFunnel();
+  await loadFunnelGallery();
+}
+// === FIN SISTEMA GALERÍA ===
+
 async function loadEditor(){
   try{
     const r=await fetch(WORKER+'/api/tenant/'+T); const d=await r.json();
