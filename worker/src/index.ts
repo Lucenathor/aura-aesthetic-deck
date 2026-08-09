@@ -1078,9 +1078,23 @@ export default {
       // CONTENT: leer el contenido editable del embudo del tenant
       if (p === '/api/content' && req.method === 'GET') {
         const tenant = url.searchParams.get('tenant');
+        const treatment = url.searchParams.get('treatment');
         const t: any = await env.aura_db.prepare('SELECT content,name,brand_primary,brand_accent,whatsapp,hero_image_url,doctor_image_url,room_image_url,logo_url FROM tenants WHERE id=?').bind(tenant).first();
         let content: any = {};
         try { content = t?.content ? JSON.parse(t.content) : {}; } catch(e){ content = {}; }
+        // Si se pide un tratamiento específico, merge las preguntas del tratamiento sobre el content base
+        if (treatment && content.treatments && content.treatments[treatment]) {
+          const tc = content.treatments[treatment];
+          if (tc.q1) content.q1 = tc.q1;
+          if (tc.q3) content.q3 = tc.q3;
+          if (tc.q4) content.q4 = tc.q4;
+          if (tc.q5) content.q5 = tc.q5;
+          if (tc.hero_title) content.hero_title = tc.hero_title;
+          if (tc.hero_sub) content.hero_sub = tc.hero_sub;
+          if (tc.lead_magnet) content.lead_magnet = tc.lead_magnet;
+          if (tc.price) content.price = tc.price;
+          if (tc.treatment_name) content.treatment_name = tc.treatment_name;
+        }
         return json({ content, tenant: { name: t?.name, brand_primary: t?.brand_primary, brand_accent: t?.brand_accent, whatsapp: t?.whatsapp, hero_image_url: t?.hero_image_url, doctor_image_url: t?.doctor_image_url, room_image_url: t?.room_image_url, logo_url: t?.logo_url } });
       }
       // CONTENT: guardar contenido editable (merge)
@@ -1089,6 +1103,13 @@ export default {
         const tenant = b.tenant_id;
         const t: any = await env.aura_db.prepare('SELECT content FROM tenants WHERE id=?').bind(tenant).first();
         let cur: any = {}; try { cur = t?.content ? JSON.parse(t.content) : {}; } catch(e){ cur = {}; }
+        // Si viene con treatment, guardar en content.treatments[treatment]
+        if (b.treatment) {
+          if (!cur.treatments) cur.treatments = {};
+          cur.treatments[b.treatment] = { ...(cur.treatments[b.treatment]||{}), ...(b.content || {}) };
+          await env.aura_db.prepare('UPDATE tenants SET content=? WHERE id=?').bind(JSON.stringify(cur), tenant).run();
+          return json({ ok: true, content: cur });
+        }
         const merged = { ...cur, ...(b.content || {}) };
         await env.aura_db.prepare('UPDATE tenants SET content=? WHERE id=?').bind(JSON.stringify(merged), tenant).run();
         return json({ ok: true, content: merged });

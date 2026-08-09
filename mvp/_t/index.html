@@ -408,7 +408,8 @@ const TENANT_ID = (function(){
   return (new URLSearchParams(location.search).get('tenant'))||'clinica-elvira';
 })();
 const WORKER='https://aura-chat-worker.adrian-7b9.workers.dev';
-let CFG={ name:'Clínica Elvira', advisor:'Adrián', doctor:'la Dra. Elvira', price:380, whatsapp:'34600000000' };
+const TREATMENT_ID = new URLSearchParams(location.search).get('t') || 'labios';
+let CFG={ name:'Clínica Elvira', advisor:'Adrián', doctor:'la Dra. Elvira', price:380, whatsapp:'34600000000', treatment:'Aumento de labios' };
 
 function genRef(){ const s='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r=''; for(let i=0;i<5;i++)r+=s[Math.floor(Math.random()*s.length)]; return 'AURA-'+r; }
 const state={ name:'', phone:'', a:{}, lead_id:null, ref:genRef() };
@@ -632,7 +633,7 @@ function buildResult(){
     }
     // CONTENIDO editable (textos/quiz/imágenes) — solo contenido, nunca estructura
     try{
-      const cr=await fetch(WORKER+'/api/content?tenant='+TENANT_ID); const cd=await cr.json(); const c=cd.content||{};
+      const cr=await fetch(WORKER+'/api/content?tenant='+TENANT_ID+'&treatment='+TREATMENT_ID); const cd=await cr.json(); const c=cd.content||{};
       const setTxt=(sel,v)=>{ if(v==null)return; document.querySelectorAll(sel).forEach(el=>el.innerHTML=v); };
       if(c.hero_title) setTxt('[data-c="hero_title"]', c.hero_title);
       if(c.hero_sub) setTxt('[data-c="hero_sub"]', c.hero_sub);
@@ -645,6 +646,8 @@ function buildResult(){
       ['q1','q2','q3','q4','q5'].forEach(k=>{ if(c[k]) window.CONTENT_QUIZ[k]=c[k]; });
       if(c.advisor_name) CFG.advisor=c.advisor_name;
       if(c.clinic_name){ CFG.name=c.clinic_name; document.getElementById('bName').textContent=c.clinic_name; }
+      if(c.treatment_name) CFG.treatment=c.treatment_name;
+      if(c.price) CFG.price=parseInt(c.price)||CFG.price;
     }catch(e){}
   }catch(e){}
 })();
@@ -671,7 +674,7 @@ async function persistLead(){
     if(score>=70) temperature='hot';
     else if(score>=45) temperature='warm';
     const r=await fetch(WORKER+'/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({tenant_id:TENANT_ID,name:state.name,phone:state.phone,treatment:'Aumento de labios',motivo,plazo,objecion,quiz_score:score,temperature,source:'embudo_labios',ref:state.ref})});
+      body:JSON.stringify({tenant_id:TENANT_ID,name:state.name,phone:state.phone,treatment:CFG.treatment,motivo,plazo,objecion,quiz_score:score,temperature,source:'embudo_'+TREATMENT_ID,ref:state.ref})});
     if(r.ok){ const d=await r.json(); state.lead_id=d.lead_id||d.id||null; }
   }catch(e){}
 }
@@ -792,7 +795,7 @@ async function sendMsg(){
   await wait(350); typing();
   try{
     const r=await fetch(WORKER+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({messages:[{role:'user',content:v}],tenant_id:TENANT_ID,lead:{name:state.name,treatment:'Aumento de labios',answers:state.a}})});
+      body:JSON.stringify({messages:[{role:'user',content:v}],tenant_id:TENANT_ID,lead:{name:state.name,treatment:CFG.treatment,answers:state.a}})});
     const d=await r.json(); await wait(300); unType();
     addThem((d.content||'perdona, dame un segundo').replace(/\n/g,'<br>'),true);
     if(!document.querySelector('.cal')){ await wait(500); showCal(); }
@@ -833,7 +836,7 @@ async function book(el,slot,iso){
   await wait(500); typing(); await wait(800); unType();
   const waText=encodeURIComponent('Hola, soy '+(state.name||'')+'. Acabo de reservar mi '+(esRecall?'revisión':'cita')+' el '+slot.toLowerCase()+' (ref '+state.ref+')');
   addThem('si prefieres que te lo confirme por whatsapp, toca aquí: <a href="https://wa.me/'+CFG.whatsapp+'?text='+waText+'" onclick="markWa()" style="color:#7ee0c2">abrir whatsapp</a>',true);
-  try{ await fetch(WORKER+'/api/appointments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:TENANT_ID,lead_id:state.lead_id,treatment:(esRecall?'Revisión / retoque':'Aumento de labios'),date_iso:iso||undefined,slot,ref:state.ref})}); }catch(e){}
+  try{ await fetch(WORKER+'/api/appointments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:TENANT_ID,lead_id:state.lead_id,treatment:(esRecall?'Revisión / retoque':CFG.treatment),date_iso:iso||undefined,slot,ref:state.ref})}); }catch(e){}
 }
 function markWa(){
   try{ fetch(WORKER+'/api/lead-event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:TENANT_ID,lead_id:state.lead_id,ref:state.ref,event:'whatsapp_opened'})}); }catch(e){}

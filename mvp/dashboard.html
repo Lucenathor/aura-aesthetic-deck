@@ -542,9 +542,10 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
           <button class="pacTab on" data-f="all" onclick="setPacFilter('all',this)">Todos</button>
           <button class="pacTab" data-f="lead" onclick="setPacFilter('lead',this)">Leads</button>
           <button class="pacTab" data-f="client" onclick="setPacFilter('client',this)">Pacientes (clientes)</button>
+          <button class="btn" style="margin-left:auto;padding:.35rem .7rem;font-size:.78rem" onclick="exportLeadsCSV()" title="Descargar todos los leads como CSV">⬇ Exportar CSV</button>
         </div>
         <p class="sub">Click en una fila para abrir la ficha completa.</p>
-        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table id="leadsTbl" style="min-width:540px"><thead><tr><th>Paciente</th><th>Tratamiento</th><th style="cursor:pointer" onclick="sortLeads('spent')">Gastado ⇅</th><th>Estado</th><th style="cursor:pointer" onclick="sortLeads('date')">Cuándo ⇅</th></tr></thead><tbody id="leadsBody"></tbody></table></div>
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table id="leadsTbl" style="min-width:640px"><thead><tr><th>Paciente</th><th>Tratamiento</th><th style="cursor:pointer" onclick="sortLeads('spent')">Gastado ⇅</th><th>Estado</th><th>Score</th><th style="cursor:pointer" onclick="sortLeads('date')">Cuándo ⇅</th></tr></thead><tbody id="leadsBody"></tbody></table></div>
         <div class="empty" id="leadsEmpty" style="display:none"><b>Aún no hay pacientes</b>Lanza tu embudo a un anuncio de Meta y empezarán a entrar aquí.</div>
       </div>
     </section>
@@ -1576,13 +1577,32 @@ function renderLeads(){
   arr.forEach(l=>{
     const spent=_spendMap[l.id]||0;
     const tr=document.createElement('tr');tr.className='lead-row';tr.onclick=()=>openDrawer(l);
+    const score=l.quiz_score||0;
+    const temp=l.temperature||'cold';
+    const tempColor=temp==='hot'?'#e74c3c':temp==='warm'?'#f39c12':'#95a5a6';
+    const tempLabel=temp==='hot'?'🔥':temp==='warm'?'🌡️':'❄️';
     tr.innerHTML=`<td><b>${l.name||'—'}</b><br><small style="color:var(--muted)">${l.phone||''}</small></td>
       <td>${l.treatment||'—'}</td>
       <td><b style="color:${spent>0?'#1f8c69':'var(--muted)'}">${spent}€</b></td>
       <td><span class="tag ${l.status==='whatsapp'?'new':(l.status||'new')}">${ESTADO_ES[l.status]||'Nuevo'}</span>${l.wa_opened?' <span title="pulsó WhatsApp" style="color:#1f8c69;font-size:.9rem">●</span>':''}</td>
+      <td title="Score: ${score}/100 · ${temp}"><span style="display:inline-flex;align-items:center;gap:.3rem"><span style="font-size:.85rem">${tempLabel}</span><span style="display:inline-block;width:40px;height:6px;border-radius:3px;background:#eee;position:relative;overflow:hidden"><span style="position:absolute;left:0;top:0;height:100%;width:${score}%;background:${tempColor};border-radius:3px"></span></span><span style="font-size:.72rem;color:${tempColor}">${score}</span></span></td>
       <td><span style="color:var(--muted);font-size:.78rem">${fmtTime(l.created_at)}</span></td>`;
     tb.appendChild(tr);
   });
+}
+
+function exportLeadsCSV(){
+  if(!_allLeads.length){alert('No hay leads para exportar');return;}
+  const headers=['Nombre','Teléfono','Email','Tratamiento','Estado','Temperatura','Score','Gastado','Origen','Creado'];
+  const rows=_allLeads.map(l=>[
+    l.name||'',l.phone||'',l.email||'',l.treatment||'',ESTADO_ES[l.status]||l.status||'',
+    l.temperature||'cold',l.quiz_score||0,_spendMap[l.id]||0,l.source||'',l.created_at||''
+  ]);
+  let csv=headers.join(';')+'\n'+rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(';')).join('\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='leads_'+T+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
 }
 
 async function doSearch(){
@@ -3315,6 +3335,7 @@ async function activateTemplate(id){
     })});
     // Guardar preguntas del quiz
     const content={hero_title:tpl.headline,hero_sub:tpl.sub,lead_magnet:tpl.lead,price:tpl.price_from};
+    content.treatment_name=tpl.name;
     if(tpl.q1)content.q1=tpl.q1; if(tpl.q3)content.q3=tpl.q3; if(tpl.q4)content.q4=tpl.q4; if(tpl.q5)content.q5=tpl.q5;
     await fetch(WORKER+'/api/content',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,treatment:tpl.id,content})});
   }catch(e){}
