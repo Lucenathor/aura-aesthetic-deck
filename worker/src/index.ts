@@ -1670,6 +1670,15 @@ export default {
         return json({ ok:true, templates: merged });
       }
       // LEAD EVENT: marcar que conversó en el chat (para prioridad de llamada punto B)
+      // LEAD QUIZ UPDATE: actualizar respuestas del quiz después de completarlo
+      if (p === '/api/lead-quiz-update' && req.method === 'POST') {
+        const b: any = await req.json();
+        if (!b.lead_id) return json({ error: 'missing lead_id' }, 400);
+        await env.aura_db.prepare(
+          "UPDATE leads SET motivo=?, plazo=?, objecion=?, quiz_score=?, temperature=? WHERE id=?"
+        ).bind(b.motivo||null, b.plazo||null, b.objecion||null, b.quiz_score||0, b.temperature||'cold', b.lead_id).run();
+        return json({ ok: true });
+      }
       if (p === '/api/lead-chatted' && req.method === 'POST') {
         const b: any = await req.json();
         await env.aura_db.prepare("UPDATE leads SET chatted=1 WHERE id=?").bind(b.lead_id).run();

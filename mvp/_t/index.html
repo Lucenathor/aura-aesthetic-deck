@@ -554,6 +554,8 @@ function nurture(k,val){
 }
 function finishQuiz(){
   buildResult();
+  // Actualizar el lead con las respuestas completas del quiz
+  updateLeadAnswers();
   // pantalla analizando que nutre el valor percibido
   go('vQuiz');
   const body=document.getElementById('qBody');
@@ -650,9 +652,49 @@ function buildResult(){
 /* ============ PERSIST ============ */
 async function persistLead(){
   try{
+    // Mapear respuestas del quiz a campos del backend
+    const a=state.a||{};
+    const motivo=a.objetivo||null;
+    const plazo=a.plazo||null;
+    const objecion=a.duda||null;
+    // Calcular score (0-100) basado en respuestas
+    let score=30; // base por completar el quiz
+    if(plazo==='Lo antes posible') score+=40;
+    else if(plazo==='Tengo un evento próximo') score+=30;
+    else if(plazo==='En las próximas semanas') score+=15;
+    if(objecion==='Ninguna, lo tengo claro') score+=30;
+    else if(objecion==='El precio') score+=10;
+    else if(objecion==='Que duela') score+=15;
+    else if(objecion==='Que se note artificial') score+=15;
+    // Temperatura basada en score
+    let temperature='cold';
+    if(score>=70) temperature='hot';
+    else if(score>=45) temperature='warm';
     const r=await fetch(WORKER+'/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({tenant_id:TENANT_ID,name:state.name,phone:state.phone,treatment:'Aumento de labios',answers:state.a,source:'embudo_labios',ref:state.ref})});
+      body:JSON.stringify({tenant_id:TENANT_ID,name:state.name,phone:state.phone,treatment:'Aumento de labios',motivo,plazo,objecion,quiz_score:score,temperature,source:'embudo_labios',ref:state.ref})});
     if(r.ok){ const d=await r.json(); state.lead_id=d.lead_id||d.id||null; }
+  }catch(e){}
+}
+async function updateLeadAnswers(){
+  if(!state.lead_id) return;
+  try{
+    const a=state.a||{};
+    const motivo=a.objetivo||null;
+    const plazo=a.plazo||null;
+    const objecion=a.duda||null;
+    let score=30;
+    if(plazo==='Lo antes posible') score+=40;
+    else if(plazo==='Tengo un evento próximo') score+=30;
+    else if(plazo==='En las próximas semanas') score+=15;
+    if(objecion==='Ninguna, lo tengo claro') score+=30;
+    else if(objecion==='El precio') score+=10;
+    else if(objecion==='Que duela') score+=15;
+    else if(objecion==='Que se note artificial') score+=15;
+    let temperature='cold';
+    if(score>=70) temperature='hot';
+    else if(score>=45) temperature='warm';
+    await fetch(WORKER+'/api/lead-quiz-update',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({lead_id:state.lead_id,motivo,plazo,objecion,quiz_score:score,temperature})});
   }catch(e){}
 }
 async function persistMsg(role,content){
