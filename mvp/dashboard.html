@@ -942,61 +942,46 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 
     <!-- CONTENIDO -->
     <section class="view" id="v-contenido">
-      <div class="top"><div><h1>Contenido de hoy</h1><div class="sub2">Tu calendario de reels. Cada día una idea lista para grabar. Inspírate, grábalo y márcalo como hecho.</div></div>
-      <div class="actions"><button class="btn" onclick="openAddIdea()">+ Añadir idea</button></div></div>
-      <div style="display:flex;gap:1rem;margin-bottom:1.2rem;flex-wrap:wrap">
-        <div class="card" style="flex:1;min-width:200px;margin-bottom:0">
-          <div style="display:flex;align-items:center;gap:.8rem">
-            <div style="font-size:2.2rem">🔥</div>
-            <div><div style="font-size:.75rem;color:var(--muted);font-weight:600;text-transform:uppercase">Racha</div><b id="ctStreak" style="font-size:1.8rem;font-family:'Fraunces',serif">0 días</b></div>
+      <div class="top"><div><h1>Contenido viral</h1><div class="sub2">Reels y TikToks virales de referencia para tu clínica. Mira el vídeo, escucha la explicación y replícalo.</div></div></div>
+      <!-- Filtros por categoría -->
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.2rem">
+        <button class="btn" onclick="filterViralContent('all')" data-vf="all" style="font-size:.82rem;padding:.45rem .9rem;border-radius:99px;font-weight:600;background:var(--terra);color:#fff;border-color:var(--terra)">Todos</button>
+        <button class="btn" onclick="filterViralContent('viral')" data-vf="viral" style="font-size:.82rem;padding:.45rem .9rem;border-radius:99px;font-weight:600">Viral</button>
+        <button class="btn" onclick="filterViralContent('autoridad')" data-vf="autoridad" style="font-size:.82rem;padding:.45rem .9rem;border-radius:99px;font-weight:600">Autoridad</button>
+        <button class="btn" onclick="filterViralContent('social')" data-vf="social" style="font-size:.82rem;padding:.45rem .9rem;border-radius:99px;font-weight:600">Prueba social</button>
+        <button class="btn" onclick="filterViralContent('bts')" data-vf="bts" style="font-size:.82rem;padding:.45rem .9rem;border-radius:99px;font-weight:600">Behind the scenes</button>
+      </div>
+      <!-- Grid de thumbnails de vídeos -->
+      <div id="viralGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem"></div>
+      <!-- Estado vacío -->
+      <div id="viralEmpty" style="display:none;text-align:center;padding:4rem 2rem">
+        <div style="font-size:3.5rem;margin-bottom:1rem;opacity:.6">🎬</div>
+        <h3 style="color:var(--ink-soft);margin-bottom:.5rem">Aún no hay contenido viral</h3>
+        <p style="color:var(--muted);font-size:.9rem;max-width:400px;margin:0 auto">Tu consultor subirá aquí los reels y TikToks virales de referencia con su explicación para que puedas replicarlos fácilmente.</p>
+      </div>
+      <!-- Reproductor expandido (split: vídeo viral izq + explicación der) -->
+      <div id="viralPlayer" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.92);backdrop-filter:blur(8px);overflow-y:auto">
+        <button onclick="closeViralPlayer()" style="position:fixed;top:1.2rem;right:1.5rem;z-index:10000;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:1.5rem;width:44px;height:44px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);transition:background .2s">&times;</button>
+        <div style="display:flex;height:100vh;align-items:center;justify-content:center;gap:2rem;padding:2rem;max-width:1400px;margin:0 auto" id="viralPlayerInner">
+          <!-- Vídeo viral (izquierda) -->
+          <div style="flex:1;max-width:420px;display:flex;flex-direction:column;align-items:center">
+            <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.5);letter-spacing:1px;margin-bottom:.8rem">REEL DE REFERENCIA</div>
+            <div id="viralVideoContainer" style="width:100%;aspect-ratio:9/16;border-radius:16px;overflow:hidden;background:#111;box-shadow:0 20px 60px rgba(0,0,0,.5)"></div>
+            <div id="viralVideoTitle" style="color:#fff;font-size:1.1rem;font-weight:700;margin-top:1rem;text-align:center"></div>
+            <div id="viralVideoCategory" style="margin-top:.5rem;padding:.3rem .8rem;border-radius:99px;font-size:.72rem;font-weight:700;text-transform:uppercase;display:inline-block"></div>
+          </div>
+          <!-- Explicación del consultor (derecha) -->
+          <div style="flex:1;max-width:480px;display:flex;flex-direction:column;align-items:center">
+            <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.5);letter-spacing:1px;margin-bottom:.8rem">EXPLICACIÓN</div>
+            <div id="viralExplainContainer" style="width:100%;aspect-ratio:9/16;border-radius:16px;overflow:hidden;background:#1a1a1a;box-shadow:0 20px 60px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center">
+              <div id="viralExplainPlaceholder" style="text-align:center;padding:2rem;color:rgba(255,255,255,.4)">
+                <div style="font-size:2.5rem;margin-bottom:.8rem">💬</div>
+                <p style="font-size:.9rem;line-height:1.5">Tu consultor grabará aquí la explicación de cómo replicar este reel</p>
+              </div>
+            </div>
+            <div id="viralExplainText" style="color:rgba(255,255,255,.8);font-size:.92rem;line-height:1.6;margin-top:1.2rem;text-align:center;max-width:400px"></div>
           </div>
         </div>
-        <div class="card" style="flex:2;min-width:280px;margin-bottom:0">
-          <div style="font-size:.75rem;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:.4rem">Progreso esta semana</div>
-          <div style="display:flex;align-items:center;gap:.8rem">
-            <div style="flex:1;height:12px;background:var(--bg2);border-radius:99px;overflow:hidden"><div id="ctProgressBar" style="height:100%;background:linear-gradient(90deg,var(--terra),var(--mint));border-radius:99px;width:0%;transition:width .5s var(--ease)"></div></div>
-            <b id="ctProgressText" style="font-size:.9rem;color:var(--terra)">0/5</b>
-          </div>
-        </div>
-      </div>
-      <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
-          <h3 style="margin-bottom:0">Esta semana</h3>
-          <div style="display:flex;gap:.4rem">
-            <button class="btn" onclick="ctPrevWeek()" style="padding:.4rem .7rem;font-size:.8rem">&larr;</button>
-            <button class="btn" onclick="ctNextWeek()" style="padding:.4rem .7rem;font-size:.8rem">&rarr;</button>
-          </div>
-        </div>
-        <div id="ctCalendar" style="display:grid;grid-template-columns:repeat(5,1fr);gap:.8rem"></div>
-      </div>
-      <div class="card" id="ctTodayCard" style="display:none">
-        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.8rem">
-          <span id="ctTodayPillar" style="padding:.3rem .7rem;border-radius:99px;font-size:.72rem;font-weight:700;text-transform:uppercase"></span>
-          <span style="font-size:.8rem;color:var(--muted)" id="ctTodayDay"></span>
-        </div>
-        <h3 id="ctTodayTitle" style="font-size:1.3rem;margin-bottom:.5rem"></h3>
-        <p id="ctTodayDesc" style="color:var(--ink-soft);font-size:.92rem;line-height:1.6;margin-bottom:1rem"></p>
-        <div id="ctTodayTips" style="background:var(--bg2);border-radius:12px;padding:1rem;margin-bottom:1rem">
-          <div style="font-size:.75rem;font-weight:700;color:var(--terra);text-transform:uppercase;margin-bottom:.4rem">Tips para grabarlo</div>
-          <ul id="ctTodayTipsList" style="font-size:.88rem;color:var(--ink-soft);padding-left:1.2rem;line-height:1.7"></ul>
-        </div>
-        <div style="display:flex;gap:.6rem;flex-wrap:wrap">
-          <a id="ctTodayExample" href="#" target="_blank" class="btn" style="font-size:.82rem">Ver ejemplo real</a>
-          <button class="btn prim" onclick="markDone()">Lo he publicado</button>
-          <button class="btn" onclick="skipIdea()" style="color:var(--muted)">Saltar</button>
-        </div>
-      </div>
-      <div class="card">
-        <h3>Banco de ideas</h3>
-        <p class="sub">Todas las ideas disponibles. Pulsa una para asignarla a un día.</p>
-        <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin:.8rem 0">
-          <button class="btn" onclick="filterIdeas('all')" style="font-size:.78rem;padding:.35rem .7rem">Todas</button>
-          <button class="btn" onclick="filterIdeas('autoridad')" style="font-size:.78rem;padding:.35rem .7rem">Autoridad</button>
-          <button class="btn" onclick="filterIdeas('social')" style="font-size:.78rem;padding:.35rem .7rem">Prueba social</button>
-          <button class="btn" onclick="filterIdeas('bts')" style="font-size:.78rem;padding:.35rem .7rem">Detras de camaras</button>
-          <button class="btn" onclick="filterIdeas('viral')" style="font-size:.78rem;padding:.35rem .7rem">Viral</button>
-        </div>
-        <div id="ctIdeasGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.7rem;max-height:420px;overflow-y:auto"></div>
       </div>
     </section>
 
@@ -3344,185 +3329,82 @@ function backToGallery(){ showGallery(); renderGallery(); }
 // ═══════════════════════════════════════════════════════════
 // MÓDULO CONTENIDO — Calendario de Reels para Clínica Estética
 // ═══════════════════════════════════════════════════════════
-const CONTENT_IDEAS=[
-// VIRAL-FIRST: Basado en Brendan Kane (Hook Point), Algoritmo IG 2026, HighKey Agency
-// Cada idea tiene: hook exacto (3s), formato viral probado, y por qué viraliza
-{id:1,title:'Esto cuesta 380€ y esto es lo que pasa',pillar:'viral',desc:'HOOK: Muestra el precio en texto grande → transición al procedimiento en time-lapse → resultado final wow. Formato: Challenge/Transformación. El precio genera curiosidad universal.',tips:['Texto grande "380€" en pantalla los 2 primeros segundos','Time-lapse del procedimiento (15s)','Reveal final con la paciente sonriendo','Audio trending de fondo'],example:'https://www.instagram.com/reel/DUG2gmVjhto/'},
-{id:2,title:'POV: tu primera vez en una clínica estética',pillar:'viral',desc:'HOOK: "POV: llegas a tu primera cita y no sabes qué esperar". Formato POV en primera persona. La paciente entra, se sienta, la doctora explica, y al final se ve feliz. Viraliza porque TODOS tienen curiosidad.',tips:['Graba desde la perspectiva de la paciente (cámara en mano)','Que se oiga la voz de la doctora calmando','Transición al resultado: sonrisa','Audio trending tipo "calm"'],example:'https://www.tiktok.com/@byangiealvarez/video/7377025964376591621'},
-{id:3,title:'Rating honesto: tratamientos del 1 al 10 en dolor',pillar:'viral',desc:'HOOK: "¿Cuánto duele REALMENTE cada tratamiento?" La doctora puntúa del 1 al 10 señalando cada zona. Formato: Tier List. Genera DEBATE masivo en comentarios (señal #1 del algoritmo).',tips:['Usa gestos exagerados para el dolor','Sé brutalmente honesta','Termina con: "¿Estás de acuerdo? Dímelo"','Responde TODOS los comentarios (150x peso algorítmico)'],example:''},
-{id:4,title:'Lo que pedí vs lo que me hicieron',pillar:'viral',desc:'HOOK: Pantalla dividida — izquierda: foto de referencia de la paciente / derecha: resultado real. Formato: Expectativa vs Realidad. Viraliza porque es satisfactorio y compartible.',tips:['Transición limpia (swipe o zoom)','Que el resultado sea IGUAL o MEJOR que la referencia','Texto: "Cuando tu doctora te entiende"','Audio trending de satisfacción'],example:''},
-{id:5,title:'El error que comete el 90% con el bótox',pillar:'viral',desc:'HOOK: "El 90% de la gente hace ESTO mal con el bótox..." (pausa). Formato: Curiosity Gap. El espectador NECESITA saber qué es. Watch time altísimo = algoritmo te empuja.',tips:['No reveles el error hasta el segundo 8-10','Usa expresión de sorpresa al decirlo','El error: esperar a tener arrugas marcadas','CTA: "Guárdalo para no olvidarlo" (saves = señal #2)'],example:''},
-{id:6,title:'Reacción REAL al verse por primera vez',pillar:'social',desc:'HOOK: Primer frame = cara de la paciente con ojos cerrados. "Ábrelos". Formato: Reacción emocional genuina. Las emociones reales son la señal más fuerte de compartibilidad (sends = señal #1).',tips:['Graba la cara, NO el espejo','Que sea 100% espontáneo','Si llora de emoción = oro viral','Subtitula todo (80% ven sin sonido)'],example:'https://www.instagram.com/reel/DTjI4f2kdHI/'},
-{id:7,title:'3 cosas que ojalá supiera antes de hacerme los labios',pillar:'autoridad',desc:'HOOK: "Si pudiera volver atrás, me habría dicho ESTO". Formato: Lista + Storytelling personal. Viraliza porque es útil (saves) y genera identificación (shares).',tips:['Habla mirando a cámara, tono confesión','3 puntos máximo, 5s cada uno','Termina con: "¿Qué te habría gustado saber a ti?"','Responde cada comentario con detalle'],example:''},
-{id:8,title:'Expectativa vs Realidad: trabajar en una clínica estética',pillar:'viral',desc:'HOOK: "Lo que la gente cree que hago vs lo que realmente hago". Formato: Humor + Relatabilidad. Split screen exagerado. Viraliza por humor y porque humaniza la marca.',tips:['Expectativa: glamour, tacones, champán','Realidad: madrugón, guantes, café frío','Que el equipo se ría (autenticidad)','Audio trending cómico'],example:''},
-{id:9,title:'Esto es lo que pasa en 45 minutos',pillar:'bts',desc:'HOOK: "45 minutos. 1 jeringa. Mira." Time-lapse ASMR del procedimiento completo. Formato: Proceso satisfactorio. Viraliza por curiosidad + satisfacción visual (completion rate alto).',tips:['Cámara fija, ángulo cenital','Solo sonido ambiente (ASMR)','Texto con timestamps: "Minuto 5... Minuto 20..."','Reveal final dramático'],example:''},
-{id:10,title:'Mi paciente más nerviosa (y lo que pasó)',pillar:'social',desc:'HOOK: "Llegó TEMBLANDO. Mira cómo se fue." Formato: Storytelling con arco emocional (miedo → alivio → felicidad). Viraliza porque genera empatía y el final es satisfactorio.',tips:['Empieza con la llegada nerviosa (real)','Muestra cómo la calmas','Final: su sonrisa al verse','Texto: "De esto se trata nuestro trabajo"'],example:''},
-{id:11,title:'Nadie te dice esto sobre el ácido hialurónico',pillar:'autoridad',desc:'HOOK: "Lo que tu influencer favorita NO te cuenta sobre el hialurónico". Formato: Curiosity Gap + Autoridad. Viraliza porque desafía creencias populares (genera debate = comentarios).',tips:['Dato impactante en los primeros 3s','Tono de "te voy a contar la verdad"','Desmonta 1 mito popular','CTA: "¿Sabías esto? Cuéntame"'],example:''},
-{id:12,title:'Si los tratamientos fueran personas en tu grupo de amigas',pillar:'viral',desc:'HOOK: "El bótox es la puntual. Los labios, la protagonista. El peeling, la que siempre llega tarde pero vale la pena." Formato: Comedia + Personificación. Viraliza por humor y porque la gente se etiqueta.',tips:['Máximo 5 tratamientos = 5 personalidades','Actúa cada personaje brevemente','Termina con: "¿Cuál eres tú? Etiqueta a tu amiga"','Audio trending divertido'],example:''},
-{id:13,title:'Cuánto cuesta REALMENTE una cara completa',pillar:'viral',desc:'HOOK: "Te voy a decir cuánto cuesta hacerte TODA la cara. Sin mentiras." Formato: Transparencia radical + Precio. Viraliza porque el dinero genera curiosidad universal y debate.',tips:['Señala cada zona: frente (X€), labios (X€), pómulos (X€)','Suma total al final','Tono honesto, sin vender','CTA: "¿Te parece mucho o poco?"'],example:''},
-{id:14,title:'La diferencia entre 200€ y 600€ en labios',pillar:'autoridad',desc:'HOOK: "¿Por qué unos labios cuestan 200€ y otros 600€? Te lo explico en 20 segundos." Formato: Comparación + Educación. Viraliza porque resuelve una duda que TODOS tienen pero nadie pregunta.',tips:['Muestra la diferencia de producto/técnica','No critiques a la competencia','Explica: producto, experiencia, seguimiento','CTA: "Ahora ya sabes qué preguntar"'],example:''},
-{id:15,title:'Lo que hago en 5 minutos antes de abrir',pillar:'bts',desc:'HOOK: "5 minutos para abrir. Esto es lo que hago." Formato: Rutina + ASMR. Viraliza por satisfacción visual y porque humaniza (la gente quiere ver el "detrás").',tips:['Preparar instrumental, encender luces, revisar agenda','Solo sonido ambiente','Ritmo rápido, cortes cada 2-3s','Termina abriendo la puerta: "Buenos días"'],example:''},
-{id:16,title:'Transformación en 30 segundos: de cansada a wow',pillar:'social',desc:'HOOK: Primer frame: paciente sin maquillaje, ojeras marcadas. "Mira esto." Formato: Transformación extrema. Viraliza porque el contraste visual es ADICTIVO (completion rate 95%+).',tips:['Antes: luz dura, sin maquillaje','Transición: mano tapando cámara','Después: luz suave, resultado natural','Texto: "Sin cirugía. Sin filtro."'],example:''},
-{id:17,title:'Respondo comentarios HATERS sobre estética',pillar:'viral',desc:'HOOK: Lee un comentario negativo en voz alta. "Me dicen que arruino caras. Vamos a ver..." Formato: Respuesta a haters. Viraliza porque genera POLÉMICA controlada (comentarios + shares masivos).',tips:['Elige 2-3 comentarios reales','Responde con datos y humor','No seas agresiva, sé educada pero firme','CTA: "¿Tú qué opinas?"'],example:''},
-{id:18,title:'Adivina cuántos años tiene',pillar:'viral',desc:'HOOK: Muestra a una paciente. "¿Cuántos años le echas?" Pausa. Reveal. Formato: Quiz/Adivinanza. Viraliza porque la gente NECESITA saber la respuesta (watch time máximo).',tips:['Que la paciente parezca 10 años menos','Pausa dramática de 3s antes del reveal','Texto grande con la edad real','CTA: "¿Acertaste? Dímelo"'],example:''},
-{id:19,title:'Lo que tu crema de 80€ NO puede hacer',pillar:'autoridad',desc:'HOOK: "Tu crema favorita de 80€ hace ESTO. Pero no puede hacer ESTO." Formato: Comparación + Autoridad. Viraliza porque desafía una inversión que muchas hacen (genera debate).',tips:['No critiques las cremas, di qué SÍ hacen','Explica qué solo se consigue con tratamiento','Tono educativo, no vendedor','CTA: "¿Cuánto gastas al año en cremas?"'],example:''},
-{id:20,title:'El tratamiento que más me piden este mes',pillar:'social',desc:'HOOK: "Llevo 3 semanas diciendo que no tengo hueco para ESTO." Formato: Reveal + Prueba social. Viraliza porque la escasez genera deseo y la prueba social genera confianza.',tips:['Muestra la agenda llena (blur datos)','Reveal del tratamiento con resultado','Dato: "12 pacientes esta semana"','CTA: "¿Tú también lo quieres?"'],example:''},
-{id:21,title:'Cómo sé si necesitas bótox o relleno',pillar:'autoridad',desc:'HOOK: "Mucha gente viene pidiendo bótox cuando lo que necesita es relleno. Te enseño la diferencia en 15 segundos." Formato: Educación rápida + Autoridad. Viraliza por utilidad (saves masivos).',tips:['Señala en tu propia cara','Bótox = arrugas de expresión (frente, entrecejo)','Relleno = volumen perdido (surcos, labios)','CTA: "Guárdalo para tu próxima consulta"'],example:''},
-{id:22,title:'Un día conmigo: 8 pacientes en 6 horas',pillar:'bts',desc:'HOOK: "8 pacientes. 6 horas. Así es un martes normal." Formato: Day in the life + Velocidad. Viraliza por ritmo frenético y porque muestra la realidad sin filtro.',tips:['Clips de 2s por paciente (blur caras)','Contador en pantalla: "Paciente 1/8"','Momento de descanso (café rápido)','Final: "Y mañana, otra vez"'],example:''},
-{id:23,title:'Lo que NO deberías hacer antes del bótox',pillar:'autoridad',desc:'HOOK: "Si haces ESTO antes del bótox, te va a durar la mitad." Formato: Advertencia + Curiosity Gap. Viraliza porque el miedo a perder dinero es universal.',tips:['3 errores comunes: alcohol, ibuprofeno, ejercicio intenso','Tono serio pero cercano','Texto grande con cada error','CTA: "Compártelo con quien tenga cita pronto"'],example:''},
-{id:24,title:'La pregunta más rara que me han hecho',pillar:'viral',desc:'HOOK: "Ayer una paciente me preguntó ESTO y casi me caigo de la silla." Formato: Storytelling + Humor. Viraliza porque la curiosidad es irresistible y el humor genera shares.',tips:['Que sea una pregunta real y graciosa','Respóndela con humor pero profesionalmente','Pide: "¿Cuál es la pregunta más rara que harías?"','Responde TODOS los comentarios'],example:''},
-{id:25,title:'Bótox a los 25: ¿sí o no?',pillar:'viral',desc:'HOOK: "Me dicen que soy muy joven para el bótox. ¿Tienen razón?" Formato: Debate/Opinión. Viraliza porque divide opiniones = comentarios masivos (señal algorítmica #1).',tips:['Da tu opinión profesional clara','Explica el bótox preventivo','No juzgues a nadie','CTA: "¿A qué edad empezarías tú?"'],example:''},
-{id:26,title:'Así queda a los 15 días (sin filtro)',pillar:'social',desc:'HOOK: "Día 1 vs Día 15. Sin filtro. Sin edición." Formato: Seguimiento temporal. Viraliza porque demuestra resultados REALES y genera confianza (saves + shares).',tips:['Misma luz, mismo ángulo, mismo fondo','Texto: "Día 1" → "Día 15"','Que se note la evolución natural','CTA: "¿Quieres ver más seguimientos?"'],example:''},
-{id:27,title:'Lo que tu amiga no te contó de sus labios',pillar:'viral',desc:'HOOK: "Tu amiga dice que no se ha hecho nada. Esto es lo que probablemente se hizo." Formato: Reveal + Humor cómplice. Viraliza porque TODAS tienen esa amiga (relatabilidad extrema).',tips:['Tono cómplice, no acusatorio','Explica técnicas sutiles que "no se notan"','Humor ligero','CTA: "Etiqueta a esa amiga"'],example:''},
-{id:28,title:'Esto es lo que veo cuando miro tu cara (como doctora)',pillar:'autoridad',desc:'HOOK: "Cuando miro una cara, veo ESTO." Señalas zonas con líneas/flechas. Formato: POV profesional + Educación. Viraliza por curiosidad (todos quieren saber qué ve un experto).',tips:['Usa tu propia cara o una modelo','Dibuja flechas/círculos en edición','Explica: "Aquí falta volumen, aquí hay tensión"','CTA: "¿Quieres que analice la tuya?"'],example:''},
-{id:29,title:'El tratamiento que yo me hago (y por qué)',pillar:'bts',desc:'HOOK: "Soy doctora estética y ESTO es lo que me hago yo." Formato: Transparencia + Autoridad. Viraliza porque la gente confía en lo que el experto se hace A SÍ MISMO.',tips:['Sé 100% honesta','Muestra el procedimiento en ti misma','Explica por qué lo eliges','CTA: "¿Te sorprende?"'],example:''},
-{id:30,title:'Paciente de 55 años: lo que puede hacer la medicina estética',pillar:'social',desc:'HOOK: "55 años. Sin cirugía. Mira." Formato: Transformación + Dato de edad. Viraliza porque rompe expectativas y genera esperanza (shares masivos entre mujeres 40-60).',tips:['Con permiso de la paciente','Antes/después con misma luz','Texto: "55 años. 0 cirugías."','Que ella cuente cómo se siente'],example:''}
-];
-
-// Asignación semanal (lun-vie)
-const WEEK_PILLARS=['viral','autoridad','viral','social','viral'];
-const PILLAR_COLORS={autoridad:'#2980b9',social:'#27ae60',bts:'#8e44ad',viral:'#e74c3c'};
-const PILLAR_LABELS={autoridad:'Autoridad',social:'Prueba social',bts:'Detrás de cámaras',viral:'Viral'};
-const DAY_NAMES=['Lunes','Martes','Miércoles','Jueves','Viernes'];
-
-let _ctWeekOffset=0;
-let _ctDoneMap={}; // {dateStr: ideaId}
-let _ctStreak=0;
-let _ctCustomIdeas=[];
-
-function getWeekStart(offset=0){
-  const d=new Date(); d.setDate(d.getDate()-d.getDay()+1+(offset*7)); d.setHours(0,0,0,0); return d;
-}
-function dateStr(d){ return d.toISOString().slice(0,10); }
-
-function loadContentState(){
-  try{
-    const s=localStorage.getItem('aura_content_'+T);
-    if(s){ const p=JSON.parse(s); _ctDoneMap=p.done||{}; _ctStreak=p.streak||0; _ctCustomIdeas=p.custom||[]; }
-  }catch(e){}
-}
-function saveContentState(){
-  try{ localStorage.setItem('aura_content_'+T,JSON.stringify({done:_ctDoneMap,streak:_ctStreak,custom:_ctCustomIdeas})); }catch(e){}
 }
 
-function getIdeaForDay(dayIndex, weekStart){
-  const pillar=WEEK_PILLARS[dayIndex];
-  const pool=CONTENT_IDEAS.filter(i=>i.pillar===pillar);
-  const weekNum=Math.floor((weekStart.getTime()-new Date(2026,0,1).getTime())/(7*86400000));
-  return pool[(weekNum*5+dayIndex)%pool.length];
+// ===== MÓDULO CONTENIDO VIRAL (galería de vídeos con explicación) =====
+const PILLAR_COLORS_V={viral:'#e74c3c',autoridad:'#2980b9',social:'#27ae60',bts:'#8e44ad'};
+const PILLAR_LABELS_V={viral:'Viral',autoridad:'Autoridad',social:'Prueba social',bts:'Behind the scenes'};
+let _viralContent=[];
+let _viralFilter='all';
+
+function filterViralContent(cat){
+  _viralFilter=cat;
+  document.querySelectorAll('[data-vf]').forEach(b=>{
+    b.style.background=b.dataset.vf===cat?'var(--terra)':'';
+    b.style.color=b.dataset.vf===cat?'#fff':'';
+    b.style.borderColor=b.dataset.vf===cat?'var(--terra)':'';
+  });
+  renderViralGrid();
 }
 
-function renderContentCalendar(){
-  loadContentState();
-  const ws=getWeekStart(_ctWeekOffset);
-  const cal=document.getElementById('ctCalendar');
-  let h='';
-  let doneCount=0;
-  for(let i=0;i<5;i++){
-    const day=new Date(ws); day.setDate(day.getDate()+i);
-    const ds=dateStr(day);
-    const idea=getIdeaForDay(i,ws);
-    const done=!!_ctDoneMap[ds];
-    if(done) doneCount++;
-    const isToday=ds===dateStr(new Date());
-    const pillarColor=PILLAR_COLORS[idea.pillar];
-    h+=`<div onclick="selectContentDay(${i})" style="border:2px solid ${isToday?'var(--terra)':'var(--line)'};border-radius:14px;padding:.9rem .7rem;cursor:pointer;background:${done?'rgba(164,229,205,.15)':'#fff'};transition:all .2s;position:relative;${isToday?'box-shadow:0 4px 15px -5px rgba(200,116,90,.3)':''}">
-      <div style="font-size:.72rem;font-weight:700;color:${isToday?'var(--terra)':'var(--muted)'};text-transform:uppercase;margin-bottom:.4rem">${DAY_NAMES[i]}</div>
-      <div style="font-size:.68rem;color:var(--muted);margin-bottom:.5rem">${day.getDate()}/${day.getMonth()+1}</div>
-      <div style="font-size:.78rem;font-weight:600;color:var(--ink);line-height:1.3;margin-bottom:.5rem;min-height:2.4em">${idea.title}</div>
-      <span style="display:inline-block;padding:.2rem .5rem;border-radius:99px;font-size:.62rem;font-weight:700;color:#fff;background:${pillarColor}">${PILLAR_LABELS[idea.pillar]}</span>
-      ${done?'<div style="position:absolute;top:.5rem;right:.5rem;font-size:1.1rem">✓</div>':''}
-    </div>`;
-  }
-  cal.innerHTML=h;
-  // Progress
-  document.getElementById('ctProgressBar').style.width=(doneCount/5*100)+'%';
-  document.getElementById('ctProgressText').textContent=doneCount+'/5';
-  document.getElementById('ctStreak').textContent=_ctStreak+' días';
-  // Show today's idea
-  const todayIdx=new Date().getDay()-1;
-  if(todayIdx>=0&&todayIdx<5&&_ctWeekOffset===0) selectContentDay(todayIdx);
-}
-
-function selectContentDay(idx){
-  const ws=getWeekStart(_ctWeekOffset);
-  const idea=getIdeaForDay(idx,ws);
-  const day=new Date(ws); day.setDate(day.getDate()+idx);
-  const card=document.getElementById('ctTodayCard');
-  card.style.display='block';
-  card.dataset.dayIdx=idx;
-  card.dataset.date=dateStr(day);
-  document.getElementById('ctTodayTitle').textContent=idea.title;
-  document.getElementById('ctTodayDesc').textContent=idea.desc;
-  document.getElementById('ctTodayDay').textContent=DAY_NAMES[idx]+' '+day.getDate()+'/'+(day.getMonth()+1);
-  const pp=document.getElementById('ctTodayPillar');
-  pp.textContent=PILLAR_LABELS[idea.pillar];
-  pp.style.background=PILLAR_COLORS[idea.pillar];pp.style.color='#fff';
-  const ul=document.getElementById('ctTodayTipsList');
-  ul.innerHTML=idea.tips.map(t=>'<li>'+t+'</li>').join('');
-  const ex=document.getElementById('ctTodayExample');
-  if(idea.example){ex.href=idea.example;ex.style.display='inline-flex';}else{ex.style.display='none';}
-}
-
-function markDone(){
-  const card=document.getElementById('ctTodayCard');
-  const ds=card.dataset.date;
-  if(!ds)return;
-  _ctDoneMap[ds]=true;
-  // Update streak
-  let streak=0; const today=new Date(); today.setHours(0,0,0,0);
-  for(let i=0;i<365;i++){
-    const d=new Date(today); d.setDate(d.getDate()-i);
-    if(d.getDay()===0||d.getDay()===6)continue;
-    if(_ctDoneMap[dateStr(d)])streak++;
-    else break;
-  }
-  _ctStreak=streak;
-  saveContentState();
-  renderContentCalendar();
-  card.style.display='none';
-}
-
-function skipIdea(){
-  document.getElementById('ctTodayCard').style.display='none';
-}
-
-function ctPrevWeek(){_ctWeekOffset--;renderContentCalendar();}
-function ctNextWeek(){_ctWeekOffset++;renderContentCalendar();}
-
-function filterIdeas(cat){
-  const all=[...CONTENT_IDEAS,..._ctCustomIdeas];
-  const filtered=cat==='all'?all:all.filter(i=>i.pillar===cat);
-  renderIdeasGrid(filtered);
-}
-
-function renderIdeasGrid(ideas){
-  const grid=document.getElementById('ctIdeasGrid');
-  grid.innerHTML=ideas.map(i=>`
-    <div style="border:1px solid var(--line);border-radius:12px;padding:.8rem;background:#fff;cursor:pointer" onclick="alert('Idea: '+this.querySelector('b').textContent)">
-      <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem">
-        <span style="padding:.15rem .45rem;border-radius:99px;font-size:.6rem;font-weight:700;color:#fff;background:${PILLAR_COLORS[i.pillar]}">${PILLAR_LABELS[i.pillar]||i.pillar}</span>
+function renderViralGrid(){
+  const grid=document.getElementById('viralGrid');
+  const empty=document.getElementById('viralEmpty');
+  const filtered=_viralFilter==='all'?_viralContent:_viralContent.filter(v=>v.category===_viralFilter);
+  empty.style.display='none';
+  grid.innerHTML=filtered.map((v,i)=>{
+    const color=PILLAR_COLORS_V[v.category]||'#999';
+    const label=PILLAR_LABELS_V[v.category]||v.category;
+    return `<div onclick="openViralPlayer(${i})" style="cursor:pointer;border-radius:16px;overflow:hidden;background:var(--bg2);border:1px solid var(--line);transition:transform .2s var(--ease),box-shadow .2s;position:relative" onmouseenter="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 32px rgba(0,0,0,.12)'" onmouseleave="this.style.transform='';this.style.boxShadow=''">
+      <div style="aspect-ratio:9/16;background:#111 url('${v.thumbnail||''}') center/cover;position:relative;display:flex;align-items:center;justify-content:center">
+        ${v.thumbnail?'':'<div style="color:rgba(255,255,255,.3);font-size:2.5rem">▶</div>'}
+        <div style="position:absolute;inset:0;background:linear-gradient(transparent 60%,rgba(0,0,0,.8))"></div>
+        <div style="position:absolute;bottom:.6rem;left:.6rem;right:.6rem">
+          <span style="padding:.2rem .5rem;border-radius:99px;font-size:.62rem;font-weight:700;color:#fff;background:${color}">${label}</span>
+          <div style="color:#fff;font-size:.78rem;font-weight:600;margin-top:.3rem;line-height:1.3;text-shadow:0 1px 3px rgba(0,0,0,.8)">${v.title}</div>
+        </div>
       </div>
-      <b style="font-size:.88rem;display:block;margin-bottom:.3rem">${i.title}</b>
-      <p style="font-size:.78rem;color:var(--ink-soft);line-height:1.4;margin:0">${i.desc.slice(0,80)}...</p>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
-function openAddIdea(){
-  const title=prompt('Título de tu idea de reel:');
-  if(!title)return;
-  const desc=prompt('Descripción breve (qué grabar):');
-  const pillar=prompt('Categoría (autoridad/social/bts/viral):','autoridad');
-  _ctCustomIdeas.push({id:900+_ctCustomIdeas.length,title,desc:desc||'',pillar:pillar||'autoridad',tips:['Grábalo a tu estilo'],example:''});
-  saveContentState();
-  filterIdeas('all');
+function openViralPlayer(idx){
+  const filtered=_viralFilter==='all'?_viralContent:_viralContent.filter(v=>v.category===_viralFilter);
+  const player=document.getElementById('viralPlayer');
+  player.style.display='';
+  document.body.style.overflow='hidden';
+  const vc=document.getElementById('viralVideoContainer');
+  if(v.video_url){
+    vc.innerHTML=`<video src="${v.video_url}" style="width:100%;height:100%;object-fit:cover" controls playsinline autoplay muted></video>`;
+  }else{
+    vc.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,.3);font-size:1rem;padding:2rem;text-align:center">Vídeo pendiente</div>';
+  }
+  document.getElementById('viralVideoTitle').textContent=v.title;
+  const catEl=document.getElementById('viralVideoCategory');
+  catEl.textContent=PILLAR_LABELS_V[v.category]||v.category;
+  catEl.style.background=PILLAR_COLORS_V[v.category]||'#999';catEl.style.color='#fff';
+  const ec=document.getElementById('viralExplainContainer');
+  if(v.explain_url){
+    ec.innerHTML=`<video src="${v.explain_url}" style="width:100%;height:100%;object-fit:cover" controls playsinline></video>`;
+  }else{
+    ec.innerHTML='<div style="text-align:center;padding:2rem;color:rgba(255,255,255,.4)"><div style="font-size:2.5rem;margin-bottom:.8rem">💬</div><p style="font-size:.9rem;line-height:1.5">Tu consultor grabará aquí la explicación</p></div>';
+  }
+  document.getElementById('viralExplainText').textContent=v.explain_text||'';
 }
 
-function loadContentModule(){
-  loadContentState();
-  renderContentCalendar();
-  filterIdeas('all');
+function closeViralPlayer(){
+  document.getElementById('viralPlayer').style.display='none';
+  document.body.style.overflow='';
+  document.getElementById('viralVideoContainer').innerHTML='';
+}
+
+async function loadContentModule(){
+  try{
+    const r=await clApi('/api/viral-content?tenant_id='+T);
+    const d=await r.json();
+    _viralContent=d.items||[];
+  }catch(e){_viralContent=[];}
+  renderViralGrid();
 }
 
 async function loadFunnelGallery(){

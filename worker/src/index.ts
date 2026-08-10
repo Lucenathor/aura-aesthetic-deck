@@ -1962,6 +1962,31 @@ export default {
         return json({ ok: true, metrics });
       }
 
+      // ===== VIRAL CONTENT (galería de vídeos para tenants) =====
+      if (p === '/api/viral-content' && req.method === 'GET') {
+        const tenant = url.searchParams.get('tenant_id');
+        if (!tenant) return json({ items: [] });
+        await db.exec(`CREATE TABLE IF NOT EXISTS viral_content (id TEXT PRIMARY KEY, tenant_id TEXT, title TEXT, category TEXT DEFAULT 'viral', video_url TEXT, thumbnail TEXT, explain_url TEXT, explain_text TEXT, created_at TEXT DEFAULT (datetime('now')), sort_order INTEGER DEFAULT 0)`);
+        const { results } = await db.prepare(`SELECT * FROM viral_content WHERE tenant_id=? ORDER BY sort_order ASC, created_at DESC`).bind(tenant).all();
+        return json({ items: results || [] });
+      }
+
+      if (p === '/api/viral-content' && req.method === 'POST') {
+        const b = await req.json() as any;
+        if (!b.tenant_id || !b.title) return json({ error: 'missing fields' }, 400);
+        await db.exec(`CREATE TABLE IF NOT EXISTS viral_content (id TEXT PRIMARY KEY, tenant_id TEXT, title TEXT, category TEXT DEFAULT 'viral', video_url TEXT, thumbnail TEXT, explain_url TEXT, explain_text TEXT, created_at TEXT DEFAULT (datetime('now')), sort_order INTEGER DEFAULT 0)`);
+        const id = crypto.randomUUID();
+        await db.prepare(`INSERT INTO viral_content (id, tenant_id, title, category, video_url, thumbnail, explain_url, explain_text, sort_order) VALUES (?,?,?,?,?,?,?,?,?)`).bind(id, b.tenant_id, b.title, b.category||'viral', b.video_url||'', b.thumbnail||'', b.explain_url||'', b.explain_text||'', b.sort_order||0).run();
+        return json({ ok: true, id });
+      }
+
+      if (p === '/api/viral-content-delete' && req.method === 'POST') {
+        const b = await req.json() as any;
+        if (!b.id) return json({ error: 'missing id' }, 400);
+        await db.prepare(`DELETE FROM viral_content WHERE id=?`).bind(b.id).run();
+        return json({ ok: true });
+      }
+
       if (p === '/api/funnel-metrics' && req.method === 'GET') {
         const tenant = url.searchParams.get('tenant');
         const funnel = url.searchParams.get('funnel'); // opcional
