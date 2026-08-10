@@ -63,11 +63,11 @@ const CORS = {
 const json = (data: any, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
-    headers: { ...CORS, 'Content-Type': 'application/json' },
+    headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
   });
 
 const text = (data: string, status = 200) =>
-  new Response(data, { status, headers: { ...CORS, 'Content-Type': 'text/plain; charset=utf-8' } });
+  new Response(data, { status, headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'text/plain; charset=utf-8' } });
 
 // ─── Helpers ──────────────────────────────────────────────────────
 function slugify(s: string) {
@@ -82,6 +82,63 @@ function slugify(s: string) {
 function uid() {
   return 'l_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
+// ── Slug público aleatorio para URLs de embudo (no adivinable) ──
+function publicSlug() {
+  const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
+  let s = ''; for (let i = 0; i < 8; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+
+// ── Rate Limiting por IP (en memoria del worker, se resetea cada deploy) ──
+const _rateLimits = new Map<string, { count: number; resetAt: number }>();
+function checkRateLimit(ip: string, maxReqs: number, windowSec: number): boolean {
+  const now = Date.now();
+  const key = ip;
+  const entry = _rateLimits.get(key);
+  if (!entry || now > entry.resetAt) {
+    _rateLimits.set(key, { count: 1, resetAt: now + windowSec * 1000 });
+    return true; // allowed
+  }
+  entry.count++;
+  if (entry.count > maxReqs) return false; // blocked
+  return true;
+}
+// Limpiar entradas viejas cada 1000 requests
+let _rlCleanCounter = 0;
+function rlCleanup() {
+  if (++_rlCleanCounter % 1000 !== 0) return;
+  const now = Date.now();
+  for (const [k, v] of _rateLimits) { if (now > v.resetAt) _rateLimits.delete(k); }
+}
+
+// ── Token temporal de sesión para quiz (anti-spam) ──
+async function generateQuizToken(env: Env, tenantId: string, ip: string): Promise<string> {
+  const payload = tenantId + '|' + ip + '|' + Math.floor(Date.now() / 60000); // válido ~1 min window
+  const secret = env.JWT_SECRET || 'aura-default-secret';
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  return b64url(sig).slice(0, 16);
+}
+async function verifyQuizToken(env: Env, token: string, tenantId: string, ip: string): Promise<boolean> {
+  // Verificar ventana actual y anterior (2 minutos de gracia)
+  const secret = env.JWT_SECRET || 'aura-default-secret';
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  for (let offset = 0; offset <= 2; offset++) {
+    const payload = tenantId + '|' + ip + '|' + (Math.floor(Date.now() / 60000) - offset);
+    const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+    if (b64url(sig).slice(0, 16) === token) return true;
+  }
+  return false;
+}
+
+// ── Headers de seguridad ──
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+};
+
 function appId() {
   return 'a_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
@@ -458,6 +515,17 @@ async function ensureInventorySchema(env: Env) {
   try { await env.aura_db.exec('ALTER TABLE treatment_catalog ADD COLUMN pack_original REAL DEFAULT 0'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE treatment_catalog ADD COLUMN next_days INTEGER DEFAULT 0'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE funnels ADD COLUMN treatment_name TEXT'); } catch(e){}
+  // Slug público aleatorio para URLs de embudo (no adivinable)
+  try { await env.aura_db.exec('ALTER TABLE tenants ADD COLUMN public_slug TEXT'); } catch(e){}
+  try { await env.aura_db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_tenant_slug ON tenants (public_slug)'); } catch(e){}
+  // Asignar slug a tenants que no lo tienen
+  try {
+    const noSlug: any = await env.aura_db.prepare('SELECT id FROM tenants WHERE public_slug IS NULL OR public_slug=""').all();
+    for (const row of (noSlug.results || [])) {
+      const slug = publicSlug();
+      await env.aura_db.prepare('UPDATE tenants SET public_slug=? WHERE id=?').bind(slug, row.id).run();
+    }
+  } catch(e){}
   __invReady = true;
 }
 
@@ -659,6 +727,49 @@ export default {
     const url = new URL(req.url);
     const p = url.pathname;
 
+    // ── SEGURIDAD: Rate Limiting por IP ──
+    const clientIP = req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'unknown';
+    rlCleanup();
+    
+    // Endpoints públicos de escritura: 30 req/min por IP (anti-spam de leads falsos)
+    const PUBLIC_WRITE_ENDPOINTS = ['/api/leads', '/api/lead-quiz-update', '/api/lead-chatted', '/api/lead-event'];
+    if (req.method === 'POST' && PUBLIC_WRITE_ENDPOINTS.includes(p)) {
+      if (!checkRateLimit('pub_w:' + clientIP, 30, 60)) {
+        return json({ error: 'rate_limited', detail: 'Demasiadas solicitudes. Intenta de nuevo en 1 minuto.' }, 429);
+      }
+    }
+    // Chat IA: 10 req/min por IP (proteger coste OpenAI)
+    if ((p === '/' || p === '/chat') && req.method === 'POST') {
+      if (!checkRateLimit('chat:' + clientIP, 10, 60)) {
+        return json({ error: 'rate_limited', detail: 'Demasiados mensajes. Espera un momento.' }, 429);
+      }
+    }
+    // Endpoints de lectura pública: 60 req/min por IP (anti-scraping)
+    if (req.method === 'GET' && (p === '/api/content' || p === '/api/slots' || p.startsWith('/api/tenant/'))) {
+      if (!checkRateLimit('pub_r:' + clientIP, 60, 60)) {
+        return json({ error: 'rate_limited' }, 429);
+      }
+    }
+    
+    // ── SEGURIDAD: Honeypot check (si el body tiene campo _hp relleno, es un bot) ──
+    if (req.method === 'POST' && PUBLIC_WRITE_ENDPOINTS.includes(p)) {
+      try {
+        const cloned = req.clone();
+        const body: any = await cloned.json();
+        if (body._hp && body._hp.length > 0) {
+          // Bot detectado — responder OK silenciosamente (no revelar que lo detectamos)
+          return json({ ok: true, lead_id: 'l_' + Math.random().toString(36).slice(2, 10) });
+        }
+      } catch(e) {}
+    }
+    
+    // ── SEGURIDAD: Endpoint para generar quiz token (anti-spam) ──
+    if (p === '/api/quiz-token' && req.method === 'GET') {
+      const tenant = url.searchParams.get('tenant') || '';
+      const token = await generateQuizToken(env, tenant, clientIP);
+      return json({ token });
+    }
+    
     try {
       // Chat IA original (solo POST a raíz o /chat)
       if ((p === '/' || p === '/chat') && req.method === 'POST') return await handleChat(req, env);
@@ -793,14 +904,13 @@ export default {
       // Tenant config (público)
       if (p.startsWith('/api/tenant/') && req.method === 'GET') {
         const id = p.split('/').pop()!;
-        const t = await env.aura_db
-          .prepare('SELECT * FROM tenants WHERE id=?')
-          .bind(id)
-          .first();
+        // Buscar por ID o por slug público
+        let t: any = await env.aura_db.prepare('SELECT * FROM tenants WHERE id=?').bind(id).first();
+        if (!t) t = await env.aura_db.prepare('SELECT * FROM tenants WHERE public_slug=?').bind(id).first();
         if (!t) return json({ error: 'not_found' }, 404);
         const funnels = await env.aura_db
           .prepare('SELECT * FROM funnels WHERE tenant_id=?')
-          .bind(id)
+          .bind(t.id)
           .all();
         return json({ tenant: t, funnels: funnels.results });
       }
@@ -817,7 +927,7 @@ export default {
       }
       if (p === '/api/tenant-meta' && req.method === 'GET') {
         const tid = url.searchParams.get('tenant');
-        const r:any = await env.aura_db.prepare('SELECT google_review_url,logo_url,address,city,whatsapp,email,brand_primary,brand_accent,name FROM tenants WHERE id=?').bind(tid).first();
+        const r:any = await env.aura_db.prepare('SELECT google_review_url,logo_url,address,city,whatsapp,email,brand_primary,brand_accent,name,public_slug FROM tenants WHERE id=?').bind(tid).first();
         return json(r||{});
       }
       // Datos de marca de la clinica para el portal del cliente (publico)
@@ -1079,7 +1189,9 @@ export default {
       if (p === '/api/content' && req.method === 'GET') {
         const tenant = url.searchParams.get('tenant');
         const treatment = url.searchParams.get('treatment');
-        const t: any = await env.aura_db.prepare('SELECT content,name,brand_primary,brand_accent,whatsapp,hero_image_url,doctor_image_url,room_image_url,logo_url FROM tenants WHERE id=?').bind(tenant).first();
+        // Buscar por ID o por slug público
+        let t: any = await env.aura_db.prepare('SELECT id,content,name,brand_primary,brand_accent,whatsapp,hero_image_url,doctor_image_url,room_image_url,logo_url FROM tenants WHERE id=?').bind(tenant).first();
+        if (!t) t = await env.aura_db.prepare('SELECT id,content,name,brand_primary,brand_accent,whatsapp,hero_image_url,doctor_image_url,room_image_url,logo_url FROM tenants WHERE public_slug=?').bind(tenant).first();
         let content: any = {};
         try { content = t?.content ? JSON.parse(t.content) : {}; } catch(e){ content = {}; }
         // Si se pide un tratamiento específico, merge las preguntas del tratamiento sobre el content base
@@ -1159,6 +1271,11 @@ export default {
       // Leads CRUD
       if (p === '/api/leads' && req.method === 'POST') {
         const b = await req.json();
+        // Resolver tenant por slug si no es un ID directo
+        if (b.tenant_id && !b.tenant_id.includes('-') && b.tenant_id.length === 8) {
+          const resolved: any = await env.aura_db.prepare('SELECT id FROM tenants WHERE public_slug=?').bind(b.tenant_id).first();
+          if (resolved) b.tenant_id = resolved.id;
+        }
         const id = uid();
         await env.aura_db
           .prepare(
