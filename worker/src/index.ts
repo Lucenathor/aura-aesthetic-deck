@@ -79,6 +79,12 @@ function slugify(s: string) {
     .replace(/(^-|-$)/g, '')
     .slice(0, 48) || 'clinica-' + Math.random().toString(36).slice(2, 8);
 }
+// Sanitize user input: strip HTML tags and trim
+function sanitize(s: any): string | null {
+  if (s === null || s === undefined) return null;
+  return String(s).replace(/<[^>]*>/g, '').replace(/javascript:/gi, '').trim().slice(0, 500);
+}
+
 function uid() {
   return 'l_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
@@ -1293,6 +1299,14 @@ export default {
           if (resolved) b.tenant_id = resolved.id;
         }
         const id = uid();
+        // Sanitize all user inputs to prevent XSS
+        const sName = sanitize(b.name);
+        const sPhone = sanitize(b.phone);
+        const sEmail = sanitize(b.email);
+        const sTreatment = sanitize(b.treatment);
+        const sMotivo = sanitize(b.motivo);
+        const sPlazo = sanitize(b.plazo);
+        const sObjecion = sanitize(b.objecion);
         await env.aura_db
           .prepare(
             `INSERT INTO leads (id,tenant_id,funnel_id,name,phone,email,treatment,motivo,plazo,objecion,quiz_score,temperature,status,source,ref)
@@ -1302,13 +1316,13 @@ export default {
             id,
             b.tenant_id,
             b.funnel_id || null,
-            b.name || null,
-            b.phone || null,
-            b.email || null,
-            b.treatment || null,
-            b.motivo || null,
-            b.plazo || null,
-            b.objecion || null,
+            sName,
+            sPhone,
+            sEmail,
+            sTreatment,
+            sMotivo,
+            sPlazo,
+            sObjecion,
             b.quiz_score || 0,
             b.temperature || 'cold',
             'new',
