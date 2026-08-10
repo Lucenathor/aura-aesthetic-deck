@@ -137,7 +137,23 @@ const SECURITY_HEADERS = {
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
 };
+
+// CORS dinámico: solo permite orígenes conocidos para endpoints protegidos
+const ALLOWED_ORIGINS = new Set([
+  'https://aura-mvp.pages.dev',
+  'https://auraos.io',
+  'https://www.auraos.io',
+  'http://localhost:3000',
+  'http://localhost:8788',
+]);
+function corsForOrigin(origin: string | null): Record<string, string> {
+  if (origin && (ALLOWED_ORIGINS.has(origin) || origin.endsWith('.aura-mvp.pages.dev'))) {
+    return { ...CORS, 'Access-Control-Allow-Origin': origin, 'Vary': 'Origin' };
+  }
+  return CORS;
+}
 
 function appId() {
   return 'a_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
