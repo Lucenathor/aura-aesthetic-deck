@@ -429,6 +429,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
     <div class="nav-item" data-v="inventario"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8V5a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 5v14a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 19z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg></span> Inventario</div>
     <div class="nav-item" data-v="portal"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 18h4"/></svg></span> Portal cliente</div>
     <div class="nav-item" data-v="embudo"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18l-7 8v6l-4 2v-8z"/></svg></span> Embudo</div>
+    <div class="nav-item" data-v="contenido"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></span> Contenido</div>
     <div class="nav-item" data-v="equipo"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="3.2"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg></span> Equipo</div>
     <div class="nav-item" data-v="ajustes"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Ajustes</div>
     <div class="nav-item" data-v="admin" id="navAdmin" style="display:none"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V5z"/><path d="m9 12 2 2 4-4"/></svg></span> Administración</div>
@@ -938,6 +939,67 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
     </section>
 
     <!-- EQUIPO -->
+
+    <!-- CONTENIDO -->
+    <section class="view" id="v-contenido">
+      <div class="top"><div><h1>Contenido de hoy</h1><div class="sub2">Tu calendario de reels. Cada día una idea lista para grabar. Inspírate, grábalo y márcalo como hecho.</div></div>
+      <div class="actions"><button class="btn" onclick="openAddIdea()">+ Añadir idea</button></div></div>
+      <div style="display:flex;gap:1rem;margin-bottom:1.2rem;flex-wrap:wrap">
+        <div class="card" style="flex:1;min-width:200px;margin-bottom:0">
+          <div style="display:flex;align-items:center;gap:.8rem">
+            <div style="font-size:2.2rem">🔥</div>
+            <div><div style="font-size:.75rem;color:var(--muted);font-weight:600;text-transform:uppercase">Racha</div><b id="ctStreak" style="font-size:1.8rem;font-family:'Fraunces',serif">0 días</b></div>
+          </div>
+        </div>
+        <div class="card" style="flex:2;min-width:280px;margin-bottom:0">
+          <div style="font-size:.75rem;color:var(--muted);font-weight:600;text-transform:uppercase;margin-bottom:.4rem">Progreso esta semana</div>
+          <div style="display:flex;align-items:center;gap:.8rem">
+            <div style="flex:1;height:12px;background:var(--bg2);border-radius:99px;overflow:hidden"><div id="ctProgressBar" style="height:100%;background:linear-gradient(90deg,var(--terra),var(--mint));border-radius:99px;width:0%;transition:width .5s var(--ease)"></div></div>
+            <b id="ctProgressText" style="font-size:.9rem;color:var(--terra)">0/5</b>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+          <h3 style="margin-bottom:0">Esta semana</h3>
+          <div style="display:flex;gap:.4rem">
+            <button class="btn" onclick="ctPrevWeek()" style="padding:.4rem .7rem;font-size:.8rem">&larr;</button>
+            <button class="btn" onclick="ctNextWeek()" style="padding:.4rem .7rem;font-size:.8rem">&rarr;</button>
+          </div>
+        </div>
+        <div id="ctCalendar" style="display:grid;grid-template-columns:repeat(5,1fr);gap:.8rem"></div>
+      </div>
+      <div class="card" id="ctTodayCard" style="display:none">
+        <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.8rem">
+          <span id="ctTodayPillar" style="padding:.3rem .7rem;border-radius:99px;font-size:.72rem;font-weight:700;text-transform:uppercase"></span>
+          <span style="font-size:.8rem;color:var(--muted)" id="ctTodayDay"></span>
+        </div>
+        <h3 id="ctTodayTitle" style="font-size:1.3rem;margin-bottom:.5rem"></h3>
+        <p id="ctTodayDesc" style="color:var(--ink-soft);font-size:.92rem;line-height:1.6;margin-bottom:1rem"></p>
+        <div id="ctTodayTips" style="background:var(--bg2);border-radius:12px;padding:1rem;margin-bottom:1rem">
+          <div style="font-size:.75rem;font-weight:700;color:var(--terra);text-transform:uppercase;margin-bottom:.4rem">Tips para grabarlo</div>
+          <ul id="ctTodayTipsList" style="font-size:.88rem;color:var(--ink-soft);padding-left:1.2rem;line-height:1.7"></ul>
+        </div>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+          <a id="ctTodayExample" href="#" target="_blank" class="btn" style="font-size:.82rem">Ver ejemplo real</a>
+          <button class="btn prim" onclick="markDone()">Lo he publicado</button>
+          <button class="btn" onclick="skipIdea()" style="color:var(--muted)">Saltar</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Banco de ideas</h3>
+        <p class="sub">Todas las ideas disponibles. Pulsa una para asignarla a un día.</p>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin:.8rem 0">
+          <button class="btn" onclick="filterIdeas('all')" style="font-size:.78rem;padding:.35rem .7rem">Todas</button>
+          <button class="btn" onclick="filterIdeas('educacion')" style="font-size:.78rem;padding:.35rem .7rem">Educacion</button>
+          <button class="btn" onclick="filterIdeas('social')" style="font-size:.78rem;padding:.35rem .7rem">Prueba social</button>
+          <button class="btn" onclick="filterIdeas('bts')" style="font-size:.78rem;padding:.35rem .7rem">Detras de camaras</button>
+          <button class="btn" onclick="filterIdeas('viral')" style="font-size:.78rem;padding:.35rem .7rem">Viral</button>
+        </div>
+        <div id="ctIdeasGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.7rem;max-height:420px;overflow-y:auto"></div>
+      </div>
+    </section>
+
     <section class="view" id="v-equipo">
       <div class="top"><div><h1>Tu equipo</h1><div class="sub2">Da acceso al panel a tu gente y elige qué ve cada una. Aquí también defines las nóminas, que se descuentan solas de tu beneficio real.</div></div></div>
       <div class="card">
@@ -1365,6 +1427,7 @@ function goSection(v,push){
   if(v==='pipeline')loadPipeline();
   if(v==='equipo'){ loadTeam(); try{ loadEmployees(); }catch(e){} }
   if(v==='embudo'){showGallery();loadFunnelGallery();}
+  if(v==='contenido'){loadContentModule();}
   if(v==='agenda')loadAgendaCal();
   if(v==='caja')loadCaja();
   if(v==='ajustes'){loadSmsTpl();loadSmsCredits();try{ if(typeof buildTimeline==='function')buildTimeline(); }catch(e){}}
@@ -1406,7 +1469,7 @@ document.addEventListener('click',(e)=>{
 function restoreSection(){
   let v=(location.hash||'').replace('#',''); 
   if(!v){ try{ v=localStorage.getItem('aura_section')||'resumen'; }catch(e){ v='resumen'; } }
-  const valid=['resumen','pacientes','pipeline','agenda','caja','embudo','equipo','ajustes','whatsapp','inventario','portal','facturacion','admin'];
+  const valid=['resumen','pacientes','pipeline','agenda','caja','embudo','contenido','equipo','ajustes','whatsapp','inventario','portal','facturacion','admin'];
   if(!valid.includes(v))v='resumen';
   goSection(v,false);
 }
@@ -3277,6 +3340,188 @@ let _galleryFunnels=[];
 function showGallery(){ document.getElementById('funnelGalleryView').style.display=''; document.getElementById('funnelEditorView').style.display='none'; }
 function showEditor(){ document.getElementById('funnelGalleryView').style.display='none'; document.getElementById('funnelEditorView').style.display=''; }
 function backToGallery(){ showGallery(); renderGallery(); }
+
+// ═══════════════════════════════════════════════════════════
+// MÓDULO CONTENIDO — Calendario de Reels para Clínica Estética
+// ═══════════════════════════════════════════════════════════
+const CONTENT_IDEAS=[
+{id:1,title:'¿Duele el bótox?',pillar:'educacion',desc:'Graba un reel de 15s con la doctora respondiendo esta pregunta mirando a cámara. Tono cercano y honesto.',tips:['Usa luz natural','Responde en máximo 3 frases','Termina con: ¿Tienes más dudas? Escríbenos'],example:'https://www.instagram.com/reel/DHnjuKkAhQA/'},
+{id:2,title:'Antes y después: labios naturales',pillar:'social',desc:'Muestra un resultado real de aumento de labios. Foto antes (sin filtro) y resultado a los 15 días.',tips:['Misma luz en ambas fotos','Añade texto: "Sin filtro, sin edición"','Pide permiso a la paciente'],example:'https://www.instagram.com/reel/DSlmyaTgbjJ/'},
+{id:3,title:'Un día en la clínica',pillar:'bts',desc:'Time-lapse de tu jornada: llegada, preparación, primera paciente, descanso, última cita. Música trending.',tips:['Graba clips de 3-5s cada uno','Usa un audio trending','Muestra al equipo sonriendo'],example:'https://www.instagram.com/reel/Dbq0HqDO8h6/'},
+{id:4,title:'POV: llegas a tu cita de labios',pillar:'viral',desc:'Usa un audio trending. La paciente entra, se sienta, y al final se ve el resultado. Formato POV.',tips:['Audio viral del momento','Transición antes/después','Que la paciente sonría al final'],example:'https://www.tiktok.com/@byangiealvarez/video/7377025964376591621'},
+{id:5,title:'3 mitos sobre el ácido hialurónico',pillar:'educacion',desc:'Carrusel o reel desmontando 3 mitos comunes. Ej: "Se nota mucho", "Es para siempre", "Duele mucho".',tips:['Un mito por slide/escena','Usa texto grande y claro','Cierra con: "¿Cuál creías tú?"'],example:'https://www.instagram.com/p/DS1De3hkdTi/'},
+{id:6,title:'Reacción de paciente al verse',pillar:'social',desc:'Graba el momento en que la paciente se mira al espejo después del tratamiento. La emoción vende.',tips:['Pide permiso antes','Graba su cara, no el espejo','Que sea espontáneo, no actuado'],example:'https://www.instagram.com/reel/DTjI4f2kdHI/'},
+{id:7,title:'Preparando la sala',pillar:'bts',desc:'ASMR de preparación: abrir productos, colocar la camilla, encender la luz. Satisfactorio y profesional.',tips:['Sin música, solo sonido ambiente','Manos limpias y guantes','Muestra productos de marca'],example:''},
+{id:8,title:'Expectativa vs realidad en estética',pillar:'viral',desc:'Humor: lo que la gente cree que es una clínica estética vs lo que realmente es. Desmitificar.',tips:['Usa split screen','Exagera la expectativa (drama)','La realidad: profesional y cercana'],example:''},
+{id:9,title:'Rutina post-tratamiento',pillar:'educacion',desc:'Qué hacer las primeras 24-48h después de un relleno o bótox. Consejos prácticos en 30s.',tips:['Lista de 3-5 cosas','Usa iconos/texto en pantalla','Termina con: "Guárdalo para cuando lo necesites"'],example:''},
+{id:10,title:'Testimonio: por qué vuelvo cada 6 meses',pillar:'social',desc:'Una paciente fiel cuenta por qué repite. Formato entrevista corta (15-20s).',tips:['Pregunta: ¿qué es lo que más te gusta?','Que hable natural, sin guión','Subtitula el vídeo'],example:''},
+{id:11,title:'El equipo responde preguntas random',pillar:'bts',desc:'Preguntas divertidas al equipo: "¿Qué tratamiento te harías?", "¿Tu producto favorito?". Humaniza.',tips:['3-4 preguntas rápidas','Que se rían, que sea natural','Música de fondo suave'],example:''},
+{id:12,title:'Rating de tratamientos por dolor',pillar:'viral',desc:'Tier list: clasifica los tratamientos del menos al más molesto. Genera debate en comentarios.',tips:['Usa escala del 1 al 10','Sé honesta','Pide en el caption: "¿Estás de acuerdo?"'],example:''},
+{id:13,title:'Diferencia entre relleno y bótox',pillar:'educacion',desc:'Explicación rápida y visual. Mucha gente los confunde. Usa gestos o dibujos.',tips:['Máximo 20 segundos','Usa las manos para señalar zonas','Cierra con: "¿Cuál necesitas tú?"'],example:''},
+{id:14,title:'Mi paciente más nerviosa',pillar:'social',desc:'Cuenta la historia (con permiso) de una paciente que tenía mucho miedo y cómo fue su experiencia.',tips:['Storytelling en 30s','Final positivo siempre','Que inspire a otras con miedo'],example:''},
+{id:15,title:'Tour por la clínica en 30s',pillar:'bts',desc:'Recorrido rápido: recepción, sala de espera, gabinetes, zona de recuperación. Que se vea limpio y premium.',tips:['Movimiento fluido (gimbal o mano firme)','Música elegante','Muestra detalles bonitos'],example:''},
+{id:16,title:'Lo que pido vs lo que me hacen',pillar:'viral',desc:'Formato trending: la paciente muestra su referencia y luego el resultado real. Satisfacción garantizada.',tips:['Foto de referencia + resultado real','Transición limpia','Audio trending'],example:''},
+{id:17,title:'Skincare mínimo para tu edad',pillar:'educacion',desc:'Rutina básica por décadas: 20s (protector), 30s (+retinol), 40s (+péptidos). Educativo y útil.',tips:['Un slide por década','Productos genéricos (no marcas)','Guárdalo = más alcance'],example:''},
+{id:18,title:'De no querer hacerse nada a...',pillar:'social',desc:'Journey de una paciente: primera consulta con dudas → resultado final feliz. Storytelling.',tips:['Usa fotos del proceso','Voz en off de la paciente','Música emotiva'],example:''},
+{id:19,title:'Así nos formamos',pillar:'bts',desc:'Muestra al equipo en un congreso, curso o formación. Transmite que estáis siempre actualizados.',tips:['Fotos/vídeos del evento','Menciona qué aprendisteis','Hashtag del congreso'],example:''},
+{id:20,title:'Si los tratamientos fueran personas',pillar:'viral',desc:'Comedia: asigna personalidades a cada tratamiento. Bótox = el puntual, Labios = la protagonista...',tips:['Máximo 4-5 tratamientos','Que sea gracioso','Pide: "¿Cuál eres tú?"'],example:''},
+{id:21,title:'¿Cada cuánto se retoca el bótox?',pillar:'educacion',desc:'Timeline visual: primera vez → 3-4 meses → mantenimiento. Resuelve la duda más frecuente.',tips:['Usa una línea temporal','Números claros','Cierra con: "Agenda tu retoque"'],example:''},
+{id:22,title:'3 meses después del bótox',pillar:'social',desc:'Seguimiento real: cómo se ve la paciente 3 meses después. Demuestra duración y naturalidad.',tips:['Misma paciente, misma luz','Texto: "3 meses después"','Sin filtros'],example:''},
+{id:23,title:'Lo que desayunamos antes de empezar',pillar:'bts',desc:'Contenido casual: el café del equipo, el desayuno, la charla antes de abrir. Humaniza mucho.',tips:['Formato Stories/Reel casual','Que se vea el equipo relajado','Música chill'],example:''},
+{id:24,title:'Ingredientes que SÍ funcionan',pillar:'educacion',desc:'Top 3 ingredientes con evidencia científica: retinol, vitamina C, ácido hialurónico. Educativo.',tips:['Un ingrediente por escena','Di para qué sirve cada uno','Cierra con: "¿Cuál usas tú?"'],example:''},
+{id:25,title:'El cambio que más me piden',pillar:'social',desc:'Revela cuál es el tratamiento estrella del mes. Muestra un ejemplo real.',tips:['Dato: "Este mes, 8 de cada 10..."','Antes/después del tratamiento','CTA: "¿Tú también lo quieres?"'],example:''},
+{id:26,title:'Nuestra playlist de clínica',pillar:'bts',desc:'Comparte la playlist que ponéis en la clínica. Crea ambiente y conecta con pacientes.',tips:['Muestra Spotify/playlist','Graba el ambiente de la clínica','Pide sugerencias en comments'],example:''},
+{id:27,title:'¿Qué es la armonización facial?',pillar:'educacion',desc:'Explica en 20s qué zonas se tratan y por qué se llama "armonización". Visual y claro.',tips:['Señala zonas en tu cara','Antes/después sutil','Texto: "No es cambiar, es equilibrar"'],example:''},
+{id:28,title:'Resultados reales vs expectativas',pillar:'social',desc:'Honestidad: muestra qué se puede conseguir realmente vs lo que piden en consulta. Genera confianza.',tips:['Sé realista y profesional','Muestra casos reales','Cierra con: "Siempre te asesoramos"'],example:''},
+{id:29,title:'Lo que nadie te cuenta del peeling',pillar:'educacion',desc:'Expectativas reales: los primeros días no es bonito, pero el resultado merece la pena.',tips:['Muestra el proceso día a día','Sé honesta con el downtime','Final: piel renovada'],example:''},
+{id:30,title:'Spotlight: paciente masculino',pillar:'social',desc:'Visibiliza que los hombres también vienen. Tratamiento popular: mandíbula, ojeras, o bótox preventivo.',tips:['Con permiso del paciente','Normaliza la estética masculina','Dato: "El 30% de nuestros pacientes son hombres"'],example:''}
+];
+
+// Asignación semanal (lun-vie)
+const WEEK_PILLARS=['educacion','social','bts','educacion','viral'];
+const PILLAR_COLORS={educacion:'#2980b9',social:'#27ae60',bts:'#8e44ad',viral:'#e74c3c'};
+const PILLAR_LABELS={educacion:'Educación',social:'Prueba social',bts:'Detrás de cámaras',viral:'Viral'};
+const DAY_NAMES=['Lunes','Martes','Miércoles','Jueves','Viernes'];
+
+let _ctWeekOffset=0;
+let _ctDoneMap={}; // {dateStr: ideaId}
+let _ctStreak=0;
+let _ctCustomIdeas=[];
+
+function getWeekStart(offset=0){
+  const d=new Date(); d.setDate(d.getDate()-d.getDay()+1+(offset*7)); d.setHours(0,0,0,0); return d;
+}
+function dateStr(d){ return d.toISOString().slice(0,10); }
+
+function loadContentState(){
+  try{
+    const s=localStorage.getItem('aura_content_'+T);
+    if(s){ const p=JSON.parse(s); _ctDoneMap=p.done||{}; _ctStreak=p.streak||0; _ctCustomIdeas=p.custom||[]; }
+  }catch(e){}
+}
+function saveContentState(){
+  try{ localStorage.setItem('aura_content_'+T,JSON.stringify({done:_ctDoneMap,streak:_ctStreak,custom:_ctCustomIdeas})); }catch(e){}
+}
+
+function getIdeaForDay(dayIndex, weekStart){
+  const pillar=WEEK_PILLARS[dayIndex];
+  const pool=CONTENT_IDEAS.filter(i=>i.pillar===pillar);
+  const weekNum=Math.floor((weekStart.getTime()-new Date(2026,0,1).getTime())/(7*86400000));
+  return pool[(weekNum*5+dayIndex)%pool.length];
+}
+
+function renderContentCalendar(){
+  loadContentState();
+  const ws=getWeekStart(_ctWeekOffset);
+  const cal=document.getElementById('ctCalendar');
+  let h='';
+  let doneCount=0;
+  for(let i=0;i<5;i++){
+    const day=new Date(ws); day.setDate(day.getDate()+i);
+    const ds=dateStr(day);
+    const idea=getIdeaForDay(i,ws);
+    const done=!!_ctDoneMap[ds];
+    if(done) doneCount++;
+    const isToday=ds===dateStr(new Date());
+    const pillarColor=PILLAR_COLORS[idea.pillar];
+    h+=`<div onclick="selectContentDay(${i})" style="border:2px solid ${isToday?'var(--terra)':'var(--line)'};border-radius:14px;padding:.9rem .7rem;cursor:pointer;background:${done?'rgba(164,229,205,.15)':'#fff'};transition:all .2s;position:relative;${isToday?'box-shadow:0 4px 15px -5px rgba(200,116,90,.3)':''}">
+      <div style="font-size:.72rem;font-weight:700;color:${isToday?'var(--terra)':'var(--muted)'};text-transform:uppercase;margin-bottom:.4rem">${DAY_NAMES[i]}</div>
+      <div style="font-size:.68rem;color:var(--muted);margin-bottom:.5rem">${day.getDate()}/${day.getMonth()+1}</div>
+      <div style="font-size:.78rem;font-weight:600;color:var(--ink);line-height:1.3;margin-bottom:.5rem;min-height:2.4em">${idea.title}</div>
+      <span style="display:inline-block;padding:.2rem .5rem;border-radius:99px;font-size:.62rem;font-weight:700;color:#fff;background:${pillarColor}">${PILLAR_LABELS[idea.pillar]}</span>
+      ${done?'<div style="position:absolute;top:.5rem;right:.5rem;font-size:1.1rem">✓</div>':''}
+    </div>`;
+  }
+  cal.innerHTML=h;
+  // Progress
+  document.getElementById('ctProgressBar').style.width=(doneCount/5*100)+'%';
+  document.getElementById('ctProgressText').textContent=doneCount+'/5';
+  document.getElementById('ctStreak').textContent=_ctStreak+' días';
+  // Show today's idea
+  const todayIdx=new Date().getDay()-1;
+  if(todayIdx>=0&&todayIdx<5&&_ctWeekOffset===0) selectContentDay(todayIdx);
+}
+
+function selectContentDay(idx){
+  const ws=getWeekStart(_ctWeekOffset);
+  const idea=getIdeaForDay(idx,ws);
+  const day=new Date(ws); day.setDate(day.getDate()+idx);
+  const card=document.getElementById('ctTodayCard');
+  card.style.display='block';
+  card.dataset.dayIdx=idx;
+  card.dataset.date=dateStr(day);
+  document.getElementById('ctTodayTitle').textContent=idea.title;
+  document.getElementById('ctTodayDesc').textContent=idea.desc;
+  document.getElementById('ctTodayDay').textContent=DAY_NAMES[idx]+' '+day.getDate()+'/'+(day.getMonth()+1);
+  const pp=document.getElementById('ctTodayPillar');
+  pp.textContent=PILLAR_LABELS[idea.pillar];
+  pp.style.background=PILLAR_COLORS[idea.pillar];pp.style.color='#fff';
+  const ul=document.getElementById('ctTodayTipsList');
+  ul.innerHTML=idea.tips.map(t=>'<li>'+t+'</li>').join('');
+  const ex=document.getElementById('ctTodayExample');
+  if(idea.example){ex.href=idea.example;ex.style.display='inline-flex';}else{ex.style.display='none';}
+}
+
+function markDone(){
+  const card=document.getElementById('ctTodayCard');
+  const ds=card.dataset.date;
+  if(!ds)return;
+  _ctDoneMap[ds]=true;
+  // Update streak
+  let streak=0; const today=new Date(); today.setHours(0,0,0,0);
+  for(let i=0;i<365;i++){
+    const d=new Date(today); d.setDate(d.getDate()-i);
+    if(d.getDay()===0||d.getDay()===6)continue;
+    if(_ctDoneMap[dateStr(d)])streak++;
+    else break;
+  }
+  _ctStreak=streak;
+  saveContentState();
+  renderContentCalendar();
+  card.style.display='none';
+}
+
+function skipIdea(){
+  document.getElementById('ctTodayCard').style.display='none';
+}
+
+function ctPrevWeek(){_ctWeekOffset--;renderContentCalendar();}
+function ctNextWeek(){_ctWeekOffset++;renderContentCalendar();}
+
+function filterIdeas(cat){
+  const all=[...CONTENT_IDEAS,..._ctCustomIdeas];
+  const filtered=cat==='all'?all:all.filter(i=>i.pillar===cat);
+  renderIdeasGrid(filtered);
+}
+
+function renderIdeasGrid(ideas){
+  const grid=document.getElementById('ctIdeasGrid');
+  grid.innerHTML=ideas.map(i=>`
+    <div style="border:1px solid var(--line);border-radius:12px;padding:.8rem;background:#fff;cursor:pointer" onclick="alert('Idea: '+this.querySelector('b').textContent)">
+      <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem">
+        <span style="padding:.15rem .45rem;border-radius:99px;font-size:.6rem;font-weight:700;color:#fff;background:${PILLAR_COLORS[i.pillar]}">${PILLAR_LABELS[i.pillar]||i.pillar}</span>
+      </div>
+      <b style="font-size:.88rem;display:block;margin-bottom:.3rem">${i.title}</b>
+      <p style="font-size:.78rem;color:var(--ink-soft);line-height:1.4;margin:0">${i.desc.slice(0,80)}...</p>
+    </div>
+  `).join('');
+}
+
+function openAddIdea(){
+  const title=prompt('Título de tu idea de reel:');
+  if(!title)return;
+  const desc=prompt('Descripción breve (qué grabar):');
+  const pillar=prompt('Categoría (educacion/social/bts/viral):','educacion');
+  _ctCustomIdeas.push({id:900+_ctCustomIdeas.length,title,desc:desc||'',pillar:pillar||'educacion',tips:['Grábalo a tu estilo'],example:''});
+  saveContentState();
+  filterIdeas('all');
+}
+
+function loadContentModule(){
+  loadContentState();
+  renderContentCalendar();
+  filterIdeas('all');
+}
 
 async function loadFunnelGallery(){
   try{
