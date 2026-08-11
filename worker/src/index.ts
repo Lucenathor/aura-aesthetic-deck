@@ -2016,9 +2016,21 @@ export default {
 
       if (p === '/api/viral-ranking' && req.method === 'GET') {
         await env.aura_db.exec(VIRAL_REELS_TABLE);
-        // Solo reels de los últimos 30 días, ordenados por views
+        // Mantener endpoint legacy
         const { results } = await env.aura_db.prepare(`SELECT * FROM viral_reels WHERE created_at >= datetime('now','-30 days') ORDER BY views DESC LIMIT 50`).all();
         return json({ items: results || [] });
+      }
+
+      if (p === '/api/viral-ranking-monthly' && req.method === 'GET') {
+        await env.aura_db.exec(VIRAL_REELS_TABLE);
+        // Mes actual: primer día del mes hasta ahora
+        const now = new Date();
+        const monthStart = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+        // Ranking: agrupa por clínica, suma views totales
+        const { results: rankingRows } = await env.aura_db.prepare(`SELECT tenant_id, clinic_name, SUM(views) as total_views, COUNT(*) as reel_count, SUM(fires) as total_fires FROM viral_reels WHERE created_at >= ? GROUP BY tenant_id ORDER BY total_views DESC LIMIT 20`).bind(monthStart).all();
+        // Feed: todos los reels del mes ordenados por views
+        const { results: reelRows } = await env.aura_db.prepare(`SELECT * FROM viral_reels WHERE created_at >= ? ORDER BY views DESC LIMIT 30`).bind(monthStart).all();
+        return json({ ranking: rankingRows || [], reels: reelRows || [] });
       }
 
       if (p === '/api/viral-fire' && req.method === 'POST') {
@@ -3879,6 +3891,8 @@ export default {
     ctx.waitUntil(runAutomations(env).catch((e:any)=>console.error('automations error', e)));
     // Respaldo WhatsApp: cada 10 min resincroniza chats por si el webhook falló (Unipile lo recomienda)
     if (min % 10 === 0) ctx.waitUntil(runWaSync(env).catch((e:any)=>console.error('wa sync error', e)));
+    // Scraping de views de reels: 1 vez al día a las 06:00 UTC
+    if (hour === 6 && min === 0) ctx.waitUntil(scrapeReelViews(env).catch((e:any)=>console.error('reel scrape error', e)));
   },
 };
 
@@ -4469,4 +4483,73 @@ Usa los colores detectados de la web como brand_primary y brand_accent si son ap
     dashboard_url: `/dashboard?t=${tenantId}`,
     images_status: 'generating',
   });
+}
+
+// ─── SCRAPING DIARIO DE VIEWS DE REELS (cron 06:00 UTC) ───
+// Recorre todos los reels del mes actual, extrae views de Instagram/TikTok vía scraping público
+async function scrapeReelViews(env: Env): Promise<void> {
+  try {
+    await env.aura_db.exec(`CREATE TABLE IF NOT EXISTS viral_reels (id TEXT PRIMARY KEY, tenant_id TEXT, clinic_name TEXT, reel_url TEXT, title TEXT, platform TEXT DEFAULT 'instagram', views INTEGER DEFAULT 0, fires INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))`);
+    const now = new Date();
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`;
+    const { results: reels } = await env.aura_db.prepare(`SELECT id, reel_url, platform FROM viral_reels WHERE created_at >= ?`).bind(monthStart).all() as any;
+    if (!reels || !reels.length) return;
+    
+    for (const reel of reels) {
+      try {
+        let views = 0;
+        if (reel.platform === 'instagram') {
+          views = await scrapeInstagramViews(reel.reel_url);
+        } else if (reel.platform === 'tiktok') {
+          views = await scrapeTiktokViews(reel.reel_url);
+        }
+        if (views > 0) {
+          await env.aura_db.prepare(`UPDATE viral_reels SET views=? WHERE id=? AND views<?`).bind(views, reel.id, views).run();
+        }
+      } catch(e) { /* skip individual reel errors */ }
+    }
+  } catch(e) { console.error('scrapeReelViews global error', e); }
+}
+
+// Scraping de views de Instagram Reel (vía oEmbed o página pública)
+async function scrapeInstagramViews(url: string): Promise<number> {
+  try {
+    // Método 1: Instagram oEmbed (no da views pero confirma que el reel existe)
+    // Método 2: Fetch de la página pública y extraer video_view_count del JSON-LD
+    const resp = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+      redirect: 'follow'
+    });
+    if (!resp.ok) return 0;
+    const html = await resp.text();
+    // Buscar video_view_count en el HTML (Instagram lo incluye en el JSON embebido)
+    const viewMatch = html.match(/"video_view_count"\s*:\s*(\d+)/);
+    if (viewMatch) return parseInt(viewMatch[1]);
+    // Alternativa: buscar play_count
+    const playMatch = html.match(/"play_count"\s*:\s*(\d+)/);
+    if (playMatch) return parseInt(playMatch[1]);
+    // Alternativa: interactionCount
+    const interMatch = html.match(/"interactionCount"\s*:\s*"?(\d+)"?/);
+    if (interMatch) return parseInt(interMatch[1]);
+    return 0;
+  } catch(e) { return 0; }
+}
+
+// Scraping de views de TikTok (vía página pública)
+async function scrapeTiktokViews(url: string): Promise<number> {
+  try {
+    const resp = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+      redirect: 'follow'
+    });
+    if (!resp.ok) return 0;
+    const html = await resp.text();
+    // TikTok incluye playCount en el JSON-LD
+    const viewMatch = html.match(/"playCount"\s*:\s*(\d+)/);
+    if (viewMatch) return parseInt(viewMatch[1]);
+    // Alternativa: interactionCount
+    const interMatch = html.match(/"interactionCount"\s*:\s*"?(\d+)"?/);
+    if (interMatch) return parseInt(interMatch[1]);
+    return 0;
+  } catch(e) { return 0; }
 }
