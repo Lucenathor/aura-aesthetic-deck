@@ -1966,17 +1966,29 @@ export default {
       if (p === '/api/viral-content' && req.method === 'GET') {
         const tenant = url.searchParams.get('tenant_id');
         if (!tenant) return json({ items: [] });
-        await env.aura_db.exec(`CREATE TABLE IF NOT EXISTS viral_content (id TEXT PRIMARY KEY, tenant_id TEXT, title TEXT, category TEXT DEFAULT 'viral', video_url TEXT, thumbnail TEXT, explain_url TEXT, explain_text TEXT, created_at TEXT DEFAULT (datetime('now')), sort_order INTEGER DEFAULT 0)`);
-        const { results } = await env.aura_db.prepare(`SELECT * FROM viral_content WHERE tenant_id=? ORDER BY sort_order ASC, created_at DESC`).bind(tenant).all();
+        await env.aura_db.exec(`CREATE TABLE IF NOT EXISTS viral_content (id TEXT PRIMARY KEY, tenant_id TEXT, title TEXT, category TEXT DEFAULT 'viral', video_url TEXT, thumbnail TEXT, explain_url TEXT, explain_text TEXT, week_id TEXT, day_index INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), sort_order INTEGER DEFAULT 0)`);
+        try { await env.aura_db.exec("ALTER TABLE viral_content ADD COLUMN week_id TEXT"); } catch(e) {}
+        try { await env.aura_db.exec("ALTER TABLE viral_content ADD COLUMN day_index INTEGER DEFAULT 0"); } catch(e) {}
+        const week = url.searchParams.get('week');
+        let results: any[];
+        if (week) {
+          const r = await env.aura_db.prepare(`SELECT * FROM viral_content WHERE tenant_id=? AND week_id=? ORDER BY day_index ASC`).bind(tenant, week).all();
+          results = r.results || [];
+        } else {
+          const r = await env.aura_db.prepare(`SELECT * FROM viral_content WHERE tenant_id=? ORDER BY sort_order ASC, created_at DESC`).bind(tenant).all();
+          results = r.results || [];
+        }
         return json({ items: results || [] });
       }
 
       if (p === '/api/viral-content' && req.method === 'POST') {
         const b = await req.json() as any;
         if (!b.tenant_id || !b.title) return json({ error: 'missing fields' }, 400);
-        await env.aura_db.exec(`CREATE TABLE IF NOT EXISTS viral_content (id TEXT PRIMARY KEY, tenant_id TEXT, title TEXT, category TEXT DEFAULT 'viral', video_url TEXT, thumbnail TEXT, explain_url TEXT, explain_text TEXT, created_at TEXT DEFAULT (datetime('now')), sort_order INTEGER DEFAULT 0)`);
+        await env.aura_db.exec(`CREATE TABLE IF NOT EXISTS viral_content (id TEXT PRIMARY KEY, tenant_id TEXT, title TEXT, category TEXT DEFAULT 'viral', video_url TEXT, thumbnail TEXT, explain_url TEXT, explain_text TEXT, week_id TEXT, day_index INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), sort_order INTEGER DEFAULT 0)`);
+        try { await env.aura_db.exec("ALTER TABLE viral_content ADD COLUMN week_id TEXT"); } catch(e) {}
+        try { await env.aura_db.exec("ALTER TABLE viral_content ADD COLUMN day_index INTEGER DEFAULT 0"); } catch(e) {}
         const id = crypto.randomUUID();
-        await env.aura_db.prepare(`INSERT INTO viral_content (id, tenant_id, title, category, video_url, thumbnail, explain_url, explain_text, sort_order) VALUES (?,?,?,?,?,?,?,?,?)`).bind(id, b.tenant_id, b.title, b.category||'viral', b.video_url||'', b.thumbnail||'', b.explain_url||'', b.explain_text||'', b.sort_order||0).run();
+        await env.aura_db.prepare(`INSERT INTO viral_content (id, tenant_id, title, category, video_url, thumbnail, explain_url, explain_text, week_id, day_index, sort_order) VALUES (?,?,?,?,?,?,?,?,?,?,?)`).bind(id, b.tenant_id, b.title, b.category||'viral', b.video_url||'', b.thumbnail||'', b.explain_url||'', b.explain_text||'', b.week_id||'', b.day_index||0, b.sort_order||0).run();
         return json({ ok: true, id });
       }
 

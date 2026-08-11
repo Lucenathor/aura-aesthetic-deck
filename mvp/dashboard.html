@@ -942,44 +942,34 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 
     <!-- CONTENIDO -->
     <section class="view" id="v-contenido">
-      <div class="top"><div><h1>Contenido viral</h1><div class="sub2">Reels y TikToks virales de referencia para tu clínica. Mira el vídeo, escucha la explicación y replícalo.</div></div></div>
-      <!-- Filtros por categoría -->
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.2rem">
-        <button class="btn" onclick="filterViralContent('all')" data-vf="all" style="font-size:.82rem;padding:.45rem .9rem;border-radius:99px;font-weight:600;background:var(--terra);color:#fff;border-color:var(--terra)">Todos</button>
-        <button class="btn" onclick="filterViralContent('viral')" data-vf="viral" style="font-size:.82rem;padding:.45rem .9rem;border-radius:99px;font-weight:600">Viral</button>
-        <button class="btn" onclick="filterViralContent('autoridad')" data-vf="autoridad" style="font-size:.82rem;padding:.45rem .9rem;border-radius:99px;font-weight:600">Autoridad</button>
-        <button class="btn" onclick="filterViralContent('social')" data-vf="social" style="font-size:.82rem;padding:.45rem .9rem;border-radius:99px;font-weight:600">Prueba social</button>
-        <button class="btn" onclick="filterViralContent('bts')" data-vf="bts" style="font-size:.82rem;padding:.45rem .9rem;border-radius:99px;font-weight:600">Behind the scenes</button>
+      <div class="top"><div><h1>Contenido de esta semana</h1><div class="sub2">Tu plan de reels semanal. Un vídeo por día, con ejemplo y explicación. Grábalo y márcalo como hecho.</div></div></div>
+      <!-- Navegación de semana -->
+      <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem">
+        <span id="weekLabel" style="font-weight:700;font-size:1.05rem;color:var(--ink)"></span>
+        <span id="weekProgress" style="font-size:.85rem;color:var(--muted);margin-left:auto"></span>
       </div>
-      <!-- Grid de thumbnails de vídeos -->
-      <div id="viralGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem"></div>
+      <!-- Calendario semanal (5 días) -->
+      <div id="weekCalendar" style="display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;margin-bottom:1.5rem"></div>
       <!-- Estado vacío -->
-      <div id="viralEmpty" style="display:none;text-align:center;padding:4rem 2rem">
+      <div id="weekEmpty" style="display:none;text-align:center;padding:4rem 2rem">
         <div style="font-size:3.5rem;margin-bottom:1rem;opacity:.6">🎬</div>
-        <h3 style="color:var(--ink-soft);margin-bottom:.5rem">Aún no hay contenido viral</h3>
-        <p style="color:var(--muted);font-size:.9rem;max-width:400px;margin:0 auto">Tu consultor subirá aquí los reels y TikToks virales de referencia con su explicación para que puedas replicarlos fácilmente.</p>
+        <h3 style="color:var(--ink-soft);margin-bottom:.5rem">Esta semana aún no tiene contenido</h3>
+        <p style="color:var(--muted);font-size:.9rem;max-width:420px;margin:0 auto">Tu consultor subirá los reels de referencia para esta semana. Cada día tendrás un vídeo viral para inspirarte y replicar.</p>
       </div>
-      <!-- Reproductor expandido (split: vídeo viral izq + explicación der) -->
-      <div id="viralPlayer" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.92);backdrop-filter:blur(8px);overflow-y:auto">
-        <button onclick="closeViralPlayer()" style="position:fixed;top:1.2rem;right:1.5rem;z-index:10000;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:1.5rem;width:44px;height:44px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);transition:background .2s">&times;</button>
-        <div style="display:flex;height:100vh;align-items:center;justify-content:center;gap:2rem;padding:2rem;max-width:1400px;margin:0 auto" id="viralPlayerInner">
-          <!-- Vídeo viral (izquierda) -->
-          <div style="flex:1;max-width:420px;display:flex;flex-direction:column;align-items:center">
+      <!-- Reproductor expandido (split: reel izq + explicación der) -->
+      <div id="weekPlayer" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.92);backdrop-filter:blur(8px);overflow-y:auto">
+        <button onclick="closeWeekPlayer()" style="position:fixed;top:1.2rem;right:1.5rem;z-index:10000;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:1.5rem;width:44px;height:44px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)">&times;</button>
+        <div style="display:flex;min-height:100vh;align-items:center;justify-content:center;gap:2.5rem;padding:2rem;max-width:1400px;margin:0 auto;flex-wrap:wrap">
+          <div style="flex:1;min-width:280px;max-width:380px;display:flex;flex-direction:column;align-items:center">
             <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.5);letter-spacing:1px;margin-bottom:.8rem">REEL DE REFERENCIA</div>
-            <div id="viralVideoContainer" style="width:100%;aspect-ratio:9/16;border-radius:16px;overflow:hidden;background:#111;box-shadow:0 20px 60px rgba(0,0,0,.5)"></div>
-            <div id="viralVideoTitle" style="color:#fff;font-size:1.1rem;font-weight:700;margin-top:1rem;text-align:center"></div>
-            <div id="viralVideoCategory" style="margin-top:.5rem;padding:.3rem .8rem;border-radius:99px;font-size:.72rem;font-weight:700;text-transform:uppercase;display:inline-block"></div>
+            <div id="wpVideoBox" style="width:100%;aspect-ratio:9/16;border-radius:16px;overflow:hidden;background:#111;box-shadow:0 20px 60px rgba(0,0,0,.5)"></div>
+            <div id="wpTitle" style="color:#fff;font-size:1.1rem;font-weight:700;margin-top:1rem;text-align:center"></div>
+            <div id="wpCategory" style="margin-top:.5rem;padding:.3rem .8rem;border-radius:99px;font-size:.72rem;font-weight:700;text-transform:uppercase;display:inline-block"></div>
           </div>
-          <!-- Explicación del consultor (derecha) -->
-          <div style="flex:1;max-width:480px;display:flex;flex-direction:column;align-items:center">
-            <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.5);letter-spacing:1px;margin-bottom:.8rem">EXPLICACIÓN</div>
-            <div id="viralExplainContainer" style="width:100%;aspect-ratio:9/16;border-radius:16px;overflow:hidden;background:#1a1a1a;box-shadow:0 20px 60px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center">
-              <div id="viralExplainPlaceholder" style="text-align:center;padding:2rem;color:rgba(255,255,255,.4)">
-                <div style="font-size:2.5rem;margin-bottom:.8rem">💬</div>
-                <p style="font-size:.9rem;line-height:1.5">Tu consultor grabará aquí la explicación de cómo replicar este reel</p>
-              </div>
-            </div>
-            <div id="viralExplainText" style="color:rgba(255,255,255,.8);font-size:.92rem;line-height:1.6;margin-top:1.2rem;text-align:center;max-width:400px"></div>
+          <div style="flex:1;min-width:280px;max-width:420px;display:flex;flex-direction:column;align-items:center">
+            <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.5);letter-spacing:1px;margin-bottom:.8rem">EXPLICACI&Oacute;N DEL CONSULTOR</div>
+            <div id="wpExplainBox" style="width:100%;aspect-ratio:9/16;border-radius:16px;overflow:hidden;background:#1a1a1a;box-shadow:0 20px 60px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center"></div>
+            <div id="wpExplainText" style="color:rgba(255,255,255,.8);font-size:.92rem;line-height:1.6;margin-top:1.2rem;text-align:center;max-width:400px"></div>
           </div>
         </div>
       </div>
@@ -3332,82 +3322,101 @@ function backToGallery(){ showGallery(); renderGallery(); }
 }
 
 // ===== MÓDULO CONTENIDO VIRAL (galería de vídeos con explicación) =====
-const PILLAR_COLORS_V={viral:'#e74c3c',autoridad:'#2980b9',social:'#27ae60',bts:'#8e44ad'};
-const PILLAR_LABELS_V={viral:'Viral',autoridad:'Autoridad',social:'Prueba social',bts:'Behind the scenes'};
-let _viralContent=[];
-let _viralFilter='all';
 
-function filterViralContent(cat){
-  _viralFilter=cat;
-  document.querySelectorAll('[data-vf]').forEach(b=>{
-    b.style.background=b.dataset.vf===cat?'var(--terra)':'';
-    b.style.color=b.dataset.vf===cat?'#fff':'';
-    b.style.borderColor=b.dataset.vf===cat?'var(--terra)':'';
-  });
-  renderViralGrid();
+async function loadFunnelGallery(){
+// ===== MÓDULO CONTENIDO SEMANAL =====
+const CAT_COLORS={viral:'#e74c3c',autoridad:'#2980b9',social:'#27ae60',bts:'#8e44ad'};
+const CAT_LABELS={viral:'Viral',autoridad:'Autoridad',social:'Prueba social',bts:'BTS'};
+const DAY_NAMES=['Lunes','Martes','Miércoles','Jueves','Viernes'];
+let _weekContent=[];
+let _weekDone=JSON.parse(localStorage.getItem('aura_content_done_'+T)||'{}');
+
+function getISOWeek(d){const t=new Date(d.valueOf());t.setDate(t.getDate()+3-(t.getDay()+6)%7);const y=t.getFullYear();const w=Math.ceil(((t-new Date(y,0,4))/86400000+1)/7);return y+'-W'+String(w).padStart(2,'0');}
+
+function getWeekDates(){
+  const now=new Date();const day=now.getDay();const diff=now.getDate()-day+(day===0?-6:1);
+  const mon=new Date(now.setDate(diff));mon.setHours(0,0,0,0);
+  const dates=[];for(let i=0;i<5;i++){const d=new Date(mon);d.setDate(mon.getDate()+i);dates.push(d);}
+  return dates;
 }
 
-function renderViralGrid(){
-  const grid=document.getElementById('viralGrid');
-  const empty=document.getElementById('viralEmpty');
-  const filtered=_viralFilter==='all'?_viralContent:_viralContent.filter(v=>v.category===_viralFilter);
+function renderWeekCalendar(){
+  const cal=document.getElementById('weekCalendar');
+  const empty=document.getElementById('weekEmpty');
+  const dates=getWeekDates();
+  const week=getISOWeek(dates[0]);
+  const weekItems=_weekContent.filter(v=>v.week_id===week);
+  document.getElementById('weekLabel').textContent='Semana del '+dates[0].toLocaleDateString('es-ES',{day:'numeric',month:'short'})+' al '+dates[4].toLocaleDateString('es-ES',{day:'numeric',month:'short'});
+  const doneCount=dates.filter((_,i)=>_weekDone[week+'_'+i]).length;
+  const totalWithContent=weekItems.length;
+  document.getElementById('weekProgress').innerHTML=totalWithContent?'<span style="color:var(--terra);font-weight:700">'+doneCount+'/'+totalWithContent+'</span> publicados esta semana':'';
+  if(!weekItems.length){cal.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
-  grid.innerHTML=filtered.map((v,i)=>{
-    const color=PILLAR_COLORS_V[v.category]||'#999';
-    const label=PILLAR_LABELS_V[v.category]||v.category;
-    return `<div onclick="openViralPlayer(${i})" style="cursor:pointer;border-radius:16px;overflow:hidden;background:var(--bg2);border:1px solid var(--line);transition:transform .2s var(--ease),box-shadow .2s;position:relative" onmouseenter="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 32px rgba(0,0,0,.12)'" onmouseleave="this.style.transform='';this.style.boxShadow=''">
-      <div style="aspect-ratio:9/16;background:#111 url('${v.thumbnail||''}') center/cover;position:relative;display:flex;align-items:center;justify-content:center">
-        ${v.thumbnail?'':'<div style="color:rgba(255,255,255,.3);font-size:2.5rem">▶</div>'}
-        <div style="position:absolute;inset:0;background:linear-gradient(transparent 60%,rgba(0,0,0,.8))"></div>
-        <div style="position:absolute;bottom:.6rem;left:.6rem;right:.6rem">
-          <span style="padding:.2rem .5rem;border-radius:99px;font-size:.62rem;font-weight:700;color:#fff;background:${color}">${label}</span>
-          <div style="color:#fff;font-size:.78rem;font-weight:600;margin-top:.3rem;line-height:1.3;text-shadow:0 1px 3px rgba(0,0,0,.8)">${v.title}</div>
-        </div>
+  const today=new Date();today.setHours(0,0,0,0);
+  cal.innerHTML=dates.map((d,i)=>{
+    const item=weekItems.find(v=>v.day_index===i);
+    const isToday=d.getTime()===today.getTime();
+    const done=_weekDone[week+'_'+i];
+    const color=item?CAT_COLORS[item.category]||'#999':'#ccc';
+    const label=item?CAT_LABELS[item.category]||'':'';
+    return `<div style="border-radius:16px;overflow:hidden;background:var(--bg2);border:${isToday?'2px solid var(--terra)':'1px solid var(--line)'};transition:transform .2s,box-shadow .2s;position:relative;${done?'opacity:.6':''}" onmouseenter="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,.08)'" onmouseleave="this.style.transform='';this.style.boxShadow=''">
+      <div style="padding:.7rem .8rem .4rem;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:.75rem;font-weight:700;color:${isToday?'var(--terra)':'var(--ink-soft)'}">${DAY_NAMES[i]}</span>
+        <span style="font-size:.68rem;color:var(--muted)">${d.getDate()}/${d.getMonth()+1}</span>
       </div>
+      ${item?`
+        <div onclick="openWeekPlayer(${i})" style="cursor:pointer;padding:0 .8rem">
+          <div style="aspect-ratio:9/16;border-radius:12px;overflow:hidden;background:#111 url('${item.thumbnail||''}') center/cover;position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:.5rem">
+            ${item.thumbnail?'':'<div style="color:rgba(255,255,255,.4);font-size:2rem">▶</div>'}
+            ${done?'<div style="position:absolute;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center"><span style="font-size:2.5rem">✓</span></div>':''}
+            <div style="position:absolute;inset:0;background:linear-gradient(transparent 65%,rgba(0,0,0,.7))"></div>
+          </div>
+          <div style="font-size:.78rem;font-weight:600;color:var(--ink);line-height:1.3;margin-bottom:.3rem;min-height:2.2em">${item.title}</div>
+          <span style="display:inline-block;padding:.15rem .5rem;border-radius:99px;font-size:.62rem;font-weight:700;color:#fff;background:${color};margin-bottom:.5rem">${label}</span>
+        </div>
+      `:`<div style="padding:1.5rem .8rem;text-align:center;color:var(--muted);font-size:.8rem">Sin contenido</div>`}
+      ${item&&!done?`<button onclick="markDayDone(${i});event.stopPropagation()" style="width:calc(100% - 1.2rem);margin:.3rem .6rem .6rem;padding:.5rem;border-radius:8px;border:1px solid var(--terra);background:transparent;color:var(--terra);font-size:.75rem;font-weight:700;cursor:pointer;transition:all .2s" onmouseenter="this.style.background='var(--terra)';this.style.color='#fff'" onmouseleave="this.style.background='transparent';this.style.color='var(--terra)'">Publicado ✓</button>`:''}
+      ${done?`<div style="text-align:center;padding:.3rem;font-size:.7rem;color:var(--terra);font-weight:600;margin-bottom:.4rem">Publicado ✓</div>`:''}
     </div>`;
   }).join('');
 }
 
-function openViralPlayer(idx){
-  const filtered=_viralFilter==='all'?_viralContent:_viralContent.filter(v=>v.category===_viralFilter);
-  const player=document.getElementById('viralPlayer');
-  player.style.display='';
-  document.body.style.overflow='hidden';
-  const vc=document.getElementById('viralVideoContainer');
-  if(v.video_url){
-    vc.innerHTML=`<video src="${v.video_url}" style="width:100%;height:100%;object-fit:cover" controls playsinline autoplay muted></video>`;
-  }else{
-    vc.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,.3);font-size:1rem;padding:2rem;text-align:center">Vídeo pendiente</div>';
-  }
-  document.getElementById('viralVideoTitle').textContent=v.title;
-  const catEl=document.getElementById('viralVideoCategory');
-  catEl.textContent=PILLAR_LABELS_V[v.category]||v.category;
-  catEl.style.background=PILLAR_COLORS_V[v.category]||'#999';catEl.style.color='#fff';
-  const ec=document.getElementById('viralExplainContainer');
-  if(v.explain_url){
-    ec.innerHTML=`<video src="${v.explain_url}" style="width:100%;height:100%;object-fit:cover" controls playsinline></video>`;
-  }else{
-    ec.innerHTML='<div style="text-align:center;padding:2rem;color:rgba(255,255,255,.4)"><div style="font-size:2.5rem;margin-bottom:.8rem">💬</div><p style="font-size:.9rem;line-height:1.5">Tu consultor grabará aquí la explicación</p></div>';
-  }
-  document.getElementById('viralExplainText').textContent=v.explain_text||'';
+function markDayDone(dayIdx){
+  const dates=getWeekDates();const week=getISOWeek(dates[0]);
+  _weekDone[week+'_'+dayIdx]=true;
+  localStorage.setItem('aura_content_done_'+T,JSON.stringify(_weekDone));
+  renderWeekCalendar();
 }
 
-function closeViralPlayer(){
-  document.getElementById('viralPlayer').style.display='none';
-  document.body.style.overflow='';
-  document.getElementById('viralVideoContainer').innerHTML='';
+function openWeekPlayer(dayIdx){
+  const dates=getWeekDates();const week=getISOWeek(dates[0]);
+  const item=_weekContent.find(v=>v.week_id===week&&v.day_index===dayIdx);
+  if(!item)return;
+  const player=document.getElementById('weekPlayer');
+  player.style.display='';document.body.style.overflow='hidden';
+  const vb=document.getElementById('wpVideoBox');
+  if(item.video_url){vb.innerHTML=`<video src="${item.video_url}" style="width:100%;height:100%;object-fit:cover" controls playsinline autoplay muted></video>`;}
+  else{vb.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:rgba(255,255,255,.3);font-size:1rem;padding:2rem;text-align:center">Vídeo pendiente de subir</div>';}
+  document.getElementById('wpTitle').textContent=item.title;
+  const cat=document.getElementById('wpCategory');
+  cat.textContent=CAT_LABELS[item.category]||item.category;cat.style.background=CAT_COLORS[item.category]||'#999';cat.style.color='#fff';
+  const eb=document.getElementById('wpExplainBox');
+  if(item.explain_url){eb.innerHTML=`<video src="${item.explain_url}" style="width:100%;height:100%;object-fit:cover" controls playsinline></video>`;}
+  else{eb.innerHTML='<div style="text-align:center;padding:2rem;color:rgba(255,255,255,.4)"><div style="font-size:2.5rem;margin-bottom:.8rem">💬</div><p style="font-size:.9rem;line-height:1.5">Tu consultor grabará aquí la explicación</p></div>';}
+  document.getElementById('wpExplainText').textContent=item.explain_text||'';
 }
+
+function closeWeekPlayer(){document.getElementById('weekPlayer').style.display='none';document.body.style.overflow='';document.getElementById('wpVideoBox').innerHTML='';}
 
 async function loadContentModule(){
   try{
-    const r=await clApi('/api/viral-content?tenant_id='+T);
+    const dates=getWeekDates();const week=getISOWeek(dates[0]);
+    const r=await clApi('/api/viral-content?tenant_id='+T+'&week='+week);
     const d=await r.json();
-    _viralContent=d.items||[];
-  }catch(e){_viralContent=[];}
-  renderViralGrid();
+    _weekContent=d.items||[];
+  }catch(e){_weekContent=[];}
+  renderWeekCalendar();
 }
-
-async function loadFunnelGallery(){
   try{
     const r=await fetch(WORKER+'/api/tenant/'+T); const d=await r.json();
     EDDATA.tenant=d.tenant||{}; EDDATA.funnels=d.funnels||[];
