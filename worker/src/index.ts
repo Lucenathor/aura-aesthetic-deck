@@ -1999,6 +1999,47 @@ export default {
         return json({ ok: true });
       }
 
+      // ===== CHALLENGE VIRAL: Ranking entre clínicas =====
+      const VIRAL_REELS_TABLE = `CREATE TABLE IF NOT EXISTS viral_reels (id TEXT PRIMARY KEY, tenant_id TEXT, clinic_name TEXT, reel_url TEXT, title TEXT, platform TEXT DEFAULT 'instagram', views INTEGER DEFAULT 0, fires INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))`;
+
+      if (p === '/api/viral-submit' && req.method === 'POST') {
+        const b = await req.json() as any;
+        if (!b.tenant_id || !b.reel_url) return json({ error: 'missing fields' }, 400);
+        await env.aura_db.exec(VIRAL_REELS_TABLE);
+        // Obtener nombre de la clínica
+        const t = await env.aura_db.prepare(`SELECT name FROM tenants WHERE id=?`).bind(b.tenant_id).first() as any;
+        const clinicName = t?.name || 'Clínica';
+        const id = crypto.randomUUID();
+        await env.aura_db.prepare(`INSERT INTO viral_reels (id, tenant_id, clinic_name, reel_url, title, platform, views) VALUES (?,?,?,?,?,?,?)`).bind(id, b.tenant_id, clinicName, b.reel_url, b.title||'', b.platform||'instagram', b.views||0).run();
+        return json({ ok: true, id });
+      }
+
+      if (p === '/api/viral-ranking' && req.method === 'GET') {
+        await env.aura_db.exec(VIRAL_REELS_TABLE);
+        // Solo reels de los últimos 30 días, ordenados por views
+        const { results } = await env.aura_db.prepare(`SELECT * FROM viral_reels WHERE created_at >= datetime('now','-30 days') ORDER BY views DESC LIMIT 50`).all();
+        return json({ items: results || [] });
+      }
+
+      if (p === '/api/viral-fire' && req.method === 'POST') {
+        const b = await req.json() as any;
+        if (!b.reel_id) return json({ error: 'missing reel_id' }, 400);
+        await env.aura_db.exec(VIRAL_REELS_TABLE);
+        await env.aura_db.prepare(`UPDATE viral_reels SET fires = fires + 1 WHERE id=?`).bind(b.reel_id).run();
+        return json({ ok: true });
+      }
+
+      if (p === '/api/viral-update-views' && req.method === 'POST') {
+        const b = await req.json() as any;
+        if (!b.reel_id || !b.tenant_id) return json({ error: 'missing fields' }, 400);
+        await env.aura_db.exec(VIRAL_REELS_TABLE);
+        // Solo el dueño puede actualizar sus views
+        const reel = await env.aura_db.prepare(`SELECT tenant_id FROM viral_reels WHERE id=?`).bind(b.reel_id).first() as any;
+        if (!reel || reel.tenant_id !== b.tenant_id) return json({ error: 'not_owner' }, 403);
+        await env.aura_db.prepare(`UPDATE viral_reels SET views=? WHERE id=?`).bind(b.views||0, b.reel_id).run();
+        return json({ ok: true });
+      }
+
       if (p === '/api/funnel-metrics' && req.method === 'GET') {
         const tenant = url.searchParams.get('tenant');
         const funnel = url.searchParams.get('funnel'); // opcional
