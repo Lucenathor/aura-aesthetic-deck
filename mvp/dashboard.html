@@ -1550,7 +1550,7 @@ function fmtTime(t){ const d=parseTS(t); if(!d)return''; return d.toLocaleDateSt
 
 async function loadTenant(){
   try{ const r=await fetch(WORKER+'/api/tenant/'+T); if(r.ok){ const d=await r.json(); const t=d.tenant||d; document.getElementById('tName').textContent=t.name||T; document.getElementById('bInit').textContent=(t.name||'E').trim()[0].toUpperCase(); const h=document.getElementById('helloH'); if(h){ const hr=new Date().getHours(); const greet=hr<13?'Buenos días':hr<21?'Buenas tardes':'Buenas noches'; h.textContent=greet+', '+(t.name||T); } showTrialBanner(t); } }catch(e){}
-  const url=location.origin+'/c/'+T;
+  const url=location.origin+'/c/'+T+'?t='+(typeof EDFUNNEL!=='undefined'?EDFUNNEL:'labios');
   document.getElementById('funnelUrl').value=url;
 }
 function showTrialBanner(t){
@@ -3944,13 +3944,19 @@ function renderEdFunnels(){
   const c=document.getElementById('edFunnels'); if(!c)return; c.innerHTML='';
   EDFUNNELS.forEach(f=>{
     const b=document.createElement('button'); b.className='ed-funnel'+(f.treatment===EDFUNNEL?' on':''); b.textContent=fLabel(f.treatment);
-    b.onclick=()=>{ EDFUNNEL=f.treatment; try{localStorage.setItem('aura_ed_funnel',EDFUNNEL);}catch(e){} renderEdFunnels(); loadPreview(); renderPanel(); };
+    b.onclick=()=>{ EDFUNNEL=f.treatment; try{localStorage.setItem('aura_ed_funnel',EDFUNNEL);}catch(e){} renderEdFunnels(); loadPreview(); renderPanel(); updateFunnelLinks(); };
     c.appendChild(b);
   });
 }
+function updateFunnelLinks(){
+  const url=location.origin+'/c/'+T+'?t='+encodeURIComponent(EDFUNNEL);
+  try{ document.getElementById('funnelUrl').value=url; }catch(e){}
+  try{ document.getElementById('funnelOpen').href=url; }catch(e){}
+  try{ document.getElementById('funnelLink').href=url; }catch(e){}
+}
 function loadPreview(){
   const fr=document.getElementById('edFrame'); if(!fr)return;
-  fr.src='/c/'+T+'?preview=1#'+EDSCREEN;
+  fr.src='/c/'+T+'?t='+encodeURIComponent(EDFUNNEL)+'&preview=1#'+EDSCREEN;
 }
 function reloadPrev(){ const fr=document.getElementById('edFrame'); if(fr){ try{ fr.contentWindow.location.reload(); }catch(e){ loadPreview(); } } }
 document.querySelectorAll('.ed-screen').forEach(b=>{ b.onclick=()=>{ document.querySelectorAll('.ed-screen').forEach(x=>x.classList.remove('on')); b.classList.add('on'); EDSCREEN=b.dataset.s; try{localStorage.setItem('aura_ed_screen',EDSCREEN);}catch(e){} renderPanel(); try{ document.getElementById('edFrame').contentWindow.postMessage({aura:'goto',screen:EDSCREEN},'*'); }catch(e){} }; });
@@ -5730,8 +5736,8 @@ async function executeImport(){
 
 async function __auraInit(){
   const ok=await guard(); if(!ok)return;
-  try{ const fl=document.getElementById('funnelLink'); if(fl)fl.href='/c/'+T; }catch(e){}
-  try{ const fo=document.getElementById('funnelOpen'); if(fo)fo.href='/c/'+T; }catch(e){}
+  try{ const fl=document.getElementById('funnelLink'); if(fl)fl.href='/c/'+T+'?t='+(typeof EDFUNNEL!=='undefined'?EDFUNNEL:'labios'); }catch(e){}
+  try{ const fo=document.getElementById('funnelOpen'); if(fo)fo.href='/c/'+T+'?t='+(typeof EDFUNNEL!=='undefined'?EDFUNNEL:'labios'); }catch(e){}
   try{ loadTenant(); }catch(e){console.error('loadTenant',e);}
   try{ loadFunnelMetrics(); }catch(e){console.error('loadFunnelMetrics',e);}
   try{ fillHours(); }catch(e){}
