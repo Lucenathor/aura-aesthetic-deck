@@ -410,7 +410,27 @@ const TENANT_ID = (function(){
 const WORKER='https://aura-chat-worker.adrian-7b9.workers.dev';
 const TREATMENT_ID = new URLSearchParams(location.search).get('t') || 'labios';
 let CFG={ name:'Clínica Elvira', advisor:'Adrián', doctor:'la Dra. Elvira', price:380, whatsapp:'34600000000', treatment:'Aumento de labios' };
-
+/* ============ META PIXEL ============ */
+function initMetaPixel(pixelId){
+  if(!pixelId||window.fbq)return;
+  !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+  n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+  document,'script','https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', pixelId);
+  fbq('track', 'PageView');
+  // ViewContent al cargar el embudo
+  fbq('track', 'ViewContent', {content_name: CFG.treatment, content_category: 'clinica_estetica', value: CFG.price, currency: 'EUR'});
+}
+function pixelTrack(event, params){
+  if(window.fbq) fbq('track', event, params||{});
+}
+function trackFunnelEvent(event, extra){
+  try{ fetch(WORKER+'/api/funnel-event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:TENANT_ID,treatment:TREATMENT_ID,event:event,lead_id:state.lead_id||null,ref:state.ref,...(extra||{})})}); }catch(e){}
+}
+// Track pageview on load
+setTimeout(()=>{ trackFunnelEvent('pageview'); },500);
 function genRef(){ const s='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r=''; for(let i=0;i<5;i++)r+=s[Math.floor(Math.random()*s.length)]; return 'AURA-'+r; }
 const state={ name:'', phone:'', a:{}, lead_id:null, ref:genRef() };
 
@@ -479,7 +499,7 @@ window.addEventListener('message',function(ev){ try{ const d=ev.data||{}; if(d.a
 /* ============ NAV ============ */
 function go(id){ document.querySelectorAll('.view').forEach(v=>v.classList.remove('on')); var el=document.getElementById(id); if(el)el.classList.add('on'); window.scrollTo(0,0); }
 let qi=0;
-function startQuiz(){ applyQuizContent(); qi=0; renderQ(); }
+
 function quizBack(){ if(qi===0){ go('vHero'); return;} qi--; renderQ(); }
 function renderQ(){
   const Q=QUIZ[qi];
@@ -519,8 +539,13 @@ function pick(k,val,el){
 }
 function submitData(){
   state.name=document.getElementById('fName').value.trim();
-  state.phone=document.getElementById('fPhone').value.trim();
+  state.phone=document.getElementById('fPhone').value.trim().replace(/\s/g,'');
   persistLead();
+  // Meta Pixel: Lead event con Advanced Matching
+  pixelTrack('Lead', {value: CFG.price, currency: 'EUR', content_name: CFG.treatment});
+  if(window.fbq){ try{ fbq('init', window._auraPixelId, {ph: state.phone.replace(/[^0-9]/g,'')}); }catch(e){} }
+  // Track lead event
+  trackFunnelEvent('lead');
   qi++; renderQ();
 }
 function nurtureTime(k){ return k==='objetivo'?6800 : 5400; }
@@ -609,6 +634,8 @@ function buildResult(){
       // colores de marca reales
       if(t.brand_primary){ document.documentElement.style.setProperty('--terra', t.brand_primary); }
       if(t.brand_accent){ document.documentElement.style.setProperty('--champ', t.brand_accent); }
+      // Meta Pixel: inicializar si el tenant tiene pixel configurado
+      if(t.meta_pixel_id){ window._auraPixelId=t.meta_pixel_id; initMetaPixel(t.meta_pixel_id); }
       // imágenes generadas reales (hero, sala, asesor)
       if(t.hero_image_url){ document.querySelectorAll('[data-img="hero"]').forEach(el=>{ if(el.tagName==='IMG')el.src=t.hero_image_url; else el.style.backgroundImage='url('+t.hero_image_url+')'; }); }
       if(t.doctor_image_url){ document.querySelectorAll('[data-img="doctor"]').forEach(el=>{ if(el.tagName==='IMG')el.src=t.doctor_image_url; }); }
@@ -825,6 +852,10 @@ async function book(el,slot,iso){
   el.parentNode.querySelectorAll('.slot').forEach(s=>s.classList.remove('sel')); el.classList.add('sel');
   const fc=document.getElementById('fixCta'); if(fc)fc.remove();
   addMe('me viene bien el '+slot.toLowerCase());
+  // Meta Pixel: Schedule event
+  pixelTrack('Schedule', {content_name: CFG.treatment});
+  // Track schedule event
+  trackFunnelEvent('schedule');
   await wait(400); typing(); await wait(900); unType();
   const esRecall = state._bookMode;
   if(window.DEMO_SALES){
@@ -840,7 +871,12 @@ async function book(el,slot,iso){
 }
 function markWa(){
   try{ fetch(WORKER+'/api/lead-event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:TENANT_ID,lead_id:state.lead_id,ref:state.ref,event:'whatsapp_opened'})}); }catch(e){}
+  // Meta Pixel: Contact event (WhatsApp)
+  pixelTrack('Contact');
+  // Track whatsapp event
+  trackFunnelEvent('whatsapp');
 }
 </script>
 </body>
 </html>
+function startQuiz(){ applyQuizContent(); qi=0; renderQ(); trackFunnelEvent('quiz_start'); }

@@ -765,7 +765,7 @@ export default {
     rlCleanup();
     
     // Endpoints públicos de escritura: 30 req/min por IP (anti-spam de leads falsos)
-    const PUBLIC_WRITE_ENDPOINTS = ['/api/leads', '/api/lead-quiz-update', '/api/lead-chatted', '/api/lead-event', '/api/public-book', '/api/public-cancel'];
+    const PUBLIC_WRITE_ENDPOINTS = ['/api/leads', '/api/lead-quiz-update', '/api/lead-chatted', '/api/lead-event', '/api/public-book', '/api/public-cancel', '/api/funnel-event'];
     if (req.method === 'POST' && PUBLIC_WRITE_ENDPOINTS.includes(p)) {
       if (!checkRateLimit('pub_w:' + clientIP, 30, 60)) {
         return json({ error: 'rate_limited', detail: 'Demasiadas solicitudes. Intenta de nuevo en 1 minuto.' }, 429);
@@ -955,7 +955,7 @@ export default {
         const b:any = await req.json();
         if (!b.tenant_id) return json({ error:'missing_tenant' }, 400);
         const sets:string[]=[]; const vals:any[]=[];
-        const map:any={ google_review_url:'google_review_url', logo_url:'logo_url', address:'address', city:'city', whatsapp:'whatsapp', email:'email', brand_primary:'brand_primary', brand_accent:'brand_accent', name:'name' };
+        const map:any={ google_review_url:'google_review_url', logo_url:'logo_url', address:'address', city:'city', whatsapp:'whatsapp', email:'email', brand_primary:'brand_primary', brand_accent:'brand_accent', name:'name', meta_pixel_id:'meta_pixel_id', public_slug:'public_slug' };
         for(const k in map){ if(b[k]!==undefined){ sets.push(map[k]+'=?'); vals.push(typeof b[k]==='string'?b[k].trim():b[k]); } }
         if(sets.length){ vals.push(b.tenant_id); await env.aura_db.prepare('UPDATE tenants SET '+sets.join(',')+' WHERE id=?').bind(...vals).run(); }
         return json({ ok:true });
@@ -2340,6 +2340,44 @@ export default {
           await env.aura_db.prepare(`UPDATE leads SET wa_opened=1, last_message_at=CURRENT_TIMESTAMP WHERE id=?`).bind(b.lead_id).run();
         }
         return json({ ok: true });
+      }
+
+      // ===== FUNNEL EVENT TRACKING (público) =====
+      if (p === '/api/funnel-event' && req.method === 'POST') {
+        const b: any = await req.json();
+        if (!b.tenant_id || !b.event) return json({ error: 'missing' }, 400);
+        const id = 'fe_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+        try {
+          await env.aura_db.prepare('INSERT INTO funnel_stats (id, tenant_id, treatment, event, lead_id, ref, created_at, ip, ua) VALUES (?,?,?,?,?,?,?,?,?)')
+            .bind(id, b.tenant_id, b.treatment||'generic', b.event, b.lead_id||null, b.ref||null, Date.now(), clientIP, (req.headers.get('user-agent')||'').slice(0,200))
+            .run();
+        } catch(e){}
+        return json({ ok: true });
+      }
+
+      // ===== FUNNEL STATS (autenticado) =====
+      if (p === '/api/funnel-stats' && req.method === 'GET') {
+        const tenant = url.searchParams.get('tenant');
+        const treatment = url.searchParams.get('treatment');
+        const from = url.searchParams.get('from') || new Date(Date.now() - 30*86400000).toISOString().slice(0,10);
+        const fromTs = new Date(from+'T00:00:00Z').getTime();
+        let q = 'SELECT event, COUNT(*) as count FROM funnel_stats WHERE tenant_id=? AND created_at>=?';
+        const params: any[] = [tenant, fromTs];
+        if (treatment) { q += ' AND treatment=?'; params.push(treatment); }
+        q += ' GROUP BY event';
+        const r = await env.aura_db.prepare(q).bind(...params).all();
+        // También obtener leads recientes del embudo
+        let leadsQ = 'SELECT id, name, phone, treatment, temperature, status, created_at FROM leads WHERE tenant_id=? AND source LIKE ? AND created_at>=?';
+        const leadsParams: any[] = [tenant, 'embudo%', from+'T00:00:00'];
+        if (treatment) { leadsQ += ' AND source LIKE ?'; leadsParams.push('%'+treatment+'%'); }
+        leadsQ += ' ORDER BY created_at DESC LIMIT 100';
+        const leads = await env.aura_db.prepare(leadsQ).bind(...leadsParams).all();
+        // Citas agendadas desde embudos
+        let apptsQ = 'SELECT a.id, a.lead_id, a.treatment, a.date_iso, a.status, l.name as lead_name, l.phone as lead_phone FROM appointments a LEFT JOIN leads l ON a.lead_id=l.id WHERE a.tenant_id=? AND l.source LIKE ? AND a.created_at>=?';
+        const apptsParams: any[] = [tenant, 'embudo%', from+'T00:00:00'];
+        apptsQ += ' ORDER BY a.created_at DESC LIMIT 100';
+        const appts = await env.aura_db.prepare(apptsQ).bind(...apptsParams).all();
+        return json({ stats: r.results, leads: leads.results, appointments: appts.results });
       }
 
       // Buscar lead por ref, nombre o telefono

@@ -264,7 +264,7 @@ function goSection(v,push){
   if(v==='pacientes')loadLeads();
   if(v==='pipeline')loadPipeline();
   if(v==='equipo'){ loadTeam(); try{ loadEmployees(); }catch(e){} }
-  if(v==='embudo'){showGallery();loadFunnelGallery();}
+  if(v==='embudo'){showGallery();loadFunnelGallery();try{loadFunnelStatsPanel();}catch(e){}}
   if(v==='contenido'){loadContentModule();}
   if(v==='agenda')loadAgendaCal();
   if(v==='caja')loadCaja();
@@ -2163,6 +2163,28 @@ async function saveBookingCfg(){
   const body={tenant_id:T, cancel_hours:+(document.getElementById('bkCancelH')||{}).value||24, deposit_fixed:+(document.getElementById('bkDeposit')||{}).value||0, treatments:(document.getElementById('bkTreatments')||{}).value||'', welcome_msg:(document.getElementById('bkWelcome')||{}).value||'', enabled:1};
   try{ await fetch(WORKER+'/api/booking-config',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify(body)}); m.textContent='Guardado ✓'; setTimeout(()=>m.textContent='',2500); }catch(e){ m.textContent='Error'; }
 }
+// ===== META PIXEL + SLUG =====
+async function loadPixelSlug(){
+  try{
+    const r=await fetch(WORKER+'/api/tenant/'+T); const d=await r.json(); const t=d.tenant||d;
+    if(t.meta_pixel_id) document.getElementById('cfgPixelId').value=t.meta_pixel_id;
+    if(t.public_slug){ document.getElementById('cfgSlug').value=t.public_slug; document.getElementById('slugPreview').textContent=t.public_slug; }
+    else document.getElementById('slugPreview').textContent=T;
+  }catch(e){}
+  document.getElementById('cfgSlug').addEventListener('input',function(){ document.getElementById('slugPreview').textContent=this.value||T; });
+}
+async function savePixelSlug(){
+  const pixelId=document.getElementById('cfgPixelId').value.trim();
+  const slug=document.getElementById('cfgSlug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g,'');
+  const body={tenant_id:T};
+  if(pixelId) body.meta_pixel_id=pixelId;
+  if(slug) body.public_slug=slug;
+  try{
+    await fetch(WORKER+'/api/tenant-meta',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify(body)});
+    document.getElementById('pixelMsg').textContent='Guardado ✓';
+    setTimeout(()=>document.getElementById('pixelMsg').textContent='',2000);
+  }catch(e){ document.getElementById('pixelMsg').textContent='Error'; }
+}
 // ===== Previsualización animada del recorrido SMS =====
 const SMS_PHASES=[
   {k:'result_no_chat', label:'Tras el cuestionario', when:'a los 5 min'},
@@ -2723,6 +2745,42 @@ function updateFunnelLinks(){
   try{ document.getElementById('funnelUrl').value=url; }catch(e){}
   try{ document.getElementById('funnelOpen').href=url; }catch(e){}
   try{ document.getElementById('funnelLink').href=url; }catch(e){}
+}
+// ===== PANEL DE STATS POR EMBUDO =====
+async function loadFunnelStatsPanel(){
+  const sel=document.getElementById('fStatsSel');
+  const treatment=sel?sel.value:'';
+  let data={stats:[],leads:[],appointments:[]};
+  try{ const r=await fetch(WORKER+'/api/funnel-stats?tenant='+T+(treatment?'&treatment='+encodeURIComponent(treatment):'')); data=await r.json(); }catch(e){}
+  // Poblar selector con embudos disponibles (una vez)
+  if(sel&&sel.options.length<=1){
+    try{ const r2=await fetch(WORKER+'/api/funnels?tenant='+T); const d2=await r2.json(); (d2.funnels||[]).forEach(f=>{ if(f.treatment){const o=document.createElement('option');o.value=f.treatment;o.textContent=f.treatment_name||f.treatment;sel.appendChild(o);} }); }catch(e){}
+  }
+  // KPIs
+  const stats={}; (data.stats||[]).forEach(s=>{ stats[s.event]=(stats[s.event]||0)+s.count; });
+  const kpis=[
+    {label:'Visitas',val:stats.pageview||0,icon:'👁️'},
+    {label:'Quiz iniciado',val:stats.quiz_start||0,icon:'📝'},
+    {label:'Leads',val:stats.lead||0,icon:'🎯'},
+    {label:'Citas',val:stats.schedule||0,icon:'📅'},
+    {label:'WhatsApp',val:stats.whatsapp||0,icon:'💬'},
+  ];
+  const kpiEl=document.getElementById('fStatsKPIs');
+  kpiEl.innerHTML=kpis.map(k=>`<div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:.8rem;text-align:center"><div style="font-size:1.6rem">${k.icon}</div><div style="font-family:'Fraunces',serif;font-size:1.4rem;font-weight:700;margin:.2rem 0">${k.val}</div><div style="font-size:.75rem;color:var(--muted)">${k.label}</div></div>`).join('');
+  // Conversión
+  const convEl=document.getElementById('fStatsConversion');
+  const views=stats.pageview||0; const leads=stats.lead||0; const scheds=stats.schedule||0;
+  const cvLead=views?Math.round(leads/views*100):0;
+  const cvSched=leads?Math.round(scheds/leads*100):0;
+  convEl.innerHTML=`<div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap"><div><span style="font-size:.78rem;color:var(--muted)">Visita → Lead</span><div style="font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:var(--terra)">${cvLead}%</div></div><div><span style="font-size:.78rem;color:var(--muted)">Lead → Cita</span><div style="font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:var(--terra)">${cvSched}%</div></div><div style="margin-left:auto;font-size:.78rem;color:var(--muted)">Últimos 30 días</div></div>`;
+  // Leads table
+  const leadsEl=document.getElementById('fStatsLeads');
+  if(!(data.leads||[]).length){ leadsEl.innerHTML='<p style="color:var(--muted);font-size:.84rem">Sin leads aún. Cuando entren pacientes por el embudo aparecerán aquí.</p>'; }
+  else { leadsEl.innerHTML='<table style="width:100%;font-size:.82rem;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--line)"><th style="text-align:left;padding:.4rem">Nombre</th><th>Teléfono</th><th>Tratamiento</th><th>Temp.</th><th>Estado</th></tr></thead><tbody>'+(data.leads||[]).map(l=>`<tr style="border-bottom:1px solid var(--line)"><td style="padding:.4rem;font-weight:600">${l.name||'—'}</td><td>${l.phone||''}</td><td>${l.treatment||''}</td><td><span style="padding:.15rem .4rem;border-radius:6px;font-size:.72rem;font-weight:700;background:${l.temperature==='hot'?'#fde8e4':l.temperature==='warm'?'#fef3cd':'#e8f4fd'};color:${l.temperature==='hot'?'#b0432e':l.temperature==='warm'?'#9a6a1a':'#2e6b9a'}">${l.temperature||'—'}</span></td><td>${l.stage||'new'}</td></tr>`).join('')+'</tbody></table>'; }
+  // Appointments table
+  const apptsEl=document.getElementById('fStatsAppts');
+  if(!(data.appointments||[]).length){ apptsEl.innerHTML='<p style="color:var(--muted);font-size:.84rem">Sin citas desde embudos aún.</p>'; }
+  else { apptsEl.innerHTML='<table style="width:100%;font-size:.82rem;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--line)"><th style="text-align:left;padding:.4rem">Paciente</th><th>Tratamiento</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>'+(data.appointments||[]).map(a=>`<tr style="border-bottom:1px solid var(--line)"><td style="padding:.4rem;font-weight:600">${a.lead_name||'—'}</td><td>${a.treatment||''}</td><td>${a.date_iso?new Date(a.date_iso).toLocaleDateString('es-ES',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''}</td><td><span style="padding:.15rem .4rem;border-radius:6px;font-size:.72rem;font-weight:700;background:${a.status==='attended'?'var(--mint)':'#fef3cd'};color:${a.status==='attended'?'#1f6b4f':'#9a6a1a'}">${a.status==='attended'?'Atendida':a.status==='booked'?'Reservada':'Pendiente'}</span></td></tr>`).join('')+'</tbody></table>'; }
 }
 function loadPreview(){
   const fr=document.getElementById('edFrame'); if(!fr)return;
