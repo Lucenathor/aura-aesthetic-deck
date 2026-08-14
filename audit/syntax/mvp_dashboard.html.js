@@ -2167,23 +2167,43 @@ async function saveBookingCfg(){
 async function loadPixelSlug(){
   try{
     const r=await fetch(WORKER+'/api/tenant/'+T); const d=await r.json(); const t=d.tenant||d;
-    if(t.meta_pixel_id) document.getElementById('cfgPixelId').value=t.meta_pixel_id;
+    if(t.meta_pixel_id){
+      document.getElementById('cfgPixelId').value=t.meta_pixel_id;
+      document.getElementById('pixelStatus').textContent='✓ Activo';
+      document.getElementById('pixelStatus').style.cssText='font-size:.72rem;padding:.2rem .5rem;border-radius:6px;font-weight:700;background:#dcfce7;color:#166534';
+    } else {
+      document.getElementById('pixelStatus').textContent='Sin configurar';
+      document.getElementById('pixelStatus').style.cssText='font-size:.72rem;padding:.2rem .5rem;border-radius:6px;font-weight:700;background:#fef3cd;color:#9a6a1a';
+    }
     if(t.public_slug){ document.getElementById('cfgSlug').value=t.public_slug; document.getElementById('slugPreview').textContent=t.public_slug; }
     else document.getElementById('slugPreview').textContent=T;
   }catch(e){}
-  document.getElementById('cfgSlug').addEventListener('input',function(){ document.getElementById('slugPreview').textContent=this.value||T; });
+}
+function validatePixelId(){
+  const v=document.getElementById('cfgPixelId').value.trim();
+  const el=document.getElementById('pixelValidation');
+  if(!v){ el.textContent=''; return; }
+  if(!/^\d+$/.test(v)){ el.textContent='⚠️ Solo números'; el.style.color='#b0432e'; return; }
+  if(v.length<15){ el.textContent='⚠️ Demasiado corto (mín. 15 dígitos)'; el.style.color='#9a6a1a'; return; }
+  if(v.length>16){ el.textContent='⚠️ Demasiado largo (máx. 16 dígitos)'; el.style.color='#b0432e'; return; }
+  el.textContent='✓ Formato correcto'; el.style.color='#1f6b4f';
 }
 async function savePixelSlug(){
   const pixelId=document.getElementById('cfgPixelId').value.trim();
   const slug=document.getElementById('cfgSlug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g,'');
   const body={tenant_id:T};
-  if(pixelId) body.meta_pixel_id=pixelId;
+  if(pixelId){
+    if(!/^\d{15,16}$/.test(pixelId)){ document.getElementById('pixelMsg').textContent='Pixel ID inválido'; document.getElementById('pixelMsg').style.color='#b0432e'; return; }
+    body.meta_pixel_id=pixelId;
+  }
   if(slug) body.public_slug=slug;
   try{
     await fetch(WORKER+'/api/tenant-meta',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify(body)});
-    document.getElementById('pixelMsg').textContent='Guardado ✓';
+    document.getElementById('pixelMsg').textContent='✓ Guardado';
+    document.getElementById('pixelMsg').style.color='#1f6b4f';
+    if(pixelId){ document.getElementById('pixelStatus').textContent='✓ Activo'; document.getElementById('pixelStatus').style.cssText='font-size:.72rem;padding:.2rem .5rem;border-radius:6px;font-weight:700;background:#dcfce7;color:#166534'; }
     setTimeout(()=>document.getElementById('pixelMsg').textContent='',2000);
-  }catch(e){ document.getElementById('pixelMsg').textContent='Error'; }
+  }catch(e){ document.getElementById('pixelMsg').textContent='Error'; document.getElementById('pixelMsg').style.color='#b0432e'; }
 }
 // ===== Previsualización animada del recorrido SMS =====
 const SMS_PHASES=[
@@ -2751,7 +2771,9 @@ async function loadFunnelStatsPanel(){
   const sel=document.getElementById('fStatsSel');
   const treatment=sel?sel.value:'';
   let data={stats:[],leads:[],appointments:[]};
-  try{ const r=await fetch(WORKER+'/api/funnel-stats?tenant='+T+(treatment?'&treatment='+encodeURIComponent(treatment):'')); data=await r.json(); }catch(e){}
+  const days=parseInt((document.getElementById('fStatsPeriod')||{}).value)||30;
+  const fromDate=new Date(Date.now()-days*86400000).toISOString().slice(0,10);
+  try{ const r=await fetch(WORKER+'/api/funnel-stats?tenant='+T+'&from='+fromDate+(treatment?'&treatment='+encodeURIComponent(treatment):'')); data=await r.json(); }catch(e){}
   // Poblar selector con embudos disponibles (una vez)
   if(sel&&sel.options.length<=1){
     try{ const r2=await fetch(WORKER+'/api/funnels?tenant='+T); const d2=await r2.json(); (d2.funnels||[]).forEach(f=>{ if(f.treatment){const o=document.createElement('option');o.value=f.treatment;o.textContent=f.treatment_name||f.treatment;sel.appendChild(o);} }); }catch(e){}
@@ -2767,16 +2789,32 @@ async function loadFunnelStatsPanel(){
   ];
   const kpiEl=document.getElementById('fStatsKPIs');
   kpiEl.innerHTML=kpis.map(k=>`<div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:.8rem;text-align:center"><div style="font-size:1.6rem">${k.icon}</div><div style="font-family:'Fraunces',serif;font-size:1.4rem;font-weight:700;margin:.2rem 0">${k.val}</div><div style="font-size:.75rem;color:var(--muted)">${k.label}</div></div>`).join('');
+  // Embudo visual (barras decrecientes)
+  const funnelEl=document.getElementById('fStatsFunnel');
+  const fStages=[
+    {name:'Visitas al embudo',val:stats.pageview||0,color:'#e8d5c4'},
+    {name:'Iniciaron quiz',val:stats.quiz_start||0,color:'#d4a574'},
+    {name:'Dejaron datos (Lead)',val:stats.lead||0,color:'#b87333'},
+    {name:'Agendaron cita',val:stats.schedule||0,color:'#8b4513'},
+    {name:'Abrieron WhatsApp',val:stats.whatsapp||0,color:'#5a2d0c'},
+  ];
+  const maxF=Math.max(stats.pageview||1,1);
+  funnelEl.innerHTML=fStages.map((s,i)=>{
+    const pct=Math.max(Math.round(s.val/maxF*100),4);
+    const dropPct=i>0&&fStages[i-1].val?Math.round((1-s.val/fStages[i-1].val)*100):0;
+    return `<div style="margin-bottom:.4rem"><div style="display:flex;align-items:center;gap:.6rem"><span style="width:160px;font-size:.78rem;font-weight:600;color:var(--ink-soft)">${s.name}</span><div style="flex:1;height:28px;background:var(--bg2);border-radius:6px;overflow:hidden;position:relative"><div style="height:100%;width:${pct}%;background:${s.color};border-radius:6px;transition:width .6s ease"></div></div><span style="width:40px;text-align:right;font-family:'Fraunces',serif;font-weight:700;font-size:.9rem">${s.val}</span>${dropPct>0?`<span style="font-size:.68rem;color:#b0432e;width:36px">-${dropPct}%</span>`:`<span style="width:36px"></span>`}</div></div>`;
+  }).join('');
   // Conversión
   const convEl=document.getElementById('fStatsConversion');
   const views=stats.pageview||0; const leads=stats.lead||0; const scheds=stats.schedule||0;
   const cvLead=views?Math.round(leads/views*100):0;
   const cvSched=leads?Math.round(scheds/leads*100):0;
-  convEl.innerHTML=`<div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap"><div><span style="font-size:.78rem;color:var(--muted)">Visita → Lead</span><div style="font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:var(--terra)">${cvLead}%</div></div><div><span style="font-size:.78rem;color:var(--muted)">Lead → Cita</span><div style="font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:var(--terra)">${cvSched}%</div></div><div style="margin-left:auto;font-size:.78rem;color:var(--muted)">Últimos 30 días</div></div>`;
+  const cvTotal=views?Math.round(scheds/views*100):0;
+  convEl.innerHTML=`<div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap"><div><span style="font-size:.78rem;color:var(--muted)">Visita → Lead</span><div style="font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:${cvLead>=30?'#1f6b4f':cvLead>=15?'#9a6a1a':'#b0432e'}">${cvLead}%</div></div><div><span style="font-size:.78rem;color:var(--muted)">Lead → Cita</span><div style="font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:${cvSched>=40?'#1f6b4f':cvSched>=20?'#9a6a1a':'#b0432e'}">${cvSched}%</div></div><div><span style="font-size:.78rem;color:var(--muted)">Total (Visita → Cita)</span><div style="font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:var(--terra)">${cvTotal}%</div></div><div style="margin-left:auto;font-size:.78rem;color:var(--muted)">Últimos ${days} días</div></div>`;
   // Leads table
   const leadsEl=document.getElementById('fStatsLeads');
   if(!(data.leads||[]).length){ leadsEl.innerHTML='<p style="color:var(--muted);font-size:.84rem">Sin leads aún. Cuando entren pacientes por el embudo aparecerán aquí.</p>'; }
-  else { leadsEl.innerHTML='<table style="width:100%;font-size:.82rem;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--line)"><th style="text-align:left;padding:.4rem">Nombre</th><th>Teléfono</th><th>Tratamiento</th><th>Temp.</th><th>Estado</th></tr></thead><tbody>'+(data.leads||[]).map(l=>`<tr style="border-bottom:1px solid var(--line)"><td style="padding:.4rem;font-weight:600">${l.name||'—'}</td><td>${l.phone||''}</td><td>${l.treatment||''}</td><td><span style="padding:.15rem .4rem;border-radius:6px;font-size:.72rem;font-weight:700;background:${l.temperature==='hot'?'#fde8e4':l.temperature==='warm'?'#fef3cd':'#e8f4fd'};color:${l.temperature==='hot'?'#b0432e':l.temperature==='warm'?'#9a6a1a':'#2e6b9a'}">${l.temperature||'—'}</span></td><td>${l.stage||'new'}</td></tr>`).join('')+'</tbody></table>'; }
+  else { leadsEl.innerHTML='<table style="width:100%;font-size:.82rem;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--line)"><th style="text-align:left;padding:.4rem">Nombre</th><th>Teléfono</th><th>Tratamiento</th><th>Temp.</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>'+(data.leads||[]).map(l=>`<tr style="border-bottom:1px solid var(--line)"><td style="padding:.4rem;font-weight:600">${l.name||'—'}</td><td style="font-size:.78rem">${l.phone||''}</td><td style="font-size:.78rem">${l.treatment||''}</td><td><span style="padding:.15rem .4rem;border-radius:6px;font-size:.72rem;font-weight:700;background:${l.temperature==='hot'?'#fde8e4':l.temperature==='warm'?'#fef3cd':'#e8f4fd'};color:${l.temperature==='hot'?'#b0432e':l.temperature==='warm'?'#9a6a1a':'#2e6b9a'}">${l.temperature==='hot'?'🔥 Caliente':l.temperature==='warm'?'☀️ Tibio':'❄️ Frío'}</span></td><td style="font-size:.76rem">${l.status||'new'}</td><td style="font-size:.74rem;color:var(--muted)">${l.created_at?new Date(l.created_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short'}):''}</td></tr>`).join('')+'</tbody></table>'; }
   // Appointments table
   const apptsEl=document.getElementById('fStatsAppts');
   if(!(data.appointments||[]).length){ apptsEl.innerHTML='<p style="color:var(--muted);font-size:.84rem">Sin citas desde embudos aún.</p>'; }
