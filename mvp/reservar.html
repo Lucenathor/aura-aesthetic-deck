@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reservar cita · AURA</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#faf8f6;color:#2a2a2a;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
+.card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);max-width:440px;width:100%;padding:2rem;position:relative}
+.logo{text-align:center;margin-bottom:1.2rem}
+.logo img{height:48px;border-radius:8px}
+.logo h2{font-family:Georgia,serif;color:#A85942;margin-top:.5rem;font-size:1.3rem}
+.logo p{color:#888;font-size:.82rem;margin-top:.2rem}
+h3{font-size:1rem;color:#333;margin-bottom:.8rem}
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:.78rem;color:#666;margin-bottom:.3rem;font-weight:500}
+.field input,.field select{width:100%;padding:.65rem .8rem;border:1px solid #ddd;border-radius:8px;font-size:.9rem;transition:border .2s}
+.field input:focus,.field select:focus{border-color:#C8745A;outline:none}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.5rem;margin-bottom:1rem}
+.slot{padding:.55rem .6rem;border:1.5px solid #e0d8d4;border-radius:8px;text-align:center;font-size:.8rem;cursor:pointer;transition:all .15s}
+.slot:hover{border-color:#C8745A;background:#fdf5f2}
+.slot.sel{border-color:#C8745A;background:#C8745A;color:#fff;font-weight:600}
+.btn{width:100%;padding:.8rem;background:#C8745A;color:#fff;border:none;border-radius:10px;font-size:1rem;font-weight:600;cursor:pointer;transition:transform .1s}
+.btn:hover{transform:scale(.98)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.policy{margin-top:1rem;font-size:.72rem;color:#999;text-align:center;line-height:1.4}
+.success{text-align:center;padding:2rem 1rem}
+.success h2{color:#2d8a4e;font-size:1.4rem;margin-bottom:.5rem}
+.success p{color:#555;font-size:.9rem;line-height:1.5}
+.error{color:#c0392b;font-size:.8rem;margin-top:.5rem;text-align:center}
+.loading{text-align:center;padding:2rem;color:#888}
+@media(max-width:480px){.card{padding:1.5rem}.slots{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="card" id="bookCard">
+  <div class="loading" id="loadState">Cargando disponibilidad...</div>
+  <div id="formState" style="display:none">
+    <div class="logo">
+      <img id="clinicLogo" src="" alt="" style="display:none">
+      <h2 id="clinicName">Reservar cita</h2>
+      <p id="welcomeMsg">Elige tu horario y reserva en 30 segundos</p>
+    </div>
+    <div class="field"><label>Tu nombre completo</label><input id="fName" placeholder="María García" required></div>
+    <div class="field"><label>Teléfono (con prefijo)</label><input id="fPhone" placeholder="34600123456" type="tel" required></div>
+    <div class="field"><label>Email (opcional)</label><input id="fEmail" placeholder="tu@email.com" type="email"></div>
+    <div class="field"><label>Tratamiento</label><select id="fTreat"><option value="Valoración">Valoración gratuita</option></select></div>
+    <h3>Elige tu horario:</h3>
+    <div class="slots" id="slotsGrid"></div>
+    <button class="btn" id="bookBtn" disabled onclick="doBook()">Reservar mi cita →</button>
+    <div class="error" id="errMsg" style="display:none"></div>
+    <div class="policy" id="policyText">Cancelación gratuita con 24h de antelación.</div>
+  </div>
+  <div id="successState" style="display:none" class="success">
+    <h2>✓ Cita reservada</h2>
+    <p id="successMsg">Te hemos enviado un SMS de confirmación. ¡Nos vemos pronto!</p>
+  </div>
+</div>
+<script>
+const W='https://aura-chat-worker.adrian-7b9.workers.dev';
+const params=new URLSearchParams(location.search);
+const tenant=params.get('t')||params.get('tenant')||location.pathname.split('/').filter(Boolean).pop()||'';
+let selectedSlot='';
+
+async function init(){
+  if(!tenant){document.getElementById('loadState').textContent='Enlace inválido. Contacta con la clínica.';return;}
+  try{
+    // Cargar info de la clínica
+    const [infoR,slotsR]=await Promise.all([
+      fetch(W+'/api/tenant/'+encodeURIComponent(tenant)).then(r=>r.json()),
+      fetch(W+'/api/slots?tenant='+encodeURIComponent(tenant)+'&limit=20').then(r=>r.json())
+    ]);
+    const t=infoR.tenant||{};
+    if(t.logo_url){const img=document.getElementById('clinicLogo');img.src=t.logo_url;img.style.display='inline';}
+    if(t.name)document.getElementById('clinicName').textContent='Reservar en '+t.name;
+    // Booking config
+    const bc=slotsR.booking_config;
+    if(bc&&bc.welcome_msg)document.getElementById('welcomeMsg').textContent=bc.welcome_msg;
+    if(bc&&bc.cancel_hours)document.getElementById('policyText').textContent='Cancelación gratuita con '+bc.cancel_hours+'h de antelación.';
+    // Tratamientos
+    if(bc&&bc.treatments){
+      const sel=document.getElementById('fTreat');
+      sel.innerHTML='';
+      bc.treatments.split(',').forEach(function(tr){
+        const o=document.createElement('option');o.value=tr.trim();o.textContent=tr.trim();sel.appendChild(o);
+      });
+    } else if(infoR.funnels&&infoR.funnels.length){
+      const sel=document.getElementById('fTreat');
+      const existing=new Set([sel.options[0]?.value]);
+      infoR.funnels.forEach(function(f){
+        if(f.treatment&&!existing.has(f.treatment)){
+          const o=document.createElement('option');o.value=f.treatment;o.textContent=f.treatment;sel.appendChild(o);
+          existing.add(f.treatment);
+        }
+      });
+    }
+    // Slots
+    const grid=document.getElementById('slotsGrid');
+    if(!slotsR.slots||!slotsR.slots.length){grid.innerHTML='<p style="grid-column:1/-1;color:#999;text-align:center">No hay huecos disponibles en los próximos días.</p>';}
+    else{
+      slotsR.slots.forEach(function(s){
+        const d=document.createElement('div');d.className='slot';d.textContent=s.label;d.dataset.iso=s.iso;
+        d.onclick=function(){
+          document.querySelectorAll('.slot.sel').forEach(function(x){x.classList.remove('sel');});
+          d.classList.add('sel');selectedSlot=s.iso;
+          document.getElementById('bookBtn').disabled=false;
+        };
+        grid.appendChild(d);
+      });
+    }
+    document.getElementById('loadState').style.display='none';
+    document.getElementById('formState').style.display='block';
+  }catch(e){document.getElementById('loadState').textContent='Error al cargar. Inténtalo de nuevo.';}
+}
+
+async function doBook(){
+  const name=document.getElementById('fName').value.trim();
+  const phone=document.getElementById('fPhone').value.trim();
+  const email=document.getElementById('fEmail').value.trim();
+  const treatment=document.getElementById('fTreat').value;
+  const err=document.getElementById('errMsg');
+  err.style.display='none';
+  if(!name||!phone){err.textContent='Rellena nombre y teléfono.';err.style.display='block';return;}
+  if(!selectedSlot){err.textContent='Elige un horario.';err.style.display='block';return;}
+  const btn=document.getElementById('bookBtn');btn.disabled=true;btn.textContent='Reservando...';
+  try{
+    const r=await fetch(W+'/api/public-book',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:tenant,name:name,phone:phone,email:email,treatment:treatment,slot_iso:selectedSlot})});
+    const d=await r.json();
+    if(d.ok){
+      document.getElementById('formState').style.display='none';
+      document.getElementById('successState').style.display='block';
+      const dt=new Date(selectedSlot);
+      document.getElementById('successMsg').textContent=name+', tu cita para '+treatment+' queda confirmada el '+dt.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'})+' a las '+dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'. Te hemos enviado un SMS de confirmación.';
+    }else{
+      err.textContent=d.error||'No se pudo reservar. Inténtalo de nuevo.';err.style.display='block';
+      btn.disabled=false;btn.textContent='Reservar mi cita →';
+    }
+  }catch(e){err.textContent='Error de conexión. Inténtalo de nuevo.';err.style.display='block';btn.disabled=false;btn.textContent='Reservar mi cita →';}
+}
+
+init();
+</script>
+</body>
+</html>

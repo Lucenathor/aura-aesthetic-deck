@@ -1,0 +1,216 @@
+{
+  "project_info": {
+    "title": "Portada",
+    "created": 1780726560.461,
+    "last_updated": 1780728080.798,
+    "total_slides": 20
+  },
+  "slides": [
+    {
+      "id": "cover",
+      "state": "edited",
+      "pageNum": 1
+    },
+    {
+      "id": "landing_vs_quiz_intro",
+      "state": "edited",
+      "pageNum": 2
+    },
+    {
+      "id": "comparativa",
+      "state": "edited",
+      "pageNum": 3
+    },
+    {
+      "id": "datos",
+      "state": "edited",
+      "pageNum": 4
+    },
+    {
+      "id": "embudo_global",
+      "state": "edited",
+      "pageNum": 5
+    },
+    {
+      "id": "fase1_quiz",
+      "state": "edited",
+      "pageNum": 6
+    },
+    {
+      "id": "fase2_leadmagnet",
+      "state": "edited",
+      "pageNum": 7
+    },
+    {
+      "id": "fase3_chatbot",
+      "state": "edited",
+      "pageNum": 8
+    },
+    {
+      "id": "velocidad",
+      "state": "edited",
+      "pageNum": 9
+    },
+    {
+      "id": "fase3_script",
+      "state": "edited",
+      "pageNum": 10
+    },
+    {
+      "id": "nutricion",
+      "state": "edited",
+      "pageNum": 11
+    },
+    {
+      "id": "fase4_reserva",
+      "state": "edited",
+      "pageNum": 12
+    },
+    {
+      "id": "confirmacion",
+      "state": "edited",
+      "pageNum": 13
+    },
+    {
+      "id": "recuperar_lead",
+      "state": "edited",
+      "pageNum": 14
+    },
+    {
+      "id": "recuperar_noshow",
+      "state": "edited",
+      "pageNum": 15
+    },
+    {
+      "id": "ia_vs_humano",
+      "state": "edited",
+      "pageNum": 16
+    },
+    {
+      "id": "touchpoints",
+      "state": "edited",
+      "pageNum": 17
+    },
+    {
+      "id": "motor_sms",
+      "state": "edited",
+      "pageNum": 18
+    },
+    {
+      "id": "resultado",
+      "state": "edited",
+      "pageNum": 19
+    },
+    {
+      "id": "cierre",
+      "state": "edited",
+      "pageNum": 20
+    }
+  ],
+  "outline": [
+    {
+      "id": "cover",
+      "title": "Portada",
+      "summary": "Quiz Page vs Landing Page: cómo el embudo de AURA convierte un anuncio en una paciente de labios. Marca FOCUS.",
+      "image_plan": "/home/ubuntu/upload/aura_logo_05_orbit_a.webp - The slide is a cover slide and image 18 is a logo for AURA, which is the main topic of the presentation."
+    },
+    {
+      "id": "landing_vs_quiz_intro",
+      "title": "La landing pide; el quiz conversa",
+      "summary": "El problema de la landing tradicional (monólogo, un solo botón) frente al quiz (diálogo, compromiso progresivo)."
+    },
+    {
+      "id": "comparativa",
+      "title": "Quiz vs Landing: comparación directa",
+      "summary": "Tabla comparando interacción, datos del lead, compromiso, cualificación, continuidad y conversión."
+    },
+    {
+      "id": "datos",
+      "title": "Los datos: el quiz convierte más",
+      "summary": "Estadísticas con fuente: quiz 40,1% vs landing ~23%; contenido interactivo 2x; +743% al pasar a multi-step. Gráfico de barras comparativo."
+    },
+    {
+      "id": "embudo_global",
+      "title": "El embudo de labios en 5 fases",
+      "summary": "Visión global: quiz, lead magnet, chatbot, reserva, recuperación. Con enlace al embudo en vivo.",
+      "image_plan": "/home/ubuntu/aura-presentation/recuperacion_flujo.png - This image is a flowchart that visually represents the 'embudo de aumento de labios' (lip augmentation funnel) described in the slide content, making it highly relevant for a 'global vision' slide."
+    },
+    {
+      "id": "fase1_quiz",
+      "title": "Fase 1 · El quiz que entiende",
+      "summary": "Las 5 preguntas reales del quiz de labios con sus opciones; cada respuesta es dato + micro-sí."
+    },
+    {
+      "id": "fase2_leadmagnet",
+      "title": "Fase 2 · El lead magnet captura el contacto",
+      "summary": "El imán 'Tu plan de labios gratis' tras la 2ª pregunta; captura temprana del teléfono."
+    },
+    {
+      "id": "fase3_chatbot",
+      "title": "Fase 3 · El chatbot IA cualifica",
+      "summary": "Reglas reales del agente IA: tono humano, frases cortas, objetivo agendar valoración."
+    },
+    {
+      "id": "velocidad",
+      "title": "Velocidad: responder en &lt;1 min",
+      "summary": "Speed-to-lead: responder en &lt;5 min = 21x más cualificación; conversión cae 8x después. La IA responde en &lt;1 min, 24/7."
+    },
+    {
+      "id": "fase3_script",
+      "title": "Fase 3 · Script de cualificación",
+      "summary": "Ejemplo real de conversación: la IA rebaja la objeción y vuelve al cierre."
+    },
+    {
+      "id": "nutricion",
+      "title": "El lead se nutre más en cada fase",
+      "summary": "Tabla de qué sabemos del lead y su temperatura según avanza por el embudo."
+    },
+    {
+      "id": "fase4_reserva",
+      "title": "Fase 4 · Reserva en el calendario real",
+      "summary": "Solo huecos abiertos, anti-doble reserva, próximo día abierto, cita directa a agenda."
+    },
+    {
+      "id": "confirmacion",
+      "title": "Confirmar la cita reduce el no-show",
+      "summary": "Recordatorio/confirmación baja el no-show de 23,1% a 13,6% (Parikh 2010). Confirmar el mismo día asegura asistencia."
+    },
+    {
+      "id": "recuperar_lead",
+      "title": "Recuperar al que habló y no reservó",
+      "summary": "Seguimiento por secuencias = hasta 50% más leads listos a 33% menos coste. El que habló con la IA y no reservó se recupera."
+    },
+    {
+      "id": "recuperar_noshow",
+      "title": "Recuperar no-shows al llamar",
+      "summary": "Un no-show sin contacto: 70% no vuelve en 18 meses. Llamada de staff bajó no-show de 23,1% a 13,6%. La ventana es corta."
+    },
+    {
+      "id": "ia_vs_humano",
+      "title": "IA vs humano: nunca falla, nunca duerme",
+      "summary": "Comparativa IA vs humano: 24/7 incl. fines de semana, respuesta &lt;1 min, cero coste extra, no se olvida ni falla."
+    },
+    {
+      "id": "touchpoints",
+      "title": "Touchpoints · El panel te avisa",
+      "summary": "Columnas del panel: llamar urgente, por confirmar, recuperar, nueva venta, con acciones.",
+      "image_plan": "/home/ubuntu/upload/Capturadepantalla2026-06-05alas1.18.22p.m..png - This image is a screenshot of a mobile phone displaying a conversation, which directly illustrates the SMS automation and chatbot interaction described in the slide."
+    },
+    {
+      "id": "motor_sms",
+      "title": "El motor de SMS recupera ventas",
+      "summary": "Tabla de SMS automáticos por momento (20min, 5h, día 3/7/21, recordatorios, no-show, recall)."
+    },
+    {
+      "id": "resultado",
+      "title": "Ninguna venta se escapa",
+      "summary": "Resumen del valor: lead frío, no confirma, no vino, recall; medido en 'Recuperado gracias a AURA'."
+    },
+    {
+      "id": "cierre",
+      "title": "Pruébalo tú mismo",
+      "summary": "Cierre con el enlace al embudo de aumento de labios y la marca FOCUS.",
+      "image_plan": "/home/ubuntu/upload/logobueno.png - This is a logo for FOCUS Consulting Group, which is mentioned as the creator of the AURA system."
+    }
+  ]
+}

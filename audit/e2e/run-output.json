@@ -1,0 +1,266 @@
+{
+  "results": [
+    {
+      "module": "resumen",
+      "url": "https://auracrm.co/dashboard?t=aura-demo#resumen",
+      "location": "https://auracrm.co/dashboard?t=aura-demo#resumen",
+      "hash": "#resumen",
+      "persistedSection": "resumen",
+      "activeView": "v-resumen",
+      "activeNav": "resumen",
+      "expectedVisible": true,
+      "textLength": 1598,
+      "hasErrorText": [],
+      "leadRows": 0,
+      "appointmentRows": 30,
+      "charts": [
+        "chartRevenue",
+        "chartPatients",
+        "chartConversion",
+        "chartTopTreat"
+      ]
+    },
+    {
+      "module": "pacientes",
+      "url": "https://auracrm.co/dashboard?t=aura-demo#pacientes",
+      "location": "https://auracrm.co/dashboard?t=aura-demo#pacientes",
+      "hash": "#pacientes",
+      "persistedSection": "pacientes",
+      "activeView": "v-pacientes",
+      "activeNav": "pacientes",
+      "expectedVisible": true,
+      "textLength": 11031,
+      "hasErrorText": [],
+      "leadRows": 0,
+      "appointmentRows": 30,
+      "charts": [
+        "chartRevenue",
+        "chartPatients",
+        "chartConversion",
+        "chartTopTreat"
+      ]
+    },
+    {
+      "module": "pipeline",
+      "url": "https://auracrm.co/dashboard?t=aura-demo#pipeline",
+      "location": "https://auracrm.co/dashboard?t=aura-demo#pipeline",
+      "hash": "#pipeline",
+      "persistedSection": "pipeline",
+      "activeView": "v-pipeline",
+      "activeNav": "pipeline",
+      "expectedVisible": true,
+      "textLength": 17744,
+      "hasErrorText": [],
+      "leadRows": 0,
+      "appointmentRows": 30,
+      "charts": [
+        "chartRevenue",
+        "chartPatients",
+        "chartConversion",
+        "chartTopTreat"
+      ]
+    },
+    {
+      "module": "agenda",
+      "url": "https://auracrm.co/dashboard?t=aura-demo#agenda",
+      "location": "https://auracrm.co/dashboard?t=aura-demo#agenda",
+      "hash": "#agenda",
+      "persistedSection": "agenda",
+      "activeView": "v-agenda",
+      "activeNav": "agenda",
+      "expectedVisible": true,
+      "textLength": 3095,
+      "hasErrorText": [],
+      "leadRows": 0,
+      "appointmentRows": 30,
+      "charts": [
+        "chartRevenue",
+        "chartPatients",
+        "chartConversion",
+        "chartTopTreat"
+      ]
+    },
+    {
+      "module": "caja",
+      "url": "https://auracrm.co/dashboard?t=aura-demo#caja",
+      "location": "https://auracrm.co/dashboard?t=aura-demo#caja",
+      "hash": "#caja",
+      "persistedSection": "caja",
+      "activeView": "v-caja",
+      "activeNav": "caja",
+      "expectedVisible": true,
+      "textLength": 1114,
+      "hasErrorText": [],
+      "leadRows": 0,
+      "appointmentRows": 30,
+      "charts": [
+        "chartRevenue",
+        "chartPatients",
+        "chartConversion",
+        "chartTopTreat"
+      ]
+    },
+    {
+      "module": "whatsapp",
+      "url": "https://auracrm.co/dashboard?t=aura-demo#whatsapp",
+      "location": "https://auracrm.co/dashboard?t=aura-demo#whatsapp",
+      "hash": "#whatsapp",
+      "persistedSection": "whatsapp",
+      "activeView": "v-whatsapp",
+      "activeNav": "whatsapp",
+      "expectedVisible": true,
+      "textLength": 713,
+      "hasErrorText": [],
+      "leadRows": 0,
+      "appointmentRows": 30,
+      "charts": [
+        "chartRevenue",
+        "chartPatients",
+        "chartConversion",
+        "chartTopTreat"
+      ]
+    },
+    {
+      "module": "inventario",
+      "url": "https://auracrm.co/dashboard?t=aura-demo#inventario",
+      "location": "https://auracrm.co/dashboard?t=aura-demo#inventario",
+      "hash": "#inventario",
+      "persistedSection": "inventario",
+      "activeView": "v-inventario",
+      "activeNav": "inventario",
+      "expectedVisible": true,
+      "textLength": 1827,
+      "hasErrorText": [],
+      "leadRows": 0,
+      "appointmentRows": 30,
+      "charts": [
+        "chartRevenue",
+        "chartPatients",
+        "chartConversion",
+        "chartTopTreat"
+      ]
+    },
+    {
+      "module": "portal",
+      "url": "https://auracrm.co/dashboard?t=aura-demo#portal",
+      "location": "https://auracrm.co/dashboard?t=aura-demo#portal",
+      "hash": "#portal",
+      "persistedSection": "portal",
+      "activeView": "v-portal",
+      "activeNav": "portal",
+      "expectedVisible": true,
+      "textLength": 3628,
+      "hasErrorText": [],
+      "leadRows": 0,
+      "appointmentRows": 30,
+      "charts": [
+        "chartRevenue",
+        "chartPatients",
+        "chartConversion",
+        "chartTopTreat"
+      ]
+    },
+    {
+      "module": "embudo",
+      "url": "https://auracrm.co/dashboard?t=aura-demo#embudo",
+      "location": "https://auracrm.co/dashboard?t=aura-demo#embudo",
+      "hash": "#embudo",
+      "persistedSection": "embudo",
+      "activeView": "v-embudo",
+      "activeNav": "embudo",
+      "expectedVisible": true,
+      "textLength": 1136,
+      "hasErrorText": [],
+      "leadRows": 0,
+      "appointmentRows": 30,
+      "charts": [
+        "chartRevenue",
+        "chartPatients",
+        "chartConversion",
+        "chartTopTreat"
+      ]
+    },
+    {
+      "module": "contenido",
+      "url": "https://auracrm.co/dashboard?t=aura-demo#contenido",
+      "location": "https://auracrm.co/dashboard?t=aura-demo#contenido",
+      "hash": "#contenido",
+      "persistedSection": "contenido",
+      "activeView": "v-contenido",
+      "activeNav": "contenido",
+      "expectedVisible": true,
+      "textLength": 1212,
+      "hasErrorText": [],
+      "leadRows": 0,
+      "appointmentRows": 30,
+      "charts": [
+        "chartRevenue",
+        "chartPatients",
+        "chartConversion",
+        "chartTopTreat"
+      ]
+    },
+    {
+      "module": "equipo",
+      "url": "https://auracrm.co/dashboard?t=aura-demo#equipo",
+      "location": "https://auracrm.co/dashboard?t=aura-demo#equipo",
+      "hash": "#equipo",
+      "persistedSection": "equipo",
+      "activeView": "v-equipo",
+      "activeNav": "equipo",
+      "expectedVisible": true,
+      "textLength": 1285,
+      "hasErrorText": [],
+      "leadRows": 0,
+      "appointmentRows": 30,
+      "charts": [
+        "chartRevenue",
+        "chartPatients",
+        "chartConversion",
+        "chartTopTreat"
+      ]
+    },
+    {
+      "module": "ajustes",
+      "url": "https://auracrm.co/dashboard?t=aura-demo#ajustes",
+      "location": "https://auracrm.co/dashboard?t=aura-demo#ajustes",
+      "hash": "#ajustes",
+      "persistedSection": "ajustes",
+      "activeView": "v-ajustes",
+      "activeNav": "ajustes",
+      "expectedVisible": true,
+      "textLength": 8110,
+      "hasErrorText": [],
+      "leadRows": 0,
+      "appointmentRows": 30,
+      "charts": [
+        "chartRevenue",
+        "chartPatients",
+        "chartConversion",
+        "chartTopTreat"
+      ]
+    },
+    {
+      "module": "admin",
+      "url": "https://auracrm.co/dashboard?t=aura-demo#admin",
+      "location": "https://auracrm.co/dashboard?t=aura-demo#admin",
+      "hash": "#admin",
+      "persistedSection": "admin",
+      "activeView": "v-admin",
+      "activeNav": "admin",
+      "expectedVisible": true,
+      "textLength": 2308,
+      "hasErrorText": [],
+      "leadRows": 0,
+      "appointmentRows": 30,
+      "charts": [
+        "chartRevenue",
+        "chartPatients",
+        "chartConversion",
+        "chartTopTreat"
+      ]
+    }
+  ],
+  "consoleErrors": [],
+  "workerResponses": []
+}
