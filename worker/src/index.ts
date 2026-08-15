@@ -4357,6 +4357,63 @@ export default {
         return json({ ok:true });
       }
 
+      // MARCAR LLEGADA del paciente (Arrived)
+      if (p === '/api/appt-arrived' && req.method === 'POST') {
+        const b:any = await req.json();
+        if (!b.appointment_id) return json({ error:'missing appointment_id' }, 400);
+        await env.aura_db.prepare("UPDATE appointments SET status='arrived' WHERE id=? AND tenant_id=?").bind(b.appointment_id, b.tenant_id||tenant).run();
+        return json({ ok:true, status:'arrived' });
+      }
+
+      // MARCAR NO-SHOW manual
+      if (p === '/api/appt-noshow' && req.method === 'POST') {
+        const b:any = await req.json();
+        if (!b.appointment_id) return json({ error:'missing appointment_id' }, 400);
+        await env.aura_db.prepare("UPDATE appointments SET status='noshow' WHERE id=? AND tenant_id=?").bind(b.appointment_id, b.tenant_id||tenant).run();
+        try {
+          const appt:any = await env.aura_db.prepare("SELECT a.*, l.phone, l.name as lead_name FROM appointments a LEFT JOIN leads l ON a.lead_id=l.id WHERE a.id=?").bind(b.appointment_id).first();
+          if (appt && appt.phone) {
+            const tn:any = await env.aura_db.prepare("SELECT name, sms_user, sms_pass FROM tenants WHERE id=?").bind(appt.tenant_id).first();
+            if (tn && tn.sms_user) {
+              const msg = `Hola ${(appt.lead_name||'').split(' ')[0]}, te hemos echado de menos en ${tn.name}. Quieres que te reprogramemos? Responde o llamanos.`;
+              await fetch('https://api.labsmobile.com/json/send', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Basic '+btoa(tn.sms_user+':'+tn.sms_pass)}, body:JSON.stringify({message:msg,tpoa:tn.name||'AURA',recipient:[{msisdn:appt.phone}]}) });
+            }
+          }
+        } catch(e){}
+        return json({ ok:true, status:'noshow' });
+      }
+
+      // iCal FEED por profesional (público, con token secreto)
+      if (p.startsWith('/api/ical/') && req.method === 'GET') {
+        const parts = p.split('/');
+        const icalTenant = parts[3] || '';
+        const icalPro = parts[4] || '';
+        const icalToken = (parts[5] || '').replace('.ics','');
+        const expectedToken = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(icalTenant+icalPro+'aura-ical-2026')).then((h:ArrayBuffer)=>Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16));
+        if (icalToken !== expectedToken) return new Response('Unauthorized', {status:401});
+        const from = new Date(Date.now()-90*86400000).toISOString().slice(0,10);
+        const to = new Date(Date.now()+90*86400000).toISOString().slice(0,10);
+        const rows:any = await env.aura_db.prepare("SELECT a.*, l.name as lead_name, l.phone FROM appointments a LEFT JOIN leads l ON a.lead_id=l.id WHERE a.tenant_id=? AND a.professional_id=? AND a.date_iso BETWEEN ? AND ? AND a.status NOT IN ('cancelled') ORDER BY a.date_iso").bind(icalTenant, icalPro, from, to).all();
+        const events = (rows.results||[]).map((a:any) => {
+          const dur = a.duration_min || 30;
+          const endDate = new Date(new Date(a.date_iso).getTime()+dur*60000);
+          const startFmt = new Date(a.date_iso).toISOString().replace(/[-:.]/g,'').slice(0,15)+'Z';
+          const endFmt = endDate.toISOString().replace(/[-:.]/g,'').slice(0,15)+'Z';
+          return `BEGIN:VEVENT\r\nUID:${a.id}@auracrm.co\r\nDTSTAMP:${new Date().toISOString().replace(/[-:.]/g,'').slice(0,15)}Z\r\nDTSTART:${startFmt}\r\nDTEND:${endFmt}\r\nSUMMARY:${(a.lead_name||'Paciente')} - ${a.treatment||'Cita'}\r\nDESCRIPTION:Tel: ${a.phone||'N/A'}\\nEstado: ${a.status||'booked'}\r\nSTATUS:${a.status==='noshow'?'CANCELLED':'CONFIRMED'}\r\nEND:VEVENT`;
+        }).join('\r\n');
+        const ical = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//AURA CRM//ES\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:AURA - Agenda\r\nX-WR-TIMEZONE:Europe/Madrid\r\n${events}\r\nEND:VCALENDAR`;
+        return new Response(ical, { headers: { 'Content-Type':'text/calendar; charset=utf-8', 'Content-Disposition':'inline; filename="agenda.ics"', 'Cache-Control':'no-cache, max-age=300' } });
+      }
+
+      // Generar URL de iCal feed para un profesional
+      if (p === '/api/ical-url' && req.method === 'GET') {
+        const proId = url.searchParams.get("professional_id"); const tenant = url.searchParams.get("tenant") || "";
+        if (!proId || !tenant) return json({ error:'missing params' }, 400);
+        const token = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(tenant+proId+'aura-ical-2026')).then((h:ArrayBuffer)=>Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16));
+        const icalUrl = `https://aura-chat-worker.adrian-7b9.workers.dev/api/ical/${tenant}/${proId}/${token}.ics`;
+        return json({ ok:true, url:icalUrl, instructions:'Copia esta URL y pegala en Google Calendar > Otros calendarios > Desde URL. Se actualizara automaticamente.' });
+      }
+
       // ═══════════════════════════════════════════════════════════════
       // IMPORTACIÓN MASIVA (Pacientes, Productos, Tratamientos)
       // ═══════════════════════════════════════════════════════════════
@@ -4872,6 +4929,56 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
         } catch (err) { console.error('postcare error', v && v.id, err); }
       }
     } catch (e) { console.error('postcare block error', e); }
+
+  // ═══ AUTO NO-SHOW: marcar citas pasadas 15min sin llegar ═══
+  try {
+    const nowISO = new Date().toISOString();
+    const fifteenAgo = new Date(Date.now() - 15*60000).toISOString();
+    const noShowCandidates:any = await env.aura_db.prepare(
+      "SELECT a.id, a.tenant_id, a.lead_id, l.phone, l.name as lead_name FROM appointments a LEFT JOIN leads l ON a.lead_id=l.id WHERE a.status IN ('booked','confirmed','pending') AND a.date_iso < ? AND a.date_iso > ? ORDER BY a.date_iso"
+    ).bind(fifteenAgo, new Date(Date.now()-2*3600000).toISOString()).all();
+    for (const ns of (noShowCandidates.results||[])) {
+      await env.aura_db.prepare("UPDATE appointments SET status='noshow' WHERE id=?").bind(ns.id).run();
+      // SMS "te echamos de menos"
+      if (ns.phone) {
+        try {
+          const tn:any = await env.aura_db.prepare("SELECT name, sms_user, sms_pass FROM tenants WHERE id=?").bind(ns.tenant_id).first();
+          if (tn && tn.sms_user) {
+            const msg = `Hola ${(ns.lead_name||'').split(' ')[0]}, te hemos echado de menos en ${tn.name}. Quieres que te reprogramemos? Responde o llamanos.`;
+            await sendSMS(env, ns.phone, msg, tn.name||'AURA', ns.tenant_id);
+            sent++;
+          }
+        } catch(e){}
+      }
+    }
+  } catch(e) { console.error('auto-noshow error', e); }
+
+  // ═══ SMS RESUMEN DEL DÍA a profesionales (solo entre 6:50-7:10 UTC = 8:50-9:10 Madrid) ═══
+  try {
+    const nowH = new Date().getUTCHours();
+    const nowM = new Date().getUTCMinutes();
+    if (nowH === 6 && nowM >= 50 || nowH === 7 && nowM <= 10) {
+      const today = new Date().toISOString().slice(0,10);
+      const allTenants:any = await env.aura_db.prepare("SELECT id, name, sms_user, sms_pass FROM tenants WHERE active=1").all();
+      for (const tn of (allTenants.results||[])) {
+        if (!tn.sms_user) continue;
+        const pros:any = await env.aura_db.prepare("SELECT id, name, phone FROM professionals WHERE tenant_id=? AND phone IS NOT NULL AND phone != ''").bind(tn.id).all();
+        for (const pro of (pros.results||[])) {
+          const appts:any = await env.aura_db.prepare("SELECT a.date_iso, a.treatment, l.name as lead_name FROM appointments a LEFT JOIN leads l ON a.lead_id=l.id WHERE a.tenant_id=? AND a.professional_id=? AND a.date_iso LIKE ? AND a.status NOT IN ('cancelled','noshow') ORDER BY a.date_iso").bind(tn.id, pro.id, today+'%').all();
+          const count = (appts.results||[]).length;
+          if (count === 0) continue;
+          const list = (appts.results||[]).slice(0,6).map((a:any) => {
+            const t = new Date(a.date_iso).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Madrid'});
+            return `${t} ${(a.lead_name||'').split(' ')[0]} (${(a.treatment||'').slice(0,15)})`;
+          }).join('\n');
+          const msg = `Buenos dias ${pro.name.split(' ')[0]}! Hoy tienes ${count} cita${count>1?'s':''}:\n${list}${count>6?'\n...y '+(count-6)+' mas':''}`;
+          await sendSMS(env, pro.phone, msg, tn.name||'AURA', tn.id);
+          sent++;
+        }
+      }
+    }
+  } catch(e) { console.error('daily-summary error', e); }
+
   return { ok: true, sent };
 }
 

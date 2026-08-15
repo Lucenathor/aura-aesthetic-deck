@@ -660,7 +660,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
           <button class="cal-filter-btn" data-filter="pending" onclick="setCalFilter('pending',this)">⏳ Pendientes</button>
           <button class="cal-filter-btn" data-filter="confirmed" onclick="setCalFilter('confirmed',this)">✓ Confirmadas</button>
           <button class="cal-filter-btn" data-filter="attended" onclick="setCalFilter('attended',this)">💰 Cobradas</button>
-          <button class="cal-filter-btn" data-filter="noshow" onclick="setCalFilter('noshow',this)">❌ No-show</button>
+          <button class="cal-filter-btn" data-filter="arrived" onclick="setCalFilter('arrived',this)">🏥 En sala</button><button class="cal-filter-btn" data-filter="noshow" onclick="setCalFilter('noshow',this)">❌ No-show</button>
         </div>
         <div id="calSummary" style="display:flex;gap:1.2rem;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-bottom:.4rem"></div>
         <div id="calLegend" style="display:flex;gap:.7rem;flex-wrap:wrap;align-items:center;margin-bottom:.7rem"></div>
@@ -2609,7 +2609,7 @@ async function loadAgendaCal(force){
 // === MEJORAS AGENDA: Filtro, Now-line, Bloqueos, Ocupación ===
 let _calFilter="all";
 function setCalFilter(f,btn){ _calFilter=f; document.querySelectorAll(".cal-filter-btn").forEach(b=>b.classList.toggle("active",b===btn)); renderAgendaCal(); }
-function agApptsFiltered(dayStr){ let appts=agApptsFor(dayStr); if(_calFilter==="all")return appts; if(_calFilter==="pending")return appts.filter(a=>a.confirmed!=1&&a.status!=="attended"&&a.status!=="noshow"&&a.status!=="cancelled"); if(_calFilter==="confirmed")return appts.filter(a=>a.confirmed==1&&a.status!=="attended"); if(_calFilter==="attended")return appts.filter(a=>a.status==="attended"); if(_calFilter==="noshow")return appts.filter(a=>a.status==="noshow"); return appts; }
+function agApptsFiltered(dayStr){ let appts=agApptsFor(dayStr); if(_calFilter==="all")return appts; if(_calFilter==="pending")return appts.filter(a=>a.confirmed!=1&&a.status!=="attended"&&a.status!=="noshow"&&a.status!=="cancelled"); if(_calFilter==="confirmed")return appts.filter(a=>a.confirmed==1&&a.status!=="attended"); if(_calFilter==="attended")return appts.filter(a=>a.status==="attended"); if(_calFilter==="noshow")return appts.filter(a=>a.status==="noshow"); if(_calFilter==="arrived")return appts.filter(a=>a.status==="arrived"); return appts; }
 function renderNowLine(container,pxPerMin){ var now=new Date(); var dayStr=now.toISOString().slice(0,10); var ref=document.getElementById("calTitle"); if(!ref)return; var mins=(now.getHours()-8)*60+now.getMinutes(); if(mins<0||mins>14*60)return; var top=mins*pxPerMin; var line=document.createElement("div"); line.className="agenda-now-line"; line.style.top=top+"px"; container.appendChild(line); }
 function calcOccupation(proId,dayStr){ var appts=agApptsFor(dayStr).filter(a=>a.professional_id===proId); var totalMins=appts.reduce((s,a)=>s+(a.duration_min||30),0); var workMins=10*60; return Math.min(100,Math.round(totalMins/workMins*100)); }
 function openTimeBlock(){ var ov=document.createElement("div");ov.id="tbOv";ov.style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:grid;place-items:center;padding:1rem"; ov.innerHTML="<div style=\"background:#fff;border-radius:16px;max-width:380px;width:100%;padding:1.4rem\"><h3 class=\"serif\" style=\"margin:0 0 .8rem\">Bloquear tiempo</h3><label style=\"font-size:.75rem;font-weight:600\">Fecha</label><input type=\"date\" id=\"tbDate\" value=\""+calRef.toISOString().slice(0,10)+"\" style=\"width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem\"/><div style=\"display:flex;gap:.4rem\"><div style=\"flex:1\"><label style=\"font-size:.75rem;font-weight:600\">Desde</label><input type=\"time\" id=\"tbFrom\" value=\"13:00\" style=\"width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px\"/></div><div style=\"flex:1\"><label style=\"font-size:.75rem;font-weight:600\">Hasta</label><input type=\"time\" id=\"tbTo\" value=\"14:00\" style=\"width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px\"/></div></div><label style=\"font-size:.75rem;font-weight:600;margin-top:.5rem;display:block\">Motivo</label><select id=\"tbReason\" style=\"width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem\"><option>Descanso / Almuerzo</option><option>Reunión</option><option>Formación</option><option>Vacaciones</option><option>Otro</option></select><label style=\"font-size:.75rem;font-weight:600\">Profesional</label><select id=\"tbProf\" style=\"width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.8rem\"><option value=\"all\">Todos</option></select><div style=\"display:flex;gap:.5rem\"><button class=\"btn prim\" style=\"flex:1\" onclick=\"saveTimeBlock()\">Bloquear</button><button class=\"btn\" onclick=\"document.getElementById(\x27tbOv\x27).remove()\">Cancelar</button></div></div>"; document.body.appendChild(ov); fetch(WORKER+"/api/professionals?tenant="+T).then(r=>r.json()).then(d=>{var sel=document.getElementById("tbProf");(d.professionals||[]).forEach(p=>{var o=document.createElement("option");o.value=p.id;o.textContent=p.name;sel.appendChild(o);});}).catch(()=>{}); }
@@ -2626,6 +2626,7 @@ function renderProBar(){
     +'<div id="moreMenu" style="display:none;position:absolute;right:0;top:115%;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:.3rem;z-index:50;min-width:170px">'
     +'<button id="addProBtn" style="display:block;width:100%;text-align:left;padding:.5rem .7rem;border:0;background:none;color:var(--ink);font-size:.8rem;cursor:pointer;border-radius:7px">+ Añadir profesional</button>'
     +'<button id="blockBtn" style="display:block;width:100%;text-align:left;padding:.5rem .7rem;border:0;background:none;color:var(--ink);font-size:.8rem;cursor:pointer;border-radius:7px">⛔ Bloquear horas</button>'
+    +'<button onclick="openIcalPicker()" style="display:block;width:100%;text-align:left;padding:.5rem .7rem;border:0;background:none;color:var(--ink);font-size:.8rem;cursor:pointer;border-radius:7px">📅 Google Calendar sync</button>'
     +'</div></div>';
   bar.innerHTML=h;
 }
@@ -2641,7 +2642,7 @@ function apptStyle(a){
   if(st==='attended'){ icon='✓✓'; op=.95; }
   else if(st==='noshow'){ icon='✕'; op=.55; }
   else if(st==='cancelled'){ icon='—'; op=.4; }
-  else if(a.confirmed==1){ icon='✓'; op=1; }
+  else if(st==='arrived'){ icon='🏥'; op=1; } else if(a.confirmed==1){ icon='✓'; op=1; }
   else { icon='○'; op=.92; dash='border:1px dashed rgba(255,255,255,.7);'; } // sin confirmar
   const bg='linear-gradient(135deg,'+base+','+shadeColor(base,-14)+')';
   return { base, bg, icon, op, dash, st };
@@ -2960,8 +2961,14 @@ function openApptCard(id){
     if(st==='booked'||st==='pending'){
       h+='<button class="btn" style="width:100%;margin-top:.5rem;background:#e8f5e9;border-color:#34a877;color:#217a52;font-weight:600" onclick="confirmApptPanel(\''+a.id+'\')">✓ Confirmar cita</button>';
     }
+    if(st==='confirmed'||st==='booked'||st==='pending'){
+      h+='<button class="btn" style="width:100%;margin-top:.5rem;background:#e3f2fd;border-color:#1976d2;color:#1565c0;font-weight:600" onclick="markArrived(\''+a.id+'\')">🏥 Ha llegado</button>';
+    }
     if(st!=='cancelled'){
       h+='<button class="btn" style="width:100%;margin-top:.5rem;border-color:#e7c2bb;color:#c0392b" onclick="cancelApptPanel(\''+a.id+'\',\''+(a.lead_name||'').replace(/\x27/g,"")+'\')">✕ Cancelar cita</button>';
+    }
+    if(st==='booked'||st==='confirmed'||st==='pending'||st==='arrived'){
+      h+='<button class="btn" style="width:100%;margin-top:.3rem;border-color:#ffcdd2;color:#b71c1c;font-size:.75rem" onclick="markNoShow(\''+a.id+'\',\''+(a.lead_name||'').replace(/\x27/g,"")+'\')">❌ Marcar no-show</button>';
     }
   }
   // Anular cobro: solo en visitas ya atendidas/cobradas y solo para owner/finance/superadmin
@@ -3027,6 +3034,39 @@ async function confirmApptPanel(apptId){
       if(typeof toast==='function') toast('No se pudo confirmar.','error'); else alert('Error al confirmar.');
     }
   }catch(e){ if(typeof toast==='function') toast('Error de conexión.','error'); else alert('Error de conexión.'); }
+// Selector de profesional para iCal
+function openIcalPicker(){ const opts=_pros.map(p=>"<button class=\"btn\" style=\"width:100%;margin-bottom:.4rem\" onclick=\"getIcalUrl(\x27"+p.id+"\x27,\x27"+p.name.replace(/'/g,"")+"\x27);document.getElementById(\x27icalPickOv\x27).remove()\">📅 "+p.name+"</button>").join(""); const ov=document.createElement("div");ov.id="icalPickOv";ov.style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:grid;place-items:center;padding:1rem";ov.innerHTML="<div style=\"background:#fff;border-radius:16px;max-width:360px;width:100%;padding:1.4rem\"><h3 class=\"serif\" style=\"margin:0 0 .8rem\">Sincronizar con Google Calendar</h3><p style=\"font-size:.8rem;color:var(--muted);margin-bottom:.8rem\">Selecciona el profesional para generar su URL de calendario:</p>"+opts+"<button class=\"btn\" style=\"width:100%;margin-top:.3rem\" onclick=\"document.getElementById(\x27icalPickOv\x27).remove()\">Cancelar</button></div>";document.body.appendChild(ov); }
+}
+// Marcar que el paciente ha llegado
+async function markArrived(apptId){
+  try{
+    const r=await fetch(WORKER+'/api/appt-arrived',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,appointment_id:apptId})});
+    const d=await r.json();
+    if(d&&d.ok){ closeApptCard(); toast('Paciente marcado como LLEGÓ 🏥','ok'); loadAgendaCal(true); }
+    else { toast('Error al marcar llegada','error'); }
+  }catch(e){ toast('Error de conexión','error'); }
+}
+// Marcar no-show
+async function markNoShow(apptId, name){
+  if(!confirm('¿Marcar a '+(name||'este paciente')+' como NO-SHOW? Se le enviará un SMS automáticamente.')) return;
+  try{
+    const r=await fetch(WORKER+'/api/appt-noshow',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,appointment_id:apptId})});
+    const d=await r.json();
+    if(d&&d.ok){ closeApptCard(); toast('Marcado como NO-SHOW. SMS enviado.','ok'); loadAgendaCal(true); }
+    else { toast('Error al marcar no-show','error'); }
+  }catch(e){ toast('Error de conexión','error'); }
+}
+// Obtener URL iCal para un profesional
+async function getIcalUrl(proId, proName){
+  try{
+    const r=await fetch(WORKER+'/api/ical-url?tenant='+T+'&professional_id='+proId,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}});
+    const d=await r.json();
+    if(d&&d.ok){
+      const ov=document.createElement('div');ov.id='icalOv';ov.style='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:grid;place-items:center;padding:1rem';
+      ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:480px;width:100%;padding:1.5rem"><h3 class="serif" style="margin:0 0 .5rem">📅 Google Calendar para '+proName+'</h3><p style="font-size:.82rem;color:var(--muted);margin-bottom:.8rem">Copia esta URL y pégala en Google Calendar → Otros calendarios → Desde URL. Se actualizará automáticamente cada 15 min.</p><input type="text" value="'+d.url+'" readonly style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;font-size:.78rem;margin-bottom:.6rem" onclick="this.select();document.execCommand(\'copy\');toast(\'URL copiada ✓\',\'ok\')"/><div style="display:flex;gap:.5rem"><button class="btn prim" style="flex:1" onclick="navigator.clipboard.writeText(\''+d.url+'\');toast(\'URL copiada al portapapeles ✓\',\'ok\')">Copiar URL</button><button class="btn" onclick="document.getElementById(\'icalOv\').remove()">Cerrar</button></div></div>';
+      document.body.appendChild(ov);
+    } else { toast('Error al generar URL','error'); }
+  }catch(e){ toast('Error de conexión','error'); }
 }
 // Crear cita manual (walk-in)
 function openNewAppt(iso, proId){
@@ -6353,3 +6393,4 @@ if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded
 </body>
 </html>
   if(v==='ajustes'){try{loadBookingCfg();}catch(e){} try{loadPixelSlug();}catch(e){}}
+.agenda-appt.status-arrived { background: linear-gradient(135deg, #00b894, #00a381); border: 2px solid #fff; box-shadow: 0 0 8px rgba(0,184,148,0.4); }
