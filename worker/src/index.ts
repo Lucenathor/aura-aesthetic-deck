@@ -2675,6 +2675,130 @@ export default {
         return json({ closings: r.results||[] });
       }
 
+      // ===== SISTEMA DE FACTURACIÓN LEGAL =====
+      if (p === '/api/invoices' && req.method === 'GET') {
+        const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
+        const status = url.searchParams.get('status');
+        const from = url.searchParams.get('from');
+        const to = url.searchParams.get('to');
+        const lead = url.searchParams.get('lead');
+        let sql = "SELECT i.*, l.name as lead_name FROM invoices i LEFT JOIN leads l ON l.id=i.lead_id WHERE i.tenant_id=?";
+        const params: any[] = [tenant];
+        if (status) { sql += " AND i.status=?"; params.push(status); }
+        if (from) { sql += " AND i.date_issued>=?"; params.push(from); }
+        if (to) { sql += " AND i.date_issued<=?"; params.push(to); }
+        if (lead) { sql += " AND i.lead_id=?"; params.push(lead); }
+        sql += " ORDER BY i.created_at DESC LIMIT 200";
+        const r: any = await env.aura_db.prepare(sql).bind(...params).all();
+        return json({ invoices: r.results||[] });
+      }
+      if (p === '/api/invoices' && req.method === 'POST') {
+        const b: any = await req.json();
+        const series = b.series || (b.type === 'rectification' ? 'R' : 'F');
+        // Generar número correlativo por serie
+        await env.aura_db.prepare("INSERT INTO invoice_sequences (tenant_id, series, last_num) VALUES (?,?,0) ON CONFLICT(tenant_id, series) DO NOTHING").bind(b.tenant_id, series).run();
+        await env.aura_db.prepare("UPDATE invoice_sequences SET last_num = last_num + 1 WHERE tenant_id=? AND series=?").bind(b.tenant_id, series).run();
+        const seq: any = await env.aura_db.prepare("SELECT last_num FROM invoice_sequences WHERE tenant_id=? AND series=?").bind(b.tenant_id, series).first();
+        const num = seq?.last_num || 1;
+        const invoiceNumber = series + '-' + String(num).padStart(4, '0');
+        // Calcular importes
+        const items = b.items || [];
+        const subtotal = items.reduce((s: number, it: any) => s + (Number(it.qty)||1) * (Number(it.unit_price)||0), 0);
+        const discount = Number(b.discount) || 0;
+        const taxBase = subtotal - discount;
+        const vatRate = Number(b.vat_rate) ?? 21;
+        const vatAmount = Math.round(taxBase * vatRate / 100 * 100) / 100;
+        const total = Math.round((taxBase + vatAmount) * 100) / 100;
+        // Datos del emisor desde tenant
+        let emitter: any = {};
+        try { const t: any = await env.aura_db.prepare("SELECT name, nif, address, phone, email FROM tenants WHERE id=?").bind(b.tenant_id).first(); emitter = t || {}; } catch(e) {}
+        const id = 'inv_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+        const now = Date.now();
+        await env.aura_db.prepare(`INSERT INTO invoices (id, tenant_id, lead_id, treatment_id, invoice_number, series, type, status, date_issued, date_operation, emitter_name, emitter_nif, emitter_address, emitter_phone, emitter_email, recipient_name, recipient_nif, recipient_address, recipient_phone, recipient_email, items, subtotal, discount, discount_reason, tax_base, vat_rate, vat_amount, total, payment_method, professional, notes, rectifies_invoice, rectification_reason, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+          .bind(id, b.tenant_id, b.lead_id||null, b.treatment_id||null, invoiceNumber, series, b.type||'simplified', b.status||'issued', b.date_issued||new Date().toISOString().slice(0,10), b.date_operation||null, b.emitter_name||emitter.name||null, b.emitter_nif||emitter.nif||null, b.emitter_address||emitter.address||null, b.emitter_phone||emitter.phone||null, b.emitter_email||emitter.email||null, b.recipient_name||null, b.recipient_nif||null, b.recipient_address||null, b.recipient_phone||null, b.recipient_email||null, JSON.stringify(items), subtotal, discount, b.discount_reason||null, taxBase, vatRate, vatAmount, total, b.payment_method||null, b.professional||null, b.notes||null, b.rectifies_invoice||null, b.rectification_reason||null, now, now).run();
+        return json({ ok:true, id, invoice_number: invoiceNumber, total });
+      }
+      if (p === '/api/invoices' && req.method === 'PUT') {
+        const b: any = await req.json();
+        if (!b.id || !b.tenant_id) return json({error:'missing id/tenant'},400);
+        // Verificar que la factura existe y no está anulada
+        const existing: any = await env.aura_db.prepare("SELECT * FROM invoices WHERE id=? AND tenant_id=?").bind(b.id, b.tenant_id).first();
+        if (!existing) return json({error:'not_found'},404);
+        if (existing.status === 'voided') return json({error:'cannot_edit_voided'},400);
+        // Actualizar campos editables
+        const items = b.items ? JSON.stringify(b.items) : existing.items;
+        const subtotal = b.items ? b.items.reduce((s: number, it: any) => s + (Number(it.qty)||1) * (Number(it.unit_price)||0), 0) : existing.subtotal;
+        const discount = b.discount !== undefined ? Number(b.discount) : existing.discount;
+        const taxBase = subtotal - discount;
+        const vatRate = b.vat_rate !== undefined ? Number(b.vat_rate) : existing.vat_rate;
+        const vatAmount = Math.round(taxBase * vatRate / 100 * 100) / 100;
+        const total = Math.round((taxBase + vatAmount) * 100) / 100;
+        await env.aura_db.prepare(`UPDATE invoices SET recipient_name=?, recipient_nif=?, recipient_address=?, recipient_phone=?, recipient_email=?, items=?, subtotal=?, discount=?, discount_reason=?, tax_base=?, vat_rate=?, vat_amount=?, total=?, payment_method=?, professional=?, notes=?, type=?, status=?, updated_at=? WHERE id=? AND tenant_id=?`)
+          .bind(b.recipient_name??existing.recipient_name, b.recipient_nif??existing.recipient_nif, b.recipient_address??existing.recipient_address, b.recipient_phone??existing.recipient_phone, b.recipient_email??existing.recipient_email, items, subtotal, discount, b.discount_reason??existing.discount_reason, taxBase, vatRate, vatAmount, total, b.payment_method??existing.payment_method, b.professional??existing.professional, b.notes??existing.notes, b.type??existing.type, b.status??existing.status, Date.now(), b.id, b.tenant_id).run();
+        return json({ ok:true, total });
+      }
+      // Anular factura (genera rectificativa automáticamente)
+      if (p === '/api/invoice-void' && req.method === 'POST') {
+        const b: any = await req.json();
+        const inv: any = await env.aura_db.prepare("SELECT * FROM invoices WHERE id=? AND tenant_id=?").bind(b.id, b.tenant_id).first();
+        if (!inv) return json({error:'not_found'},404);
+        if (inv.status === 'voided') return json({error:'already_voided'},400);
+        // Marcar como anulada
+        await env.aura_db.prepare("UPDATE invoices SET status='voided', voided_by=?, void_reason=?, void_at=?, updated_at=? WHERE id=?")
+          .bind(b.voided_by||'admin', b.reason||'Anulación solicitada', new Date().toISOString(), Date.now(), b.id).run();
+        // Generar factura rectificativa automáticamente
+        const rectSeries = 'R';
+        await env.aura_db.prepare("INSERT INTO invoice_sequences (tenant_id, series, last_num) VALUES (?,?,0) ON CONFLICT(tenant_id, series) DO NOTHING").bind(b.tenant_id, rectSeries).run();
+        await env.aura_db.prepare("UPDATE invoice_sequences SET last_num = last_num + 1 WHERE tenant_id=? AND series=?").bind(b.tenant_id, rectSeries).run();
+        const rSeq: any = await env.aura_db.prepare("SELECT last_num FROM invoice_sequences WHERE tenant_id=? AND series=?").bind(b.tenant_id, rectSeries).first();
+        const rectNum = rectSeries + '-' + String(rSeq?.last_num||1).padStart(4, '0');
+        const rectId = 'inv_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+        await env.aura_db.prepare(`INSERT INTO invoices (id, tenant_id, lead_id, invoice_number, series, type, status, date_issued, emitter_name, emitter_nif, emitter_address, recipient_name, recipient_nif, recipient_address, items, subtotal, discount, tax_base, vat_rate, vat_amount, total, payment_method, professional, notes, rectifies_invoice, rectification_reason, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+          .bind(rectId, b.tenant_id, inv.lead_id, rectNum, rectSeries, 'rectification', 'issued', new Date().toISOString().slice(0,10), inv.emitter_name, inv.emitter_nif, inv.emitter_address, inv.recipient_name, inv.recipient_nif, inv.recipient_address, inv.items, -inv.subtotal, 0, -inv.tax_base, inv.vat_rate, -inv.vat_amount, -inv.total, inv.payment_method, inv.professional, 'Rectificación de '+inv.invoice_number+': '+(b.reason||''), inv.invoice_number, b.reason||'Anulación', Date.now(), Date.now()).run();
+        return json({ ok:true, rectification_number: rectNum, rectification_id: rectId });
+      }
+      // Enviar factura por SMS
+      if (p === '/api/invoice-send' && req.method === 'POST') {
+        const b: any = await req.json();
+        const inv: any = await env.aura_db.prepare("SELECT * FROM invoices WHERE id=? AND tenant_id=?").bind(b.id, b.tenant_id).first();
+        if (!inv) return json({error:'not_found'},404);
+        const phone = b.phone || inv.recipient_phone;
+        if (!phone) return json({error:'no_phone'},400);
+        const via = b.via || 'sms';
+        // Generar texto de la factura
+        const items = JSON.parse(inv.items||'[]');
+        const itemsText = items.map((it: any) => `  ${it.description}: ${it.qty}x${it.unit_price}€ = ${((it.qty||1)*(it.unit_price||0)).toFixed(2)}€`).join('\n');
+        const msg = `${inv.emitter_name||'Tu clínica'}\nFactura: ${inv.invoice_number}\nFecha: ${inv.date_issued}\n\n${itemsText}\n\nBase: ${inv.tax_base}€\nIVA (${inv.vat_rate}%): ${inv.vat_amount}€\nTOTAL: ${inv.total}€${inv.discount>0?'\nDto: -'+inv.discount+'€':''}\n\nMétodo: ${inv.payment_method||'—'}\n\nGracias por tu confianza.`;
+        try { await sendSMS(env, phone, msg, b.tenant_id); } catch(e) {}
+        await env.aura_db.prepare("UPDATE invoices SET sent_via=?, sent_at=?, status='sent', updated_at=? WHERE id=?").bind(via, new Date().toISOString(), Date.now(), b.id).run();
+        return json({ ok:true, sent_via: via });
+      }
+      // Obtener una factura individual (para preview/PDF)
+      if (p === '/api/invoice' && req.method === 'GET') {
+        const tenant = url.searchParams.get('tenant');
+        const id = url.searchParams.get('id');
+        if (!tenant || !id) return json({error:'missing params'},400);
+        const inv: any = await env.aura_db.prepare("SELECT i.*, l.name as lead_name, l.phone as lead_phone, l.email as lead_email FROM invoices i LEFT JOIN leads l ON l.id=i.lead_id WHERE i.id=? AND i.tenant_id=?").bind(id, tenant).first();
+        if (!inv) return json({error:'not_found'},404);
+        inv.items = JSON.parse(inv.items||'[]');
+        return json({ invoice: inv });
+      }
+      // Datos fiscales del tenant (para configurar en ajustes)
+      if (p === '/api/fiscal-data' && req.method === 'GET') {
+        const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
+        const t: any = await env.aura_db.prepare("SELECT name, nif, address, phone, email, vat_rate FROM tenants WHERE id=?").bind(tenant).first();
+        return json({ fiscal: t || {} });
+      }
+      if (p === '/api/fiscal-data' && req.method === 'POST') {
+        const b: any = await req.json();
+        // Añadir columnas si no existen
+        try { await env.aura_db.prepare("ALTER TABLE tenants ADD COLUMN nif TEXT").bind().run(); } catch(e) {}
+        try { await env.aura_db.prepare("ALTER TABLE tenants ADD COLUMN vat_rate REAL DEFAULT 21").bind().run(); } catch(e) {}
+        await env.aura_db.prepare("UPDATE tenants SET name=?, nif=?, address=?, phone=?, email=?, vat_rate=? WHERE id=?")
+          .bind(b.name||null, b.nif||null, b.address||null, b.phone||null, b.email||null, Number(b.vat_rate)||21, b.tenant_id).run();
+        return json({ ok:true });
+      }
+
       // ===== CLINIC OS lite: INVENTARIO =====
       if (p === '/api/products' && req.method === 'GET') {
         const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
