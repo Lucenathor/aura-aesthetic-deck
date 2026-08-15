@@ -778,7 +778,7 @@ export default {
       }
     }
     // Endpoints de lectura pública: 60 req/min por IP (anti-scraping)
-    if (req.method === 'GET' && (p === '/api/content' || p === '/api/slots' || p.startsWith('/api/tenant/'))) {
+    if (req.method === 'GET' && (p === '/api/content' || p === '/api/slots' || p === '/api/confirm-link' || p.startsWith('/api/tenant/'))) {
       if (!checkRateLimit('pub_r:' + clientIP, 60, 60)) {
         return json({ error: 'rate_limited' }, 429);
       }
@@ -1519,6 +1519,21 @@ export default {
         await env.aura_db.prepare("UPDATE appointments SET status='cancelled' WHERE id=?").bind(b.appointment_id).run();
         await env.aura_db.prepare("UPDATE leads SET status='cancelled' WHERE id=?").bind(b.lead_id).run();
         return json({ ok: true, within_policy: withinPolicy, penalty: !withinPolicy });
+      }
+      // CONFIRMACIÓN POR ENLACE (público — el paciente hace click)
+      if (p === '/api/confirm-link' && req.method === 'GET') {
+        const apptId = url.searchParams.get('a');
+        const token = url.searchParams.get('k');
+        if (!apptId || !token) return new Response('<html><body style="font-family:sans-serif;text-align:center;padding:3rem"><h2>Enlace invalido</h2></body></html>', {headers:{'Content-Type':'text/html'}});
+        const expected = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(apptId+'aura-confirm-2026')).then((h:ArrayBuffer)=>Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,12));
+        if (token !== expected) return new Response('<html><body style="font-family:sans-serif;text-align:center;padding:3rem"><h2>Enlace invalido o expirado</h2></body></html>', {headers:{'Content-Type':'text/html'}});
+        const appt:any = await env.aura_db.prepare("SELECT a.*, l.name as lead_name, t.name as clinic_name FROM appointments a LEFT JOIN leads l ON a.lead_id=l.id LEFT JOIN tenants t ON a.tenant_id=t.id WHERE a.id=?").bind(apptId).first();
+        if (!appt) return new Response('<html><body style="font-family:sans-serif;text-align:center;padding:3rem"><h2>Cita no encontrada</h2></body></html>', {headers:{'Content-Type':'text/html'}});
+        await env.aura_db.prepare("UPDATE appointments SET status='confirmed', confirmed=1 WHERE id=?").bind(apptId).run();
+        const dateStr = appt.date_iso ? new Date(appt.date_iso).toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',timeZone:'Europe/Madrid'}) : '';
+        const timeStr = appt.date_iso ? new Date(appt.date_iso).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Madrid'}) : '';
+        const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cita confirmada</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:linear-gradient(135deg,#f8f6f3,#fff);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem}.card{background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.08);max-width:400px;width:100%;padding:2rem;text-align:center}.check{width:80px;height:80px;background:#e8f5e9;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.2rem;font-size:2.5rem}h1{font-size:1.4rem;color:#1b5e20;margin-bottom:.5rem}p{color:#555;font-size:.9rem;line-height:1.5;margin-bottom:.8rem}.detail{background:#f8f6f3;border-radius:12px;padding:1rem;margin:1rem 0}.detail b{display:block;font-size:1rem;color:#333}.detail small{color:#888}</style></head><body><div class="card"><div class="check">✅</div><h1>Cita confirmada!</h1><p>Gracias, '+(appt.lead_name||'').split(' ')[0]+'. Te esperamos.</p><div class="detail"><b>'+(appt.treatment||'Tu cita')+'</b><small>'+dateStr+' a las '+timeStr+'</small><br><small>'+(appt.clinic_name||'')+'</small></div><p style="font-size:.8rem;color:#999;margin-top:1.5rem">Si necesitas cambiar la cita, contacta directamente con la clinica.</p></div></body></html>';
+        return new Response(html, {headers:{'Content-Type':'text/html; charset=utf-8'}});
       }
 
       // DISPONIBILIDAD: leer horario por día (7 filas L-D, default si vacío)
@@ -4113,9 +4128,10 @@ export default {
           if (tn?.google_review_url && ld?.phone) {
             const trow: any = await env.aura_db.prepare('SELECT templates FROM sms_templates WHERE tenant_id=?').bind(tenantId).first();
             let tpl:any = {}; try { tpl = trow?.templates ? JSON.parse(trow.templates) : {}; } catch(e){}
-            const reviewTpl = tpl.review || '{clinica}: {nombre}, gracias por tu visita. ¿Nos dejas tu opinión? Te toma 20 segundos y nos ayuda muchísimo: {link}';
+            const reviewTpl = tpl.review || '{clinica}: Hola {nombre} 😊 ¿Qué tal ha ido tu {tratamiento}? Si estás contenta con el resultado, nos encantaría que nos dejaras una reseñita. Solo 20 segundos y nos ayuda un montón: {link}';
             const firstName = (ld.name||'').split(' ')[0] || '';
-            const msg = reviewTpl.replace(/\{clinica\}/g, tn.name||'AURA').replace(/\{nombre\}/g, firstName).replace(/\{link\}/g, tn.google_review_url);
+            const treatName = (b.treatment||'tratamiento').toLowerCase();
+            const msg = reviewTpl.replace(/\{clinica\}/g, tn.name||'AURA').replace(/\{nombre\}/g, firstName).replace(/\{link\}/g, tn.google_review_url).replace(/\{tratamiento\}/g, treatName);
             await sendSMS(env, ld.phone, msg, tn.name||'AURA', tenantId);
           }
         } catch(e){}
@@ -4153,6 +4169,12 @@ export default {
         if (amount > 0 || b.treatment) {
           await env.aura_db.prepare("INSERT INTO treatments_log (id,lead_id,tenant_id,name,amount,pay_status,date_iso,method,cost) VALUES (?,?,?,?,?,?,?,?,?)")
             .bind('t_'+uid(), leadId, tenantId, tname, amount, b.pay_status||'paid', new Date().toISOString(), b.method||null, prodCost).run();
+          // Split payment: guardar detalle si viene
+          if (b.split_payments && Array.isArray(b.split_payments) && b.split_payments.length > 1) {
+            try { await env.aura_db.exec("ALTER TABLE treatments_log ADD COLUMN split_details TEXT"); } catch(e){}
+            const lastTl:any = await env.aura_db.prepare("SELECT id FROM treatments_log WHERE tenant_id=? ORDER BY created_at DESC LIMIT 1").bind(tenantId).first();
+            if (lastTl) await env.aura_db.prepare("UPDATE treatments_log SET split_details=?, method='split' WHERE id=?").bind(JSON.stringify(b.split_payments), lastTl.id).run();
+          }
         }
         // FACTURA AUTOMÁTICA: generar factura simplificada al cobrar
         if (amount > 0 && (b.pay_status||'paid') === 'paid' && !b.is_gift) {
@@ -4621,11 +4643,42 @@ export default {
           .prepare("SELECT COUNT(*) AS n FROM leads WHERE tenant_id=? AND date(created_at)=date('now')")
           .bind(id)
           .first<{ n: number }>();
+        // KPIs avanzados
+        const monthStart = new Date().toISOString().slice(0,7)+'-01';
+        const todayISO = new Date().toISOString().slice(0,10);
+        // Ingresos del mes
+        const rev:any = await env.aura_db.prepare("SELECT COALESCE(SUM(amount),0) as total, COUNT(*) as tickets FROM treatments_log WHERE tenant_id=? AND pay_status='paid' AND date_iso>=?").bind(id, monthStart).first();
+        const monthRevenue = rev?.total||0;
+        const monthTickets = rev?.tickets||0;
+        const avgTicket = monthTickets>0 ? Math.round(monthRevenue/monthTickets*100)/100 : 0;
+        // Ocupación: citas de hoy vs slots disponibles (asumimos 8h * nº profesionales)
+        const todayAppts:any = await env.aura_db.prepare("SELECT COUNT(*) as n FROM appointments WHERE tenant_id=? AND date_iso LIKE ? AND status NOT IN ('cancelled')").bind(id, todayISO+'%').first();
+        const prosCount:any = await env.aura_db.prepare("SELECT COUNT(*) as n FROM professionals WHERE tenant_id=?").bind(id).first();
+        const slotsAvail = (prosCount?.n||1) * 16; // 8h * 2 slots/h
+        const occupancy = Math.min(100, Math.round((todayAppts?.n||0)/slotsAvail*100));
+        // No-shows del mes
+        const noshows:any = await env.aura_db.prepare("SELECT COUNT(*) as n FROM appointments WHERE tenant_id=? AND status='noshow' AND date_iso>=?").bind(id, monthStart).first();
+        // Rendimiento por profesional
+        let byPro:any[] = [];
+        try {
+          const proRevs:any = await env.aura_db.prepare("SELECT professional, COALESCE(SUM(amount),0) as revenue, COUNT(*) as tickets FROM treatments_log WHERE tenant_id=? AND pay_status='paid' AND date_iso>=? AND professional IS NOT NULL AND professional!='' GROUP BY professional ORDER BY revenue DESC").bind(id, monthStart).all();
+          byPro = (proRevs.results||[]).map((p:any)=>({name:p.professional, revenue:p.revenue, tickets:p.tickets, avg:Math.round(p.revenue/p.tickets*100)/100}));
+        } catch(e){}
+        // Pacientes nuevos este mes
+        const newPats:any = await env.aura_db.prepare("SELECT COUNT(*) as n FROM leads WHERE tenant_id=? AND created_at>=?").bind(id, new Date(monthStart).getTime()).first();
         return json({
           total_leads: total?.n || 0,
           hot_leads: hot?.n || 0,
           booked: booked?.n || 0,
           today: today?.n || 0,
+          // KPIs nuevos
+          month_revenue: monthRevenue,
+          month_tickets: monthTickets,
+          avg_ticket: avgTicket,
+          occupancy_today: occupancy,
+          noshows_month: noshows?.n||0,
+          new_patients_month: newPats?.n||0,
+          by_professional: byPro,
         });
       }
 
@@ -4742,7 +4795,10 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
       const fecha = dt.toLocaleDateString('es-ES',{day:'2-digit',month:'short'});
       const hora = dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
       const mlink = await magicLink(env, a.tenant_id, a.lead_id);
-      const vars = { clinica: tn.name||'', nombre: a.lead_name||'', fecha, hora, direccion: tn.address||'', tel: (tn.whatsapp||''), link: mlink };
+      // Generar enlace de confirmación personalizado para esta cita
+      const confirmToken = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(a.id+'aura-confirm-2026')).then((h:ArrayBuffer)=>Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,12));
+      const confirmLink = 'https://aura-chat-worker.adrian-7b9.workers.dev/api/confirm-link?a='+a.id+'&k='+confirmToken;
+      const vars = { clinica: tn.name||'', nombre: a.lead_name||'', fecha, hora, direccion: tn.address||'', tel: (tn.whatsapp||''), link: confirmLink };
       // La cita NO debe caer en un día cerrado/vacaciones (edge case: se cerró el día después de reservar).
       // Si cae cerrada, no enviamos recordatorios que confundan y marcamos como enviados para no reintentar.
       const apptDay = String(a.date_iso).slice(0,10);

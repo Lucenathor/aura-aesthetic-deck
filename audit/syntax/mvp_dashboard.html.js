@@ -367,6 +367,23 @@ async function loadKPIs(){
     countUp('kTotal',arr.length); countUp('kHot',hot); countUp('kBooked',booked); countUp('kTodayAppt',todayAppts.length);
     const kt=document.getElementById('kToday'); if(kt)kt.textContent='+'+today+' hoy';
     const kn=document.getElementById('kApptNext'); if(kn)kn.textContent= future[0]? ('próxima '+fmtTime(future[0].date_iso)) : 'sin próximas';
+    // KPIs financieros avanzados
+    try{
+      const kd=await fetch(WORKER+'/api/dashboard/'+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}}).then(r=>r.json());
+      if(kd){
+        const kr=document.getElementById('kMonthRev'); if(kr)kr.textContent=(kd.month_revenue||0).toLocaleString('es-ES')+'€';
+        const kmt=document.getElementById('kMonthTickets'); if(kmt)kmt.textContent=(kd.month_tickets||0)+' cobros';
+        const kat=document.getElementById('kAvgTicket'); if(kat)kat.textContent=(kd.avg_ticket||0).toFixed(0)+'€';
+        const ko=document.getElementById('kOccupancy'); if(ko)ko.textContent=(kd.occupancy_today||0)+'%';
+        const kns=document.getElementById('kNoshows'); if(kns)kns.textContent=String(kd.noshows_month||0);
+        // Rendimiento por profesional
+        if(kd.by_professional && kd.by_professional.length>0){
+          const card=document.getElementById('proPerformanceCard'); if(card)card.style.display='block';
+          const list=document.getElementById('proPerformanceList');
+          if(list) list.innerHTML=kd.by_professional.map(p=>'<div style="display:flex;align-items:center;justify-content:space-between;padding:.4rem .6rem;border-bottom:1px solid var(--line)"><span style="font-weight:600">'+p.name+'</span><span><b style="color:#1f6b4f">'+p.revenue.toLocaleString('es-ES')+'€</b> <small style="color:var(--muted)">('+p.tickets+' cobros · media '+p.avg+'€)</small></span></div>').join('');
+        }
+      }
+    }catch(e){}
     loadResumen(arr,appts,future);
     // ===== Mi día + badges del menú (usa la MISMA lógica que el Pipeline) =====
     try{
@@ -1150,6 +1167,7 @@ function renderSoldRows(){ var box=document.getElementById('cvSold'); if(!box)re
   box.innerHTML=(window._cvSoldRows||[]).map(function(r,i){ return '<div style="display:flex;gap:.4rem;margin-bottom:.4rem;align-items:center"><select onchange="window._cvSoldRows['+i+'].product_id=this.value" style="flex:2;padding:.5rem;border:1px solid var(--line);border-radius:9px"><option value="">Producto…</option>'+opts.replace('value="'+r.product_id+'"','value="'+r.product_id+'" selected')+'</select><input type="number" min="1" value="'+(r.qty||1)+'" oninput="window._cvSoldRows['+i+'].qty=this.value" style="width:64px;padding:.5rem;border:1px solid var(--line);border-radius:9px"/><button type="button" class="vac-del" onclick="window._cvSoldRows.splice('+i+',1);renderSoldRows()">✕</button></div>'; }).join('');
   if(!prods.length){ box.innerHTML='<div class="sub" style="font-size:.72rem;color:var(--muted)">Añade productos en Inventario para poder venderlos aquí.</div>'; }
 function cvRecalcFinal(){ var amt=+(document.getElementById("cvAmount")||{}).value||0; var dto=+(document.getElementById("cvDiscount")||{}).value||0; var final=Math.max(0,amt-dto); var el=document.getElementById("cvFinalLabel"); if(el) el.textContent="Total: "+final.toFixed(2)+"€"; }
+function toggleCvSplit(on){ document.getElementById("cvSplitBox").style.display=on?"block":"none"; document.getElementById("cvMethod").style.display=on?"none":"block"; }
 function cvToggleGift(){ var g=document.getElementById("cvGift"); var meth=document.getElementById("cvMethod"); var amtEl=document.getElementById("cvAmount"); if(g&&g.checked){ if(meth)meth.disabled=true; if(amtEl){amtEl.value=0;amtEl.disabled=true;} var fl=document.getElementById("cvFinalLabel"); if(fl)fl.innerHTML="<span style=\"color:#1f8c69\">🎁 Cortesía</span>"; } else { if(meth)meth.disabled=false; if(amtEl)amtEl.disabled=false; cvRecalcFinal(); } }
 }
 function cvTreatChange(sel){ var other=document.getElementById('cvTreatOther'); if(sel.value==='__other__'){ if(other){ other.style.display='block'; other.focus(); } return; } if(other) other.style.display='none'; try{ var amt=document.getElementById('cvAmount'); var opt=sel.options[sel.selectedIndex]; var price=opt?+(opt.getAttribute('data-price')||0):0; if(amt && (!amt.value || +amt.value===0) && price>0) amt.value=price; }catch(e){} }
@@ -1164,6 +1182,20 @@ async function doCloseVisit(apptId,leadId,attended){
   const cvInvoiceText=(document.getElementById('cvInvoiceText')||{}).value||'';
   if(attended && !cvGift && (!amount || +amount<=0)){ if(!confirm('No has puesto importe. ¿Cerrar la visita con 0€ (sin cobro)?')) return; }
   const method=document.getElementById('cvMethod')?document.getElementById('cvMethod').value:null;
+  // Split payment en close-visit
+  const cvIsSplit=document.getElementById('cvSplit')&&document.getElementById('cvSplit').checked;
+  let cvSplitPayments=null;
+  let finalMethod=method;
+  if(cvIsSplit && !cvGift){
+    const s1m=(document.getElementById('cvSplit1M')||{}).value||'tarjeta';
+    const s1a=+(document.getElementById('cvSplit1A')||{}).value||0;
+    const s2m=(document.getElementById('cvSplit2M')||{}).value||'efectivo';
+    const s2a=+(document.getElementById('cvSplit2A')||{}).value||0;
+    const finalAmt=(+amount||0)-(+discount||0);
+    if(finalAmt>0 && Math.abs((s1a+s2a)-finalAmt)>1){alert('La suma del split ('+s1a+'€+'+s2a+'€) no coincide con el total ('+finalAmt+'€)');return;}
+    cvSplitPayments=[{method:s1m,amount:s1a},{method:s2m,amount:s2a}];
+    finalMethod='split';
+  }
   var sold_products=(window._cvSoldRows||[]).filter(function(r){return r.product_id && (+r.qty>0);}).map(function(r){return {product_id:r.product_id, qty:+r.qty};});
   let redeemPts=0; const rc=document.getElementById('cvRedeem'); if(rc&&rc.checked){ redeemPts=+document.getElementById('cvRedeemPts').value||0; }
   let nextDate=null;
@@ -1187,7 +1219,7 @@ async function doCloseVisit(apptId,leadId,attended){
   try{ var _btns=document.querySelectorAll('#cvOverlay button'); _btns.forEach(function(b){ b.disabled=true; b.style.opacity='.6'; b.style.pointerEvents='none'; }); var _vp=document.querySelector('#cvOverlay button[onclick*="true"]'); if(_vp&&attended){ _vp.textContent='Cobrando…'; } }catch(e){}
   // clave de idempotencia: si se reintenta, el backend no duplica el cobro
   var _idem=apptId+'_'+(attended?'1':'0');
-  try{ const _r=await fetch(WORKER+'/api/close-visit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,lead_id:leadId,appointment_id:apptId,attended:attended,treatment:treat,amount:amount,pay_status:cvGift?'gift':'paid',method:cvGift?'cortesía':method,sold_products:sold_products,next_date:nextDate,redeem_points:redeemPts,idem_key:_idem,discount:cvDiscount,discount_reason:cvDiscountReason,is_gift:cvGift,invoice_text:cvInvoiceText,professional:(document.getElementById('cvProf')||{}).value||null})}); const _d=await _r.json(); if(_d&&_d.attribution)attribution=_d.attribution; }catch(e){ _cvSubmitting=false; try{ var _bs=document.querySelectorAll('#cvOverlay button'); _bs.forEach(function(b){ b.disabled=false; b.style.opacity=''; b.style.pointerEvents=''; }); }catch(_){}; alert('No se pudo guardar. Revisa la conexión e inténtalo de nuevo.'); return; }
+  try{ const _r=await fetch(WORKER+'/api/close-visit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,lead_id:leadId,appointment_id:apptId,attended:attended,treatment:treat,amount:amount,pay_status:cvGift?'gift':'paid',method:cvGift?'cortesía':finalMethod,split_payments:cvSplitPayments,sold_products:sold_products,next_date:nextDate,redeem_points:redeemPts,idem_key:_idem,discount:cvDiscount,discount_reason:cvDiscountReason,is_gift:cvGift,invoice_text:cvInvoiceText,professional:(document.getElementById('cvProf')||{}).value||null})}); const _d=await _r.json(); if(_d&&_d.attribution)attribution=_d.attribution; }catch(e){ _cvSubmitting=false; try{ var _bs=document.querySelectorAll('#cvOverlay button'); _bs.forEach(function(b){ b.disabled=false; b.style.opacity=''; b.style.pointerEvents=''; }); }catch(_){}; alert('No se pudo guardar. Revisa la conexión e inténtalo de nuevo.'); return; }
   _cvSubmitting=false;
   const ov=document.getElementById('cvOverlay'); if(ov)ov.remove();
   // === GUARDAR NOTA CLÍNICA si se rellenó algo ===
@@ -2489,6 +2521,8 @@ function openQuickSale(){
     +'<div style="display:flex;gap:.4rem"><input id="qsAmount" type="number" placeholder="Importe €" style="flex:1;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/><input id="qsDiscount" type="number" placeholder="Dto €" style="width:80px;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/></div>'
     +'<input id="qsDiscountReason" placeholder="Motivo del descuento (si aplica)" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem;font-size:.82rem;display:none"/>'
     +'<select id="qsMethod" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem">'+METODOS.map(m=>'<option value="'+m+'">'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>').join('')+'</select>'
+    +'<label style="display:flex;align-items:center;gap:.3rem;font-size:.78rem;cursor:pointer;margin-bottom:.4rem;padding:.3rem .5rem;background:#eef6ff;border-radius:8px;border:1px solid #c8dff5"><input type="checkbox" id="qsSplit" onchange="toggleQsSplit(this.checked)"/> 💳💶 <b>Pago dividido</b> (cobrar con 2 métodos)</label>'
+    +'<div id="qsSplitBox" style="display:none;background:#f8fbff;border:1px solid #d4e5f7;border-radius:9px;padding:.6rem;margin-bottom:.5rem"><div style="display:flex;gap:.3rem;margin-bottom:.3rem"><select id="qsSplit1Method" style="flex:1;padding:.4rem;border:1px solid var(--line);border-radius:7px;font-size:.82rem">'+METODOS.map(m=>'<option value="'+m+'">'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>').join('')+'</select><input id="qsSplit1Amt" type="number" placeholder="€" style="width:80px;padding:.4rem;border:1px solid var(--line);border-radius:7px;font-size:.82rem"/></div><div style="display:flex;gap:.3rem"><select id="qsSplit2Method" style="flex:1;padding:.4rem;border:1px solid var(--line);border-radius:7px;font-size:.82rem">'+METODOS.map((m,i)=>'<option value="'+m+'" '+(i===1?'selected':'')+'>'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>').join('')+'</select><input id="qsSplit2Amt" type="number" placeholder="€" style="width:80px;padding:.4rem;border:1px solid var(--line);border-radius:7px;font-size:.82rem"/></div><p style="font-size:.72rem;color:var(--muted);margin:.3rem 0 0">La suma debe ser igual al importe total</p></div>'
     +'<select id="qsProf" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.8rem"><option value="">Profesional (opcional)</option></select>'
     +'<label style="display:flex;align-items:center;gap:.3rem;font-size:.78rem;cursor:pointer;margin-bottom:.6rem;padding:.4rem;background:#f8f6f3;border-radius:8px"><input type="checkbox" id="qsGift" onchange="var m=document.getElementById(\'qsMethod\');var a=document.getElementById(\'qsAmount\');if(this.checked){m.disabled=true;a.value=0;a.disabled=true;}else{m.disabled=false;a.disabled=false;}"/> 🎁 <b>Cortesía / Regalo</b> (no genera factura ni cobro)</label>'
     +'<div style="display:flex;gap:.5rem"><button class="btn prim" style="flex:1" onclick="doQuickSale()">💶 Cobrar y registrar</button><button class="btn" onclick="document.getElementById(\'qsOv\').remove()">Cancelar</button></div>'
@@ -2497,6 +2531,7 @@ function openQuickSale(){
   // Cargar profesionales
   fetch(WORKER+'/api/professionals?tenant='+T).then(r=>r.json()).then(d=>{const sel=document.getElementById('qsProf');(d.professionals||[]).forEach(p=>{const o=document.createElement('option');o.value=p.name;o.textContent=p.name;sel.appendChild(o);});}).catch(()=>{});
   // Mostrar motivo si hay descuento
+function toggleQsSplit(on){ document.getElementById("qsSplitBox").style.display=on?"block":"none"; document.getElementById("qsMethod").style.display=on?"none":"block"; }
   document.getElementById('qsDiscount').addEventListener('input',function(){document.getElementById('qsDiscountReason').style.display=this.value&&+this.value>0?'block':'none';});
 }
 let _qsDebounce=null;
@@ -2520,10 +2555,24 @@ async function doQuickSale(){
   const leadId=document.getElementById('qsLeadId').value||null;
   const msg=document.getElementById('qsMsg');
   const isGift=document.getElementById('qsGift')&&document.getElementById('qsGift').checked;
+  const isSplit=document.getElementById('qsSplit')&&document.getElementById('qsSplit').checked;
   if(!isGift && amount<=0){msg.style.color='#b0432e';msg.textContent='Pon un importe';return;}
+  // Validar split payment
+  let splitPayments=null;
+  if(isSplit && !isGift){
+    const s1m=document.getElementById('qsSplit1Method').value;
+    const s1a=+document.getElementById('qsSplit1Amt').value||0;
+    const s2m=document.getElementById('qsSplit2Method').value;
+    const s2a=+document.getElementById('qsSplit2Amt').value||0;
+    const finalAmt=amount-discount;
+    if(Math.abs((s1a+s2a)-finalAmt)>0.01){msg.style.color='#b0432e';msg.textContent='La suma del split ('+s1a+'€+'+s2a+'€='+(s1a+s2a)+'€) no coincide con el total ('+finalAmt+'€)';return;}
+    splitPayments=[{method:s1m,amount:s1a},{method:s2m,amount:s2a}];
+  }
   msg.style.color='var(--terra)';msg.textContent='Procesando...';
   try{
-    const r=await fetch(WORKER+'/api/treatments',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,lead_id:leadId,name,amount:isGift?0:amount,discount,discount_reason:discountReason,method:isGift?'cortesía':method,professional,pay_status:isGift?'gift':'paid',is_gift:isGift})});
+    const body={tenant_id:T,lead_id:leadId,name,amount:isGift?0:amount,discount,discount_reason:discountReason,method:isGift?'cortesía':(isSplit?'split':method),professional,pay_status:isGift?'gift':'paid',is_gift:isGift};
+    if(splitPayments) body.split_payments=splitPayments;
+    const r=await fetch(WORKER+'/api/treatments',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify(body)});
     const d=await r.json();
     msg.style.color='#1f8c69';msg.textContent=isGift?'✓ Cortesía registrada':'✓ Cobrado'+(d.invoice_num?' · Factura '+d.invoice_num:'');
     setTimeout(()=>{document.getElementById('qsOv').remove();loadCaja();},1200);
