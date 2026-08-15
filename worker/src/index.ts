@@ -4931,27 +4931,19 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
     } catch (e) { console.error('postcare block error', e); }
 
   // ═══ AUTO NO-SHOW: marcar citas pasadas 15min sin llegar ═══
+  // ═══ ALERTA NO-SHOW: tras 1h sin marcar llegada, poner flag para que recepción decida ═══
   try {
-    const nowISO = new Date().toISOString();
-    const fifteenAgo = new Date(Date.now() - 15*60000).toISOString();
-    const noShowCandidates:any = await env.aura_db.prepare(
-      "SELECT a.id, a.tenant_id, a.lead_id, l.phone, l.name as lead_name FROM appointments a LEFT JOIN leads l ON a.lead_id=l.id WHERE a.status IN ('booked','confirmed','pending') AND a.date_iso < ? AND a.date_iso > ? ORDER BY a.date_iso"
-    ).bind(fifteenAgo, new Date(Date.now()-2*3600000).toISOString()).all();
-    for (const ns of (noShowCandidates.results||[])) {
-      await env.aura_db.prepare("UPDATE appointments SET status='noshow' WHERE id=?").bind(ns.id).run();
-      // SMS "te echamos de menos"
-      if (ns.phone) {
-        try {
-          const tn:any = await env.aura_db.prepare("SELECT name, sms_user, sms_pass FROM tenants WHERE id=?").bind(ns.tenant_id).first();
-          if (tn && tn.sms_user) {
-            const msg = `Hola ${(ns.lead_name||'').split(' ')[0]}, te hemos echado de menos en ${tn.name}. Quieres que te reprogramemos? Responde o llamanos.`;
-            await sendSMS(env, ns.phone, msg, tn.name||'AURA', ns.tenant_id);
-            sent++;
-          }
-        } catch(e){}
-      }
+    const oneHourAgo = new Date(Date.now() - 60*60000).toISOString();
+    const twoHoursAgo = new Date(Date.now() - 2*3600000).toISOString();
+    // Citas que pasaron hace >1h y siguen en booked/confirmed/pending (no arrived, no attended)
+    const alertCandidates:any = await env.aura_db.prepare(
+      "SELECT id FROM appointments WHERE status IN ('booked','confirmed','pending') AND date_iso < ? AND date_iso > ? AND noshow_alerted IS NULL"
+    ).bind(oneHourAgo, twoHoursAgo).all();
+    for (const a of (alertCandidates.results||[])) {
+      // Marcar que ya se alertó (para no repetir) — recepción verá la alerta en el panel
+      await env.aura_db.prepare("UPDATE appointments SET noshow_alerted=1 WHERE id=?").bind(a.id).run();
     }
-  } catch(e) { console.error('auto-noshow error', e); }
+  } catch(e) { console.error('noshow-alert error', e); }
 
   // ═══ SMS RESUMEN DEL DÍA a profesionales (solo entre 6:50-7:10 UTC = 8:50-9:10 Madrid) ═══
   try {

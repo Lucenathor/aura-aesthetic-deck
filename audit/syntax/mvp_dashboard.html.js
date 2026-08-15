@@ -1347,7 +1347,11 @@ function renderAgendaCal(){
     const dayClosed=agClosed(dayStr);
     const todays=agApptsFiltered(dayStr);
     const conf=todays.filter(a=>a.confirmed==1).length; const pend=todays.filter(a=>!(a.confirmed==1)&&a.status!=='attended'&&a.status!=='noshow').length;
-    document.getElementById('calSummary').innerHTML='<span><b style="color:var(--ink)">'+todays.length+'</b> citas</span><span><b style="color:#1f6b4f">'+conf+'</b> confirmadas</span><span><b style="color:#b0432e">'+pend+'</b> por confirmar</span>';
+    // Detectar citas que llevan +1h sin marcar llegada (alerta no-show)
+    const nowMs=Date.now(); const noshowAlert=_agAppts.filter(a=>a.date_iso&&a.date_iso.slice(0,10)===dayStr&&['booked','confirmed','pending'].includes(a.status)&&(nowMs-new Date(a.date_iso).getTime())>3600000&&(nowMs-new Date(a.date_iso).getTime())<7200000);
+    let summaryHtml='<span><b style="color:var(--ink)">'+todays.length+'</b> citas</span><span><b style="color:#1f6b4f">'+conf+'</b> confirmadas</span><span><b style="color:#b0432e">'+pend+'</b> por confirmar</span>';
+    if(noshowAlert.length>0){ summaryHtml+='<span style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:.15rem .5rem;font-weight:700;color:#856404;animation:pulse 1.5s infinite">⚠️ '+noshowAlert.length+' paciente'+(noshowAlert.length>1?'s':'')+' sin marcar llegada (+1h)</span>'; }
+    document.getElementById('calSummary').innerHTML=summaryHtml;
     const nowH=(dayStr===new Date().toISOString().slice(0,10))?new Date().getHours():-1;
     let h='';
     if(dayClosed.closed){ h+='<div style="background:#f3f0ea;border:1px dashed #d9cdbf;border-radius:11px;padding:.7rem 1rem;margin-bottom:.6rem;color:#8a7e6d;font-size:.85rem;text-align:center"><b style="color:#6b5d52">'+dayClosed.reason+'</b> · la clínica no atiende este día. El embudo no ofrece huecos.</div>'; }
