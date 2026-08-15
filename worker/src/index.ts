@@ -2566,8 +2566,20 @@ export default {
         const b: any = await req.json();
         const id = 't_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
         const baseDate = b.date_iso ? new Date(b.date_iso) : new Date();
-        await env.aura_db.prepare('INSERT INTO treatments_log (id,tenant_id,lead_id,name,amount,pay_status,date_iso,created_at,method,cost) VALUES (?,?,?,?,?,?,?,?,?,?)')
-          .bind(id, b.tenant_id, b.lead_id, b.name||'Tratamiento', b.amount||0, b.pay_status||'pending', baseDate.toISOString(), Date.now(), b.method||null, Number(b.cost)||0).run();
+        // Generar número de factura automático
+        let invoiceNum = '';
+        if (b.pay_status === 'paid') {
+          try {
+            await env.aura_db.prepare("INSERT INTO invoice_seq (tenant_id, last_num) VALUES (?,0) ON CONFLICT(tenant_id) DO NOTHING").bind(b.tenant_id).run();
+            await env.aura_db.prepare("UPDATE invoice_seq SET last_num = last_num + 1 WHERE tenant_id=?").bind(b.tenant_id).run();
+            const seq: any = await env.aura_db.prepare("SELECT last_num FROM invoice_seq WHERE tenant_id=?").bind(b.tenant_id).first();
+            invoiceNum = 'AURA-' + String(seq?.last_num || 1).padStart(4, '0');
+          } catch(e) { invoiceNum = 'AURA-' + Date.now().toString(36).toUpperCase(); }
+        }
+        const discount = Number(b.discount) || 0;
+        const finalAmount = Math.max((Number(b.amount) || 0) - discount, 0);
+        await env.aura_db.prepare('INSERT INTO treatments_log (id,tenant_id,lead_id,name,amount,pay_status,date_iso,created_at,method,cost,invoice_num,professional,discount,discount_reason) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+          .bind(id, b.tenant_id, b.lead_id||null, b.name||'Tratamiento', finalAmount, b.pay_status||'pending', baseDate.toISOString(), Date.now(), b.method||null, Number(b.cost)||0, invoiceNum||null, b.professional||null, discount, b.discount_reason||null).run();
         // Programar recall automático según tipo de tratamiento y recurrencia
         try {
           const nm = (b.name||'').toLowerCase();
@@ -2592,17 +2604,75 @@ export default {
           // Reprograma recall recurrente: cada tratamiento/revisión nuevo reinicia el ciclo (recall_sms_sent=0)
           await env.aura_db.prepare("UPDATE leads SET recall_date=?, recall_note=?, recall_type='venta', recall_msg=?, recall_sms_sent=0 WHERE id=?").bind(rd.toISOString().slice(0,10), recallNote, recallMsg, b.lead_id).run();
         } catch(e) {}
-        return json({ ok:true, id });
+        return json({ ok:true, id, invoice_num: invoiceNum || null });
       }
       if (p === '/api/treatments' && req.method === 'PUT') {
         const b: any = await req.json();
-        await env.aura_db.prepare('UPDATE treatments_log SET pay_status=?, amount=?, name=?'+(b.method!==undefined?', method=?':'')+' WHERE id=? AND tenant_id=?').bind(...(b.method!==undefined?[b.pay_status, b.amount, b.name, b.method, b.id, b.tenant_id]:[b.pay_status, b.amount, b.name, b.id, b.tenant_id])).run();
+        // Si es anulación, registrar quién y por qué
+        if (b.pay_status === 'voided' && b.void_reason) {
+          await env.aura_db.prepare('UPDATE treatments_log SET pay_status=?, voided_by=?, void_reason=?, void_at=? WHERE id=? AND tenant_id=?')
+            .bind('voided', b.voided_by||'admin', b.void_reason, new Date().toISOString(), b.id, b.tenant_id).run();
+        } else {
+          // Actualización normal (marcar pagado, cambiar método, etc.)
+          let sql = 'UPDATE treatments_log SET pay_status=?, amount=?, name=?';
+          let params: any[] = [b.pay_status, b.amount, b.name];
+          if (b.method !== undefined) { sql += ', method=?'; params.push(b.method); }
+          if (b.professional !== undefined) { sql += ', professional=?'; params.push(b.professional); }
+          if (b.discount !== undefined) { sql += ', discount=?'; params.push(Number(b.discount)||0); }
+          if (b.discount_reason !== undefined) { sql += ', discount_reason=?'; params.push(b.discount_reason); }
+          // Si pasa de pending a paid, generar factura
+          if (b.pay_status === 'paid' && !b._skip_invoice) {
+            try {
+              await env.aura_db.prepare("INSERT INTO invoice_seq (tenant_id, last_num) VALUES (?,0) ON CONFLICT(tenant_id) DO NOTHING").bind(b.tenant_id).run();
+              await env.aura_db.prepare("UPDATE invoice_seq SET last_num = last_num + 1 WHERE tenant_id=?").bind(b.tenant_id).run();
+              const seq: any = await env.aura_db.prepare("SELECT last_num FROM invoice_seq WHERE tenant_id=?").bind(b.tenant_id).first();
+              const inv = 'AURA-' + String(seq?.last_num || 1).padStart(4, '0');
+              sql += ', invoice_num=?'; params.push(inv);
+            } catch(e) {}
+          }
+          sql += ' WHERE id=? AND tenant_id=?'; params.push(b.id, b.tenant_id);
+          await env.aura_db.prepare(sql).bind(...params).run();
+        }
         return json({ ok:true });
       }
       if (p === '/api/treatments' && req.method === 'DELETE') {
         const b: any = await req.json();
         await env.aura_db.prepare('DELETE FROM treatments_log WHERE id=? AND tenant_id=?').bind(b.id, b.tenant_id).run();
         return json({ ok:true });
+      }
+
+      // Enviar recibo por SMS al paciente
+      if (p === '/api/send-receipt' && req.method === 'POST') {
+        const b: any = await req.json();
+        const tx: any = await env.aura_db.prepare('SELECT * FROM treatments_log WHERE id=? AND tenant_id=?').bind(b.id, b.tenant_id).first();
+        if (!tx) return json({error:'not_found'},404);
+        const lead: any = tx.lead_id ? await env.aura_db.prepare('SELECT name,phone FROM leads WHERE id=?').bind(tx.lead_id).first() : null;
+        if (!lead || !lead.phone) return json({error:'no_phone'},400);
+        const tenant: any = await env.aura_db.prepare('SELECT name FROM tenants WHERE id=?').bind(b.tenant_id).first();
+        const clinicName = tenant?.name || 'Tu clínica';
+        const msg = `${clinicName} - Recibo ${tx.invoice_num||tx.id}\n\nConcepto: ${tx.name}\nImporte: ${tx.amount}€${tx.discount>0?' (dto: -'+tx.discount+'€)':''}\nMétodo: ${tx.method||'—'}\nFecha: ${tx.date_iso?.slice(0,10)||'—'}\n\nGracias por tu confianza.`;
+        try { await sendSMS(env, lead.phone, msg, b.tenant_id); } catch(e) {}
+        await env.aura_db.prepare('UPDATE treatments_log SET receipt_sent=1 WHERE id=?').bind(b.id).run();
+        return json({ ok:true, msg:'Recibo enviado' });
+      }
+
+      // Cierre de caja diario
+      if (p === '/api/cash-close' && req.method === 'POST') {
+        const b: any = await req.json();
+        const date = b.date || new Date().toISOString().slice(0,10);
+        // Sumar por método de pago del día
+        const rows: any = await env.aura_db.prepare("SELECT method, COALESCE(SUM(amount),0) total, COUNT(*) cnt FROM treatments_log WHERE tenant_id=? AND pay_status='paid' AND substr(date_iso,1,10)=? GROUP BY method").bind(b.tenant_id, date).all();
+        const byMethod: any = {}; let totalAmount = 0; let ticketCount = 0;
+        (rows.results||[]).forEach((r: any) => { byMethod[r.method||'efectivo'] = r.total; totalAmount += r.total; ticketCount += r.cnt; });
+        const id = 'cc_' + Date.now().toString(36);
+        await env.aura_db.prepare("INSERT INTO cash_closings (id,tenant_id,date,total_cash,total_card,total_bizum,total_transfer,total_link,total_amount,ticket_count,closed_by,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
+          .bind(id, b.tenant_id, date, byMethod.efectivo||0, byMethod.tarjeta||0, byMethod.bizum||0, byMethod.transferencia||0, byMethod.link||0, totalAmount, ticketCount, b.closed_by||'admin', Date.now()).run();
+        return json({ ok:true, closing: { id, date, total_amount: totalAmount, ticket_count: ticketCount, by_method: byMethod } });
+      }
+      if (p === '/api/cash-close' && req.method === 'GET') {
+        const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
+        const r: any = await env.aura_db.prepare("SELECT * FROM cash_closings WHERE tenant_id=? ORDER BY date DESC LIMIT 30").bind(tenant).all();
+        return json({ closings: r.results||[] });
       }
 
       // ===== CLINIC OS lite: INVENTARIO =====
@@ -2680,8 +2750,8 @@ export default {
         const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
         const day = url.searchParams.get('day') || new Date().toISOString().slice(0,10);
         // pagos del día (por fecha del tratamiento)
-        const rows: any = await env.aura_db.prepare("SELECT * FROM treatments_log WHERE tenant_id=? AND substr(date_iso,1,10)=?").bind(tenant, day).all();
-        const list = rows.results || [];
+        const rows: any = await env.aura_db.prepare("SELECT t.*, l.name as lead_name FROM treatments_log t LEFT JOIN leads l ON l.id=t.lead_id WHERE t.tenant_id=? AND substr(t.date_iso,1,10)=? ORDER BY t.created_at DESC").bind(tenant, day).all();
+        const list = (rows.results || []).map((x:any) => ({...x, lead_name: x.lead_name||null}));
         const paid = list.filter((x:any)=>x.pay_status==='paid');
         const totalDay = paid.reduce((s:number,x:any)=>s+(x.amount||0),0);
         const cost = paid.reduce((s:number,x:any)=>s+(x.cost||0),0);

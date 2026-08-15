@@ -652,7 +652,8 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
       <!-- Ventas del dia -->
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between"><h3 style="margin:0">Ventas del día</h3><button class="btn prim" onclick="openQuickSale()">+ Cobro rápido</button></div>
-        <table style="margin-top:.6rem"><thead><tr><th>Concepto</th><th>Importe</th><th>Método</th><th>Estado</th><th></th></tr></thead><tbody id="cajaItems"></tbody></table>
+        <div style="display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap"><button class="btn" style="font-size:.78rem;padding:.4rem .7rem" onclick="doCashClose()">🔒 Cierre de caja</button><button class="btn" style="font-size:.78rem;padding:.4rem .7rem" onclick="viewCashHistory()">📋 Historial</button></div>
+        <div style="overflow-x:auto"><table style="margin-top:.6rem;font-size:.82rem"><thead><tr><th>Nº</th><th>Concepto</th><th>Paciente</th><th>Importe</th><th>Dto</th><th>Método</th><th>Prof.</th><th>Estado</th><th></th></tr></thead><tbody id="cajaItems"></tbody></table></div>
         <div class="empty" id="cajaEmpty" style="display:none"><b>Sin ventas este día</b>Los cobros del cierre de visita y los cobros rápidos aparecen aquí.</div>
       </div>
 
@@ -2191,16 +2192,51 @@ async function loadTreatments(leadId){
 }
 async function addTreatment(){
   if(!_curLead)return;
-  const name=prompt('Tratamiento (ej: Aumento de labios)'); if(!name)return;
-  const amount=parseFloat(prompt('Importe en € (ej: 380)')||'0')||0;
-  const paid=confirm('¿Ya está pagado? Aceptar = Pagado, Cancelar = Pendiente');
-  await fetch(WORKER+'/api/treatments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,lead_id:_curLead.id,name,amount,pay_status:paid?'paid':'pending'})});
-  loadTreatments(_curLead.id);
+  const ov=document.createElement('div');ov.id='atOv';ov.style='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:grid;place-items:center;padding:1rem';
+  ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:400px;width:100%;padding:1.4rem;max-height:90vh;overflow-y:auto"><h3 class="serif" style="margin:0 0 .8rem">Registrar cobro — '+(_curLead.name||'Paciente')+'</h3>'
+    +'<input id="atName" placeholder="Tratamiento/concepto" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/>'
+    +'<div style="display:flex;gap:.4rem"><input id="atAmount" type="number" placeholder="Importe €" style="flex:1;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/><input id="atDiscount" type="number" placeholder="Dto €" value="0" style="width:80px;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/></div>'
+    +'<input id="atDiscountReason" placeholder="Motivo descuento" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem;font-size:.82rem;display:none"/>'
+    +'<select id="atMethod" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem">'+METODOS.map(m=>'<option value="'+m+'">'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>').join('')+'</select>'
+    +'<select id="atProf" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"><option value="">Profesional</option></select>'
+    +'<select id="atStatus" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.8rem"><option value="paid">Pagado ✓</option><option value="pending">Pendiente de cobro</option></select>'
+    +'<div style="display:flex;gap:.5rem"><button class="btn prim" style="flex:1" onclick="doAddTreatment()">Registrar</button><button class="btn" onclick="document.getElementById(\'atOv\').remove()">Cancelar</button></div>'
+    +'<p id="atMsg" style="font-size:.78rem;margin:.5rem 0 0;text-align:center"></p></div>';
+  document.body.appendChild(ov);
+  fetch(WORKER+'/api/professionals?tenant='+T).then(r=>r.json()).then(d=>{const sel=document.getElementById('atProf');(d.professionals||[]).forEach(p=>{const o=document.createElement('option');o.value=p.name;o.textContent=p.name;sel.appendChild(o);});}).catch(()=>{});
+  document.getElementById('atDiscount').addEventListener('input',function(){document.getElementById('atDiscountReason').style.display=this.value&&+this.value>0?'block':'none';});
+}
+async function doAddTreatment(){
+  const name=document.getElementById('atName').value.trim();
+  const amount=+document.getElementById('atAmount').value||0;
+  const discount=+document.getElementById('atDiscount').value||0;
+  const discountReason=document.getElementById('atDiscountReason').value||'';
+  const method=document.getElementById('atMethod').value;
+  const professional=document.getElementById('atProf').value;
+  const payStatus=document.getElementById('atStatus').value;
+  const msg=document.getElementById('atMsg');
+  if(!name){msg.style.color='#b0432e';msg.textContent='Indica el tratamiento';return;}
+  if(amount<=0){msg.style.color='#b0432e';msg.textContent='Indica el importe';return;}
+  msg.style.color='var(--terra)';msg.textContent='Procesando...';
+  try{
+    await fetch(WORKER+'/api/treatments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,lead_id:_curLead.id,name,amount,discount,discount_reason:discountReason,method,professional,pay_status:payStatus})});
+    msg.style.color='#1f8c69';msg.textContent='✓ Registrado';
+    setTimeout(()=>{document.getElementById('atOv').remove();loadTreatments(_curLead.id);},800);
+  }catch(e){msg.style.color='#b0432e';msg.textContent='Error';}
 }
 async function toggledPay(id,status,amount,name){
-  const np = status==='paid' ? 'pending' : 'paid';
-  await fetch(WORKER+'/api/treatments',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,id,pay_status:np,amount,name})});
-  if(_curLead)loadTreatments(_curLead.id);
+  if(status==='paid'){
+    // Anular cobro: pedir motivo
+    const reason=prompt('Motivo de la anulación (obligatorio):');
+    if(!reason||!reason.trim()){alert('Debes indicar un motivo para anular');return;}
+    await fetch(WORKER+'/api/treatments',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,id,pay_status:'voided',amount,name,void_reason:reason,voided_by:localStorage.getItem('aura_user')||'admin'})});
+  } else {
+    // Marcar como pagado
+    const method=prompt('Método de pago (efectivo/tarjeta/bizum/transferencia):','tarjeta');
+    if(!method)return;
+    await fetch(WORKER+'/api/treatments',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,id,pay_status:'paid',amount,name,method})});
+  }
+  if(_curLead)loadTreatments(_curLead.id); loadCaja();
 }
 async function delTreatment(id){
   if(!confirm('¿Eliminar este tratamiento?'))return;
@@ -3278,8 +3314,9 @@ async function loadCaja(){
     const items=d.items||[];
     document.getElementById('cajaEmpty').style.display=items.length?'none':'block';
     items.forEach(it=>{ const tr=document.createElement('tr');
-      const est=it.pay_status==='paid'?'<span class="tag" style="background:#e8f5ee;color:#1f6b4f">Cobrado</span>':'<span class="tag" style="background:#fde8e4;color:#b0432e">Pendiente</span>';
-      tr.innerHTML='<td>'+(it.name||'—')+'</td><td><b>'+eur(it.amount)+'</b></td><td style="text-transform:capitalize">'+(it.method||'—')+'</td><td>'+est+'</td><td>'+(it.pay_status!=='paid'?'<button class="btn" style="padding:.25rem .5rem;font-size:.72rem" onclick="markPaid(\''+it.id+'\','+(it.amount||0)+',\''+(it.name||'').replace(/\x27/g,"")+'\')">Cobrar</button>':'')+'</td>';
+      const est=it.pay_status==='paid'?'<span class="tag" style="background:#e8f5ee;color:#1f6b4f">Cobrado</span>':it.pay_status==='voided'?'<span class="tag" style="background:#f3e8e8;color:#888;text-decoration:line-through">Anulado</span>':'<span class="tag" style="background:#fde8e4;color:#b0432e">Pendiente</span>';
+      const actions=it.pay_status==='paid'?'<button class="btn" style="padding:.2rem .4rem;font-size:.68rem" onclick="sendReceipt(\''+it.id+'\')">📧</button><button class="btn" style="padding:.2rem .4rem;font-size:.68rem;color:#b0432e" onclick="voidPayment(\''+it.id+'\','+(it.amount||0)+',\''+(it.name||'').replace(/'/g,'')+'\')">✕</button>':it.pay_status==='pending'?'<button class="btn" style="padding:.2rem .4rem;font-size:.68rem" onclick="markPaid(\''+it.id+'\','+(it.amount||0)+',\''+(it.name||'').replace(/'/g,'')+'\')">Cobrar</button>':'<span style="font-size:.68rem;color:#888" title="'+(it.void_reason||'')+'">'+(it.voided_by||'')+'</span>';
+      tr.innerHTML='<td style="font-family:monospace;font-size:.72rem;color:var(--muted)">'+(it.invoice_num||'—')+'</td><td>'+(it.name||'—')+'</td><td style="font-size:.78rem">'+(it.lead_name||'—')+'</td><td><b>'+eur(it.amount)+'</b></td><td style="font-size:.78rem;color:#9a6a1a">'+(it.discount>0?'-'+eur(it.discount):'')+'</td><td style="text-transform:capitalize;font-size:.78rem">'+(it.method||'—')+'</td><td style="font-size:.78rem">'+(it.professional||'—')+'</td><td>'+est+'</td><td style="white-space:nowrap">'+actions+'</td>';
       tb.appendChild(tr);
     });
   }catch(e){}
@@ -3330,22 +3367,80 @@ async function saveCosts(){
   document.getElementById('coOv').remove(); loadProfit();
 }
 async function markPaid(id,amount,name){ await fetch(WORKER+'/api/treatments',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,id,amount,name,pay_status:'paid'})}); loadCaja(); }
+async function sendReceipt(id){
+  try{const r=await fetch(WORKER+'/api/send-receipt',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,id})});const d=await r.json();
+    if(d.ok){toast('Recibo enviado por SMS ✓');}else{toast(d.error==='no_phone'?'El paciente no tiene teléfono':'Error al enviar','error');}
+  }catch(e){toast('Error de conexión','error');}
+}
+async function voidPayment(id,amount,name){
+  const reason=prompt('Motivo de la anulación (obligatorio):');
+  if(!reason||!reason.trim()){alert('Debes indicar un motivo para anular el cobro.');return;}
+  await fetch(WORKER+'/api/treatments',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,id,pay_status:'voided',amount,name,void_reason:reason,voided_by:localStorage.getItem('aura_user')||'admin'})});
+  toast('Cobro anulado');loadCaja();
+}
+async function doCashClose(){
+  const day=document.getElementById('cajaDay')?document.getElementById('cajaDay').value:new Date().toISOString().slice(0,10);
+  if(!confirm('¿Cerrar la caja del día '+day+'? Esto genera un resumen con desglose por método.'))return;
+  try{const r=await fetch(WORKER+'/api/cash-close',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,date:day,closed_by:localStorage.getItem('aura_user')||'admin'})});const d=await r.json();
+    if(d.ok){const c=d.closing;alert('✓ Caja cerrada\n\nFecha: '+c.date+'\nTotal: '+c.total_amount+'€\nTickets: '+c.ticket_count+'\n\nDesglose:\n'+Object.entries(c.by_method||{}).map(([k,v])=>'  '+k+': '+v+'€').join('\n'));}
+  }catch(e){toast('Error al cerrar caja','error');}
+}
+async function viewCashHistory(){
+  try{const r=await fetch(WORKER+'/api/cash-close?tenant='+T);const d=await r.json();const list=d.closings||[];
+    if(!list.length){alert('No hay cierres de caja registrados.');return;}
+    const txt=list.slice(0,10).map(c=>c.date+' | '+c.total_amount+'€ | '+c.ticket_count+' tickets | por: '+(c.closed_by||'—')).join('\n');
+    alert('Últimos cierres de caja:\n\n'+txt);
+  }catch(e){toast('Error','error');}
+}
 
 // Cobro rápido (mostrador)
 function openQuickSale(){
   const ov=document.createElement('div'); ov.id='qsOv'; ov.style='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:grid;place-items:center;padding:1rem';
-  ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:360px;width:100%;padding:1.4rem"><h3 class="serif" style="margin:0 0 .8rem">Cobro rápido</h3>'
-    +'<input id="qsName" placeholder="Concepto (ej: crema, sesión)" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/>'
-    +'<input id="qsAmount" type="number" placeholder="Importe €" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/>'
-    +'<select id="qsMethod" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.8rem">'+METODOS.map(m=>'<option value="'+m+'">'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>').join('')+'</select>'
-    +'<div style="display:flex;gap:.5rem"><button class="btn prim" style="flex:1" onclick="doQuickSale()">Cobrar</button><button class="btn" onclick="document.getElementById(\'qsOv\').remove()">Cancelar</button></div></div>';
+  ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:420px;width:100%;padding:1.4rem;max-height:90vh;overflow-y:auto"><h3 class="serif" style="margin:0 0 .8rem">Cobro rápido</h3>'
+    +'<input id="qsSearch" placeholder="Buscar paciente (opcional)" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.3rem" oninput="qsSearchLeads(this.value)"/>'
+    +'<div id="qsLeadResults" style="max-height:100px;overflow-y:auto;margin-bottom:.5rem;font-size:.82rem"></div>'
+    +'<input type="hidden" id="qsLeadId" value=""/>'
+    +'<input id="qsName" placeholder="Concepto (ej: crema, sesión, retoque)" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/>'
+    +'<div style="display:flex;gap:.4rem"><input id="qsAmount" type="number" placeholder="Importe €" style="flex:1;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/><input id="qsDiscount" type="number" placeholder="Dto €" style="width:80px;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/></div>'
+    +'<input id="qsDiscountReason" placeholder="Motivo del descuento (si aplica)" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem;font-size:.82rem;display:none"/>'
+    +'<select id="qsMethod" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem">'+METODOS.map(m=>'<option value="'+m+'">'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>').join('')+'</select>'
+    +'<select id="qsProf" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.8rem"><option value="">Profesional (opcional)</option></select>'
+    +'<div style="display:flex;gap:.5rem"><button class="btn prim" style="flex:1" onclick="doQuickSale()">💶 Cobrar y registrar</button><button class="btn" onclick="document.getElementById(\'qsOv\').remove()">Cancelar</button></div>'
+    +'<p id="qsMsg" style="font-size:.78rem;margin:.5rem 0 0;text-align:center"></p></div>';
   document.body.appendChild(ov);
+  // Cargar profesionales
+  fetch(WORKER+'/api/professionals?tenant='+T).then(r=>r.json()).then(d=>{const sel=document.getElementById('qsProf');(d.professionals||[]).forEach(p=>{const o=document.createElement('option');o.value=p.name;o.textContent=p.name;sel.appendChild(o);});}).catch(()=>{});
+  // Mostrar motivo si hay descuento
+  document.getElementById('qsDiscount').addEventListener('input',function(){document.getElementById('qsDiscountReason').style.display=this.value&&+this.value>0?'block':'none';});
+}
+let _qsDebounce=null;
+function qsSearchLeads(q){
+  clearTimeout(_qsDebounce);
+  if(!q||q.length<2){document.getElementById('qsLeadResults').innerHTML='';return;}
+  _qsDebounce=setTimeout(async()=>{
+    try{const r=await fetch(WORKER+'/api/leads?tenant='+T+'&q='+encodeURIComponent(q));const d=await r.json();
+      const el=document.getElementById('qsLeadResults');
+      el.innerHTML=(d.leads||[]).slice(0,5).map(l=>'<div style="padding:.3rem .5rem;cursor:pointer;border-radius:6px;border:1px solid var(--line);margin-bottom:.2rem" onclick="document.getElementById(\'qsLeadId\').value=\''+l.id+'\';document.getElementById(\'qsSearch\').value=\''+(l.name||'').replace(/'/g,'')+'\';document.getElementById(\'qsLeadResults\').innerHTML=\'<span style=color:#1f8c69>✓ '+(l.name||'').replace(/'/g,'')+'</span>\'"><b>'+(l.name||'—')+'</b> <span style="color:var(--muted)">'+(l.phone||'')+'</span></div>').join('');
+    }catch(e){}
+  },300);
 }
 async function doQuickSale(){
-  const name=document.getElementById('qsName').value||'Venta'; const amount=+document.getElementById('qsAmount').value||0; const method=document.getElementById('qsMethod').value;
-  if(amount<=0){alert('Pon un importe');return;}
-  await fetch(WORKER+'/api/treatments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,lead_id:null,name,amount,method,pay_status:'paid'})});
-  document.getElementById('qsOv').remove(); loadCaja();
+  const name=document.getElementById('qsName').value||'Venta';
+  const amount=+document.getElementById('qsAmount').value||0;
+  const discount=+document.getElementById('qsDiscount').value||0;
+  const discountReason=document.getElementById('qsDiscountReason').value||'';
+  const method=document.getElementById('qsMethod').value;
+  const professional=document.getElementById('qsProf').value||'';
+  const leadId=document.getElementById('qsLeadId').value||null;
+  const msg=document.getElementById('qsMsg');
+  if(amount<=0){msg.style.color='#b0432e';msg.textContent='Pon un importe';return;}
+  msg.style.color='var(--terra)';msg.textContent='Procesando...';
+  try{
+    const r=await fetch(WORKER+'/api/treatments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,lead_id:leadId,name,amount,discount,discount_reason:discountReason,method,professional,pay_status:'paid'})});
+    const d=await r.json();
+    msg.style.color='#1f8c69';msg.textContent='✓ Cobrado'+(d.invoice_num?' · Factura '+d.invoice_num:'');
+    setTimeout(()=>{document.getElementById('qsOv').remove();loadCaja();},1200);
+  }catch(e){msg.style.color='#b0432e';msg.textContent='Error al cobrar';}
 }
 
 // Bonos
