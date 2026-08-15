@@ -1265,20 +1265,31 @@ async function loadAgendaCal(force){
   const H={'Authorization':'Bearer '+tok};
   const j=async(u,opt)=>{ try{ const r=await fetch(WORKER+u,opt); return await r.json(); }catch(e){ return null; } };
   // 5 peticiones EN PARALELO (antes iban en serie -> de aqui venia el lag de carga)
-  const [ap,pr,bl,sc,va]=await Promise.all([
+  const [ap,pr,bl,sc,va,tb]=await Promise.all([
     j('/api/appointments?tenant='+T,{headers:H}),
     j('/api/professionals?tenant='+T,{headers:H}),
     j('/api/blocks?tenant='+T,{headers:H}),
     j('/api/schedule-by-day?tenant='+T,{headers:H}),
     j('/api/vacations?tenant='+T,{headers:H}),
+    j('/api/time-blocks?tenant='+T+'&from='+new Date(Date.now()-30*86400000).toISOString().slice(0,10)+'&to='+new Date(Date.now()+60*86400000).toISOString().slice(0,10),{headers:H}),
   ]);
   _agAppts=(ap&&ap.appointments)||[];
   _pros=(pr&&pr.professionals)||[];
   _blocks=(bl&&bl.blocks)||[];
+  window._timeBlocks=(tb&&tb.blocks)||[];
   _agSched={}; if(sc&&sc.schedule){ sc.schedule.forEach(s=>{_agSched[s.dow]={is_open:s.is_open,t1_start:s.t1_start,t1_end:s.t1_end,t2_start:s.t2_start,t2_end:s.t2_end};}); }
   _agVacs=(va&&va.vacations)||[];
   _agendaLoaded=true;
   renderProBar(); renderAgendaCal();
+// === MEJORAS AGENDA: Filtro, Now-line, Bloqueos, Ocupación ===
+let _calFilter="all";
+function setCalFilter(f,btn){ _calFilter=f; document.querySelectorAll(".cal-filter-btn").forEach(b=>b.classList.toggle("active",b===btn)); renderAgendaCal(); }
+function agApptsFiltered(dayStr){ let appts=agApptsFor(dayStr); if(_calFilter==="all")return appts; if(_calFilter==="pending")return appts.filter(a=>a.confirmed!=1&&a.status!=="attended"&&a.status!=="noshow"&&a.status!=="cancelled"); if(_calFilter==="confirmed")return appts.filter(a=>a.confirmed==1&&a.status!=="attended"); if(_calFilter==="attended")return appts.filter(a=>a.status==="attended"); if(_calFilter==="noshow")return appts.filter(a=>a.status==="noshow"); return appts; }
+function renderNowLine(container,pxPerMin){ var now=new Date(); var dayStr=now.toISOString().slice(0,10); var ref=document.getElementById("calTitle"); if(!ref)return; var mins=(now.getHours()-8)*60+now.getMinutes(); if(mins<0||mins>14*60)return; var top=mins*pxPerMin; var line=document.createElement("div"); line.className="agenda-now-line"; line.style.top=top+"px"; container.appendChild(line); }
+function calcOccupation(proId,dayStr){ var appts=agApptsFor(dayStr).filter(a=>a.professional_id===proId); var totalMins=appts.reduce((s,a)=>s+(a.duration_min||30),0); var workMins=10*60; return Math.min(100,Math.round(totalMins/workMins*100)); }
+function openTimeBlock(){ var ov=document.createElement("div");ov.id="tbOv";ov.style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:grid;place-items:center;padding:1rem"; ov.innerHTML="<div style=\"background:#fff;border-radius:16px;max-width:380px;width:100%;padding:1.4rem\"><h3 class=\"serif\" style=\"margin:0 0 .8rem\">Bloquear tiempo</h3><label style=\"font-size:.75rem;font-weight:600\">Fecha</label><input type=\"date\" id=\"tbDate\" value=\""+calRef.toISOString().slice(0,10)+"\" style=\"width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem\"/><div style=\"display:flex;gap:.4rem\"><div style=\"flex:1\"><label style=\"font-size:.75rem;font-weight:600\">Desde</label><input type=\"time\" id=\"tbFrom\" value=\"13:00\" style=\"width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px\"/></div><div style=\"flex:1\"><label style=\"font-size:.75rem;font-weight:600\">Hasta</label><input type=\"time\" id=\"tbTo\" value=\"14:00\" style=\"width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px\"/></div></div><label style=\"font-size:.75rem;font-weight:600;margin-top:.5rem;display:block\">Motivo</label><select id=\"tbReason\" style=\"width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem\"><option>Descanso / Almuerzo</option><option>Reunión</option><option>Formación</option><option>Vacaciones</option><option>Otro</option></select><label style=\"font-size:.75rem;font-weight:600\">Profesional</label><select id=\"tbProf\" style=\"width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.8rem\"><option value=\"all\">Todos</option></select><div style=\"display:flex;gap:.5rem\"><button class=\"btn prim\" style=\"flex:1\" onclick=\"saveTimeBlock()\">Bloquear</button><button class=\"btn\" onclick=\"document.getElementById(\x27tbOv\x27).remove()\">Cancelar</button></div></div>"; document.body.appendChild(ov); fetch(WORKER+"/api/professionals?tenant="+T).then(r=>r.json()).then(d=>{var sel=document.getElementById("tbProf");(d.professionals||[]).forEach(p=>{var o=document.createElement("option");o.value=p.id;o.textContent=p.name;sel.appendChild(o);});}).catch(()=>{}); }
+async function saveTimeBlock(){ var d=document.getElementById("tbDate").value; var from=document.getElementById("tbFrom").value; var to=document.getElementById("tbTo").value; var reason=document.getElementById("tbReason").value; var prof=document.getElementById("tbProf").value; if(!d||!from||!to){alert("Rellena todos los campos");return;} try{await fetch(WORKER+"/api/time-block",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+(localStorage.getItem("aura_token")||"")},body:JSON.stringify({tenant_id:T,date:d,from_time:from,to_time:to,reason:reason,professional_id:prof==="all"?null:prof})}); document.getElementById("tbOv").remove(); loadAgendaCal(true); toast("Bloqueo guardado","ok");}catch(e){alert("Error");} }
+
 }
 function renderProBar(){
   const bar=document.getElementById('calProBar'); if(!bar)return;
@@ -1333,7 +1344,7 @@ function renderAgendaCal(){
     title.textContent=fmtD(calRef).replace(/^./,m=>m.toUpperCase());
     const dayStr=calRef.toISOString().slice(0,10);
     const dayClosed=agClosed(dayStr);
-    const todays=agApptsFor(dayStr);
+    const todays=agApptsFiltered(dayStr);
     const conf=todays.filter(a=>a.confirmed==1).length; const pend=todays.filter(a=>!(a.confirmed==1)&&a.status!=='attended'&&a.status!=='noshow').length;
     document.getElementById('calSummary').innerHTML='<span><b style="color:var(--ink)">'+todays.length+'</b> citas</span><span><b style="color:#1f6b4f">'+conf+'</b> confirmadas</span><span><b style="color:#b0432e">'+pend+'</b> por confirmar</span>';
     const nowH=(dayStr===new Date().toISOString().slice(0,10))?new Date().getHours():-1;
@@ -1357,7 +1368,7 @@ function renderAgendaCal(){
     // Columnas por profesional
     pros.forEach(pro => {
       h+='<div class="agenda-pro-col">';
-      h+='<div class="agenda-pro-header" style="border-top:3px solid '+(pro.color||'var(--terra)')+'">'+pro.name+'</div>';
+      h+='<div class="agenda-pro-header" style="border-top:3px solid '+(pro.color||'var(--terra)')+'"><div>'+pro.name+'</div><div class="agenda-pro-occ">'+calcOccupation(pro.id,dayStr)+'% ocupado<div class="agenda-pro-occ-bar"><div class="agenda-pro-occ-fill" style="width:'+calcOccupation(pro.id,dayStr)+'%;background:'+(calcOccupation(pro.id,dayStr)>80?'#c0392b':calcOccupation(pro.id,dayStr)>50?'#d9a23a':'#34a877')+'"></div></div></div></div>';
       h+='<div class="agenda-slots-container">';
       if(dayClosed.closed) h+='<div class="agenda-closed-bg"></div>';
       
@@ -1377,6 +1388,16 @@ function renderAgendaCal(){
         }
       }
       
+      // Citas del profesional
+      // Bloqueos de tiempo del profesional
+      (window._timeBlocks||[]).filter(tb=>tb.date===dayStr&&(!tb.professional_id||tb.professional_id===pro.id)).forEach(tb=>{
+        const [fh,fm]=(tb.from_time||'08:00').split(':').map(Number);
+        const [th,tm]=(tb.to_time||'09:00').split(':').map(Number);
+        const startMins=(fh-8)*60+fm; const endMins=(th-8)*60+tm;
+        if(startMins<0)return;
+        const top=startMins*pxPerMin; const height=Math.max(15,(endMins-startMins)*pxPerMin);
+        h+='<div class="agenda-block" style="top:'+top+'px;height:'+height+'px" title="'+tb.reason+' ('+tb.from_time+'-'+tb.to_time+')" onclick="event.stopPropagation();if(confirm(\'¿Eliminar bloqueo: '+tb.reason+'?\')){fetch(WORKER+\'/api/time-block\',{method:\'DELETE\',headers:{\'Content-Type\':\'application/json\',\'Authorization\':\'Bearer \'+(localStorage.getItem(\'aura_token\')||\'\')},body:JSON.stringify({id:\''+tb.id+'\',tenant_id:T})}).then(()=>loadAgendaCal(true));}">🚫 '+(tb.reason||'Bloqueado')+'</div>';
+      });
       // Citas del profesional
       const proAppts = todays.filter(a => (a.professional_id === pro.id) || (!a.professional_id && pro.id==='pro_1'));
       proAppts.forEach(a => {

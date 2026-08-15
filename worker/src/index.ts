@@ -2893,6 +2893,27 @@ export default {
         return json({ ok:true });
       }
 
+      // Bloqueos de tiempo
+      if (p === '/api/time-block' && req.method === 'POST') {
+        const b: any = await req.json();
+        const id = 'tb_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+        await env.aura_db.prepare("INSERT INTO time_blocks (id,tenant_id,block_date,from_time,to_time,reason,professional_id,recurring,created_at) VALUES (?,?,?,?,?,?,?,?,?)")
+          .bind(id, b.tenant_id, b.date||b.block_date, b.from_time, b.to_time, b.reason||null, b.professional_id||null, b.recurring||'none', Date.now()).run();
+        return json({ ok:true, id });
+      }
+      if (p === '/api/time-blocks' && req.method === 'GET') {
+        const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
+        const from = url.searchParams.get('from') || new Date().toISOString().slice(0,10);
+        const to = url.searchParams.get('to') || from;
+        const rows: any = await env.aura_db.prepare("SELECT *, block_date as date FROM time_blocks WHERE tenant_id=? AND block_date BETWEEN ? AND ? ORDER BY block_date, from_time").bind(tenant, from, to).all();
+        return json({ blocks: rows.results || [] });
+      }
+      if (p === '/api/time-block' && req.method === 'DELETE') {
+        const b: any = await req.json();
+        await env.aura_db.prepare("DELETE FROM time_blocks WHERE id=? AND tenant_id=?").bind(b.id, b.tenant_id).run();
+        return json({ ok:true });
+      }
+
       // ===== CLINIC OS lite: INVENTARIO =====
       if (p === '/api/products' && req.method === 'GET') {
         const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
