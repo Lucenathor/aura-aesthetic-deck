@@ -548,6 +548,21 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
         <h3>Rendimiento por profesional <small style="font-weight:400;color:var(--muted)">(este mes)</small></h3>
         <div id="proPerformanceList" style="margin-top:.5rem"></div>
       </div>
+      <!-- RETENCIÓN Y LTV -->
+      <div class="card" id="retentionCard" style="margin-top:.5rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem"><h3>📊 Retención y valor del paciente</h3><button class="btn" style="font-size:.74rem;padding:.3rem .6rem" onclick="loadRetention()">Actualizar</button></div>
+        <div class="kpis" style="grid-template-columns:repeat(4,1fr);margin-top:.7rem">
+          <div class="kpi"><small>Retención</small><b id="kRetention" style="color:#6366f1">—</b><span class="delta">pacientes que vuelven</span></div>
+          <div class="kpi"><small>LTV medio</small><b id="kLTV">—</b><span class="delta">gasto por paciente</span></div>
+          <div class="kpi"><small>Frecuencia</small><b id="kFrequency">—</b><span class="delta">días entre visitas</span></div>
+          <div class="kpi"><small>Inactivos</small><b id="kInactive" style="color:#b0432e">—</b><span class="delta">sin venir +60 días</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem">
+          <div><h4 style="font-size:.82rem;font-weight:700;margin-bottom:.5rem">🏆 Top pacientes por gasto</h4><div id="retTopPatients" style="font-size:.8rem"></div></div>
+          <div><h4 style="font-size:.82rem;font-weight:700;margin-bottom:.5rem">📈 Tendencia mensual</h4><div style="height:180px"><canvas id="retChart"></canvas></div></div>
+        </div>
+        <div style="margin-top:1rem"><h4 style="font-size:.82rem;font-weight:700;margin-bottom:.5rem">💰 Top tratamientos por ingresos</h4><div id="retTopTreatments" style="font-size:.8rem"></div></div>
+      </div>
       <!-- RECUPERADO GRACIAS A AURA -->
       <div class="card" id="recoveredCard" style="background:linear-gradient(135deg,#1f9d63,#0f6b3f);color:#fff;border:0;position:relative;overflow:hidden">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
@@ -935,6 +950,17 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
         <div class="field"><label>Mensaje de bienvenida</label><input id="bkWelcome" placeholder="Elige tu horario y reserva en 30 segundos"></div>
         <button class="btn prim" style="margin-top:.8rem" onclick="saveBookingCfg()">Guardar configuración de reserva</button>
         <span id="bkMsg" style="margin-left:.8rem;font-size:.82rem;color:#1f8c69"></span>
+      </div>
+      <div class="card" style="margin-top:1rem;background:#f8f7ff;border:1px solid #e0e0ff">
+        <h3>🔗 Widget embebible para tu web</h3>
+        <p class="sub">Pega este código en tu web y tus pacientes podrán reservar directamente sin salir de tu página.</p>
+        <div style="margin:.8rem 0;padding:.7rem;background:#fff;border-radius:8px;border:1px solid #e5e7eb">
+          <code id="widgetCode" style="font-size:.72rem;color:#4f46e5;word-break:break-all;display:block;white-space:pre-wrap"></code>
+        </div>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn prim" style="font-size:.82rem" onclick="navigator.clipboard.writeText(document.getElementById('widgetCode').textContent);toast('Código copiado ✓')">Copiar código</button>
+          <button class="btn" style="font-size:.82rem" onclick="window.open('https://auracrm.co/widget?t='+T,'_blank')">Vista previa →</button>
+        </div>
       </div>
       <!-- META PIXEL + SLUG -->
       <div class="card" style="margin-top:1rem">
@@ -2437,7 +2463,7 @@ async function openCloseVisit(apptId,leadId,treatment,name){
     // CONSENTIMIENTO PENDIENTE (aviso naranja)
     +(pendingConsent?'<div style="background:#fff8ed;border:1px solid #ffd699;border-radius:10px;padding:.5rem .7rem;margin-bottom:.7rem;font-size:.78rem;color:#92400e;font-weight:600">📋 Consentimiento pendiente de firma — <a href="#" onclick="event.preventDefault();document.getElementById(\'cvOverlay\').remove();openPatientDrawer(\''+leadId+'\',\''+escapeHtml(name||'')+'\');setTimeout(function(){try{document.querySelector(\'[data-tab=consent]\').click();}catch(e){}},400)" style="color:#d97706;text-decoration:underline">Ver en ficha</a></div>':'')
     +'<div style="margin-bottom:.7rem">'
-    +(function(){ var cat=(window.CATALOG||[]); var cur=(treatment||''); var inCat=cat.some(function(x){return (x.name||'')===cur;}); var opts=cat.map(function(x){return '<option value="'+escapeHtml(x.name)+'" data-price="'+(x.price||0)+'"'+((x.name===cur)?' selected':'')+'>'+escapeHtml(x.name)+'</option>';}).join(''); if(cur && !inCat) opts='<option value="'+escapeHtml(cur)+'" selected>'+escapeHtml(cur)+'</option>'+opts; var sel='<label style="font-size:.8rem;font-weight:600">Tratamiento realizado</label><select id="cvTreat" onchange="cvTreatChange(this)" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin:.3rem 0 .5rem">'+opts+'<option value="__other__">Otro… (escribir)</option></select><input id="cvTreatOther" placeholder="Escribe el tratamiento" style="display:none;width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin:0 0 .8rem"/>'; return sel; })()
+    +(function(){ var cat=(window.CATALOG||[]); var cur=(treatment||''); var inCat=cat.some(function(x){return (x.name||'')===cur;}); var opts=cat.map(function(x){return '<option value="'+escapeHtml(x.name)+'" data-price="'+(x.price||0)+'"'+((x.name===cur)?' selected':'')+'>'+escapeHtml(x.name)+'</option>';}).join(''); if(cur && !inCat) opts='<option value="'+escapeHtml(cur)+'" selected>'+escapeHtml(cur)+'</option>'+opts; var sel='<label style="font-size:.8rem;font-weight:600">Tratamiento realizado</label><select id="cvTreat" onchange="cvTreatChange(this)" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin:.3rem 0 .5rem">'+opts+'<option value="__other__">Otro… (escribir)</option></select><input id="cvTreatOther" placeholder="Escribe el tratamiento" style="display:none;width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin:0 0 .8rem"/>'; return sel; })() +'<div id="cvBonoBox" style="display:none;background:#f0f7ff;border:1px solid #bdd8f5;border-radius:10px;padding:.6rem .7rem;margin-bottom:.7rem"><label style="font-size:.8rem;font-weight:700;color:#1e40af">🎫 Usar bono/pack activo</label><select id="cvBonoSel" onchange="cvBonoChanged()" style="width:100%;padding:.5rem;border:1px solid #bdd8f5;border-radius:8px;margin:.3rem 0 .2rem;font-size:.82rem"><option value="">No usar bono (cobro normal)</option></select><div id="cvBonoProgress" style="display:none;margin-top:.4rem"></div></div>'
     +'</div>'
     // === SECCIÓN CLÍNICA: nota rápida, zonas, lote ===
     +'<details id="cvClinical" style="margin-bottom:.7rem;background:#f8f9fa;border:1px solid #e9ecef;border-radius:11px;padding:.6rem .7rem"><summary style="font-size:.8rem;font-weight:700;cursor:pointer;color:#495057">🩺 Nota clínica (opcional)</summary>'
@@ -2484,8 +2510,8 @@ async function openCloseVisit(apptId,leadId,treatment,name){
   // Prerellenar la fecha de la siguiente cita con el intervalo recomendado por benchmark (fija)
   try{ var _o=cashOffers(treatment); var _nd=document.getElementById('cvNextDate'); if(_nd && _o && _o.nextDays){ _nd.value=nextDateISO(_o.nextDays); } }catch(e){}
   // cargar productos del inventario REAL para la venta suelta
-  window._cvSoldRows=[]; window._cvSoldProds=[];
-  (async()=>{ try{ const r=await fetch(WORKER+'/api/inv-products?tenant='+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}}); const d=await r.json(); window._cvSoldProds=(d.products||[]).filter(function(x){return x.active!==0;}); }catch(e){ window._cvSoldProds=[]; } })();
+  window._cvSoldRows=[]; window._cvSoldProds=[];cvLoadBonos(leadId);cvLoadBonos(leadId);cvLoadBonos(leadId);
+  (async()=>{ try{ const r=await fetch(WORKER+'/api/inv-products?tenant='+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}}); const d=await r.json(); window._cvSoldProds=(d.products||[]).filter(function(x){return x.active!==0;}); }catch(e){ window._cvSoldProds=[];cvLoadBonos(leadId);cvLoadBonos(leadId); } })();
   // cargar saldo de puntos del paciente para ofrecer canje
   (async()=>{ try{ const tk=localStorage.getItem('aura_token')||''; const r=await fetch(WORKER+'/api/loyalty-balance?tenant='+T+'&lead='+leadId,{headers:{'Authorization':'Bearer '+tk}}); const d=await r.json(); const pts=d.points||0; const box=document.getElementById('cvLoyBox'); if(box && pts>0 && LOYCFG && LOYCFG.enabled!=0){ const eurPer100=Number(LOYCFG.eur_per_100pts)||10; const maxEur=(pts/100*eurPer100); box.style.display='block'; box.innerHTML='<label style="font-size:.8rem;font-weight:700;color:#5b3fc4;display:block;margin-bottom:.3rem">★ Tiene '+pts+' puntos ('+maxEur.toFixed(0)+'€ disponibles)</label><label style="display:flex;align-items:center;gap:.4rem;font-size:.8rem;cursor:pointer"><input type="checkbox" id="cvRedeem" onchange="document.getElementById(\'cvRedeemPts\').style.display=this.checked?\'block\':\'none\'"> Canjear puntos como descuento</label><input id="cvRedeemPts" type="number" value="'+pts+'" max="'+pts+'" style="display:none;width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px;margin-top:.4rem" placeholder="puntos a usar"/><div class="sub" style="margin:.3rem 0 0;font-size:.72rem">100 puntos = '+eurPer100+'€ de descuento</div>'; } }catch(e){} })();
 }
@@ -2508,6 +2534,9 @@ function toggleCvSplit(on){ document.getElementById("cvSplitBox").style.display=
 function cvToggleGift(){ var g=document.getElementById("cvGift"); var meth=document.getElementById("cvMethod"); var amtEl=document.getElementById("cvAmount"); if(g&&g.checked){ if(meth)meth.disabled=true; if(amtEl){amtEl.value=0;amtEl.disabled=true;} var fl=document.getElementById("cvFinalLabel"); if(fl)fl.innerHTML="<span style=\"color:#1f8c69\">🎁 Cortesía</span>"; } else { if(meth)meth.disabled=false; if(amtEl)amtEl.disabled=false; cvRecalcFinal(); } }
 }
 function cvTreatChange(sel){ var other=document.getElementById('cvTreatOther'); if(sel.value==='__other__'){ if(other){ other.style.display='block'; other.focus(); } return; } if(other) other.style.display='none'; try{ var amt=document.getElementById('cvAmount'); var opt=sel.options[sel.selectedIndex]; var price=opt?+(opt.getAttribute('data-price')||0):0; if(amt && (!amt.value || +amt.value===0) && price>0) amt.value=price; }catch(e){} }
+// Bonos en close-visit: cargar bonos activos del paciente
+async function cvLoadBonos(leadId){ try{ const r=await fetch(WORKER+"/api/bonos?tenant="+T+"&lead="+leadId,{headers:{"Authorization":"Bearer "+(localStorage.getItem("aura_token")||"")}}); const d=await r.json(); const bonos=(d.bonos||[]).filter(function(b){return b.status==="active" && b.used_sessions<b.total_sessions;}); const box=document.getElementById("cvBonoBox"); const sel=document.getElementById("cvBonoSel"); if(!box||!sel)return; if(bonos.length===0){box.style.display="none";return;} box.style.display="block"; sel.innerHTML="<option value=\"\">No usar bono (cobro normal)</option>"+bonos.map(function(b){return "<option value=\""+b.id+"\" data-used=\""+b.used_sessions+"\" data-total=\""+b.total_sessions+"\" data-name=\""+escapeHtml(b.name||"")+"\">"+(b.name||"Bono")+" ("+b.used_sessions+"/"+b.total_sessions+" usadas)</option>";}).join(""); }catch(e){} }
+function cvBonoChanged(){ var sel=document.getElementById("cvBonoSel"); var prog=document.getElementById("cvBonoProgress"); if(!sel||!prog)return; var opt=sel.options[sel.selectedIndex]; if(!opt||!opt.value){prog.style.display="none";return;} var used=+(opt.getAttribute("data-used")||0); var total=+(opt.getAttribute("data-total")||1); var name=opt.getAttribute("data-name")||"Bono"; var pct=Math.round((used/total)*100); var nextPct=Math.round(((used+1)/total)*100); prog.style.display="block"; prog.innerHTML="<div style=\"font-size:.74rem;color:#1e40af;margin-bottom:.3rem\"><b>"+name+"</b> — sesión "+(used+1)+" de "+total+"</div><div style=\"width:100%;height:8px;background:#dbeafe;border-radius:4px;overflow:hidden\"><div style=\"width:"+nextPct+"%;height:100%;background:linear-gradient(90deg,#3b82f6,#1d4ed8);border-radius:4px;transition:width .3s\"></div></div><div style=\"font-size:.68rem;color:#6b7280;margin-top:.2rem\">"+(total-used-1)+" sesiones restantes después de esta</div>"; var amt=document.getElementById("cvAmount"); if(amt)amt.value="0"; }
 let _cvSubmitting=false;
 async function doCloseVisit(apptId,leadId,attended){
   if(_cvSubmitting) return; // evita doble cobro por doble clic / toques repetidos
@@ -2556,7 +2585,7 @@ async function doCloseVisit(apptId,leadId,attended){
   try{ var _btns=document.querySelectorAll('#cvOverlay button'); _btns.forEach(function(b){ b.disabled=true; b.style.opacity='.6'; b.style.pointerEvents='none'; }); var _vp=document.querySelector('#cvOverlay button[onclick*="true"]'); if(_vp&&attended){ _vp.textContent='Cobrando…'; } }catch(e){}
   // clave de idempotencia: si se reintenta, el backend no duplica el cobro
   var _idem=apptId+'_'+(attended?'1':'0');
-  try{ const _r=await fetch(WORKER+'/api/close-visit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,lead_id:leadId,appointment_id:apptId,attended:attended,treatment:treat,amount:amount,pay_status:cvGift?'gift':'paid',method:cvGift?'cortesía':finalMethod,split_payments:cvSplitPayments,sold_products:sold_products,next_date:nextDate,redeem_points:redeemPts,idem_key:_idem,discount:cvDiscount,discount_reason:cvDiscountReason,is_gift:cvGift,invoice_text:cvInvoiceText,professional:(document.getElementById('cvProf')||{}).value||null})}); const _d=await _r.json(); if(_d&&_d.attribution)attribution=_d.attribution; }catch(e){ _cvSubmitting=false; try{ var _bs=document.querySelectorAll('#cvOverlay button'); _bs.forEach(function(b){ b.disabled=false; b.style.opacity=''; b.style.pointerEvents=''; }); }catch(_){}; alert('No se pudo guardar. Revisa la conexión e inténtalo de nuevo.'); return; }
+  try{ const _r=await fetch(WORKER+'/api/close-visit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,lead_id:leadId,appointment_id:apptId,attended:attended,treatment:treat,amount:amount,pay_status:cvGift?'gift':'paid',method:cvGift?'cortesía':finalMethod,split_payments:cvSplitPayments,sold_products:sold_products,next_date:nextDate,redeem_points:redeemPts,idem_key:_idem,discount:cvDiscount,discount_reason:cvDiscountReason,is_gift:cvGift,invoice_text:cvInvoiceText,bono_id:((document.getElementById("cvBonoSel")||{}).value||null),professional:(document.getElementById('cvProf')||{}).value||null})}); const _d=await _r.json(); if(_d&&_d.attribution)attribution=_d.attribution; }catch(e){ _cvSubmitting=false; try{ var _bs=document.querySelectorAll('#cvOverlay button'); _bs.forEach(function(b){ b.disabled=false; b.style.opacity=''; b.style.pointerEvents=''; }); }catch(_){}; alert('No se pudo guardar. Revisa la conexión e inténtalo de nuevo.'); return; }
   _cvSubmitting=false;
   const ov=document.getElementById('cvOverlay'); if(ov)ov.remove();
   // === GUARDAR NOTA CLÍNICA si se rellenó algo ===
@@ -5991,7 +6020,31 @@ async function adminDelNote(nid){
   await adminApi('/api/admin-note-delete',{method:'POST',body:JSON.stringify({ id:nid })}); adminLoadNotes();
 }
 
-function loadAll(){loadKPIs();loadLeads();loadAppts();loadPipeline();loadSmsCredits();loadAdvancedMetrics();}
+let _retChart=null;
+async function loadRetention(){
+  try{
+    const r=await fetch(WORKER+"/api/retention-report?tenant="+T,{headers:{"Authorization":"Bearer "+(localStorage.getItem("aura_token")||"")}});
+    const d=await r.json();
+    document.getElementById("kRetention").textContent=d.retention_pct+"%";
+    document.getElementById("kLTV").textContent=d.ltv.toLocaleString("es-ES")+"€";
+    document.getElementById("kFrequency").textContent=(d.avg_frequency_days||"—")+(d.avg_frequency_days?" días":"");
+    document.getElementById("kInactive").textContent=d.inactive_patients||"0";
+    // Top pacientes
+    const tp=d.top_patients||[];
+    document.getElementById("retTopPatients").innerHTML=tp.length?tp.map(function(p,i){return "<div style=\"display:flex;justify-content:space-between;padding:.35rem 0;border-bottom:1px solid #f3f4f6\"><span>"+(i+1)+". "+escapeHtml(p.name)+"</span><b>"+p.total_spent.toLocaleString("es-ES")+"€</b></div>";}).join(""):"<div style=\"color:var(--muted)\">Sin datos aún</div>";
+    // Top tratamientos
+    const tt=d.top_treatments||[];
+    document.getElementById("retTopTreatments").innerHTML=tt.length?"<div style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.5rem\">"+tt.map(function(t){return "<div style=\"padding:.5rem;background:#f9fafb;border-radius:8px;border:1px solid #f3f4f6\"><div style=\"font-weight:600\">"+escapeHtml(t.name)+"</div><div style=\"font-size:.74rem;color:#6b7280\">"+t.count+" cobros · "+t.revenue.toLocaleString("es-ES")+"€</div></div>";}).join("")+"</div>":"<div style=\"color:var(--muted)\">Sin datos aún</div>";
+    // Gráfico de tendencia
+    const monthly=d.monthly_trend||[];
+    if(monthly.length>1){
+      const ctx=document.getElementById("retChart");
+      if(_retChart){_retChart.destroy();}
+      _retChart=new Chart(ctx,{type:"line",data:{labels:monthly.map(function(m){return m.month;}),datasets:[{label:"Ingresos €",data:monthly.map(function(m){return m.revenue;}),borderColor:"#6366f1",backgroundColor:"rgba(99,102,241,.1)",fill:true,tension:.3},{label:"Pacientes",data:monthly.map(function(m){return m.patients;}),borderColor:"#10b981",backgroundColor:"rgba(16,185,129,.1)",fill:true,tension:.3,yAxisID:"y1"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{font:{size:10}}}},scales:{y:{beginAtZero:true,title:{display:true,text:"€"}},y1:{position:"right",beginAtZero:true,title:{display:true,text:"Pacientes"},grid:{drawOnChartArea:false}}}}});
+    }
+  }catch(e){console.error("retention",e);}
+}
+function loadAll(){loadRetention();loadKPIs();loadLeads();loadAppts();loadPipeline();loadSmsCredits();loadAdvancedMetrics();}
 
 // ===== MÉTRICAS AVANZADAS (gráficas Chart.js) =====
 async function loadAdvancedMetrics(){

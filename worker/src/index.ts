@@ -4682,6 +4682,65 @@ export default {
         });
       }
 
+      // === INFORME DE RETENCIÓN Y LTV ===
+      if (p === '/api/retention-report' && req.method === 'GET') {
+        const tid = url.searchParams.get('tenant')||'';
+        if (!tid) return json({error:'tenant required'},400);
+        const now = Date.now();
+        const d30 = now - 30*86400000;
+        const d60 = now - 60*86400000;
+        const d90 = now - 90*86400000;
+        // Pacientes que volvieron en 30/60/90 días (tuvieron >1 cita)
+        const totalPats:any = await env.aura_db.prepare("SELECT COUNT(DISTINCT lead_id) as n FROM appointments WHERE tenant_id=? AND status IN ('attended','confirmed','booked')").bind(tid).first();
+        const ret30:any = await env.aura_db.prepare("SELECT COUNT(DISTINCT a1.lead_id) as n FROM appointments a1 WHERE a1.tenant_id=? AND a1.status='attended' AND EXISTS (SELECT 1 FROM appointments a2 WHERE a2.tenant_id=a1.tenant_id AND a2.lead_id=a1.lead_id AND a2.id!=a1.id AND a2.status='attended')").bind(tid).first();
+        const retention = totalPats?.n>0 ? Math.round((ret30?.n||0)/(totalPats?.n)*100) : 0;
+        // LTV: gasto medio por paciente (total ingresos / total pacientes únicos)
+        const ltvData:any = await env.aura_db.prepare("SELECT COALESCE(SUM(amount),0) as total_rev, COUNT(DISTINCT lead_id) as unique_pats FROM treatments_log WHERE tenant_id=? AND pay_status='paid'").bind(tid).first();
+        const ltv = (ltvData?.unique_pats||0)>0 ? Math.round((ltvData?.total_rev||0)/(ltvData?.unique_pats)*100)/100 : 0;
+        // Top 10 pacientes por gasto (LTV individual)
+        let topPatients:any[] = [];
+        try {
+          const tp:any = await env.aura_db.prepare("SELECT t.lead_id, l.name, COALESCE(SUM(t.amount),0) as total_spent, COUNT(*) as visits FROM treatments_log t LEFT JOIN leads l ON l.id=t.lead_id WHERE t.tenant_id=? AND t.pay_status='paid' GROUP BY t.lead_id ORDER BY total_spent DESC LIMIT 10").bind(tid).all();
+          topPatients = (tp.results||[]).map((p:any)=>({lead_id:p.lead_id, name:p.name||'Sin nombre', total_spent:p.total_spent, visits:p.visits, avg_per_visit: Math.round(p.total_spent/p.visits*100)/100}));
+        } catch(e){}
+        // Tendencia mensual (últimos 6 meses)
+        let monthly:any[] = [];
+        try {
+          const m:any = await env.aura_db.prepare("SELECT substr(date_iso,1,7) as month, COALESCE(SUM(amount),0) as revenue, COUNT(*) as tickets, COUNT(DISTINCT lead_id) as patients FROM treatments_log WHERE tenant_id=? AND pay_status='paid' AND date_iso>=? GROUP BY month ORDER BY month").bind(tid, new Date(now-180*86400000).toISOString().slice(0,10)).all();
+          monthly = (m.results||[]).map((r:any)=>({month:r.month, revenue:r.revenue, tickets:r.tickets, patients:r.patients}));
+        } catch(e){}
+        // Pacientes inactivos (última visita hace >60 días)
+        let inactive = 0;
+        try {
+          const inact:any = await env.aura_db.prepare("SELECT COUNT(*) as n FROM (SELECT lead_id, MAX(date_iso) as last_visit FROM treatments_log WHERE tenant_id=? AND pay_status='paid' GROUP BY lead_id HAVING last_visit < ?)").bind(tid, new Date(d60).toISOString().slice(0,10)).first();
+          inactive = inact?.n||0;
+        } catch(e){}
+        // Frecuencia media entre visitas
+        let avgFrequency = 0;
+        try {
+          const freq:any = await env.aura_db.prepare("SELECT AVG(diff) as avg_days FROM (SELECT lead_id, julianday(date_iso) - julianday(LAG(date_iso) OVER (PARTITION BY lead_id ORDER BY date_iso)) as diff FROM treatments_log WHERE tenant_id=? AND pay_status='paid') WHERE diff IS NOT NULL AND diff>0 AND diff<365").bind(tid).first();
+          avgFrequency = Math.round(freq?.avg_days||0);
+        } catch(e){}
+        // Top tratamientos por ingresos
+        let topTreatments:any[] = [];
+        try {
+          const tt:any = await env.aura_db.prepare("SELECT name, COALESCE(SUM(amount),0) as revenue, COUNT(*) as count FROM treatments_log WHERE tenant_id=? AND pay_status='paid' AND name IS NOT NULL AND name!='' GROUP BY name ORDER BY revenue DESC LIMIT 8").bind(tid).all();
+          topTreatments = (tt.results||[]).map((t:any)=>({name:t.name, revenue:t.revenue, count:t.count}));
+        } catch(e){}
+        return json({
+          retention_pct: retention,
+          total_patients: totalPats?.n||0,
+          returning_patients: ret30?.n||0,
+          ltv: ltv,
+          total_revenue: ltvData?.total_rev||0,
+          inactive_patients: inactive,
+          avg_frequency_days: avgFrequency,
+          top_patients: topPatients,
+          monthly_trend: monthly,
+          top_treatments: topTreatments,
+        });
+      }
+
       return json({ error: 'not_found', path: p }, 404);
     } catch (e: any) {
       return json({ error: 'server_error', detail: String(e && e.message ? e.message : e) }, 500);

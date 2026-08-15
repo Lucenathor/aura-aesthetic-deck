@@ -1,0 +1,157 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Reservar cita</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:transparent;color:#1a1a1a;-webkit-font-smoothing:antialiased}
+.widget{max-width:420px;margin:0 auto;padding:1.2rem;border-radius:16px;background:#fff;box-shadow:0 12px 40px rgba(0,0,0,.08);border:1px solid #f0f0f0}
+.widget.embedded{box-shadow:none;border:none;padding:.8rem}
+.w-header{text-align:center;margin-bottom:1.2rem}
+.w-logo{width:48px;height:48px;border-radius:50%;object-fit:cover;margin:0 auto .6rem;display:block;border:2px solid #f0f0f0}
+.w-name{font-size:1.1rem;font-weight:700;color:#1a1a1a}
+.w-sub{font-size:.78rem;color:#6b7280;margin-top:.2rem}
+.w-step{display:none;animation:fadeIn .3s ease}
+.w-step.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.w-treatments{display:grid;gap:.6rem}
+.w-treat-card{display:flex;align-items:center;gap:.8rem;padding:.8rem;border:1.5px solid #e5e7eb;border-radius:12px;cursor:pointer;transition:all .2s}
+.w-treat-card:hover{border-color:#6366f1;background:#f8f7ff}
+.w-treat-card.selected{border-color:#6366f1;background:#eef2ff;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+.w-treat-icon{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:grid;place-items:center;color:#fff;font-size:1.1rem;flex-shrink:0}
+.w-treat-info{flex:1}
+.w-treat-name{font-size:.88rem;font-weight:600}
+.w-treat-meta{font-size:.72rem;color:#6b7280;margin-top:.15rem}
+.w-treat-price{font-size:.88rem;font-weight:700;color:#6366f1}
+.w-slots{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-top:.8rem}
+.w-slot{padding:.6rem .4rem;border:1.5px solid #e5e7eb;border-radius:10px;text-align:center;cursor:pointer;transition:all .2s;font-size:.82rem;font-weight:600}
+.w-slot:hover{border-color:#6366f1;background:#f8f7ff}
+.w-slot.selected{border-color:#6366f1;background:#6366f1;color:#fff}
+.w-slot.disabled{opacity:.4;pointer-events:none;background:#f9fafb}
+.w-form input,.w-form select{width:100%;padding:.7rem .9rem;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.88rem;font-family:inherit;outline:none;margin-bottom:.6rem;transition:border .2s}
+.w-form input:focus{border-color:#6366f1}
+.w-btn{width:100%;padding:.8rem;border:none;border-radius:12px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;font-size:.92rem;font-weight:700;cursor:pointer;transition:all .2s;margin-top:.4rem}
+.w-btn:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(99,102,241,.3)}
+.w-btn:active{transform:scale(.98)}
+.w-btn:disabled{opacity:.5;pointer-events:none}
+.w-back{display:inline-flex;align-items:center;gap:.3rem;font-size:.78rem;color:#6b7280;cursor:pointer;margin-bottom:.8rem;font-weight:500}
+.w-back:hover{color:#1a1a1a}
+.w-success{text-align:center;padding:2rem 1rem}
+.w-success-icon{font-size:3rem;margin-bottom:.8rem}
+.w-success h3{font-size:1.1rem;font-weight:700;margin-bottom:.4rem}
+.w-success p{font-size:.84rem;color:#6b7280;line-height:1.5}
+.w-powered{text-align:center;margin-top:1rem;font-size:.65rem;color:#9ca3af}
+.w-powered a{color:#6366f1;text-decoration:none;font-weight:600}
+.w-date-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
+.w-date-nav button{background:none;border:1px solid #e5e7eb;border-radius:8px;padding:.4rem .7rem;cursor:pointer;font-size:.8rem;font-weight:600}
+.w-date-nav button:hover{background:#f3f4f6}
+.w-date-label{font-size:.88rem;font-weight:600}
+</style>
+</head><body>
+<div class="widget" id="auraWidget">
+  <div class="w-header" id="wHeader"><div class="w-name" id="wName">Cargando...</div><div class="w-sub" id="wSub">Reserva tu cita online</div></div>
+  <!-- Paso 1: Elegir tratamiento -->
+  <div class="w-step active" id="wStep1">
+    <div style="font-size:.82rem;font-weight:600;color:#374151;margin-bottom:.6rem">Elige tu tratamiento:</div>
+    <div class="w-treatments" id="wTreatments"></div>
+  </div>
+  <!-- Paso 2: Elegir fecha y hora -->
+  <div class="w-step" id="wStep2">
+    <div class="w-back" onclick="wGoStep(1)">← Cambiar tratamiento</div>
+    <div style="font-size:.82rem;font-weight:600;color:#374151;margin-bottom:.4rem" id="wStep2Title">Elige fecha y hora:</div>
+    <div class="w-date-nav"><button onclick="wPrevDay()">← Anterior</button><span class="w-date-label" id="wDateLabel"></span><button onclick="wNextDay()">Siguiente →</button></div>
+    <div class="w-slots" id="wSlots"><div style="text-align:center;color:#9ca3af;font-size:.82rem;grid-column:1/-1;padding:1rem">Cargando disponibilidad...</div></div>
+  </div>
+  <!-- Paso 3: Datos del paciente -->
+  <div class="w-step" id="wStep3">
+    <div class="w-back" onclick="wGoStep(2)">← Cambiar hora</div>
+    <div style="font-size:.82rem;font-weight:600;color:#374151;margin-bottom:.6rem">Tus datos para confirmar:</div>
+    <div class="w-form">
+      <input id="wName2" placeholder="Tu nombre completo" required/>
+      <input id="wPhone" type="tel" placeholder="Teléfono (ej: 612 345 678)" required/>
+      <input id="wEmail" type="email" placeholder="Email (opcional)"/>
+      <textarea id="wNotes" placeholder="¿Algo que debamos saber?" style="width:100%;padding:.7rem .9rem;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.84rem;font-family:inherit;resize:none;height:60px;outline:none"></textarea>
+      <button class="w-btn" id="wBookBtn" onclick="wBook()">Confirmar reserva →</button>
+    </div>
+  </div>
+  <!-- Paso 4: Confirmación -->
+  <div class="w-step" id="wStep4">
+    <div class="w-success">
+      <div class="w-success-icon">✅</div>
+      <h3>¡Cita reservada!</h3>
+      <p id="wConfirmMsg">Te hemos enviado un SMS de confirmación. Nos vemos pronto.</p>
+    </div>
+  </div>
+  <div class="w-powered">Reservas con <a href="https://auracrm.co" target="_blank">AURA</a></div>
+</div>
+<script>
+const WORKER='https://aura-chat-worker.adrian-7b9.workers.dev';
+const params=new URLSearchParams(location.search);
+const tenant=params.get('t')||params.get('tenant')||'';
+const embedded=params.get('embed')==='1';
+if(embedded)document.querySelector('.widget').classList.add('embedded');
+let selectedTreat=null,selectedSlot=null,currentDate=new Date(),catalog=[];
+// Cargar datos de la clínica
+async function wInit(){
+  if(!tenant){document.getElementById('wName').textContent='Error: falta tenant';return;}
+  try{
+    const r=await fetch(WORKER+'/api/clinic-public?tenant='+tenant);const d=await r.json();
+    document.getElementById('wName').textContent=d.name||'Clínica';
+    document.getElementById('wSub').textContent='Reserva tu cita online';
+    if(d.logo){const img=document.createElement('img');img.className='w-logo';img.src=d.logo;document.getElementById('wHeader').prepend(img);}
+    // Aplicar color personalizado si existe
+    if(d.brand_color){document.documentElement.style.setProperty('--accent',d.brand_color);
+      document.querySelectorAll('.w-btn').forEach(b=>b.style.background='linear-gradient(135deg,'+d.brand_color+','+d.brand_color+'dd)');
+    }
+  }catch(e){}
+  // Cargar catálogo de tratamientos
+  try{
+    const r=await fetch(WORKER+'/api/catalog?tenant='+tenant);const d=await r.json();
+    catalog=(d.catalog||d.treatments||[]).filter(t=>t.active!==0&&t.bookable!==0);
+    if(!catalog.length)catalog=[{name:'Consulta valoración',price:0,duration:30},{name:'Tratamiento estético',price:0,duration:45}];
+    renderTreatments();
+  }catch(e){catalog=[{name:'Consulta valoración',price:0,duration:30}];renderTreatments();}
+}
+function renderTreatments(){
+  const icons=['💉','✨','🌟','💎','🌸','🔬','💆','🩺'];
+  document.getElementById('wTreatments').innerHTML=catalog.map((t,i)=>'<div class="w-treat-card" onclick="wSelectTreat('+i+')"><div class="w-treat-icon">'+icons[i%icons.length]+'</div><div class="w-treat-info"><div class="w-treat-name">'+esc(t.name)+'</div><div class="w-treat-meta">'+(t.duration||30)+' min</div></div>'+(t.price?'<div class="w-treat-price">'+t.price+'€</div>':'<div class="w-treat-price" style="color:#10b981">Gratis</div>')+'</div>').join('');
+}
+function wSelectTreat(i){selectedTreat=catalog[i];document.querySelectorAll('.w-treat-card').forEach((c,j)=>c.classList.toggle('selected',j===i));setTimeout(()=>wGoStep(2),200);}
+function wGoStep(n){document.querySelectorAll('.w-step').forEach(s=>s.classList.remove('active'));document.getElementById('wStep'+n).classList.add('active');if(n===2)wLoadSlots();}
+async function wLoadSlots(){
+  const dateStr=currentDate.toISOString().slice(0,10);
+  document.getElementById('wDateLabel').textContent=currentDate.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('wSlots').innerHTML='<div style="text-align:center;color:#9ca3af;font-size:.82rem;grid-column:1/-1;padding:1rem">Cargando...</div>';
+  try{
+    const r=await fetch(WORKER+'/api/slots?tenant='+tenant+'&date='+dateStr);const d=await r.json();
+    const slots=(d.slots||[]).filter(s=>!s.taken);
+    if(!slots.length){document.getElementById('wSlots').innerHTML='<div style="text-align:center;color:#9ca3af;font-size:.82rem;grid-column:1/-1;padding:1rem">No hay huecos disponibles este día. Prueba otro día.</div>';return;}
+    document.getElementById('wSlots').innerHTML=slots.map(s=>'<div class="w-slot" onclick="wSelectSlot(this,\''+s.time+'\')">'+s.time+'</div>').join('');
+  }catch(e){document.getElementById('wSlots').innerHTML='<div style="color:#ef4444;font-size:.82rem;grid-column:1/-1;text-align:center">Error al cargar</div>';}
+}
+function wSelectSlot(el,time){selectedSlot=time;document.querySelectorAll('.w-slot').forEach(s=>s.classList.remove('selected'));el.classList.add('selected');setTimeout(()=>wGoStep(3),200);}
+function wPrevDay(){currentDate.setDate(currentDate.getDate()-1);if(currentDate<new Date())currentDate=new Date();wLoadSlots();}
+function wNextDay(){currentDate.setDate(currentDate.getDate()+1);wLoadSlots();}
+async function wBook(){
+  const name=document.getElementById('wName2').value.trim();
+  const phone=document.getElementById('wPhone').value.trim();
+  const email=document.getElementById('wEmail').value.trim();
+  const notes=document.getElementById('wNotes').value.trim();
+  if(!name||!phone){alert('Por favor, rellena tu nombre y teléfono.');return;}
+  const btn=document.getElementById('wBookBtn');btn.disabled=true;btn.textContent='Reservando...';
+  try{
+    const dateStr=currentDate.toISOString().slice(0,10);
+    const slotISO=dateStr+'T'+selectedSlot+':00';
+    const r=await fetch(WORKER+'/api/public-book',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:tenant,name,phone,email,notes,treatment:selectedTreat?.name||'Consulta',slot_iso:slotISO,duration:selectedTreat?.duration||30,source:'widget'})});
+    const d=await r.json();
+    if(d.ok||d.appointment_id){
+      document.getElementById('wConfirmMsg').textContent='Tu cita de '+(selectedTreat?.name||'consulta')+' el '+currentDate.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'})+' a las '+selectedSlot+' está confirmada. Te enviamos un SMS con los detalles.';
+      wGoStep(4);
+      // Tracking
+      try{fetch(WORKER+'/api/funnel-event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:tenant,event:'widget_book',treatment:selectedTreat?.name||''})});}catch(e){}
+    }else{alert(d.error||'Error al reservar. Inténtalo de nuevo.');btn.disabled=false;btn.textContent='Confirmar reserva →';}
+  }catch(e){alert('Error de conexión.');btn.disabled=false;btn.textContent='Confirmar reserva →';}
+}
+function esc(s){return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+wInit();
+</script>
+</body></html>
