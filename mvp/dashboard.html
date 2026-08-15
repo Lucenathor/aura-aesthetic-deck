@@ -2382,6 +2382,9 @@ async function openCloseVisit(apptId,leadId,treatment,name){
     +'<label style="font-size:.74rem;font-weight:600;color:#6c757d">📷 Foto (antes/después)</label><input type="file" id="cvPhoto" accept="image/*" style="font-size:.78rem;margin:.2rem 0 .4rem"/>'
     +'</div></details>'
     +'<label style="font-size:.8rem;font-weight:600">Importe pagado (€)</label><input id="cvAmount" type="number" placeholder="380" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin:.3rem 0 .6rem"/>'
+    +'<div style="display:flex;gap:.4rem;align-items:end;margin-bottom:.4rem"><div style="flex:1"><label style="font-size:.75rem;font-weight:600">Descuento (€)</label><input id="cvDiscount" type="number" value="0" placeholder="0" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px" oninput="cvRecalcFinal()"/></div><div style="flex:2"><label style="font-size:.75rem;font-weight:600">Motivo descuento</label><input id="cvDiscountReason" placeholder="Ej: promo verano, fidelidad, 1ª visita..." style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px"/></div></div>'
+    +'<div style="display:flex;gap:.6rem;align-items:center;margin-bottom:.5rem;padding:.5rem;background:#f8f6f3;border-radius:9px"><label style="display:flex;align-items:center;gap:.3rem;font-size:.78rem;cursor:pointer"><input type="checkbox" id="cvGift" onchange="cvToggleGift()"/> 🎁 <b>Cortesía / Regalo</b> (no genera factura)</label><span id="cvFinalLabel" style="margin-left:auto;font-size:.88rem;font-weight:700;color:var(--ink)"></span></div>'
+    +'<label style="font-size:.8rem;font-weight:600">Concepto en factura</label><input id="cvInvoiceText" placeholder="Se rellena automáticamente con el tratamiento" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px;margin:.2rem 0 .5rem;font-size:.82rem"/>'
     +'<label style="font-size:.8rem;font-weight:600">Método de pago</label><select id="cvMethod" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin:.3rem 0 .6rem">'+METODOS.map(m=>'<option value="'+m+'">'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>').join('')+'</select>'
     +'<label style="font-size:.8rem;font-weight:600">🛍️ Vender producto (opcional · descuenta stock y suma a caja)</label><div id="cvSold" style="margin:.3rem 0 .4rem"></div><button type="button" onclick="addSoldRow()" style="width:100%;background:#f6fbf8;border:1px solid #d4ece0;color:#1f8c69;border-radius:9px;padding:.45rem;font-size:.78rem;font-weight:700;cursor:pointer;margin-bottom:.9rem">+ Añadir producto a la venta</button>'
     +'<div id="cvLoyBox" style="display:none;background:#f0ebff;border-radius:10px;padding:.7rem;margin-bottom:.9rem"></div>'
@@ -2434,6 +2437,8 @@ function addSoldRow(){ (window._cvSoldRows=window._cvSoldRows||[]).push({product
 function renderSoldRows(){ var box=document.getElementById('cvSold'); if(!box)return; var prods=window._cvSoldProds||[]; var opts=prods.map(function(p){return '<option value="'+p.id+'" data-price="'+(p.sale_price||0)+'">'+escapeHtml(p.name)+' ('+(p.sale_price||0)+'€ · '+(p.stock||0)+' '+(p.unit||'ud')+')</option>';}).join('');
   box.innerHTML=(window._cvSoldRows||[]).map(function(r,i){ return '<div style="display:flex;gap:.4rem;margin-bottom:.4rem;align-items:center"><select onchange="window._cvSoldRows['+i+'].product_id=this.value" style="flex:2;padding:.5rem;border:1px solid var(--line);border-radius:9px"><option value="">Producto…</option>'+opts.replace('value="'+r.product_id+'"','value="'+r.product_id+'" selected')+'</select><input type="number" min="1" value="'+(r.qty||1)+'" oninput="window._cvSoldRows['+i+'].qty=this.value" style="width:64px;padding:.5rem;border:1px solid var(--line);border-radius:9px"/><button type="button" class="vac-del" onclick="window._cvSoldRows.splice('+i+',1);renderSoldRows()">✕</button></div>'; }).join('');
   if(!prods.length){ box.innerHTML='<div class="sub" style="font-size:.72rem;color:var(--muted)">Añade productos en Inventario para poder venderlos aquí.</div>'; }
+function cvRecalcFinal(){ var amt=+(document.getElementById("cvAmount")||{}).value||0; var dto=+(document.getElementById("cvDiscount")||{}).value||0; var final=Math.max(0,amt-dto); var el=document.getElementById("cvFinalLabel"); if(el) el.textContent="Total: "+final.toFixed(2)+"€"; }
+function cvToggleGift(){ var g=document.getElementById("cvGift"); var meth=document.getElementById("cvMethod"); var amtEl=document.getElementById("cvAmount"); if(g&&g.checked){ if(meth)meth.disabled=true; if(amtEl){amtEl.value=0;amtEl.disabled=true;} var fl=document.getElementById("cvFinalLabel"); if(fl)fl.innerHTML="<span style=\"color:#1f8c69\">🎁 Cortesía</span>"; } else { if(meth)meth.disabled=false; if(amtEl)amtEl.disabled=false; cvRecalcFinal(); } }
 }
 function cvTreatChange(sel){ var other=document.getElementById('cvTreatOther'); if(sel.value==='__other__'){ if(other){ other.style.display='block'; other.focus(); } return; } if(other) other.style.display='none'; try{ var amt=document.getElementById('cvAmount'); var opt=sel.options[sel.selectedIndex]; var price=opt?+(opt.getAttribute('data-price')||0):0; if(amt && (!amt.value || +amt.value===0) && price>0) amt.value=price; }catch(e){} }
 let _cvSubmitting=false;
@@ -2441,7 +2446,11 @@ async function doCloseVisit(apptId,leadId,attended){
   if(_cvSubmitting) return; // evita doble cobro por doble clic / toques repetidos
   var _ts=document.getElementById('cvTreat'); var treat=_ts?_ts.value:''; if(treat==='__other__'){ var _to=document.getElementById('cvTreatOther'); treat=_to?(_to.value||'').trim():''; }
   const amount=document.getElementById('cvAmount')?document.getElementById('cvAmount').value:0;
-  if(attended && (!amount || +amount<=0)){ if(!confirm('No has puesto importe. ¿Cerrar la visita con 0€ (sin cobro)?')) return; }
+  const cvDiscount=+(document.getElementById('cvDiscount')||{}).value||0;
+  const cvDiscountReason=(document.getElementById('cvDiscountReason')||{}).value||'';
+  const cvGift=document.getElementById('cvGift')&&document.getElementById('cvGift').checked;
+  const cvInvoiceText=(document.getElementById('cvInvoiceText')||{}).value||'';
+  if(attended && !cvGift && (!amount || +amount<=0)){ if(!confirm('No has puesto importe. ¿Cerrar la visita con 0€ (sin cobro)?')) return; }
   const method=document.getElementById('cvMethod')?document.getElementById('cvMethod').value:null;
   var sold_products=(window._cvSoldRows||[]).filter(function(r){return r.product_id && (+r.qty>0);}).map(function(r){return {product_id:r.product_id, qty:+r.qty};});
   let redeemPts=0; const rc=document.getElementById('cvRedeem'); if(rc&&rc.checked){ redeemPts=+document.getElementById('cvRedeemPts').value||0; }
@@ -2466,7 +2475,7 @@ async function doCloseVisit(apptId,leadId,attended){
   try{ var _btns=document.querySelectorAll('#cvOverlay button'); _btns.forEach(function(b){ b.disabled=true; b.style.opacity='.6'; b.style.pointerEvents='none'; }); var _vp=document.querySelector('#cvOverlay button[onclick*="true"]'); if(_vp&&attended){ _vp.textContent='Cobrando…'; } }catch(e){}
   // clave de idempotencia: si se reintenta, el backend no duplica el cobro
   var _idem=apptId+'_'+(attended?'1':'0');
-  try{ const _r=await fetch(WORKER+'/api/close-visit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,lead_id:leadId,appointment_id:apptId,attended:attended,treatment:treat,amount:amount,pay_status:'paid',method:method,sold_products:sold_products,next_date:nextDate,redeem_points:redeemPts,idem_key:_idem})}); const _d=await _r.json(); if(_d&&_d.attribution)attribution=_d.attribution; }catch(e){ _cvSubmitting=false; try{ var _bs=document.querySelectorAll('#cvOverlay button'); _bs.forEach(function(b){ b.disabled=false; b.style.opacity=''; b.style.pointerEvents=''; }); }catch(_){}; alert('No se pudo guardar. Revisa la conexión e inténtalo de nuevo.'); return; }
+  try{ const _r=await fetch(WORKER+'/api/close-visit',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,lead_id:leadId,appointment_id:apptId,attended:attended,treatment:treat,amount:amount,pay_status:cvGift?'gift':'paid',method:cvGift?'cortesía':method,sold_products:sold_products,next_date:nextDate,redeem_points:redeemPts,idem_key:_idem,discount:cvDiscount,discount_reason:cvDiscountReason,is_gift:cvGift,invoice_text:cvInvoiceText,professional:(document.getElementById('cvProf')||{}).value||null})}); const _d=await _r.json(); if(_d&&_d.attribution)attribution=_d.attribution; }catch(e){ _cvSubmitting=false; try{ var _bs=document.querySelectorAll('#cvOverlay button'); _bs.forEach(function(b){ b.disabled=false; b.style.opacity=''; b.style.pointerEvents=''; }); }catch(_){}; alert('No se pudo guardar. Revisa la conexión e inténtalo de nuevo.'); return; }
   _cvSubmitting=false;
   const ov=document.getElementById('cvOverlay'); if(ov)ov.remove();
   // === GUARDAR NOTA CLÍNICA si se rellenó algo ===
@@ -3554,11 +3563,14 @@ async function doCreateInvoice(){
 }
 async function previewInvoice(id){
   try{const r=await fetch(WORKER+'/api/invoice?tenant='+T+'&id='+id,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}});const d=await r.json();const inv=d.invoice;
+    // Cargar branding
+    let brLogo='',brColor='#2563eb',brFooter='';
+    try{const br=await fetch(WORKER+'/api/invoice-branding?tenant='+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}});const bd=await br.json();brLogo=bd.branding?.logo||'';brColor=bd.branding?.color||'#2563eb';brFooter=bd.branding?.footer||'';}catch(e){}
     const items=(inv.items||[]).map(it=>'<tr><td>'+it.description+'</td><td style="text-align:center">'+it.qty+'</td><td style="text-align:right">'+it.unit_price+'€</td><td style="text-align:right">'+((it.qty||1)*(it.unit_price||0)).toFixed(2)+'€</td></tr>').join('');
     const w=window.open('','_blank','width=700,height=900');
-    w.document.write('<html><head><title>Factura '+inv.invoice_number+'</title><style>body{font-family:system-ui;padding:2rem;max-width:700px;margin:auto}table{width:100%;border-collapse:collapse;margin:1rem 0}th,td{padding:.4rem .6rem;border-bottom:1px solid #eee;text-align:left;font-size:.88rem}th{background:#f8f6f3;font-size:.75rem;text-transform:uppercase}.header{display:flex;justify-content:space-between;margin-bottom:2rem}.total{text-align:right;font-size:1.3rem;font-weight:700;margin-top:1rem}@media print{button{display:none}}</style></head><body>'
-      +'<div class="header"><div><h2 style="margin:0">'+(inv.emitter_name||'Tu clínica')+'</h2><p style="margin:.2rem 0;font-size:.82rem;color:#666">'+(inv.emitter_nif?'NIF: '+inv.emitter_nif+'<br>':'')+(inv.emitter_address||'')+'<br>'+(inv.emitter_phone||'')+' · '+(inv.emitter_email||'')+'</p></div>'
-      +'<div style="text-align:right"><h3 style="margin:0;color:'+(inv.series==='R'?'#b0432e':'#2563eb')+'">'+({simplified:'FACTURA SIMPLIFICADA',full:'FACTURA',rectification:'FACTURA RECTIFICATIVA',proforma:'PROFORMA'}[inv.type]||'FACTURA')+'</h3><p style="font-family:monospace;font-size:1.1rem;margin:.2rem 0">'+inv.invoice_number+'</p><p style="font-size:.82rem;color:#666">Fecha: '+inv.date_issued+'</p></div></div>'
+    w.document.write('<html><head><title>Factura '+inv.invoice_number+'</title><style>body{font-family:system-ui;padding:2rem;max-width:700px;margin:auto}table{width:100%;border-collapse:collapse;margin:1rem 0}th,td{padding:.4rem .6rem;border-bottom:1px solid #eee;text-align:left;font-size:.88rem}th{background:#f8f6f3;font-size:.75rem;text-transform:uppercase}.header{display:flex;justify-content:space-between;margin-bottom:2rem}.total{text-align:right;font-size:1.3rem;font-weight:700;margin-top:1rem;color:'+brColor+'}@media print{button{display:none}}</style></head><body>'
+      +'<div class="header"><div>'+(brLogo?'<img src="'+brLogo+'" style="max-height:50px;max-width:180px;margin-bottom:.5rem" onerror="this.style.display=\'none\'"/>':'')+'<h2 style="margin:0;color:'+brColor+'">'+(inv.emitter_name||'Tu clínica')+'</h2><p style="margin:.2rem 0;font-size:.82rem;color:#666">'+(inv.emitter_nif?'NIF: '+inv.emitter_nif+'<br>':'')+(inv.emitter_address||'')+'<br>'+(inv.emitter_phone||'')+' · '+(inv.emitter_email||'')+'</p></div>'
+      +'<div style="text-align:right"><h3 style="margin:0;color:'+(inv.series==='R'?'#b0432e':brColor)+'">'+({simplified:'FACTURA SIMPLIFICADA',full:'FACTURA',rectification:'FACTURA RECTIFICATIVA',proforma:'PROFORMA'}[inv.type]||'FACTURA')+'</h3><p style="font-family:monospace;font-size:1.1rem;margin:.2rem 0">'+inv.invoice_number+'</p><p style="font-size:.82rem;color:#666">Fecha: '+inv.date_issued+'</p></div></div>'
       +(inv.recipient_name?'<div style="border:1px solid #eee;padding:.6rem;border-radius:8px;margin-bottom:1rem"><b>'+inv.recipient_name+'</b>'+(inv.recipient_nif?' · NIF: '+inv.recipient_nif:'')+(inv.recipient_address?'<br>'+inv.recipient_address:'')+'</div>':'')
       +(inv.rectifies_invoice?'<div style="background:#fde8e4;padding:.5rem;border-radius:6px;margin-bottom:1rem;font-size:.82rem">Rectifica a: <b>'+inv.rectifies_invoice+'</b>'+(inv.rectification_reason?' — '+inv.rectification_reason:'')+'</div>':'')
       +'<table><thead><tr><th>Descripción</th><th style="text-align:center">Ud.</th><th style="text-align:right">Precio</th><th style="text-align:right">Importe</th></tr></thead><tbody>'+items+'</tbody></table>'
@@ -3569,7 +3581,8 @@ async function previewInvoice(id){
       +'<div class="total">TOTAL: '+inv.total+'€</div>'
       +'<div style="margin-top:1.5rem;font-size:.78rem;color:#888">Método de pago: '+(inv.payment_method||'—')+' · Profesional: '+(inv.professional||'—')+'</div>'
       +(inv.notes?'<div style="margin-top:.5rem;font-size:.78rem;color:#888">Notas: '+inv.notes+'</div>':'')
-      +'<div style="margin-top:2rem;text-align:center"><button onclick="window.print()" style="padding:.5rem 1.5rem;background:#2563eb;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.88rem">Imprimir / PDF</button></div>'
+      +(brFooter?'<div style="margin-top:1.5rem;padding-top:.8rem;border-top:1px solid #eee;font-size:.72rem;color:#999;text-align:center">'+brFooter+'</div>':'')
+      +'<div style="margin-top:2rem;text-align:center"><button onclick="window.print()" style="padding:.5rem 1.5rem;background:'+brColor+';color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.88rem">Imprimir / PDF</button></div>'
       +'</body></html>');
     w.document.close();
   }catch(e){toast('Error al cargar factura','error');}
@@ -3700,6 +3713,7 @@ function openQuickSale(){
     +'<input id="qsDiscountReason" placeholder="Motivo del descuento (si aplica)" style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem;font-size:.82rem;display:none"/>'
     +'<select id="qsMethod" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem">'+METODOS.map(m=>'<option value="'+m+'">'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>').join('')+'</select>'
     +'<select id="qsProf" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.8rem"><option value="">Profesional (opcional)</option></select>'
+    +'<label style="display:flex;align-items:center;gap:.3rem;font-size:.78rem;cursor:pointer;margin-bottom:.6rem;padding:.4rem;background:#f8f6f3;border-radius:8px"><input type="checkbox" id="qsGift" onchange="var m=document.getElementById(\'qsMethod\');var a=document.getElementById(\'qsAmount\');if(this.checked){m.disabled=true;a.value=0;a.disabled=true;}else{m.disabled=false;a.disabled=false;}"/> 🎁 <b>Cortesía / Regalo</b> (no genera factura ni cobro)</label>'
     +'<div style="display:flex;gap:.5rem"><button class="btn prim" style="flex:1" onclick="doQuickSale()">💶 Cobrar y registrar</button><button class="btn" onclick="document.getElementById(\'qsOv\').remove()">Cancelar</button></div>'
     +'<p id="qsMsg" style="font-size:.78rem;margin:.5rem 0 0;text-align:center"></p></div>';
   document.body.appendChild(ov);
@@ -3728,12 +3742,13 @@ async function doQuickSale(){
   const professional=document.getElementById('qsProf').value||'';
   const leadId=document.getElementById('qsLeadId').value||null;
   const msg=document.getElementById('qsMsg');
-  if(amount<=0){msg.style.color='#b0432e';msg.textContent='Pon un importe';return;}
+  const isGift=document.getElementById('qsGift')&&document.getElementById('qsGift').checked;
+  if(!isGift && amount<=0){msg.style.color='#b0432e';msg.textContent='Pon un importe';return;}
   msg.style.color='var(--terra)';msg.textContent='Procesando...';
   try{
-    const r=await fetch(WORKER+'/api/treatments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,lead_id:leadId,name,amount,discount,discount_reason:discountReason,method,professional,pay_status:'paid'})});
+    const r=await fetch(WORKER+'/api/treatments',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,lead_id:leadId,name,amount:isGift?0:amount,discount,discount_reason:discountReason,method:isGift?'cortesía':method,professional,pay_status:isGift?'gift':'paid',is_gift:isGift})});
     const d=await r.json();
-    msg.style.color='#1f8c69';msg.textContent='✓ Cobrado'+(d.invoice_num?' · Factura '+d.invoice_num:'');
+    msg.style.color='#1f8c69';msg.textContent=isGift?'✓ Cortesía registrada':'✓ Cobrado'+(d.invoice_num?' · Factura '+d.invoice_num:'');
     setTimeout(()=>{document.getElementById('qsOv').remove();loadCaja();},1200);
   }catch(e){msg.style.color='#b0432e';msg.textContent='Error al cobrar';}
 }

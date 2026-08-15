@@ -2606,7 +2606,7 @@ export default {
         } catch(e) {}
         // FACTURA AUTOMÁTICA en cobro rápido/ficha
         let autoInvNum = invoiceNum || null;
-        if ((b.pay_status||'pending') === 'paid' && finalAmount > 0) {
+        if ((b.pay_status||'pending') === 'paid' && finalAmount > 0 && !b.is_gift) {
           try {
             const invS = 'F';
             await env.aura_db.prepare("INSERT INTO invoice_sequences (tenant_id, series, last_num) VALUES (?,?,0) ON CONFLICT(tenant_id, series) DO NOTHING").bind(b.tenant_id, invS).run();
@@ -4134,7 +4134,7 @@ export default {
             .bind('t_'+uid(), leadId, tenantId, tname, amount, b.pay_status||'paid', new Date().toISOString(), b.method||null, prodCost).run();
         }
         // FACTURA AUTOMÁTICA: generar factura simplificada al cobrar
-        if (amount > 0 && (b.pay_status||'paid') === 'paid') {
+        if (amount > 0 && (b.pay_status||'paid') === 'paid' && !b.is_gift) {
           try {
             const invSeries = 'F';
             await env.aura_db.prepare("INSERT INTO invoice_sequences (tenant_id, series, last_num) VALUES (?,?,0) ON CONFLICT(tenant_id, series) DO NOTHING").bind(tenantId, invSeries).run();
@@ -4148,15 +4148,17 @@ export default {
             // Datos del paciente
             let recName='',recPhone='';
             try { const ld2:any = await env.aura_db.prepare("SELECT name,phone FROM leads WHERE id=?").bind(leadId).first(); recName=ld2?.name||''; recPhone=ld2?.phone||''; } catch(e){}
-            // Items: tratamiento + productos vendidos
-            const invItems:any[] = [{description: tname, qty: 1, unit_price: Number(b.amount)||0}];
+            // Items: texto personalizado o tratamiento + productos vendidos
+            const invDesc = b.invoice_text || tname;
+            const invItems:any[] = [{description: invDesc, qty: 1, unit_price: Number(b.amount)||0}];
             if (Array.isArray(b.sold_products)) { for(const sp of b.sold_products){ if(sp.product_id){ invItems.push({description:'Producto', qty:Number(sp.qty)||1, unit_price:0}); } } }
-            const invSubtotal = amount;
+            const invDiscount = Number(b.discount)||0;
+            const invSubtotal = amount + invDiscount; // amount ya viene con descuento aplicado, restaurar para la factura
             const invVatRate = 21;
             const invTaxBase = Math.round(invSubtotal / 1.21 * 100) / 100; // El importe ya incluye IVA
             const invVatAmt = Math.round((invSubtotal - invTaxBase) * 100) / 100;
-            await env.aura_db.prepare("INSERT INTO invoices (id,tenant_id,lead_id,invoice_number,series,type,status,date_issued,emitter_name,emitter_nif,emitter_address,recipient_name,recipient_phone,items,subtotal,discount,tax_base,vat_rate,vat_amount,total,payment_method,professional,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
-              .bind(invId, tenantId, leadId, invNum, invSeries, 'simplified', 'paid', new Date().toISOString().slice(0,10), emName, emNif, emAddr, recName, recPhone, JSON.stringify(invItems), invSubtotal, 0, invTaxBase, invVatRate, invVatAmt, invSubtotal, b.method||null, b.professional||null, Date.now(), Date.now()).run();
+            await env.aura_db.prepare("INSERT INTO invoices (id,tenant_id,lead_id,invoice_number,series,type,status,date_issued,emitter_name,emitter_nif,emitter_address,recipient_name,recipient_phone,items,subtotal,discount,discount_reason,tax_base,vat_rate,vat_amount,total,payment_method,professional,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+              .bind(invId, tenantId, leadId, invNum, invSeries, 'simplified', 'paid', new Date().toISOString().slice(0,10), emName, emNif, emAddr, recName, recPhone, JSON.stringify(invItems), invSubtotal, invDiscount, b.discount_reason||null, invTaxBase, invVatRate, invVatAmt, amount, b.method||null, b.professional||null, Date.now(), Date.now()).run();
           } catch(e) { /* factura no bloquea el cierre */ }
         }
         // Bono/pack: si se usa una sesión de un bono, descontarla
