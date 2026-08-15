@@ -2360,6 +2360,45 @@ async function saveFiscalData(){
     else{msg.style.color='#b0432e';msg.textContent='Error';}
   }catch(e){msg.style.color='#b0432e';msg.textContent='Error de conexión';}
 }
+// Exportación trimestral para gestores
+async function exportQuarter(){
+  const now=new Date();const y=now.getFullYear();const q=Math.ceil((now.getMonth()+1)/3);
+  const quarter=prompt("Trimestre a exportar (ej: "+y+"-Q"+q+"):",y+"-Q"+q);
+  if(!quarter)return;
+  try{const r=await fetch(WORKER+"/api/invoices-export?tenant="+T+"&quarter="+encodeURIComponent(quarter),{headers:{"Authorization":"Bearer "+(localStorage.getItem("aura_token")||"")}});const d=await r.json();
+    if(!d.csv){toast("No hay facturas en ese período","error");return;}
+    // Descargar CSV
+    const blob=new Blob([d.csv],{type:"text/csv;charset=utf-8"});const url2=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url2;a.download="facturas_"+quarter.replace(/\s/g,"_")+".csv";a.click();URL.revokeObjectURL(url2);
+    // Mostrar resumen
+    const s=d.summary;
+    alert("✓ Exportadas "+d.count+" facturas\n\nResumen "+s.period+":\n  Base imponible: "+s.total_base.toFixed(2)+"€\n  IVA repercutido: "+s.total_iva.toFixed(2)+"€\n  Total facturado: "+s.total_amount.toFixed(2)+"€\n  Rectificativas: "+s.rectifications+"\n\nCSV descargado. Envíalo a tu gestor para el modelo 303.");
+  }catch(e){toast("Error al exportar","error");}
+}
+// Branding de facturas (logo + colores)
+async function openInvoiceBranding(){
+  const ov=document.createElement("div");ov.id="brandOv";ov.style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:grid;place-items:center;padding:1rem";
+  ov.innerHTML="<div style=\"background:#fff;border-radius:16px;max-width:420px;width:100%;padding:1.4rem\"><h3 class=\"serif\" style=\"margin:0 0 .8rem\">Personalizar facturas</h3><p style=\"font-size:.78rem;color:var(--muted);margin:0 0 .8rem\">Tu logo y color aparecerán en todas las facturas que generes.</p>"
+    +"<label style=\"font-size:.75rem;font-weight:600\">URL del logo</label><input id=\"brLogo\" placeholder=\"https://tu-clinica.com/logo.png\" style=\"width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem\"/>"
+    +"<label style=\"font-size:.75rem;font-weight:600\">Color principal</label><input id=\"brColor\" type=\"color\" value=\"#2563eb\" style=\"width:100%;height:40px;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem;cursor:pointer\"/>"
+    +"<label style=\"font-size:.75rem;font-weight:600\">Pie de factura (opcional)</label><input id=\"brFooter\" placeholder=\"Ej: Inscrita en el Registro Mercantil de Madrid...\" style=\"width:100%;padding:.5rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.8rem\"/>"
+    +"<div style=\"display:flex;gap:.5rem\"><button class=\"btn prim\" style=\"flex:1\" onclick=\"saveInvoiceBranding()\">Guardar</button><button class=\"btn\" onclick=\"document.getElementById(\x27brandOv\x27).remove()\">Cancelar</button></div>"
+    +"<p id=\"brMsg\" style=\"font-size:.78rem;margin:.5rem 0 0;text-align:center\"></p></div>";
+  document.body.appendChild(ov);
+  try{const r=await fetch(WORKER+"/api/invoice-branding?tenant="+T,{headers:{"Authorization":"Bearer "+(localStorage.getItem("aura_token")||"")}});const d=await r.json();const br=d.branding||{};
+    if(br.logo)document.getElementById("brLogo").value=br.logo;
+    if(br.color)document.getElementById("brColor").value=br.color;
+    if(br.footer)document.getElementById("brFooter").value=br.footer;
+  }catch(e){}
+}
+async function saveInvoiceBranding(){
+  const msg=document.getElementById("brMsg");
+  const body={tenant_id:T,logo:document.getElementById("brLogo").value,color:document.getElementById("brColor").value,footer:document.getElementById("brFooter").value};
+  try{const r=await fetch(WORKER+"/api/invoice-branding",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+(localStorage.getItem("aura_token")||"")},body:JSON.stringify(body)});const d=await r.json();
+    if(d.ok){msg.style.color="#1f8c69";msg.textContent="✓ Branding guardado";setTimeout(()=>document.getElementById("brandOv").remove(),1000);}
+    else{msg.style.color="#b0432e";msg.textContent="Error";}
+  }catch(e){msg.style.color="#b0432e";msg.textContent="Error de conexión";}
+}
 
 // Cobro rápido (mostrador)
 function openQuickSale(){

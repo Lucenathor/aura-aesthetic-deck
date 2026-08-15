@@ -2604,7 +2604,29 @@ export default {
           // Reprograma recall recurrente: cada tratamiento/revisión nuevo reinicia el ciclo (recall_sms_sent=0)
           await env.aura_db.prepare("UPDATE leads SET recall_date=?, recall_note=?, recall_type='venta', recall_msg=?, recall_sms_sent=0 WHERE id=?").bind(rd.toISOString().slice(0,10), recallNote, recallMsg, b.lead_id).run();
         } catch(e) {}
-        return json({ ok:true, id, invoice_num: invoiceNum || null });
+        // FACTURA AUTOMÁTICA en cobro rápido/ficha
+        let autoInvNum = invoiceNum || null;
+        if ((b.pay_status||'pending') === 'paid' && finalAmount > 0) {
+          try {
+            const invS = 'F';
+            await env.aura_db.prepare("INSERT INTO invoice_sequences (tenant_id, series, last_num) VALUES (?,?,0) ON CONFLICT(tenant_id, series) DO NOTHING").bind(b.tenant_id, invS).run();
+            await env.aura_db.prepare("UPDATE invoice_sequences SET last_num = last_num + 1 WHERE tenant_id=? AND series=?").bind(b.tenant_id, invS).run();
+            const sq: any = await env.aura_db.prepare("SELECT last_num FROM invoice_sequences WHERE tenant_id=? AND series=?").bind(b.tenant_id, invS).first();
+            const fNum = invS + '-' + String(sq?.last_num||1).padStart(4, '0');
+            const fId = 'inv_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+            let emN='',emNif2='',emA='';
+            try { const em2:any = await env.aura_db.prepare("SELECT name,nif,address FROM tenants WHERE id=?").bind(b.tenant_id).first(); emN=em2?.name||''; emNif2=em2?.nif||''; emA=em2?.address||''; } catch(e){}
+            let rName='',rPhone='';
+            if(b.lead_id){try{const ld3:any=await env.aura_db.prepare("SELECT name,phone FROM leads WHERE id=?").bind(b.lead_id).first();rName=ld3?.name||'';rPhone=ld3?.phone||'';}catch(e){}}
+            const fItems = [{description: b.name||'Tratamiento', qty: 1, unit_price: finalAmount}];
+            const fTaxBase = Math.round(finalAmount / 1.21 * 100) / 100;
+            const fVat = Math.round((finalAmount - fTaxBase) * 100) / 100;
+            await env.aura_db.prepare("INSERT INTO invoices (id,tenant_id,lead_id,treatment_id,invoice_number,series,type,status,date_issued,emitter_name,emitter_nif,emitter_address,recipient_name,recipient_phone,items,subtotal,discount,tax_base,vat_rate,vat_amount,total,payment_method,professional,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+              .bind(fId, b.tenant_id, b.lead_id||null, id, fNum, invS, 'simplified', 'paid', new Date().toISOString().slice(0,10), emN, emNif2, emA, rName, rPhone, JSON.stringify(fItems), finalAmount, discount, fTaxBase, 21, fVat, finalAmount, b.method||null, b.professional||null, Date.now(), Date.now()).run();
+            autoInvNum = fNum;
+          } catch(e) {}
+        }
+        return json({ ok:true, id, invoice_num: autoInvNum });
       }
       if (p === '/api/treatments' && req.method === 'PUT') {
         const b: any = await req.json();
@@ -2796,6 +2818,78 @@ export default {
         try { await env.aura_db.prepare("ALTER TABLE tenants ADD COLUMN vat_rate REAL DEFAULT 21").bind().run(); } catch(e) {}
         await env.aura_db.prepare("UPDATE tenants SET name=?, nif=?, address=?, phone=?, email=?, vat_rate=? WHERE id=?")
           .bind(b.name||null, b.nif||null, b.address||null, b.phone||null, b.email||null, Number(b.vat_rate)||21, b.tenant_id).run();
+        return json({ ok:true });
+      }
+
+      // Exportación trimestral CSV para gestores (modelo 303)
+      if (p === '/api/invoices-export' && req.method === 'GET') {
+        const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
+        const quarter = url.searchParams.get('quarter'); // formato: 2026-Q1, 2026-Q2, etc.
+        const year = url.searchParams.get('year') || new Date().getFullYear().toString();
+        let from = '', to = '';
+        if (quarter) {
+          const q = parseInt(quarter.replace(/.*Q/,''));
+          const y = quarter.includes('-') ? quarter.split('-')[0] : year;
+          from = y + '-' + String((q-1)*3+1).padStart(2,'0') + '-01';
+          const endMonth = q*3;
+          const endDay = new Date(Number(y), endMonth, 0).getDate();
+          to = y + '-' + String(endMonth).padStart(2,'0') + '-' + String(endDay).padStart(2,'0');
+        } else {
+          from = url.searchParams.get('from') || year + '-01-01';
+          to = url.searchParams.get('to') || year + '-12-31';
+        }
+        const rows: any = await env.aura_db.prepare("SELECT i.*, l.name as lead_name FROM invoices i LEFT JOIN leads l ON l.id=i.lead_id WHERE i.tenant_id=? AND i.date_issued BETWEEN ? AND ? ORDER BY i.date_issued, i.invoice_number").bind(tenant, from, to).all();
+        const invoices = rows.results || [];
+        // Generar CSV con formato para gestor
+        const headers = ['Nº Factura','Serie','Tipo','Fecha Emisión','Fecha Operación','NIF Emisor','Nombre Emisor','NIF Receptor','Nombre Receptor','Descripción','Base Imponible','Tipo IVA %','Cuota IVA','Total','Descuento','Método Pago','Estado','Profesional','Notas'];
+        const csvRows = invoices.map((inv: any) => {
+          const items = typeof inv.items === 'string' ? JSON.parse(inv.items||'[]') : inv.items||[];
+          const desc = items.map((it:any) => it.description).join(' + ');
+          return [
+            inv.invoice_number, inv.series, inv.type, inv.date_issued, inv.date_operation||'',
+            inv.emitter_nif||'', inv.emitter_name||'', inv.recipient_nif||'', inv.recipient_name||inv.lead_name||'',
+            '"'+desc.replace(/"/g,'""')+'"', inv.tax_base, inv.vat_rate, inv.vat_amount, inv.total,
+            inv.discount||0, inv.payment_method||'', inv.status, inv.professional||'', (inv.notes||'').replace(/"/g,'""')
+          ].join(';');
+        });
+        const csv = '\uFEFF' + headers.join(';') + '\n' + csvRows.join('\n');
+        // Resumen para modelo 303
+        const summary = {
+          period: quarter || `${from} a ${to}`,
+          total_invoices: invoices.filter((i:any)=>i.status!=='voided').length,
+          total_base: invoices.filter((i:any)=>i.status!=='voided').reduce((s:number,i:any)=>s+(i.tax_base||0),0),
+          total_iva: invoices.filter((i:any)=>i.status!=='voided').reduce((s:number,i:any)=>s+(i.vat_amount||0),0),
+          total_amount: invoices.filter((i:any)=>i.status!=='voided').reduce((s:number,i:any)=>s+(i.total||0),0),
+          rectifications: invoices.filter((i:any)=>i.series==='R').length,
+          by_vat_rate: {} as any
+        };
+        invoices.filter((i:any)=>i.status!=='voided').forEach((i:any) => {
+          const rate = i.vat_rate || 21;
+          if (!summary.by_vat_rate[rate]) summary.by_vat_rate[rate] = {base:0, iva:0, total:0, count:0};
+          summary.by_vat_rate[rate].base += i.tax_base||0;
+          summary.by_vat_rate[rate].iva += i.vat_amount||0;
+          summary.by_vat_rate[rate].total += i.total||0;
+          summary.by_vat_rate[rate].count++;
+        });
+        return json({ csv, summary, count: invoices.length });
+      }
+
+      // Logo y colores de factura personalizables
+      if (p === '/api/invoice-branding' && req.method === 'GET') {
+        const tenant = url.searchParams.get('tenant'); if(!tenant) return json({error:'missing tenant'},400);
+        try { await env.aura_db.prepare("ALTER TABLE tenants ADD COLUMN invoice_logo TEXT").bind().run(); } catch(e) {}
+        try { await env.aura_db.prepare("ALTER TABLE tenants ADD COLUMN invoice_color TEXT DEFAULT '#2563eb'").bind().run(); } catch(e) {}
+        try { await env.aura_db.prepare("ALTER TABLE tenants ADD COLUMN invoice_footer TEXT").bind().run(); } catch(e) {}
+        const t: any = await env.aura_db.prepare("SELECT invoice_logo, invoice_color, invoice_footer, logo_url FROM tenants WHERE id=?").bind(tenant).first();
+        return json({ branding: { logo: t?.invoice_logo || t?.logo_url || '', color: t?.invoice_color || '#2563eb', footer: t?.invoice_footer || '' } });
+      }
+      if (p === '/api/invoice-branding' && req.method === 'POST') {
+        const b: any = await req.json();
+        try { await env.aura_db.prepare("ALTER TABLE tenants ADD COLUMN invoice_logo TEXT").bind().run(); } catch(e) {}
+        try { await env.aura_db.prepare("ALTER TABLE tenants ADD COLUMN invoice_color TEXT DEFAULT '#2563eb'").bind().run(); } catch(e) {}
+        try { await env.aura_db.prepare("ALTER TABLE tenants ADD COLUMN invoice_footer TEXT").bind().run(); } catch(e) {}
+        await env.aura_db.prepare("UPDATE tenants SET invoice_logo=?, invoice_color=?, invoice_footer=? WHERE id=?")
+          .bind(b.logo||null, b.color||'#2563eb', b.footer||null, b.tenant_id).run();
         return json({ ok:true });
       }
 
@@ -4038,6 +4132,32 @@ export default {
         if (amount > 0 || b.treatment) {
           await env.aura_db.prepare("INSERT INTO treatments_log (id,lead_id,tenant_id,name,amount,pay_status,date_iso,method,cost) VALUES (?,?,?,?,?,?,?,?,?)")
             .bind('t_'+uid(), leadId, tenantId, tname, amount, b.pay_status||'paid', new Date().toISOString(), b.method||null, prodCost).run();
+        }
+        // FACTURA AUTOMÁTICA: generar factura simplificada al cobrar
+        if (amount > 0 && (b.pay_status||'paid') === 'paid') {
+          try {
+            const invSeries = 'F';
+            await env.aura_db.prepare("INSERT INTO invoice_sequences (tenant_id, series, last_num) VALUES (?,?,0) ON CONFLICT(tenant_id, series) DO NOTHING").bind(tenantId, invSeries).run();
+            await env.aura_db.prepare("UPDATE invoice_sequences SET last_num = last_num + 1 WHERE tenant_id=? AND series=?").bind(tenantId, invSeries).run();
+            const invSeq: any = await env.aura_db.prepare("SELECT last_num FROM invoice_sequences WHERE tenant_id=? AND series=?").bind(tenantId, invSeries).first();
+            const invNum = invSeries + '-' + String(invSeq?.last_num||1).padStart(4, '0');
+            const invId = 'inv_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+            // Datos del emisor
+            let emName='',emNif='',emAddr='';
+            try { const em:any = await env.aura_db.prepare("SELECT name,nif,address FROM tenants WHERE id=?").bind(tenantId).first(); emName=em?.name||''; emNif=em?.nif||''; emAddr=em?.address||''; } catch(e){}
+            // Datos del paciente
+            let recName='',recPhone='';
+            try { const ld2:any = await env.aura_db.prepare("SELECT name,phone FROM leads WHERE id=?").bind(leadId).first(); recName=ld2?.name||''; recPhone=ld2?.phone||''; } catch(e){}
+            // Items: tratamiento + productos vendidos
+            const invItems:any[] = [{description: tname, qty: 1, unit_price: Number(b.amount)||0}];
+            if (Array.isArray(b.sold_products)) { for(const sp of b.sold_products){ if(sp.product_id){ invItems.push({description:'Producto', qty:Number(sp.qty)||1, unit_price:0}); } } }
+            const invSubtotal = amount;
+            const invVatRate = 21;
+            const invTaxBase = Math.round(invSubtotal / 1.21 * 100) / 100; // El importe ya incluye IVA
+            const invVatAmt = Math.round((invSubtotal - invTaxBase) * 100) / 100;
+            await env.aura_db.prepare("INSERT INTO invoices (id,tenant_id,lead_id,invoice_number,series,type,status,date_issued,emitter_name,emitter_nif,emitter_address,recipient_name,recipient_phone,items,subtotal,discount,tax_base,vat_rate,vat_amount,total,payment_method,professional,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
+              .bind(invId, tenantId, leadId, invNum, invSeries, 'simplified', 'paid', new Date().toISOString().slice(0,10), emName, emNif, emAddr, recName, recPhone, JSON.stringify(invItems), invSubtotal, 0, invTaxBase, invVatRate, invVatAmt, invSubtotal, b.method||null, b.professional||null, Date.now(), Date.now()).run();
+          } catch(e) { /* factura no bloquea el cierre */ }
         }
         // Bono/pack: si se usa una sesión de un bono, descontarla
         if (b.bono_id) {
