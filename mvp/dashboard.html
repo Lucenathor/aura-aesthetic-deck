@@ -3012,7 +3012,7 @@ function openApptCard(id){
   const dur=a.duration_min||30;
   const st=a.status||'pending';
   const stMap={pending:{t:'Por confirmar',c:'#d9a23a'},confirmed:{t:'Confirmada',c:'#34a877'},booked:{t:'Reservada',c:'#d9a23a'},attended:{t:'Atendió',c:'#2980b9'},noshow:{t:'No vino',c:'#c0392b'},cancelled:{t:'Cancelada',c:'#7f8c8d'}};
-  const stInfo=stMap[st]||stMap.pending;
+  const stInfo=stMap[st]||{t:'Completada',c:'#3730a3'};
   const phone=(a.lead_phone||'').replace(/[^0-9+]/g,'');
   const pro=_pros.find(p=>p.id===a.professional_id);
   // overlay + panel deslizante
@@ -3048,6 +3048,14 @@ function openApptCard(id){
     if(st==='booked'||st==='confirmed'||st==='pending'||st==='arrived'){
       h+='<button class="btn" style="width:100%;margin-top:.3rem;border-color:#ffcdd2;color:#b71c1c;font-size:.75rem" onclick="markNoShow(\''+a.id+'\',\''+(a.lead_name||'').replace(/\x27/g,"")+'\')">❌ Marcar no-show</button>';
     }
+    if(st==='arrived'){
+      h+='<button class="btn" style="width:100%;margin-top:.5rem;background:#e0e7ff;border-color:#818cf8;color:#3730a3;font-weight:600" onclick="markCompletedFromDash(\''+a.id+'\')">✓ Marcar completada (sin cobrar)</button>';
+    }
+  }
+  // Cita completada por el doctor: mostrar botón de cobro directo
+  if(st==='completed'){
+    h+='<button class="btn prim" style="width:100%;margin-top:.5rem" onclick="closeApptCard();setTimeout(function(){openCloseVisit(\''+a.id+'\',\''+a.lead_id+'\',\''+(a.treatment||'').replace(/\x27/g,"")+'\',\''+(a.lead_name||'').replace(/\x27/g,"")+'\')},310)">💰 Cobrar esta visita</button>';
+    h+='<div style="font-size:.72rem;color:var(--muted);margin-top:.3rem;text-align:center">El profesional ya marcó esta cita como completada</div>';
   }
   // Anular cobro: solo en visitas ya atendidas/cobradas y solo para owner/finance/superadmin
   if(st==='attended' && CAN_FINANCE){
@@ -3122,6 +3130,14 @@ async function markArrived(apptId){
     const d=await r.json();
     if(d&&d.ok){ closeApptCard(); toast('Paciente marcado como LLEGÓ 🏥','ok'); loadAgendaCal(true); }
     else { toast('Error al marcar llegada','error'); }
+  }catch(e){ toast('Error de conexión','error'); }
+}
+async function markCompletedFromDash(apptId){
+  try{
+    const r=await fetch(WORKER+'/api/appt-arrived',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,appointment_id:apptId,status:'completed'})});
+    const d=await r.json();
+    if(d&&d.ok){ closeApptCard(); toast('Cita marcada como completada ✓','ok'); loadAgendaCal(true); }
+    else { toast('Error al marcar completada','error'); }
   }catch(e){ toast('Error de conexión','error'); }
 }
 // Marcar no-show
