@@ -58,12 +58,15 @@ for (let i = 0; i < scenarios.length; i += 1) {
   };
   let status = 0;
   let data = {};
-  try {
-    const response = await fetch(ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    status = response.status;
-    data = await response.json();
-  } catch (error) {
-    data = { error: String(error) };
+  for (let attempt = 1; attempt <= 3 && !data.content; attempt += 1) {
+    try {
+      const response = await fetch(ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      status = response.status;
+      data = await response.json();
+    } catch (error) {
+      data = { error: String(error) };
+    }
+    if (!data.content && attempt < 3) await pause(2500 * attempt);
   }
   const content = data.content || '';
   const unsafeDemo = /auracrm\.co\/assets\/(ba-|video-)/i.test(content);
