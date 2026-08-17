@@ -60,9 +60,9 @@ export interface SetterAssessment {
   reason: string;
 }
 
-const MEDICAL_ESCALATION = /embaraz|lactan|amamant|alerg|contraindica|medicaci[oó]n|anticoagul|complicaci[oó]n|infecci[oó]n|dolor fuerte|urgencia|efecto secundario|reacci[oó]n|enfermedad|diagnostic|condici[oó]n.*piel|problema.*piel/i;
-const HUMAN_REQUEST = /hablar con (una )?(persona|doctora|doctor|recepci[oó]n|alguien)|humano|ll[aá]mame/i;
-const BOOKING_SIGNAL = /reserv|cita|hueco|disponib|cu[aá]ndo puedo|agenda|jueves|viernes|lunes|martes|mi[eé]rcoles|s[aá]bado/i;
+const MEDICAL_ESCALATION = /embaraz|lactan|amamant|alerg|contraindica|medicaci[oó]n|anticoagul|complicaci[oó]n|infecci[oó]n|dolor fuerte|urgencia|efecto secundario|reacci[oó]n|enfermedad|diagnostic|condici[oó]n.*piel|problema.*piel|hinch|desmay|dificultad.*(respirar|tragar)|cambios?.*visi[oó]n|me noto muy mal/i;
+const HUMAN_REQUEST = /hablar con (una )?(persona|doctora|doctor|recepci[oó]n|alguien)|persona real|humano|no quiero hablar con (un )?bot|me puede llamar|puede llamarme|ll[aá]mame/i;
+const BOOKING_SIGNAL = /reserv|cita|d[oó]nde (cojo|elijo|reservo)|pasas? (el )?enlace|quiero pedir (una )?(cita|valoraci[oó]n)|quiero reservar|c[oó]mo (cojo|reservo)|agenda/i;
 const PRICE_SIGNAL = /precio|cu[aá]nto cuesta|caro|barato|presupuesto|euros|€/i;
 const RESULTS_SIGNAL = /foto|resultado|antes y despu[eé]s|c[oó]mo queda|ejemplo|caso/i;
 const TRUST_SIGNAL = /miedo|fiarme|conf[ií]o|seguro|seguridad|me quedar[aá] mal|artificial|doctora.*buena|experiencia|se note|se note demasiado/i;
@@ -70,6 +70,8 @@ const TIMING_SIGNAL = /boda|evento|vacaciones|pronto|esta semana|urgente|cumple|
 const THINKING_SIGNAL = /me lo pienso|pensarlo|m[aá]s adelante|no s[eé]|dudas|consultarlo/i;
 const OFFER_SIGNAL = /oferta|promoci[oó]n|descuento|rebaja|financiaci[oó]n/i;
 const PRIVACY_SIGNAL = /qu[eé].*(cont[oó]|dijo|pag[oó])|datos.*(amiga|paciente|persona)|cu[aá]nto.*(pag[oó]|cobr)/i;
+const TIME_CONSTRAINT_SIGNAL = /no tengo tiempo|trabajo todo el d[ií]a|[uú]ltima hora|encajar.*agenda|no me quite mucho tiempo/i;
+const FIRST_TIME_SIGNAL = /primera vez|nunca me he|no tengo ni idea|empezar/i;
 
 function has(text: string, pattern: RegExp) { return pattern.test(text); }
 
@@ -109,6 +111,16 @@ export function assessSetterConversation(messages: Array<{ role?: string; conten
   if (has(latest, THINKING_SIGNAL)) {
     flags.push('indecision');
     return { stage:'resolver', nextAction:'preguntar_duda', objection:'indecisión', flags, needsHuman:false, resourceType:'guia', reason:'Conviene descubrir la duda pendiente, no forzar una fecha.' };
+  }
+
+  if (has(latest, TIME_CONSTRAINT_SIGNAL)) {
+    flags.push('barrera_tiempo');
+    return { stage:'resolver', nextAction:'preguntar_duda', objection:'tiempo', flags, needsHuman:false, reason:'Primero hay que entender la restricción de tiempo antes de compartir una reserva.' };
+  }
+
+  if (has(latest, FIRST_TIME_SIGNAL)) {
+    flags.push('primera_vez');
+    return { stage:'resolver', nextAction:'explicar_proceso', objection:'primera vez', flags, needsHuman:false, resourceType:'guia', reason:'La persona necesita orientación y seguridad antes de avanzar a una reserva.' };
   }
 
   if (has(latest, BOOKING_SIGNAL) || (memory.stage === 'resolver' && (memory.messageCount || 0) >= 3)) {
