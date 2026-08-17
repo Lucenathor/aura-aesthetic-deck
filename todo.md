@@ -7,3 +7,4 @@
 - [ ] Validar en iPad y móvil la experiencia de marcado, guardado y carga de plantillas.
 - [x] Generar plantillas clínicas masculinas realistas: frontal, lateral y corporal.
 - [x] Seleccionar automáticamente la familia de plantilla según el sexo registrado del paciente y permitir cambiarla manualmente.
+- [ ] Generar e integrar una plantilla clínica masculina de labios, mentón y mandíbula para completar la familia anatómica masculina.

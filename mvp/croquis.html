@@ -153,7 +153,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);over
         <span>Lateral</span>
       </div>
       <div class="tpl-card" onclick="loadTemplate('lips')" id="tpl-lips">
-        <img src="/assets/lips-detail-ai.png" alt="Plantilla de labios realista"/>
+        <img id="tpl-lips-img" src="/assets/lips-detail-ai.png" alt="Plantilla de labios realista"/>
         <span>Labios</span>
       </div>
       <div class="tpl-card" onclick="loadTemplate('body')" id="tpl-body">
@@ -229,7 +229,7 @@ const TEMPLATE_SETS={
   male:{
     'face-front':'/assets/male-face-front-ai.png',
     'face-side':'/assets/male-face-side-ai.png',
-    'lips':'/assets/lips-detail-ai.png',
+    'lips':'/assets/male-lips-detail-ai.png',
     'body':'/assets/male-body-front-ai.png'
   }
 };
@@ -245,7 +245,7 @@ function refreshTemplateFamilyUI(){
   document.getElementById('family-male').classList.toggle('active',templateFamily==='male');
   var known=isMaleGender(RAW_GENDER)||isFemaleGender(RAW_GENDER);
   document.getElementById('familyNote').textContent=templateFamilyChangedManually?'Plantilla '+label+' seleccionada manualmente':(known?'Plantilla '+label+' seleccionada automáticamente':'Selecciona la anatomía de referencia');
-  ['face-front','face-side','body'].forEach(function(id){
+  ['face-front','face-side','lips','body'].forEach(function(id){
     var img=document.getElementById('tpl-'+id+'-img');
     if(img){img.src=TEMPLATE_SETS[templateFamily][id];img.alt='Plantilla '+label+' '+id+' realista';}
   });
