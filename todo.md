@@ -28,3 +28,7 @@
 - [ ] Ajuste manual de duración al crear/editar cita (selector editable)
 - [ ] Drag del borde inferior del bloque para estirar/encoger duración en cuadrícula
 - [ ] Visualización del buffer en la cuadrícula (zona gris/rayada)
+- [ ] Implementar "arsenal del setter": campos de recursos por clínica (fotos antes/después, vídeo doctora, reseñas, enlace reserva, nombre doctora)
+- [ ] Mejorar prompt del chat IA para usar recursos multimedia del arsenal cuando el paciente duda
+- [ ] Probar 30 conversaciones variadas y afinar el prompt hasta 10/10
+- [ ] Sistema de envío de recursos en el chat (fotos, vídeo, enlace) según contexto de la conversación

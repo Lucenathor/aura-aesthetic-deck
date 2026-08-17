@@ -4619,6 +4619,18 @@ function adminRenderTab(){
         +_fld('afReviews','Nº de reseñas',t.google_reviews,'0','number')
         +_fld('afReviewUrl','Enlace para pedir reseña',t.google_review_url,'https://g.page/…')
       +'</div>'
+      +'<div style="font-weight:700;font-size:.9rem;margin:1.1rem 0 .5rem">🎯 Arsenal del Setter (recursos para el chat IA)</div>'
+      +'<div style="font-size:.76rem;color:var(--muted);margin-bottom:.5rem">Estos datos los usa el chat IA para persuadir al paciente con recursos reales de tu clínica.</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.7rem">'
+        +_fld('afDoctorSpec','Especialidad de la doctora',t.doctor_specialty,'Medicina estética facial')
+        +_fld('afDoctorExp','Experiencia',t.doctor_experience,'8 años, +2.000 tratamientos')
+        +_fld('afClinicUsp','Diferencial de la clínica',t.clinic_usp,'Seguimiento post-tratamiento incluido')
+        +_fld('afPriceRange','Rango de precio orientativo',t.price_range,'Labios desde 250€, Botox desde 180€')
+        +_fld('afBookingUrl','Enlace de reserva directa',t.booking_url,'https://…')
+        +_fld('afBeforeAfter','URL foto antes/después',t.before_after_url,'https://…')
+        +_fld('afDoctorVideo','URL vídeo de la doctora',t.doctor_video_url,'https://…')
+      +'</div>'
+      +'<label style="font-size:.8rem;display:block;margin-top:.5rem">Reseña destacada (la que más convence)<textarea id="afTopReview" rows="2" placeholder="María, 5⭐: Me quedaron super naturales, la doctora me explicó todo..." style="width:100%;padding:.5rem;border:1px solid var(--line);border-radius:8px;margin-top:.2rem;resize:vertical">'+(t.top_review||'')+'</textarea></label>'
       +'<button class="btn prim" style="margin-top:1.1rem" onclick="adminSaveDatos()">Guardar datos y marca</button>';
   } else if(_adminTab==='comercial'){
     var trial = t.trial_ends_at ? new Date(t.trial_ends_at).toISOString().slice(0,10) : '';
@@ -4666,7 +4678,7 @@ function adminRenderTab(){
 function adminOpenClinicSection(id,sec){ try{ if(typeof switchTenant==='function'){ switchTenant(id); } else { T=id; } }catch(e){ T=id; } goSection(sec||'resumen'); }
 async function adminSaveDatos(){
   var g=function(id){var e=document.getElementById(id);return e?e.value:undefined;};
-  var body={ id:_adminDetail.id, name:g('afName'), city:g('afCity'), address:g('afAddress'), whatsapp:g('afWhats'), email:g('afEmail'), website:g('afWebsite'), owner_name:g('afOwner'), doctor_name:g('afDoctor'), logo_url:g('afLogo'), brand_primary:g('afPrimary'), brand_accent:g('afAccent'), google_rating:parseFloat(g('afRating'))||0, google_reviews:parseInt(g('afReviews'),10)||0, google_review_url:g('afReviewUrl') };
+  var body={ id:_adminDetail.id, name:g('afName'), city:g('afCity'), address:g('afAddress'), whatsapp:g('afWhats'), email:g('afEmail'), website:g('afWebsite'), owner_name:g('afOwner'), doctor_name:g('afDoctor'), logo_url:g('afLogo'), brand_primary:g('afPrimary'), brand_accent:g('afAccent'), google_rating:parseFloat(g('afRating'))||0, google_reviews:parseInt(g('afReviews'),10)||0, google_review_url:g('afReviewUrl'), doctor_specialty:g('afDoctorSpec'), doctor_experience:g('afDoctorExp'), clinic_usp:g('afClinicUsp'), price_range:g('afPriceRange'), booking_url:g('afBookingUrl'), before_after_url:g('afBeforeAfter'), doctor_video_url:g('afDoctorVideo'), top_review:g('afTopReview') };
   var r=await adminApi('/api/admin-update-clinic',{method:'POST',body:JSON.stringify(body)});
   if(r&&r.ok){ Object.assign(_adminDetail.clinic, body); if(typeof toast==='function')toast('Datos guardados ✓'); adminRefreshDetailMeta(); } else { if(typeof toast==='function')toast('No se pudo guardar','error'); }
 }

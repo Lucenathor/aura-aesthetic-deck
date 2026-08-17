@@ -557,6 +557,15 @@ async function ensureInventorySchema(env: Env) {
   // Slug público aleatorio para URLs de embudo (no adivinable)
   try { await env.aura_db.exec('ALTER TABLE tenants ADD COLUMN public_slug TEXT'); } catch(e){}
   try { await env.aura_db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_tenant_slug ON tenants (public_slug)'); } catch(e){}
+  // Arsenal del setter: recursos de la clínica para el chat IA
+  try { await env.aura_db.exec('ALTER TABLE tenants ADD COLUMN doctor_specialty TEXT'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE tenants ADD COLUMN doctor_experience TEXT'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE tenants ADD COLUMN clinic_usp TEXT'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE tenants ADD COLUMN price_range TEXT'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE tenants ADD COLUMN booking_url TEXT'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE tenants ADD COLUMN before_after_url TEXT'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE tenants ADD COLUMN doctor_video_url TEXT'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE tenants ADD COLUMN top_review TEXT'); } catch(e){}
   // Asignar slug a tenants que no lo tienen
   try {
     const noSlug: any = await env.aura_db.prepare('SELECT id FROM tenants WHERE public_slug IS NULL OR public_slug=""').all();
@@ -1846,7 +1855,7 @@ export default {
         if (p === '/api/admin-update-clinic' && req.method === 'POST') {
           const b:any = await req.json(); const id=b.id;
           if(!id) return json({ ok:false, error:'id_required' });
-          const fields = ['name','city','address','whatsapp','email','owner_name','doctor_name','brand_primary','brand_accent','google_rating','google_reviews','google_review_url','plan','status','trial_ends_at','ai_system_prompt','logo_url','website'];
+          const fields = ['name','city','address','whatsapp','email','owner_name','doctor_name','brand_primary','brand_accent','google_rating','google_reviews','google_review_url','plan','status','trial_ends_at','ai_system_prompt','logo_url','website','doctor_specialty','doctor_experience','clinic_usp','price_range','booking_url','before_after_url','doctor_video_url','top_review'];
           const sets:string[]=[]; const vals:any[]=[];
           for (const f of fields){ if (b[f]!==undefined){ sets.push(f+'=?'); vals.push(b[f]); } }
           if(!sets.length) return json({ ok:false, error:'no_fields' });
@@ -5293,8 +5302,25 @@ async function handleChat(req: Request, env: Env) {
     prompt = SALES_DEMO_PROMPT +
       `\nNombre de la clínica que está probando: ${t?.name || 'tu clínica'}.`;
   } else {
-    prompt = (t?.ai_system_prompt || SYSTEM_BASE) +
-      `\nContexto del lead: nombre=${body.context?.name || '-'}, tratamiento=${body.context?.treatment || '-'}, plazo=${body.context?.plazo || '-'}, objecion=${body.context?.objecion || '-'}`;
+    // Arsenal del setter: recursos de la clínica para usar en la conversación
+    const arsenal: string[] = [];
+    if (t?.doctor_name) arsenal.push(`doctora: ${t.doctor_name}`);
+    if (t?.doctor_specialty) arsenal.push(`especialidad: ${t.doctor_specialty}`);
+    if (t?.doctor_experience) arsenal.push(`experiencia: ${t.doctor_experience}`);
+    if (t?.clinic_usp) arsenal.push(`diferencial de la clínica: ${t.clinic_usp}`);
+    if (t?.price_range) arsenal.push(`rango de precio orientativo: ${t.price_range}`);
+    if (t?.booking_url) arsenal.push(`enlace de reserva directa: ${t.booking_url}`);
+    if (t?.before_after_url) arsenal.push(`[RECURSO] foto antes/después disponible: ${t.before_after_url} — envíala cuando el lead pida ver resultados o dude`);
+    if (t?.doctor_video_url) arsenal.push(`[RECURSO] vídeo de la doctora disponible: ${t.doctor_video_url} — envíalo cuando el lead desconfíe o pregunte quién le va a tratar`);
+    if (t?.top_review) arsenal.push(`[RECURSO] reseña real de paciente: "${t.top_review}" — cítala como social proof cuando el lead dude`);
+    if (t?.google_rating && t?.google_reviews) arsenal.push(`valoración Google: ${t.google_rating}⭐ (${t.google_reviews} reseñas)`);
+    
+    const arsenalBlock = arsenal.length > 0 
+      ? `\n\nARSENAL DE RECURSOS (usa estos datos cuando sea oportuno en la conversación):\n${arsenal.join('\n')}\n\nCUANDO ENVIAR RECURSOS:\n- si pide ver resultados → envía la foto antes/después\n- si desconfía o pregunta quién le trata → envía el vídeo de la doctora\n- si duda → cita la reseña real\n- si está lista para reservar → envía el enlace de reserva directa\n- NUNCA envíes todos los recursos de golpe. uno por turno, el más relevante.`
+      : '';
+    
+    prompt = (t?.ai_system_prompt || SYSTEM_BASE) + arsenalBlock +
+      `\n\nContexto del lead: nombre=${body.context?.name || '-'}, tratamiento=${body.context?.treatment || '-'}, plazo=${body.context?.plazo || '-'}, objecion=${body.context?.objecion || '-'}`;
   }
 
   const messages = [{ role: 'system', content: prompt }, ...(body.messages || []).slice(-12)];
