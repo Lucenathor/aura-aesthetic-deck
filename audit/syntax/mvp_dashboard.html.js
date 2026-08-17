@@ -5147,9 +5147,35 @@ async function executeImport(){
     res.innerHTML='<div style="padding:1rem;background:#fee2e2;border-radius:10px;font-size:.9rem;color:#991b1b">❌ Error de conexión. Verifica tu internet e inténtalo de nuevo.</div>';
   }
 }
+/* === BÚSQUEDA GLOBAL === */
+let _searchTimeout;
+function doGlobalSearch(q){
+  clearTimeout(_searchTimeout);
+  const box=document.getElementById("searchResults");
+  if(!q||q.length<2){box.style.display="none";return;}
+  _searchTimeout=setTimeout(async()=>{
+    try{
+      const leads=await fetch(WORKER+"/api/leads?tenant="+T,{headers:{"Authorization":"Bearer "+(localStorage.getItem("aura_token")||"")}}).then(r=>r.json());
+      const items=(leads.items||leads||[]).filter(l=>(l.name||"").toLowerCase().includes(q.toLowerCase())||(l.phone||"").includes(q)||(l.email||"").toLowerCase().includes(q.toLowerCase()));
+      if(!items.length){box.innerHTML="<div style=\"padding:1rem;text-align:center;color:var(--muted)\">Sin resultados para \""+q+"\"</div>";box.style.display="block";return;}
+      box.innerHTML=items.slice(0,8).map(l=>"<div onclick=\"document.getElementById('searchResults').style.display='none';document.getElementById('globalSearch').value='';openDrawer('"+l.id+"')\" style=\"padding:.6rem .8rem;border-radius:10px;cursor:pointer;transition:background .12s var(--ease);display:flex;align-items:center;gap:.6rem\" onmouseover=\"this.style.background='rgba(124,58,237,.05)'\" onmouseout=\"this.style.background='transparent'\"><div style=\"width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--terra),var(--terra-d));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.75rem\">"+(l.name||"?")[0].toUpperCase()+"</div><div><div style=\"font-weight:600;font-size:.88rem\">"+(l.name||"Sin nombre")+"</div><div style=\"font-size:.75rem;color:var(--muted)\">"+(l.phone||l.email||"")+"</div></div></div>").join("");
+      box.style.display="block";
+    }catch(e){box.style.display="none";}
+  },300);
+}
+document.addEventListener("keydown",function(e){if((e.metaKey||e.ctrlKey)&&e.key==="k"){e.preventDefault();document.getElementById("globalSearch").focus();}});
+document.addEventListener("click",function(e){if(!e.target.closest(".search-global")&&!e.target.closest("#searchResults")){document.getElementById("searchResults").style.display="none";}});
+/* === SIDEBAR COLAPSABLE === */
+function toggleSidebar(){
+  const side=document.querySelector(".side");
+  side.classList.toggle("collapsed");
+  localStorage.setItem("aura_sidebar",side.classList.contains("collapsed")?"1":"0");
+}
+function showNotifications(){toast("Sin notificaciones nuevas","ok");}
 
 async function __auraInit(){
   const ok=await guard(); if(!ok)return;
+  if(localStorage.getItem("aura_sidebar")==="1"){document.querySelector(".side").classList.add("collapsed");}
   try{ const fl=document.getElementById('funnelLink'); if(fl)fl.href='/c/'+T+'?t='+(typeof EDFUNNEL!=='undefined'?EDFUNNEL:'labios'); }catch(e){}
   try{ const fo=document.getElementById('funnelOpen'); if(fo)fo.href='/c/'+T+'?t='+(typeof EDFUNNEL!=='undefined'?EDFUNNEL:'labios'); }catch(e){}
   try{ loadTenant(); }catch(e){console.error('loadTenant',e);}
