@@ -13,3 +13,4 @@
 - [x] Generar e integrar perfiles izquierdo y derecho coherentes para las anatomías femenina y masculina.
 - [x] Conservar en la ficha el metadato exacto de lateral izquierdo o derecho al guardar el croquis.
 - [x] Corregir el guardado del croquis desde la sesión de profesional iniciada con PIN, sin requerir sesión de propietario.
+- [ ] Restaurar el favicon oficial de AURA en el panel, Staff, Croquis y rutas públicas.
