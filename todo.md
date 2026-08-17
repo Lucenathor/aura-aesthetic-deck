@@ -28,18 +28,18 @@
 - [ ] Ajuste manual de duración al crear/editar cita (selector editable)
 - [ ] Drag del borde inferior del bloque para estirar/encoger duración en cuadrícula
 - [ ] Visualización del buffer en la cuadrícula (zona gris/rayada)
-- [ ] Implementar "arsenal del setter": campos de recursos por clínica (fotos antes/después, vídeo doctora, reseñas, enlace reserva, nombre doctora)
-- [ ] Mejorar prompt del chat IA para usar recursos multimedia del arsenal cuando el paciente duda
-- [ ] Probar 30 conversaciones variadas y afinar el prompt hasta 10/10
-- [ ] Sistema de envío de recursos en el chat (fotos, vídeo, enlace) según contexto de la conversación
-- [ ] Crear tabla setter_resources con recursos por tratamiento (foto antes/después, reseña, vídeo, precio, tips)
-- [ ] Generar recursos de prueba para los 5 tratamientos principales (labios, botox, rellenos, peeling, radiofrecuencia)
-- [ ] Sección en el dashboard para gestionar recursos del setter por tratamiento
-- [ ] Mejorar prompt para que SIEMPRE envíe recurso multimedia según tratamiento y momento
-- [ ] Probar 30+ conversaciones hasta 10/10
-- [ ] Investigar en profundidad estrategias de setting, closing, seguimiento y naturalidad en conversaciones clínicas.
-- [ ] Crear módulo independiente Setter Brain con estado conversacional, intención, objeciones y siguiente mejor acción.
-- [ ] Diseñar conversaciones multietapa que resuelvan dudas antes de proponer reserva, sin presión artificial.
-- [ ] Crear panel Setter IA para configurar personalidad, velocidad, tono y recursos globales por clínica.
-- [ ] Crear panel de recursos por tratamiento con fotos, vídeo, reseñas, rangos de precio, recuperación, FAQs y enlace de reserva.
-- [ ] Probar conversaciones largas de principio a cierre y refinar el Setter Brain.
+- [x] Implementar "arsenal del setter": campos de recursos por clínica (fotos antes/después, vídeo doctora, reseñas, enlace reserva, nombre doctora)
+- [x] Mejorar prompt del chat IA para usar recursos multimedia del arsenal cuando el paciente duda
+- [x] Probar 30 conversaciones variadas y refinar el prompt y los respaldos de respuesta
+- [x] Sistema de envío de recursos en el chat (fotos, vídeo, enlace) según contexto de la conversación
+- [x] Crear tabla setter_resources con recursos por tratamiento (foto antes/después, reseña, vídeo, precio, tips)
+- [x] Cargar borradores de configuración para los 5 tratamientos principales, bloqueados hasta disponer de material real autorizado
+- [x] Sección en el dashboard para gestionar recursos del setter por tratamiento
+- [x] Mejorar el prompt para seleccionar como máximo un recurso pertinente, aprobado y autorizado por turno
+- [x] Probar 30 conversaciones y reforzar la tolerancia a fallos del proveedor de IA
+- [x] Investigar en profundidad estrategias de setting, closing, seguimiento y naturalidad en conversaciones clínicas.
+- [x] Crear módulo independiente Setter Brain con estado conversacional, intención, objeciones y siguiente mejor acción.
+- [x] Diseñar conversaciones multietapa que resuelvan dudas antes de proponer reserva, sin presión artificial.
+- [x] Crear panel Setter IA para configurar personalidad, velocidad, tono y recursos globales por clínica.
+- [x] Crear panel de recursos por tratamiento con fotos, vídeo, reseñas, rangos de precio, recuperación, FAQs y enlace de reserva.
+- [x] Probar conversaciones largas de principio a cierre y refinar el Setter Brain.

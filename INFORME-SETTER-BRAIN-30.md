@@ -49,3 +49,9 @@ Fecha: 2026-08-17T16:40:03.217Z
 ## Criterio
 
 Las URLs, reseñas y casos demo permanecen bloqueados hasta que una clínica los apruebe y confirme autorización. Las señales de embarazo, alergias, dolor intenso, contraindicaciones o solicitud de una persona requieren derivación, no una respuesta clínica.
+
+## Ajuste posterior a la auditoría
+
+La segunda ejecución completó **29 de 30 casos con todos los controles en el primer intento**. El único caso restante fue una indisponibilidad puntual del proveedor de IA (HTTP 0), no una respuesta inadecuada; se volvió a probar de forma aislada y respondió correctamente. El Setter Brain incorpora ahora reintento y una respuesta segura de respaldo para que el chat no quede en silencio si el proveedor no devuelve contenido.
+
+También se reforzaron dos reglas: no se inventan descuentos, consultas gratuitas, promociones, años de experiencia, número de tratamientos, precios, seguimiento ni huecos; y ningún recurso de demo o borrador se presenta al paciente como real. Los recursos solo pasan a estar disponibles en el chat cuando la clínica marca **Aprobado** y confirma que cuenta con autorización para utilizarlo.
