@@ -65,11 +65,11 @@ const HUMAN_REQUEST = /hablar con (una )?(persona|doctora|doctor|recepci[oó]n|a
 const BOOKING_SIGNAL = /reserv|cita|d[oó]nde (cojo|elijo|reservo)|pasas? (el )?enlace|quiero pedir (una )?(cita|valoraci[oó]n)|quiero reservar|c[oó]mo (cojo|reservo)|agenda/i;
 const PRICE_SIGNAL = /precio|cu[aá]nto cuesta|caro|barato|presupuesto|euros|€|cifra|importe/i;
 const RESULTS_SIGNAL = /foto|resultado|antes y despu[eé]s|c[oó]mo queda|ejemplo|caso/i;
-const TRUST_SIGNAL = /miedo|fiarme|conf[ií]o|seguro|seguridad|me quedar[aá] mal|artificial|doctora.*buena|experiencia|se note|se note demasiado|no reconocerme|no perder|cambie mi cara|arrepent/i;
+const TRUST_SIGNAL = /miedo|fiarme|conf[ií]o|seguro|seguridad|me quedar[aá] mal|artificial|doctora.*buena|experiencia|se note|se note demasiado|no reconocerme|no perder|cambie mi cara|arrepent|verse tuyos|dejen de verse/i;
 const TIMING_SIGNAL = /boda|evento|vacaciones|pronto|esta semana|urgente|cumple|viaje|sesi[oó]n.*fotos|me caso/i;
 const THINKING_SIGNAL = /me lo pienso|me lo tengo que pensar|pensarlo|m[aá]s adelante|no s[eé]|dudas|consultarlo/i;
 const OFFER_SIGNAL = /oferta|promoci[oó]n|descuento|rebaja|financiaci[oó]n|pago a plazos/i;
-const PRIVACY_SIGNAL = /qu[eé].*(cont[oó]|dijo|pag[oó])|datos.*(amiga|paciente|persona)|cu[aá]nto.*(pag[oó]|cobr)|tratamiento.*(amiga|hermana|compañera|otra persona)|historial.*otra/i;
+const PRIVACY_SIGNAL = /qu[eé].*(cont[oó]|dijo|pag[oó])|datos.*(amiga|paciente|persona)|cu[aá]nto.*(pag[oó]|cobr)|tratamiento.*(amiga|hermana|compañera|otra persona)|historial.*(otra|hermana|amiga|compañera)/i;
 const COMPARISON_SIGNAL = /compar|elegir.*cl[ií]nica|otra cl[ií]nica|otra propuesta|qui[eé]n es mejor/i;
 const TIME_CONSTRAINT_SIGNAL = /no tengo tiempo|trabajo todo el d[ií]a|[uú]ltima hora|encajar.*agenda|no me quite mucho tiempo/i;
 const FIRST_TIME_SIGNAL = /primera vez|nunca me he|no tengo ni idea|empezar/i;
@@ -99,11 +99,6 @@ export function assessSetterConversation(messages: Array<{ role?: string; conten
     return { stage:'informar', nextAction:'preguntar_duda', flags, needsHuman:false, reason:'Hay que responder con transparencia, sin revelar datos de terceros ni inventar promociones.' };
   }
 
-  if (has(latest, RESULTS_SIGNAL)) {
-    flags.push('busca_resultados');
-    return { stage:'informar', nextAction:'compartir_prueba_social', flags, needsHuman:false, resourceType:'foto', reason:'El lead necesita evidencia visual o expectativas realistas.' };
-  }
-
   if (has(latest, COMPARISON_SIGNAL)) {
     flags.push('comparacion');
     return { stage:'descubrimiento', nextAction:'preguntar_duda', flags, needsHuman:false, reason:'Hay que entender el criterio de comparación sin descalificar a terceros.' };
@@ -112,6 +107,11 @@ export function assessSetterConversation(messages: Array<{ role?: string; conten
   if (has(latest, TRUST_SIGNAL)) {
     flags.push('confianza');
     return { stage:'resolver', nextAction:'compartir_prueba_social', objection:'confianza', flags, needsHuman:false, resourceType:'video', reason:'La prioridad es reducir incertidumbre antes de hablar de reserva.' };
+  }
+
+  if (has(latest, RESULTS_SIGNAL)) {
+    flags.push('busca_resultados');
+    return { stage:'informar', nextAction:'compartir_prueba_social', flags, needsHuman:false, resourceType:'foto', reason:'El lead necesita evidencia visual o expectativas realistas.' };
   }
 
   if (has(latest, THINKING_SIGNAL)) {
