@@ -2583,7 +2583,7 @@ export default {
         const baseDate = b.date_iso ? new Date(b.date_iso) : new Date();
         // Generar número de factura automático
         let invoiceNum = '';
-        if (b.pay_status === 'paid') {
+        if (b.pay_status === 'paid' && !b.is_gift && (Number(b.amount)||0) > 0) {
           try {
             await env.aura_db.prepare("INSERT INTO invoice_seq (tenant_id, last_num) VALUES (?,0) ON CONFLICT(tenant_id) DO NOTHING").bind(b.tenant_id).run();
             await env.aura_db.prepare("UPDATE invoice_seq SET last_num = last_num + 1 WHERE tenant_id=?").bind(b.tenant_id).run();
