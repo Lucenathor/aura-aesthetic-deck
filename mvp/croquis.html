@@ -235,6 +235,7 @@ const TEMPLATE_SETS={
 };
 let templateFamily=isMaleGender(RAW_GENDER)?'male':'female';
 let activeTemplate='face-front';
+let templateFamilyChangedManually=false;
 
 function isMaleGender(value){return /^(hombre|male|masculino|m)$/i.test(String(value||'').trim());}
 function isFemaleGender(value){return /^(mujer|female|femenino|f)$/i.test(String(value||'').trim());}
@@ -243,7 +244,7 @@ function refreshTemplateFamilyUI(){
   document.getElementById('family-female').classList.toggle('active',templateFamily==='female');
   document.getElementById('family-male').classList.toggle('active',templateFamily==='male');
   var known=isMaleGender(RAW_GENDER)||isFemaleGender(RAW_GENDER);
-  document.getElementById('familyNote').textContent=known?'Plantilla '+label+' seleccionada automáticamente':'Selecciona la anatomía de referencia';
+  document.getElementById('familyNote').textContent=templateFamilyChangedManually?'Plantilla '+label+' seleccionada manualmente':(known?'Plantilla '+label+' seleccionada automáticamente':'Selecciona la anatomía de referencia');
   ['face-front','face-side','body'].forEach(function(id){
     var img=document.getElementById('tpl-'+id+'-img');
     if(img){img.src=TEMPLATE_SETS[templateFamily][id];img.alt='Plantilla '+label+' '+id+' realista';}
@@ -251,7 +252,7 @@ function refreshTemplateFamilyUI(){
 }
 function setTemplateFamily(family){
   if(family===templateFamily)return;
-  templateFamily=family;refreshTemplateFamilyUI();loadTemplate(activeTemplate);
+  templateFamily=family;templateFamilyChangedManually=true;refreshTemplateFamilyUI();loadTemplate(activeTemplate);
 }
 
 const BODY_SVG='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 850" fill="none" stroke="#ccc" stroke-width="2"><circle cx="350" cy="100" r="60"/><path d="M290 160 Q350 175 410 160 L420 450 Q350 460 280 450Z"/><path d="M290 170 L180 350 M410 170 L520 350"/><path d="M280 450 L260 750 M420 450 L440 750"/><path d="M260 750 L240 800 L280 800 M440 750 L460 800 L420 800"/></svg>';
