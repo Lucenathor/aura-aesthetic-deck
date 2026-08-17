@@ -7,185 +7,181 @@
 <link rel="icon" href="/favicon.ico"/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
 <style>
-:root{--bg:#FDF8F4;--card:#fff;--ink:#2D1B0E;--ink-soft:#5C4033;--muted:#8B7355;--terra:#A85942;--terra-d:#8B4533;--line:#E8DDD4;--mint:#1f8c69;--ease:cubic-bezier(.2,.8,.2,1)}
+:root{--bg:#FAFAFA;--card:#fff;--ink:#1a1a1a;--ink2:#555;--muted:#888;--border:#e5e5e5;--terra:#A85942;--terra-l:rgba(168,89,66,.08);--blue:#3B82F6;--red:#EF4444;--green:#22C55E;--purple:#8B5CF6;--orange:#F59E0B;--radius:10px;--shadow:0 2px 8px rgba(0,0,0,.06)}
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);overflow:hidden;height:100vh}
-.app{display:grid;grid-template-columns:280px 1fr 260px;height:100vh}
-@media(max-width:1024px){.app{grid-template-columns:1fr;grid-template-rows:auto 1fr auto}.right-panel{display:none}}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);overflow:hidden;height:100vh;-webkit-user-select:none;user-select:none}
 
-/* LEFT PANEL */
-.left{background:var(--card);border-right:1px solid var(--line);padding:1.2rem;overflow-y:auto;display:flex;flex-direction:column;gap:1rem}
-.left h2{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:600;margin-bottom:.2rem}
-.left .subtitle{font-size:.75rem;color:var(--muted);margin-bottom:.6rem}
-.templates{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
-.tpl{padding:.5rem;border:2px solid var(--line);border-radius:12px;cursor:pointer;text-align:center;transition:all .2s var(--ease);background:var(--card)}
-.tpl:hover{border-color:var(--terra);transform:translateY(-1px);box-shadow:0 4px 12px rgba(168,89,66,.1)}
-.tpl.active{border-color:var(--terra);background:rgba(168,89,66,.04);box-shadow:0 0 0 3px rgba(168,89,66,.1)}
-.tpl svg{width:100%;height:70px;display:block;margin:0 auto}
-.tpl span{display:block;font-size:.68rem;font-weight:600;margin-top:.3rem;color:var(--ink-soft)}
+.app{display:grid;grid-template-columns:1fr 280px;grid-template-rows:56px 1fr 64px;height:100vh;width:100vw}
+@media(max-width:900px){.app{grid-template-columns:1fr;grid-template-rows:56px 1fr 64px}.right-panel{display:none}}
 
-.tool-section{margin-top:.4rem}
-.tool-section label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:block;margin-bottom:.4rem}
-.tools{display:flex;gap:.3rem;flex-wrap:wrap}
-.tbtn{width:40px;height:40px;border:1.5px solid var(--line);border-radius:10px;background:var(--card);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem;transition:all .15s var(--ease)}
-.tbtn:hover{border-color:var(--terra);background:rgba(168,89,66,.04)}
-.tbtn.active{background:var(--terra);color:#fff;border-color:var(--terra);box-shadow:0 4px 12px rgba(168,89,66,.25)}
+/* TOP BAR */
+.topbar{grid-column:1/-1;display:flex;align-items:center;padding:0 1.2rem;background:var(--card);border-bottom:1px solid var(--border);gap:.75rem;z-index:20}
+.topbar .logo{font-family:'Playfair Display',serif;font-weight:600;font-size:1.1rem;color:var(--terra)}
+.topbar .sep{width:1px;height:28px;background:var(--border)}
+.topbar .patient-name{font-weight:600;font-size:.9rem}
+.topbar .patient-date{font-size:.78rem;color:var(--muted);margin-left:.3rem}
+.topbar .spacer{flex:1}
+.topbar .zoom-display{font-size:.78rem;color:var(--muted);background:var(--bg);padding:.25rem .6rem;border-radius:6px;font-weight:600}
+.top-btn{height:36px;padding:0 .8rem;border:1px solid var(--border);border-radius:8px;background:var(--card);cursor:pointer;font-size:.8rem;font-weight:600;font-family:inherit;color:var(--ink);display:flex;align-items:center;gap:.35rem;transition:all .12s ease}
+.top-btn:hover{border-color:var(--terra);color:var(--terra)}
+.top-btn.primary{background:var(--terra);color:#fff;border-color:var(--terra)}
+.top-btn.primary:hover{background:#8B4533}
 
-.colors{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.3rem}
-.cbtn{width:30px;height:30px;border-radius:50%;border:2.5px solid transparent;cursor:pointer;transition:all .15s var(--ease);position:relative}
-.cbtn:hover{transform:scale(1.2)}
-.cbtn.active{border-color:var(--ink);box-shadow:0 0 0 3px rgba(45,27,14,.12)}
-.cbtn::after{content:attr(data-label);position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:.55rem;white-space:nowrap;color:var(--muted);opacity:0;transition:opacity .15s}
-.cbtn:hover::after{opacity:1}
+/* CENTER CANVAS AREA */
+.canvas-area{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#f0f0f0}
+#drawCanvas{background:#fff;box-shadow:var(--shadow);cursor:crosshair;touch-action:none;transition:transform .15s ease}
 
-.size-row{display:flex;align-items:center;gap:.5rem;margin-top:.4rem}
-.size-row input{flex:1;accent-color:var(--terra)}
-.size-row span{font-size:.75rem;font-weight:600;color:var(--terra);min-width:20px}
+/* BOTTOM TOOLBAR */
+.toolbar{grid-column:1/2;display:flex;align-items:center;justify-content:center;gap:.2rem;padding:0 1rem;background:var(--card);border-top:1px solid var(--border)}
+.tool-group{display:flex;align-items:center;gap:.15rem;padding:.25rem;background:var(--bg);border-radius:10px}
+.t-btn{height:42px;min-width:42px;padding:0 .6rem;border:none;border-radius:8px;background:transparent;cursor:pointer;font-size:.82rem;font-weight:600;color:var(--ink2);display:flex;align-items:center;gap:.3rem;transition:all .12s ease;font-family:inherit;white-space:nowrap}
+.t-btn:hover{background:var(--terra-l);color:var(--terra)}
+.t-btn.active{background:var(--terra);color:#fff;box-shadow:0 2px 8px rgba(168,89,66,.3)}
+.t-btn .icon{font-size:1.1rem}
+.tool-sep{width:1px;height:28px;background:var(--border);margin:0 .4rem}
 
-/* CENTER - CANVAS */
-.center{display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;background:#f5ede8;overflow:hidden}
-.topbar{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:.5rem;padding:.5rem 1rem;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);z-index:10}
-.topbar .undo-group{display:flex;gap:.25rem}
-.topbar .undo-group button{width:34px;height:34px;border:1.5px solid var(--line);border-radius:8px;background:var(--card);cursor:pointer;font-size:.85rem;transition:all .12s var(--ease)}
-.topbar .undo-group button:hover{border-color:var(--terra);color:var(--terra)}
-.topbar .patient-info{margin-left:auto;font-size:.8rem;color:var(--muted);font-weight:500}
-.topbar .close-btn{width:34px;height:34px;border:none;border-radius:8px;background:rgba(192,57,43,.08);color:#C0392B;cursor:pointer;font-size:1.1rem;margin-left:.5rem;transition:all .12s var(--ease)}
-.topbar .close-btn:hover{background:#C0392B;color:#fff}
-#drawCanvas{cursor:crosshair;border-radius:16px;box-shadow:0 12px 40px rgba(45,27,14,.1);touch-action:none;background:#fff}
-.zoom-controls{position:absolute;bottom:1rem;right:1rem;display:flex;gap:.3rem}
-.zoom-controls button{width:36px;height:36px;border:1px solid var(--line);border-radius:10px;background:var(--card);cursor:pointer;font-size:1rem;transition:all .12s var(--ease)}
-.zoom-controls button:hover{border-color:var(--terra)}
+.color-btn{width:28px;height:28px;border-radius:50%;border:2.5px solid transparent;cursor:pointer;transition:all .12s ease;position:relative}
+.color-btn:hover{transform:scale(1.15)}
+.color-btn.active{border-color:var(--ink);box-shadow:0 0 0 2px rgba(0,0,0,.1)}
+.size-slider{width:80px;accent-color:var(--terra);height:4px}
 
-/* RIGHT PANEL - injection log */
-.right-panel{background:var(--card);border-left:1px solid var(--line);padding:1.2rem;overflow-y:auto;display:flex;flex-direction:column;gap:.8rem}
-.right-panel h3{font-family:'Playfair Display',serif;font-size:.95rem;font-weight:600}
-.injection-log{flex:1;overflow-y:auto}
-.inj-item{padding:.5rem;border:1px solid var(--line);border-radius:10px;margin-bottom:.4rem;font-size:.75rem;display:flex;gap:.5rem;align-items:flex-start;transition:all .15s var(--ease)}
-.inj-item:hover{border-color:var(--terra);background:rgba(168,89,66,.02)}
-.inj-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;margin-top:2px}
-.inj-details{flex:1}
-.inj-details b{display:block;font-weight:600;color:var(--ink)}
-.inj-details small{color:var(--muted)}
-.btn-save{width:100%;padding:.75rem;border:none;border-radius:12px;background:linear-gradient(135deg,var(--terra),var(--terra-d));color:#fff;font-weight:700;font-size:.88rem;cursor:pointer;transition:all .15s var(--ease);letter-spacing:.02em}
-.btn-save:hover{box-shadow:0 8px 24px rgba(168,89,66,.35);transform:translateY(-2px)}
-.btn-save:active{transform:scale(.97)}
-.btn-secondary{width:100%;padding:.6rem;border:1.5px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font-weight:600;font-size:.82rem;cursor:pointer;transition:all .12s var(--ease)}
-.btn-secondary:hover{border-color:var(--terra);color:var(--terra)}
-.product-select{width:100%;padding:.5rem;border:1.5px solid var(--line);border-radius:10px;font-size:.8rem;font-family:inherit;background:var(--card);color:var(--ink)}
-.product-select:focus{outline:none;border-color:var(--terra)}
-.units-input{width:60px;padding:.4rem;border:1.5px solid var(--line);border-radius:8px;font-size:.8rem;text-align:center;font-family:inherit}
-.units-input:focus{outline:none;border-color:var(--terra)}
+/* RIGHT PANEL */
+.right-panel{grid-row:2/4;background:var(--card);border-left:1px solid var(--border);padding:1rem;overflow-y:auto;display:flex;flex-direction:column;gap:.8rem}
+.rp-title{font-family:'Playfair Display',serif;font-size:.95rem;font-weight:600;display:flex;align-items:center;gap:.4rem}
+.rp-subtitle{font-size:.7rem;color:var(--muted);margin-top:.1rem}
+
+.template-grid{display:grid;grid-template-columns:1fr 1fr;gap:.4rem}
+.tpl-card{border:2px solid var(--border);border-radius:10px;padding:.4rem;cursor:pointer;text-align:center;transition:all .15s ease;overflow:hidden}
+.tpl-card:hover{border-color:var(--terra)}
+.tpl-card.active{border-color:var(--terra);background:var(--terra-l)}
+.tpl-card img,.tpl-card svg{width:100%;height:60px;object-fit:contain;opacity:.7}
+.tpl-card.active img,.tpl-card.active svg{opacity:1}
+.tpl-card span{display:block;font-size:.62rem;font-weight:700;margin-top:.2rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+
+.upload-btn{width:100%;padding:.6rem;border:2px dashed var(--border);border-radius:10px;background:transparent;cursor:pointer;font-size:.78rem;font-weight:600;color:var(--muted);text-align:center;transition:all .12s ease;font-family:inherit}
+.upload-btn:hover{border-color:var(--terra);color:var(--terra);background:var(--terra-l)}
+
+.inj-section{flex:1;overflow-y:auto}
+.inj-item{display:flex;align-items:center;gap:.4rem;padding:.45rem .5rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.3rem;font-size:.72rem;transition:all .12s ease}
+.inj-item:hover{border-color:var(--terra)}
+.inj-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.inj-info{flex:1}
+.inj-info b{font-weight:700;display:block;font-size:.72rem}
+.inj-info small{color:var(--muted);font-size:.65rem}
+.inj-del{border:none;background:none;color:var(--red);cursor:pointer;font-size:.75rem;opacity:.5;transition:opacity .12s}
+.inj-del:hover{opacity:1}
+
+.summary-box{padding:.6rem;background:var(--bg);border-radius:10px;font-size:.72rem}
+.summary-row{display:flex;justify-content:space-between;padding:.15rem 0}
+.summary-row b{color:var(--terra)}
+
+.product-row{display:flex;gap:.3rem;align-items:center;margin-top:.3rem}
+.product-row select{flex:1;padding:.4rem;border:1px solid var(--border);border-radius:8px;font-size:.75rem;font-family:inherit}
+.product-row input{width:50px;padding:.4rem;border:1px solid var(--border);border-radius:8px;font-size:.75rem;text-align:center;font-family:inherit}
 </style>
 </head>
 <body>
 <div class="app">
-  <!-- LEFT: Templates + Tools -->
-  <aside class="left">
-    <div>
-      <h2>Croquis Médico</h2>
-      <div class="subtitle">Marca puntos de inyección y zonas de tratamiento</div>
-    </div>
-    <div>
-      <div class="tool-section"><label>Plantilla anatómica</label></div>
-      <div class="templates">
-        <div class="tpl active" onclick="selectTemplate('face-front')" id="tpl-face-front">
-          <svg viewBox="0 0 100 130" fill="none" stroke="#8B7355" stroke-width="1.2"><ellipse cx="50" cy="55" rx="35" ry="45"/><circle cx="36" cy="48" r="4"/><circle cx="64" cy="48" r="4"/><path d="M42 72 Q50 78 58 72"/><path d="M50 55 V65"/><path d="M15 50 Q10 55 15 60"/><path d="M85 50 Q90 55 85 60"/><path d="M30 30 Q50 25 70 30" stroke-dasharray="2"/></svg>
-          <span>Cara frontal</span>
-        </div>
-        <div class="tpl" onclick="selectTemplate('face-side')" id="tpl-face-side">
-          <svg viewBox="0 0 100 130" fill="none" stroke="#8B7355" stroke-width="1.2"><path d="M60 15 Q80 20 82 50 Q83 70 70 85 Q60 95 55 100 L45 100 Q40 90 42 80 Q35 75 33 65 Q30 50 35 35 Q40 20 60 15Z"/><circle cx="65" cy="48" r="3.5"/><path d="M72 65 Q68 68 70 72"/><path d="M60 78 Q55 80 58 83"/></svg>
-          <span>Cara lateral</span>
-        </div>
-        <div class="tpl" onclick="selectTemplate('lips')" id="tpl-lips">
-          <svg viewBox="0 0 120 80" fill="none" stroke="#8B7355" stroke-width="1.2"><path d="M20 40 Q35 25 60 28 Q85 25 100 40 Q85 55 60 58 Q35 55 20 40Z"/><path d="M20 40 Q40 38 60 40 Q80 38 100 40"/><path d="M50 28 Q55 22 60 28 Q65 22 70 28"/></svg>
-          <span>Labios</span>
-        </div>
-        <div class="tpl" onclick="selectTemplate('body-front')" id="tpl-body-front">
-          <svg viewBox="0 0 80 160" fill="none" stroke="#8B7355" stroke-width="1.2"><circle cx="40" cy="18" r="12"/><path d="M28 30 Q40 32 52 30 L52 75 Q40 78 28 75Z"/><path d="M28 35 L12 65 M52 35 L68 65"/><path d="M28 75 L22 130 M52 75 L58 130"/></svg>
-          <span>Cuerpo</span>
-        </div>
-      </div>
-    </div>
-    <div>
-      <div class="tool-section"><label>Herramienta</label></div>
-      <div class="tools">
-        <button class="tbtn active" onclick="setTool('pen')" id="tool-pen" title="Pincel libre (1)">✏️</button>
-        <button class="tbtn" onclick="setTool('marker')" id="tool-marker" title="Punto de inyección (2)">💉</button>
-        <button class="tbtn" onclick="setTool('arrow')" id="tool-arrow" title="Flecha/tensión (3)">↗️</button>
-        <button class="tbtn" onclick="setTool('circle')" id="tool-circle" title="Zona circular (4)">⭕</button>
-        <button class="tbtn" onclick="setTool('text')" id="tool-text" title="Texto (5)">Aa</button>
-        <button class="tbtn" onclick="setTool('eraser')" id="tool-eraser" title="Borrador (6)">🧹</button>
-      </div>
-    </div>
-    <div>
-      <div class="tool-section"><label>Producto (color)</label></div>
-      <div class="colors">
-        <div class="cbtn active" style="background:#E74C3C" onclick="setColor('#E74C3C',this)" data-label="Botox"></div>
-        <div class="cbtn" style="background:#3498DB" onclick="setColor('#3498DB',this)" data-label="Ác. Hialurónico"></div>
-        <div class="cbtn" style="background:#27AE60" onclick="setColor('#27AE60',this)" data-label="Mesoterapia"></div>
-        <div class="cbtn" style="background:#F39C12" onclick="setColor('#F39C12',this)" data-label="Hilos"></div>
-        <div class="cbtn" style="background:#9B59B6" onclick="setColor('#9B59B6',this)" data-label="PRP"></div>
-        <div class="cbtn" style="background:#2D1B0E" onclick="setColor('#2D1B0E',this)" data-label="Nota"></div>
-      </div>
-    </div>
-    <div>
-      <div class="tool-section"><label>Grosor</label></div>
-      <div class="size-row">
-        <input type="range" min="1" max="12" value="3" id="sizeSlider" oninput="brushSize=+this.value;document.getElementById('sizeVal').textContent=this.value+'px'"/>
-        <span id="sizeVal">3px</span>
-      </div>
-    </div>
-    <div style="margin-top:auto">
-      <button class="btn-save" onclick="saveCroquis()">💾 Guardar en ficha del paciente</button>
-      <button class="btn-secondary" style="margin-top:.4rem" onclick="clearCanvas()">🗑️ Limpiar</button>
-    </div>
-  </aside>
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <span class="logo">AURA</span>
+    <div class="sep"></div>
+    <span class="patient-name" id="patientName">Croquis Medico</span>
+    <span class="patient-date" id="patientDate"></span>
+    <div class="spacer"></div>
+    <span class="zoom-display" id="zoomDisplay">100%</span>
+    <button class="top-btn" onclick="undo()" title="Deshacer (Ctrl+Z)">&#8617; Deshacer</button>
+    <button class="top-btn" onclick="redo()" title="Rehacer (Ctrl+Y)">&#8618; Rehacer</button>
+    <button class="top-btn primary" onclick="saveCroquis()">&#128190; Guardar</button>
+  </header>
 
-  <!-- CENTER: Canvas -->
-  <div class="center">
-    <div class="topbar">
-      <div class="undo-group">
-        <button onclick="undo()" title="Deshacer (Ctrl+Z)">↩</button>
-        <button onclick="redo()" title="Rehacer (Ctrl+Y)">↪</button>
-      </div>
-      <span class="patient-info" id="patientLabel">Paciente: —</span>
-      <button class="close-btn" onclick="window.close()" title="Cerrar">✕</button>
-    </div>
-    <canvas id="drawCanvas" width="650" height="750"></canvas>
-    <div class="zoom-controls">
-      <button onclick="zoomIn()" title="Zoom +">+</button>
-      <button onclick="zoomOut()" title="Zoom -">−</button>
-      <button onclick="zoomReset()" title="Ajustar">⊡</button>
-    </div>
+  <!-- CANVAS AREA -->
+  <div class="canvas-area" id="canvasArea">
+    <canvas id="drawCanvas" width="700" height="850"></canvas>
   </div>
 
-  <!-- RIGHT: Injection log -->
+  <!-- BOTTOM TOOLBAR -->
+  <div class="toolbar">
+    <div class="tool-group">
+      <button class="t-btn" onclick="setTool('pointer')" id="tool-pointer" title="Puntero (1)"><span class="icon">&#128433;</span> Puntero</button>
+      <button class="t-btn" onclick="setTool('eraser')" id="tool-eraser" title="Borrador (2)"><span class="icon">&#9671;</span> Borrador</button>
+      <button class="t-btn active" onclick="setTool('pen')" id="tool-pen" title="Dibujar (3)"><span class="icon">&#9998;</span> Dibujar</button>
+      <button class="t-btn" onclick="setTool('arrow')" id="tool-arrow" title="Flecha (4)"><span class="icon">&#8599;</span> Flecha</button>
+      <button class="t-btn" onclick="setTool('text')" id="tool-text" title="Texto (5)"><span class="icon">T</span> Texto</button>
+      <button class="t-btn" onclick="setTool('marker')" id="tool-marker" title="Marcas (6)"><span class="icon">&#128137;</span> Marcas</button>
+    </div>
+    <div class="tool-sep"></div>
+    <div class="tool-group">
+      <div class="color-btn active" style="background:#EF4444" onclick="setColor('#EF4444',this)" title="Botox"></div>
+      <div class="color-btn" style="background:#3B82F6" onclick="setColor('#3B82F6',this)" title="Ac. Hialuronico"></div>
+      <div class="color-btn" style="background:#22C55E" onclick="setColor('#22C55E',this)" title="Mesoterapia"></div>
+      <div class="color-btn" style="background:#F59E0B" onclick="setColor('#F59E0B',this)" title="Hilos"></div>
+      <div class="color-btn" style="background:#8B5CF6" onclick="setColor('#8B5CF6',this)" title="PRP"></div>
+      <div class="color-btn" style="background:#1a1a1a" onclick="setColor('#1a1a1a',this)" title="Negro"></div>
+    </div>
+    <div class="tool-sep"></div>
+    <input type="range" class="size-slider" min="1" max="16" value="3" id="sizeSlider" oninput="brushSize=+this.value" title="Grosor"/>
+    <div class="tool-sep"></div>
+    <button class="t-btn" onclick="zoomIn()">+</button>
+    <button class="t-btn" onclick="zoomOut()">&minus;</button>
+    <button class="t-btn" onclick="zoomReset()">&#8865;</button>
+  </div>
+
+  <!-- RIGHT PANEL -->
   <aside class="right-panel">
-    <h3>Registro de puntos</h3>
-    <div style="margin-bottom:.4rem">
-      <select class="product-select" id="productSelect">
-        <option value="Botox (Vistabel)">Botox (Vistabel)</option>
-        <option value="Juvederm Voluma">Juvederm Voluma</option>
-        <option value="Juvederm Volbella">Juvederm Volbella</option>
-        <option value="Restylane">Restylane</option>
-        <option value="Radiesse">Radiesse</option>
-        <option value="Belotero">Belotero</option>
-        <option value="Teosyal">Teosyal</option>
-        <option value="Otro">Otro</option>
-      </select>
-      <div style="display:flex;gap:.4rem;margin-top:.3rem;align-items:center">
-        <input type="number" class="units-input" id="unitsInput" value="2" min="0.1" step="0.1"/>
-        <span style="font-size:.75rem;color:var(--muted)">unidades por punto</span>
+    <div>
+      <div class="rp-title">&#128203; Plantillas</div>
+      <div class="rp-subtitle">Selecciona una base o sube foto del paciente</div>
+    </div>
+    <div class="template-grid">
+      <div class="tpl-card active" onclick="loadTemplate('face-front')" id="tpl-face-front">
+        <img src="/manus-storage/face-front_d9294583.png" alt="Cara frontal" onerror="this.parentElement.innerHTML='<svg viewBox=&quot;0 0 100 130&quot; fill=&quot;none&quot; stroke=&quot;#888&quot; stroke-width=&quot;1.5&quot;><ellipse cx=&quot;50&quot; cy=&quot;55&quot; rx=&quot;35&quot; ry=&quot;45&quot;/><circle cx=&quot;36&quot; cy=&quot;48&quot; r=&quot;4&quot;/><circle cx=&quot;64&quot; cy=&quot;48&quot; r=&quot;4&quot;/><path d=&quot;M42 72 Q50 78 58 72&quot;/></svg><span>Frontal</span>'"/>
+        <span>Frontal</span>
+      </div>
+      <div class="tpl-card" onclick="loadTemplate('face-side')" id="tpl-face-side">
+        <img src="/manus-storage/face-side_d5bf7861.png" alt="Cara lateral" onerror="this.parentElement.innerHTML='<svg viewBox=&quot;0 0 100 130&quot; fill=&quot;none&quot; stroke=&quot;#888&quot; stroke-width=&quot;1.5&quot;><path d=&quot;M60 15 Q80 20 82 50 Q83 70 70 85 Q60 95 55 100 L45 100 Q40 90 42 80 Q35 75 33 65 Q30 50 35 35 Q40 20 60 15Z&quot;/></svg><span>Lateral</span>'"/>
+        <span>Lateral</span>
+      </div>
+      <div class="tpl-card" onclick="loadTemplate('lips')" id="tpl-lips">
+        <img src="/manus-storage/lips-detail_06de564c.png" alt="Labios" onerror="this.parentElement.innerHTML='<svg viewBox=&quot;0 0 120 80&quot; fill=&quot;none&quot; stroke=&quot;#888&quot; stroke-width=&quot;1.5&quot;><path d=&quot;M20 40 Q35 25 60 28 Q85 25 100 40 Q85 55 60 58 Q35 55 20 40Z&quot;/></svg><span>Labios</span>'"/>
+        <span>Labios</span>
+      </div>
+      <div class="tpl-card" onclick="loadTemplate('body')" id="tpl-body">
+        <svg viewBox="0 0 80 100" fill="none" stroke="#888" stroke-width="1.5"><circle cx="40" cy="15" r="10"/><path d="M30 25 Q40 28 50 25 L52 60 Q40 62 28 60Z"/><path d="M30 28 L18 50 M50 28 L62 50"/><path d="M28 60 L24 90 M52 60 L56 90"/></svg>
+        <span>Cuerpo</span>
       </div>
     </div>
-    <div class="injection-log" id="injectionLog">
-      <div style="text-align:center;padding:2rem .5rem;color:var(--muted);font-size:.78rem">
-        Haz click con 💉 sobre la plantilla para registrar puntos de inyección
+    <button class="upload-btn" onclick="uploadPhoto()">&#128247; Subir foto del paciente</button>
+    <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhotoUpload(event)"/>
+
+    <div style="border-top:1px solid var(--border);padding-top:.6rem;margin-top:.2rem">
+      <div class="rp-title">&#128137; Producto activo</div>
+      <div class="product-row">
+        <select id="productSelect">
+          <option value="Botox (Vistabel)">Botox (Vistabel)</option>
+          <option value="Juvederm Voluma">Juvederm Voluma</option>
+          <option value="Juvederm Volbella">Juvederm Volbella</option>
+          <option value="Restylane">Restylane</option>
+          <option value="Radiesse">Radiesse</option>
+          <option value="Belotero">Belotero</option>
+          <option value="Teosyal">Teosyal</option>
+          <option value="Otro">Otro</option>
+        </select>
+        <input type="number" id="unitsInput" value="2" min="0.1" step="0.1" title="Unidades"/>
       </div>
     </div>
-    <div style="border-top:1px solid var(--line);padding-top:.6rem;font-size:.75rem;color:var(--muted)">
-      <div style="display:flex;justify-content:space-between"><span>Total puntos:</span><b id="totalPoints">0</b></div>
-      <div style="display:flex;justify-content:space-between;margin-top:.2rem"><span>Total unidades:</span><b id="totalUnits">0</b></div>
+
+    <div style="border-top:1px solid var(--border);padding-top:.6rem;margin-top:.2rem">
+      <div class="rp-title">&#128221; Registro de inyecciones</div>
+    </div>
+    <div class="inj-section" id="injectionLog">
+      <div style="text-align:center;padding:1.5rem .5rem;color:var(--muted);font-size:.75rem">
+        Usa la herramienta Marcas<br/>para registrar puntos de inyeccion
+      </div>
+    </div>
+    <div class="summary-box">
+      <div class="summary-row"><span>Total puntos</span><b id="totalPoints">0</b></div>
+      <div class="summary-row"><span>Total unidades</span><b id="totalUnits">0</b></div>
     </div>
   </aside>
 </div>
@@ -193,110 +189,190 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);over
 <script>
 const canvas=document.getElementById('drawCanvas');
 const ctx=canvas.getContext('2d');
-let currentTool='pen',currentColor='#E74C3C',brushSize=3;
+let currentTool='pen',currentColor='#EF4444',brushSize=3;
 let isDrawing=false,lastX=0,lastY=0;
 let history=[],historyIdx=-1;
-let arrowStart=null,circleStart=null;
-let injections=[]; // {x,y,color,product,units}
-let zoomLevel=1;
+let arrowStart=null;
+let injections=[];
+let currentZoom=1;
+let bgImage=null;
 
 const params=new URLSearchParams(location.search);
 const TENANT=params.get('tenant')||'';
 const LEAD=params.get('lead')||'';
 const VISIT=params.get('visit')||'';
-if(params.get('name'))document.getElementById('patientLabel').textContent='Paciente: '+decodeURIComponent(params.get('name'));
+if(params.get('name')){
+  document.getElementById('patientName').textContent=decodeURIComponent(params.get('name'));
+}
+document.getElementById('patientDate').textContent=new Date().toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'});
 
-const PRODUCT_COLORS={'#E74C3C':'Botox','#3498DB':'Ác. Hialurónico','#27AE60':'Mesoterapia','#F39C12':'Hilos','#9B59B6':'PRP','#2D1B0E':'Nota'};
+const COLOR_NAMES={'#EF4444':'Botox','#3B82F6':'Ac. Hialuronico','#22C55E':'Mesoterapia','#F59E0B':'Hilos','#8B5CF6':'PRP','#1a1a1a':'Nota'};
 
-const templates={
-  'face-front':`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 650 750" fill="none" stroke="#D4C4B5" stroke-width="1.8"><ellipse cx="325" cy="340" rx="195" ry="250"/><circle cx="250" cy="300" r="24" stroke-width="1.2"/><circle cx="400" cy="300" r="24" stroke-width="1.2"/><path d="M290 450 Q325 480 360 450" stroke-width="1.5"/><path d="M325 340 V410" stroke-width="1"/><path d="M130 320 Q115 340 130 360" stroke-width="1.5"/><path d="M520 320 Q535 340 520 360" stroke-width="1.5"/><path d="M260 210 Q325 185 390 210" stroke-width="1" stroke-dasharray="5"/><line x1="210" y1="290" x2="290" y2="290" stroke-width=".8" stroke-dasharray="3"/><line x1="360" y1="290" x2="440" y2="290" stroke-width=".8" stroke-dasharray="3"/><path d="M250 250 Q260 240 270 250" stroke-width="1"/><path d="M380 250 Q390 240 400 250" stroke-width="1"/><line x1="325" y1="100" x2="325" y2="750" stroke-width=".4" stroke-dasharray="8" opacity=".3"/><line x1="0" y1="300" x2="650" y2="300" stroke-width=".4" stroke-dasharray="8" opacity=".3"/><line x1="0" y1="450" x2="650" y2="450" stroke-width=".4" stroke-dasharray="8" opacity=".3"/><text x="325" y="730" text-anchor="middle" font-size="13" fill="#B8A898" font-family="DM Sans">CARA FRONTAL — Líneas guía de simetría</text></svg>`,
-  'face-side':`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 650 750" fill="none" stroke="#D4C4B5" stroke-width="1.8"><path d="M380 90 Q490 110 500 300 Q505 430 400 520 Q350 570 330 620 L270 620 Q250 560 260 490 Q220 460 210 390 Q185 300 220 195 Q250 110 380 90Z"/><circle cx="410" cy="290" r="20" stroke-width="1.2"/><path d="M430 395 Q415 415 420 440" stroke-width="1.5"/><path d="M370 480 Q350 490 360 510" stroke-width="1.5"/><path d="M380 90 Q360 70 380 60 Q410 65 400 90" stroke-width="1"/><line x1="0" y1="300" x2="650" y2="300" stroke-width=".4" stroke-dasharray="8" opacity=".3"/><line x1="0" y1="450" x2="650" y2="450" stroke-width=".4" stroke-dasharray="8" opacity=".3"/><text x="325" y="730" text-anchor="middle" font-size="13" fill="#B8A898" font-family="DM Sans">CARA LATERAL — Perfil derecho</text></svg>`,
-  'lips':`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 650 750" fill="none" stroke="#D4C4B5" stroke-width="1.8"><path d="M100 375 Q200 260 325 285 Q450 260 550 375 Q450 490 325 500 Q200 490 100 375Z"/><path d="M100 375 Q200 360 325 375 Q450 360 550 375" stroke-width="1.5"/><path d="M280 285 Q300 250 325 285 Q350 250 370 285" stroke-width="1.5"/><circle cx="200" cy="350" r="4" fill="#D4C4B5" opacity=".5"/><circle cx="250" cy="330" r="4" fill="#D4C4B5" opacity=".5"/><circle cx="400" cy="330" r="4" fill="#D4C4B5" opacity=".5"/><circle cx="450" cy="350" r="4" fill="#D4C4B5" opacity=".5"/><circle cx="325" cy="420" r="4" fill="#D4C4B5" opacity=".5"/><line x1="325" y1="200" x2="325" y2="600" stroke-width=".4" stroke-dasharray="5" opacity=".3"/><line x1="100" y1="375" x2="550" y2="375" stroke-width=".4" stroke-dasharray="5" opacity=".3"/><text x="160" y="310" font-size="10" fill="#B8A898" font-family="DM Sans">Arco cupido</text><text x="150" y="400" font-size="10" fill="#B8A898" font-family="DM Sans">Labio superior</text><text x="150" y="460" font-size="10" fill="#B8A898" font-family="DM Sans">Labio inferior</text><text x="325" y="730" text-anchor="middle" font-size="13" fill="#B8A898" font-family="DM Sans">LABIOS — Zonas de inyección estándar</text></svg>`,
-  'body-front':`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 650 750" fill="none" stroke="#D4C4B5" stroke-width="1.8"><circle cx="325" cy="85" r="50"/><path d="M275 135 Q325 145 375 135 L385 380 Q325 390 265 380Z" stroke-width="1.5"/><path d="M275 140 L195 300 M375 140 L455 300"/><path d="M265 380 L245 650 M385 380 L405 650"/><path d="M245 650 L230 700 L260 700 M405 650 L420 700 L390 700"/><line x1="325" y1="50" x2="325" y2="720" stroke-width=".4" stroke-dasharray="8" opacity=".3"/><text x="325" y="730" text-anchor="middle" font-size="13" fill="#B8A898" font-family="DM Sans">CUERPO FRONTAL</text></svg>`
+const TEMPLATES={
+  'face-front':'/manus-storage/face-front_d9294583.png',
+  'face-side':'/manus-storage/face-side_d5bf7861.png',
+  'lips':'/manus-storage/lips-detail_06de564c.png',
+  'body':null
 };
 
-function selectTemplate(id){
-  document.querySelectorAll('.tpl').forEach(c=>c.classList.remove('active'));
-  document.getElementById('tpl-'+id).classList.add('active');
-  injections=[];renderInjLog();
-  loadTemplate(id);
-}
+const BODY_SVG='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 850" fill="none" stroke="#ccc" stroke-width="2"><circle cx="350" cy="100" r="60"/><path d="M290 160 Q350 175 410 160 L420 450 Q350 460 280 450Z"/><path d="M290 170 L180 350 M410 170 L520 350"/><path d="M280 450 L260 750 M420 450 L440 750"/><path d="M260 750 L240 800 L280 800 M440 750 L460 800 L420 800"/></svg>';
+
 function loadTemplate(id){
-  const svg=templates[id];if(!svg)return;
-  const img=new Image();
-  const blob=new Blob([svg],{type:'image/svg+xml'});
-  const url=URL.createObjectURL(blob);
-  img.onload=function(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle='#FFFFFF';ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.drawImage(img,0,0,canvas.width,canvas.height);
-    URL.revokeObjectURL(url);saveState();
-  };img.src=url;
+  document.querySelectorAll('.tpl-card').forEach(function(c){c.classList.remove('active')});
+  var el=document.getElementById('tpl-'+id);if(el)el.classList.add('active');
+  injections=[];renderInjLog();
+  if(id==='body'){
+    var blob=new Blob([BODY_SVG],{type:'image/svg+xml'});
+    var url=URL.createObjectURL(blob);
+    var img=new Image();
+    img.onload=function(){bgImage=img;redrawCanvas();URL.revokeObjectURL(url);saveState();};
+    img.src=url;return;
+  }
+  var src=TEMPLATES[id];if(!src)return;
+  var img=new Image();img.crossOrigin='anonymous';
+  img.onload=function(){bgImage=img;redrawCanvas();saveState();};
+  img.onerror=function(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.strokeStyle='#ddd';ctx.lineWidth=2;
+    ctx.beginPath();ctx.ellipse(350,380,180,240,0,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.arc(280,340,20,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.arc(420,340,20,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(310,480);ctx.quadraticCurveTo(350,510,390,480);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(350,380);ctx.lineTo(350,440);ctx.stroke();
+    bgImage=null;saveState();
+  };
+  img.src=src;
 }
+
+function redrawCanvas(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+  if(bgImage){
+    var cw=canvas.width,ch=canvas.height;
+    var iw=bgImage.naturalWidth||bgImage.width,ih=bgImage.naturalHeight||bgImage.height;
+    var scale=Math.min(cw/iw,ch/ih)*0.92;
+    var w=iw*scale,h=ih*scale;
+    var x=(cw-w)/2,y=(ch-h)/2;
+    ctx.drawImage(bgImage,x,y,w,h);
+  }
+}
+
+function uploadPhoto(){document.getElementById('photoInput').click();}
+function handlePhotoUpload(e){
+  var file=e.target.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){
+      bgImage=img;
+      document.querySelectorAll('.tpl-card').forEach(function(c){c.classList.remove('active')});
+      injections=[];renderInjLog();
+      redrawCanvas();saveState();
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
 function setTool(t){
   currentTool=t;
-  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
-  const el=document.getElementById('tool-'+t);if(el)el.classList.add('active');
-  canvas.style.cursor=t==='eraser'?'cell':t==='text'?'text':t==='marker'?'crosshair':'crosshair';
+  document.querySelectorAll('.t-btn').forEach(function(b){b.classList.remove('active')});
+  var el=document.getElementById('tool-'+t);if(el)el.classList.add('active');
+  canvas.style.cursor=t==='pointer'?'default':t==='eraser'?'cell':t==='text'?'text':'crosshair';
 }
 function setColor(c,el){
   currentColor=c;
-  document.querySelectorAll('.cbtn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.color-btn').forEach(function(b){b.classList.remove('active')});
   if(el)el.classList.add('active');
 }
 function getPos(e){
-  const rect=canvas.getBoundingClientRect();
-  const scaleX=canvas.width/rect.width;const scaleY=canvas.height/rect.height;
-  const cx=e.touches?e.touches[0].clientX:e.clientX;
-  const cy=e.touches?e.touches[0].clientY:e.clientY;
+  var rect=canvas.getBoundingClientRect();
+  var scaleX=canvas.width/rect.width,scaleY=canvas.height/rect.height;
+  var cx=e.touches?e.touches[0].clientX:e.clientX;
+  var cy=e.touches?e.touches[0].clientY:e.clientY;
   return{x:(cx-rect.left)*scaleX,y:(cy-rect.top)*scaleY};
 }
 
 canvas.addEventListener('pointerdown',function(e){
-  e.preventDefault();const pos=getPos(e);
-  if(currentTool==='marker'){drawMarker(pos.x,pos.y);addInjection(pos.x,pos.y);saveState();return;}
-  if(currentTool==='text'){const txt=prompt('Texto:');if(txt){ctx.font='bold 15px "DM Sans"';ctx.fillStyle=currentColor;ctx.fillText(txt,pos.x,pos.y);saveState();}return;}
+  e.preventDefault();var pos=getPos(e);
+  if(currentTool==='pointer')return;
+  if(currentTool==='marker'){placeMarker(pos.x,pos.y);return;}
+  if(currentTool==='text'){var txt=prompt('Texto:');if(txt){ctx.font='bold 16px "DM Sans",sans-serif';ctx.fillStyle=currentColor;ctx.fillText(txt,pos.x,pos.y);saveState();}return;}
   if(currentTool==='arrow'){arrowStart=pos;return;}
-  if(currentTool==='circle'){circleStart=pos;return;}
   isDrawing=true;lastX=pos.x;lastY=pos.y;
 });
 canvas.addEventListener('pointermove',function(e){
-  if(!isDrawing)return;e.preventDefault();const pos=getPos(e);
-  if(currentTool==='pen'){ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(pos.x,pos.y);ctx.strokeStyle=currentColor;ctx.lineWidth=brushSize;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();}
-  else if(currentTool==='eraser'){ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(pos.x,pos.y);ctx.strokeStyle='#FFFFFF';ctx.lineWidth=brushSize*5;ctx.lineCap='round';ctx.stroke();}
+  if(!isDrawing)return;e.preventDefault();var pos=getPos(e);
+  if(currentTool==='pen'){
+    ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(pos.x,pos.y);
+    ctx.strokeStyle=currentColor;ctx.lineWidth=brushSize;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
+  }else if(currentTool==='eraser'){
+    ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(pos.x,pos.y);
+    ctx.strokeStyle='#FFFFFF';ctx.lineWidth=brushSize*6;ctx.lineCap='round';ctx.stroke();
+  }
   lastX=pos.x;lastY=pos.y;
 });
 canvas.addEventListener('pointerup',function(e){
-  if(currentTool==='arrow'&&arrowStart){const pos=getPos(e);drawArrow(arrowStart.x,arrowStart.y,pos.x,pos.y);arrowStart=null;saveState();return;}
-  if(currentTool==='circle'&&circleStart){const pos=getPos(e);const r=Math.hypot(pos.x-circleStart.x,pos.y-circleStart.y);ctx.beginPath();ctx.arc(circleStart.x,circleStart.y,r,0,Math.PI*2);ctx.strokeStyle=currentColor;ctx.lineWidth=brushSize;ctx.setLineDash([5,4]);ctx.stroke();ctx.setLineDash([]);circleStart=null;saveState();return;}
+  if(currentTool==='arrow'&&arrowStart){
+    var pos=getPos(e);drawArrow(arrowStart.x,arrowStart.y,pos.x,pos.y);arrowStart=null;saveState();return;
+  }
   if(isDrawing){isDrawing=false;saveState();}
 });
 canvas.addEventListener('pointerleave',function(){if(isDrawing){isDrawing=false;saveState();}});
 
-function drawMarker(x,y){
-  ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.fillStyle=currentColor+'22';ctx.fill();
-  ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.strokeStyle=currentColor;ctx.lineWidth=2;ctx.stroke();
-  ctx.beginPath();ctx.moveTo(x-5,y);ctx.lineTo(x+5,y);ctx.moveTo(x,y-5);ctx.lineTo(x,y+5);ctx.strokeStyle=currentColor;ctx.lineWidth=2.5;ctx.lineCap='round';ctx.stroke();
-  ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fillStyle=currentColor;ctx.fill();
+function placeMarker(x,y){
+  var product=document.getElementById('productSelect').value;
+  var units=parseFloat(document.getElementById('unitsInput').value)||0;
+  ctx.save();
+  // Outer ring with fill
+  ctx.beginPath();ctx.arc(x,y,14,0,Math.PI*2);
+  ctx.fillStyle=currentColor+'22';ctx.fill();
+  ctx.strokeStyle=currentColor;ctx.lineWidth=2.5;ctx.stroke();
+  // Inner dot
+  ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);
+  ctx.fillStyle=currentColor;ctx.fill();
+  // Cross hair
+  ctx.beginPath();ctx.moveTo(x-8,y);ctx.lineTo(x+8,y);ctx.moveTo(x,y-8);ctx.lineTo(x,y+8);
+  ctx.strokeStyle=currentColor;ctx.lineWidth=1.5;ctx.lineCap='round';ctx.stroke();
+  // Label badge with units
+  var label=units+'U';
+  ctx.font='bold 11px "DM Sans",sans-serif';
+  var tw=ctx.measureText(label).width;
+  var lx=x+16,ly=y-4;
+  // Badge background
+  ctx.beginPath();
+  ctx.moveTo(lx-2,ly-10);ctx.lineTo(lx+tw+4,ly-10);ctx.lineTo(lx+tw+4,ly+4);ctx.lineTo(lx-2,ly+4);ctx.closePath();
+  ctx.fillStyle=currentColor;ctx.fill();
+  // Badge text
+  ctx.fillStyle='#fff';
+  ctx.fillText(label,lx+1,ly);
+  ctx.restore();
+  injections.push({x:x,y:y,color:currentColor,product:product,units:units,colorName:COLOR_NAMES[currentColor]||'—'});
+  renderInjLog();saveState();
 }
+
 function drawArrow(x1,y1,x2,y2){
-  const headLen=16;const angle=Math.atan2(y2-y1,x2-x1);
-  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=currentColor;ctx.lineWidth=brushSize;ctx.lineCap='round';ctx.stroke();
-  ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-headLen*Math.cos(angle-Math.PI/6),y2-headLen*Math.sin(angle-Math.PI/6));ctx.moveTo(x2,y2);ctx.lineTo(x2-headLen*Math.cos(angle+Math.PI/6),y2-headLen*Math.sin(angle+Math.PI/6));ctx.strokeStyle=currentColor;ctx.lineWidth=brushSize;ctx.lineCap='round';ctx.stroke();
+  var headLen=18;var angle=Math.atan2(y2-y1,x2-x1);
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);
+  ctx.strokeStyle=currentColor;ctx.lineWidth=brushSize;ctx.lineCap='round';ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-headLen*Math.cos(angle-Math.PI/6),y2-headLen*Math.sin(angle-Math.PI/6));
+  ctx.lineTo(x2-headLen*Math.cos(angle+Math.PI/6),y2-headLen*Math.sin(angle+Math.PI/6));
+  ctx.closePath();ctx.fillStyle=currentColor;ctx.fill();
 }
-function addInjection(x,y){
-  const product=document.getElementById('productSelect').value;
-  const units=parseFloat(document.getElementById('unitsInput').value)||0;
-  injections.push({x,y,color:currentColor,product,units,colorName:PRODUCT_COLORS[currentColor]||'—'});
-  renderInjLog();
-}
+
 function renderInjLog(){
-  const el=document.getElementById('injectionLog');
-  if(!injections.length){el.innerHTML='<div style="text-align:center;padding:2rem .5rem;color:var(--muted);font-size:.78rem">Haz click con 💉 sobre la plantilla para registrar puntos</div>';document.getElementById('totalPoints').textContent='0';document.getElementById('totalUnits').textContent='0';return;}
-  let html='';let totalU=0;
-  injections.forEach((inj,i)=>{
+  var el=document.getElementById('injectionLog');
+  if(!injections.length){
+    el.innerHTML='<div style="text-align:center;padding:1.5rem .5rem;color:var(--muted);font-size:.75rem">Usa la herramienta Marcas<br/>para registrar puntos</div>';
+    document.getElementById('totalPoints').textContent='0';
+    document.getElementById('totalUnits').textContent='0';return;
+  }
+  var html='',totalU=0;
+  injections.forEach(function(inj,i){
     totalU+=inj.units;
-    html+=`<div class="inj-item"><div class="inj-dot" style="background:${inj.color}"></div><div class="inj-details"><b>${inj.product}</b><small>${inj.units}U · ${inj.colorName}</small></div><button onclick="removeInj(${i})" style="border:none;background:none;cursor:pointer;color:#C0392B;font-size:.8rem" title="Eliminar">✕</button></div>`;
+    html+='<div class="inj-item"><div class="inj-dot" style="background:'+inj.color+'"></div><div class="inj-info"><b>'+inj.product+'</b><small>'+inj.units+'U · '+inj.colorName+'</small></div><button class="inj-del" onclick="removeInj('+i+')" title="Eliminar">&#10005;</button></div>';
   });
   el.innerHTML=html;
   document.getElementById('totalPoints').textContent=injections.length;
@@ -307,46 +383,49 @@ function removeInj(i){injections.splice(i,1);renderInjLog();}
 function saveState(){historyIdx++;history=history.slice(0,historyIdx);history.push(canvas.toDataURL());}
 function undo(){if(historyIdx<=0)return;historyIdx--;restoreState();}
 function redo(){if(historyIdx>=history.length-1)return;historyIdx++;restoreState();}
-function restoreState(){const img=new Image();img.onload=function(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0);};img.src=history[historyIdx];}
-function clearCanvas(){if(!confirm('¿Limpiar todo?'))return;injections=[];renderInjLog();selectTemplate(document.querySelector('.tpl.active').id.replace('tpl-',''));}
+function restoreState(){var img=new Image();img.onload=function(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0);};img.src=history[historyIdx];}
 
-let currentZoom=1;
-function zoomIn(){currentZoom=Math.min(currentZoom+.15,2);applyZoom();}
-function zoomOut(){currentZoom=Math.max(currentZoom-.15,.5);applyZoom();}
+function zoomIn(){currentZoom=Math.min(currentZoom+0.15,2.5);applyZoom();}
+function zoomOut(){currentZoom=Math.max(currentZoom-0.15,0.4);applyZoom();}
 function zoomReset(){currentZoom=1;applyZoom();}
-function applyZoom(){canvas.style.transform='scale('+currentZoom+')';canvas.style.transformOrigin='center center';}
+function applyZoom(){
+  canvas.style.transform='scale('+currentZoom+')';
+  document.getElementById('zoomDisplay').textContent=Math.round(currentZoom*100)+'%';
+}
 
 function resizeCanvas(){
-  const area=document.querySelector('.center');
-  const maxW=area.clientWidth-40;const maxH=area.clientHeight-80;
-  const ratio=canvas.width/canvas.height;
-  let w=maxW,h=maxW/ratio;if(h>maxH){h=maxH;w=maxH*ratio;}
-  canvas.style.width=Math.min(w,600)+'px';canvas.style.height=Math.min(h,700)+'px';
+  var area=document.getElementById('canvasArea');
+  var maxW=area.clientWidth-40,maxH=area.clientHeight-40;
+  var ratio=canvas.width/canvas.height;
+  var w=maxW,h=maxW/ratio;
+  if(h>maxH){h=maxH;w=maxH*ratio;}
+  canvas.style.width=Math.min(w,650)+'px';
+  canvas.style.height=Math.min(h,780)+'px';
 }
 
 async function saveCroquis(){
-  const dataUrl=canvas.toDataURL('image/png');
-  const WORKER=localStorage.getItem('aura_worker')||'https://aura-chat-worker.adrian-7b9.workers.dev';
-  const TOKEN=localStorage.getItem('aura_token')||'';
+  var dataUrl=canvas.toDataURL('image/png');
+  var WORKER=localStorage.getItem('aura_worker')||'https://aura-chat-worker.adrian-7b9.workers.dev';
+  var TOKEN=localStorage.getItem('aura_token')||'';
   try{
-    const res=await fetch(WORKER+'/api/patient-media',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify({tenant_id:TENANT,lead_id:LEAD,type:'croquis',visit_id:VISIT,data_url:dataUrl,template:document.querySelector('.tpl.active').id.replace('tpl-',''),injections:JSON.stringify(injections)})});
-    const j=await res.json();
-    if(j.ok){alert('✅ Croquis guardado en la ficha del paciente');if(window.opener)window.opener.postMessage({type:'croquis-saved',lead:LEAD},'*');}
+    var res=await fetch(WORKER+'/api/patient-media',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify({tenant_id:TENANT,lead_id:LEAD,type:'croquis',visit_id:VISIT,data_url:dataUrl,template:document.querySelector('.tpl-card.active')?document.querySelector('.tpl-card.active').id.replace('tpl-',''):'photo',injections:JSON.stringify(injections)})});
+    var j=await res.json();
+    if(j.ok){alert('Croquis guardado correctamente');if(window.opener)window.opener.postMessage({type:'croquis-saved',lead:LEAD},'*');}
     else alert('Error: '+(j.error||'desconocido'));
-  }catch(e){alert('Error: '+e.message);}
+  }catch(e){alert('Error de conexion: '+e.message);}
 }
 
 document.addEventListener('keydown',function(e){
   if(e.ctrlKey&&e.key==='z'){e.preventDefault();undo();}
   if(e.ctrlKey&&e.key==='y'){e.preventDefault();redo();}
-  if(e.key==='1')setTool('pen');if(e.key==='2')setTool('marker');
-  if(e.key==='3')setTool('arrow');if(e.key==='4')setTool('circle');
-  if(e.key==='5')setTool('text');if(e.key==='6')setTool('eraser');
+  if(e.key==='1')setTool('pointer');if(e.key==='2')setTool('eraser');
+  if(e.key==='3')setTool('pen');if(e.key==='4')setTool('arrow');
+  if(e.key==='5')setTool('text');if(e.key==='6')setTool('marker');
 });
 
 window.addEventListener('resize',resizeCanvas);
 loadTemplate('face-front');
-setTimeout(resizeCanvas,100);
+setTimeout(resizeCanvas,200);
 </script>
 </body>
 </html>
