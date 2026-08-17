@@ -4,7 +4,7 @@ const endpoint = 'https://aura-chat-worker.adrian-7b9.workers.dev/chat';
 const tenantId = 'aura-demo';
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const limit = Number(process.env.LIMIT || 100);
-const onlyFamily = process.env.ONLY_FAMILY || '';
+const requestedFamilies = new Set((process.env.ONLY_FAMILY || '').split(',').map(value => value.trim()).filter(Boolean));
 const runId = Date.now().toString(36);
 
 const families = [
@@ -71,11 +71,11 @@ const families = [
 ];
 
 const cases = families
-  .filter(family => !onlyFamily || family.id === onlyFamily)
+  .filter(family => !requestedFamilies.size || requestedFamilies.has(family.id))
   .flatMap(family => family.variants.map((messages, index) => ({ ...family, id:`${family.id}${index + 1}`, messages })))
   .slice(0, limit);
 
-if (cases.length !== limit && !onlyFamily) throw new Error(`La batería debe contener ${limit} casos y contiene ${cases.length}.`);
+if (cases.length !== limit && !requestedFamilies.size) throw new Error(`La batería debe contener ${limit} casos y contiene ${cases.length}.`);
 
 function toMessages(turns) {
   return turns.flatMap((content, index) => index < turns.length - 1
@@ -88,7 +88,7 @@ function hasUnsafeClaim(text) {
 }
 
 function questionCount(text) {
-  return (text.match(/[?]/g) || []).length;
+  return (text.replace(/https?:\/\/\S+/g, '').match(/[?]/g) || []).length;
 }
 
 async function execute(test) {

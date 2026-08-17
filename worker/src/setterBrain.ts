@@ -60,16 +60,17 @@ export interface SetterAssessment {
   reason: string;
 }
 
-const MEDICAL_ESCALATION = /embaraz|lactan|amamant|alerg|contraindica|medicaci[oó]n|anticoagul|complicaci[oó]n|infecci[oó]n|dolor fuerte|urgencia|efecto secundario|reacci[oó]n|enfermedad|diagnostic|condici[oó]n.*piel|problema.*piel|hinch|desmay|dificultad.*(respirar|tragar)|cambios?.*visi[oó]n|me noto muy mal/i;
-const HUMAN_REQUEST = /hablar con (una )?(persona|doctora|doctor|recepci[oó]n|alguien)|persona real|humano|no quiero hablar con (un )?bot|me puede llamar|puede llamarme|ll[aá]mame/i;
+const MEDICAL_ESCALATION = /embaraz|lactan|amamant|dando el pecho|alerg|contraindica|medicaci[oó]n|anticoagul|complicaci[oó]n|infecci[oó]n|dolor fuerte|me duele mucho|dolor.*despu[eé]s|urgencia|efecto secundario|reacci[oó]n|enfermedad|diagnostic|condici[oó]n.*piel|problema.*piel|hinch|desmay|dificultad.*(respirar|tragar)|cambios?.*visi[oó]n|me noto muy mal/i;
+const HUMAN_REQUEST = /hablar con (una )?(persona|doctora|doctor|recepci[oó]n|alguien)|persona real|alguien real|humano|no quiero hablar con (un )?bot|me puede llamar|puede llamarme|ll[aá]mame|quiero que me atienda|atienda.*(doctora|doctor|recepci[oó]n)/i;
 const BOOKING_SIGNAL = /reserv|cita|d[oó]nde (cojo|elijo|reservo)|pasas? (el )?enlace|quiero pedir (una )?(cita|valoraci[oó]n)|quiero reservar|c[oó]mo (cojo|reservo)|agenda/i;
-const PRICE_SIGNAL = /precio|cu[aá]nto cuesta|caro|barato|presupuesto|euros|€/i;
+const PRICE_SIGNAL = /precio|cu[aá]nto cuesta|caro|barato|presupuesto|euros|€|cifra|importe/i;
 const RESULTS_SIGNAL = /foto|resultado|antes y despu[eé]s|c[oó]mo queda|ejemplo|caso/i;
-const TRUST_SIGNAL = /miedo|fiarme|conf[ií]o|seguro|seguridad|me quedar[aá] mal|artificial|doctora.*buena|experiencia|se note|se note demasiado/i;
-const TIMING_SIGNAL = /boda|evento|vacaciones|pronto|esta semana|urgente|cumple|viaje/i;
-const THINKING_SIGNAL = /me lo pienso|pensarlo|m[aá]s adelante|no s[eé]|dudas|consultarlo/i;
-const OFFER_SIGNAL = /oferta|promoci[oó]n|descuento|rebaja|financiaci[oó]n/i;
-const PRIVACY_SIGNAL = /qu[eé].*(cont[oó]|dijo|pag[oó])|datos.*(amiga|paciente|persona)|cu[aá]nto.*(pag[oó]|cobr)/i;
+const TRUST_SIGNAL = /miedo|fiarme|conf[ií]o|seguro|seguridad|me quedar[aá] mal|artificial|doctora.*buena|experiencia|se note|se note demasiado|no reconocerme|no perder|cambie mi cara|arrepent/i;
+const TIMING_SIGNAL = /boda|evento|vacaciones|pronto|esta semana|urgente|cumple|viaje|sesi[oó]n.*fotos|me caso/i;
+const THINKING_SIGNAL = /me lo pienso|me lo tengo que pensar|pensarlo|m[aá]s adelante|no s[eé]|dudas|consultarlo/i;
+const OFFER_SIGNAL = /oferta|promoci[oó]n|descuento|rebaja|financiaci[oó]n|pago a plazos/i;
+const PRIVACY_SIGNAL = /qu[eé].*(cont[oó]|dijo|pag[oó])|datos.*(amiga|paciente|persona)|cu[aá]nto.*(pag[oó]|cobr)|tratamiento.*(amiga|hermana|compañera|otra persona)|historial.*otra/i;
+const COMPARISON_SIGNAL = /compar|elegir.*cl[ií]nica|otra cl[ií]nica|otra propuesta|qui[eé]n es mejor/i;
 const TIME_CONSTRAINT_SIGNAL = /no tengo tiempo|trabajo todo el d[ií]a|[uú]ltima hora|encajar.*agenda|no me quite mucho tiempo/i;
 const FIRST_TIME_SIGNAL = /primera vez|nunca me he|no tengo ni idea|empezar/i;
 
@@ -101,6 +102,11 @@ export function assessSetterConversation(messages: Array<{ role?: string; conten
   if (has(latest, RESULTS_SIGNAL)) {
     flags.push('busca_resultados');
     return { stage:'informar', nextAction:'compartir_prueba_social', flags, needsHuman:false, resourceType:'foto', reason:'El lead necesita evidencia visual o expectativas realistas.' };
+  }
+
+  if (has(latest, COMPARISON_SIGNAL)) {
+    flags.push('comparacion');
+    return { stage:'descubrimiento', nextAction:'preguntar_duda', flags, needsHuman:false, reason:'Hay que entender el criterio de comparación sin descalificar a terceros.' };
   }
 
   if (has(latest, TRUST_SIGNAL)) {
