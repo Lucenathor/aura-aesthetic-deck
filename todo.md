@@ -5,3 +5,5 @@
 - [x] Garantizar el flujo de foto real del paciente como fondo editable para anotaciones clínicas.
 - [x] Verificar en escritorio la experiencia de marcado, carga de plantillas y uso de foto como fondo editable.
 - [ ] Validar en iPad y móvil la experiencia de marcado, guardado y carga de plantillas.
+- [ ] Generar plantillas clínicas masculinas realistas: frontal, lateral y corporal.
+- [ ] Seleccionar automáticamente la familia de plantilla según el sexo registrado del paciente y permitir cambiarla manualmente.

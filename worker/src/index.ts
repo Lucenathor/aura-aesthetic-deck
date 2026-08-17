@@ -4479,7 +4479,7 @@ export default {
         if (sess.exp < Date.now()) { await env.AURA_IMG.delete('staff_session_'+staffToken); return json({ error:'Sesión expirada' }, 401); }
         const dateParam = url.searchParams.get('date') || new Date().toISOString().slice(0,10);
         const weekEnd = new Date(new Date(dateParam).getTime()+7*86400000).toISOString().slice(0,10);
-        const appts:any = await env.aura_db.prepare("SELECT a.*, l.name as patient_name, l.phone as patient_phone, l.email as patient_email FROM appointments a LEFT JOIN leads l ON a.lead_id=l.id WHERE a.tenant_id=? AND a.professional_id=? AND a.date_iso BETWEEN ? AND ? AND a.status NOT IN ('cancelled') ORDER BY a.date_iso").bind(sess.tenant_id, sess.pro_id, dateParam, weekEnd).all();
+        const appts:any = await env.aura_db.prepare("SELECT a.*, l.name as patient_name, l.phone as patient_phone, l.email as patient_email, l.gender as patient_gender FROM appointments a LEFT JOIN leads l ON a.lead_id=l.id WHERE a.tenant_id=? AND a.professional_id=? AND a.date_iso BETWEEN ? AND ? AND a.status NOT IN ('cancelled') ORDER BY a.date_iso").bind(sess.tenant_id, sess.pro_id, dateParam, weekEnd).all();
         // Métricas del mes
         const monthStart = dateParam.slice(0,7)+'-01';
         const monthEnd = dateParam.slice(0,7)+'-31';

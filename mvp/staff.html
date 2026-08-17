@@ -150,7 +150,7 @@ function renderAgenda(){
       if(statusCls==='arrived')html+=`<button class="btn-complete" onclick="toggleComplete('${a.id}','${(a.treatment||'').replace(/'/g,"\\'")}','${a.lead_id||''}')">✓ Marcar completado</button>`;
       if(a.lead_id)html+=`<button class="btn-patient" onclick="openPatient('${a.lead_id}')">Ver paciente</button>`;
       if(a.patient_phone)html+=`<button class="btn-patient" onclick="window.open('tel:${a.patient_phone}')">📞</button>`;
-      if(a.lead_id)html+=`<button class="btn-patient" onclick="openCroquis('${a.lead_id}','${(a.patient_name||'').replace(/'/g,"\\'")}','${a.id}')" style="background:linear-gradient(135deg,#7C3AED,#6D28D9);color:#fff;border-color:#7C3AED">🖊️ Croquis</button>`;
+      if(a.lead_id)html+=`<button class="btn-patient" onclick="openCroquis('${a.lead_id}','${(a.patient_name||'').replace(/'/g,"\\'")}','${a.id}','${(a.patient_gender||'').replace(/'/g,"\\'")}')" style="background:linear-gradient(135deg,#7C3AED,#6D28D9);color:#fff;border-color:#7C3AED">🖊️ Croquis</button>`;
       html+=`</div>`;
       html+=`<div id="cf_${a.id}" style="display:none"></div>`;
       html+=`</div>`;
@@ -216,8 +216,8 @@ function renderIcal(){
   document.getElementById('contentArea').innerHTML=html;
 }
 function copyIcal(){navigator.clipboard.writeText(agendaData.ical_url);alert('URL copiada')}
-function openCroquis(leadId,name,visitId){
-  const url='/croquis?tenant='+encodeURIComponent(TENANT)+'&lead='+encodeURIComponent(leadId)+'&name='+encodeURIComponent(name)+'&visit='+encodeURIComponent(visitId);
+function openCroquis(leadId,name,visitId,gender){
+  const url='/croquis?tenant='+encodeURIComponent(TENANT)+'&lead='+encodeURIComponent(leadId)+'&name='+encodeURIComponent(name)+'&visit='+encodeURIComponent(visitId)+'&gender='+encodeURIComponent(gender||'');
   window.open(url,'croquis','width=900,height=750,resizable=yes');
 }
 function openPatient(leadId){
