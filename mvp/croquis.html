@@ -296,7 +296,9 @@ function redrawCanvas(){
     var scale=Math.min(cw/iw,ch/ih)*0.92;
     var w=iw*scale,h=ih*scale;
     var x=(cw-w)/2,y=(ch-h)/2;
-    ctx.drawImage(bgImage,x,y,w,h);
+    if(activeTemplate==='face-side-left'){
+      ctx.save();ctx.translate(cw,0);ctx.scale(-1,1);ctx.drawImage(bgImage,x,y,w,h);ctx.restore();
+    }else ctx.drawImage(bgImage,x,y,w,h);
   }
 }
 
