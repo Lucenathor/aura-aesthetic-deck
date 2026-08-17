@@ -56,6 +56,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);over
 .tpl-card.active{border-color:var(--terra);background:var(--terra-l)}
 .tpl-card img,.tpl-card svg{width:100%;height:60px;object-fit:contain;opacity:.7}
 .tpl-card.active img,.tpl-card.active svg{opacity:1}
+.tpl-card img.mirror{transform:scaleX(-1)}
+.tpl-card#tpl-body{grid-column:span 2}
 .tpl-card span{display:block;font-size:.62rem;font-weight:700;margin-top:.2rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 .template-family{display:grid;grid-template-columns:1fr 1fr;gap:.3rem;padding:.25rem;background:var(--bg);border-radius:9px}
 .family-btn{border:0;background:transparent;border-radius:7px;padding:.38rem .25rem;color:var(--muted);font:700 .71rem 'DM Sans',sans-serif;cursor:pointer;transition:all .14s ease}
@@ -148,9 +150,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);over
         <img id="tpl-face-front-img" src="/assets/face-front.png" alt="Plantilla facial frontal realista"/>
         <span>Frontal</span>
       </div>
-      <div class="tpl-card" onclick="loadTemplate('face-side')" id="tpl-face-side">
-        <img id="tpl-face-side-img" src="/assets/face-side-ai.png" alt="Plantilla facial lateral realista"/>
-        <span>Lateral</span>
+      <div class="tpl-card" onclick="loadTemplate('face-side-right')" id="tpl-face-side-right">
+        <img id="tpl-face-side-right-img" src="/assets/face-side-ai.png" alt="Plantilla facial lateral derecha realista"/>
+        <span>Lateral der.</span>
+      </div>
+      <div class="tpl-card" onclick="loadTemplate('face-side-left')" id="tpl-face-side-left">
+        <img id="tpl-face-side-left-img" class="mirror" src="/assets/face-side-ai.png" alt="Plantilla facial lateral izquierda realista"/>
+        <span>Lateral izq.</span>
       </div>
       <div class="tpl-card" onclick="loadTemplate('lips')" id="tpl-lips">
         <img id="tpl-lips-img" src="/assets/lips-detail-ai.png" alt="Plantilla de labios realista"/>
@@ -223,13 +229,15 @@ const COLOR_NAMES={'#EF4444':'Botox','#3B82F6':'Ac. Hialuronico','#22C55E':'Meso
 const TEMPLATE_SETS={
   female:{
     'face-front':'/assets/face-front.png',
-    'face-side':'/assets/face-side-ai.png',
+    'face-side-right':'/assets/face-side-ai.png',
+    'face-side-left':'/assets/face-side-ai.png',
     'lips':'/assets/lips-detail-ai.png',
     'body':'/assets/body-front-ai.png'
   },
   male:{
     'face-front':'/assets/male-face-front-ai.png',
-    'face-side':'/assets/male-face-side-ai.png',
+    'face-side-right':'/assets/male-face-side-ai.png',
+    'face-side-left':'/assets/male-face-side-ai.png',
     'lips':'/assets/male-lips-detail-ai.png',
     'body':'/assets/male-body-front-ai.png'
   }
@@ -246,7 +254,7 @@ function refreshTemplateFamilyUI(){
   document.getElementById('family-male').classList.toggle('active',templateFamily==='male');
   var known=isMaleGender(RAW_GENDER)||isFemaleGender(RAW_GENDER);
   document.getElementById('familyNote').textContent=templateFamilyChangedManually?'Plantilla '+label+' seleccionada manualmente':(known?'Plantilla '+label+' seleccionada automáticamente':'Selecciona la anatomía de referencia');
-  ['face-front','face-side','lips','body'].forEach(function(id){
+  ['face-front','face-side-right','face-side-left','lips','body'].forEach(function(id){
     var img=document.getElementById('tpl-'+id+'-img');
     if(img){img.src=TEMPLATE_SETS[templateFamily][id];img.alt='Plantilla '+label+' '+id+' realista';}
   });

@@ -10,3 +10,5 @@
 - [x] Generar e integrar una plantilla clínica masculina de labios, mentón y mandíbula para completar la familia anatómica masculina.
 - [x] Diagnosticar y corregir el error al guardar el croquis en la ficha del paciente.
 - [x] Añadir paneo por arrastre tras ampliar el canvas, con soporte de ratón y gestos táctiles.
+- [ ] Generar e integrar perfiles izquierdo y derecho coherentes para las anatomías femenina y masculina.
+- [ ] Conservar en la ficha el metadato exacto de lateral izquierdo o derecho al guardar el croquis.
