@@ -70,6 +70,31 @@ if (lines < 500) {
   console.log(`  ✅ ${lines} líneas (OK)`);
 }
 
+// ===== BLINDAJE DE EMBUDOS =====
+console.log('\n✓ Verificando _redirects (embudos de clientes)...');
+const REDIRECTS = resolve(ROOT, 'mvp/_redirects');
+if (!existsSync(REDIRECTS)) {
+  console.error('  ❌ FATAL: mvp/_redirects NO EXISTE — los embudos no funcionarán');
+  errors++;
+} else {
+  const rContent = readFileSync(REDIRECTS, 'utf-8');
+  // La regla DEBE ser /c/* → /_t/ (con 200, SIN index.html)
+  if (!rContent.includes('/c/*')) {
+    console.error('  ❌ FALTA regla /c/* en _redirects — los embudos no se servirán');
+    errors++;
+  } else if (rContent.includes('/c/*  /_t/index.html')) {
+    console.error('  ❌ REGLA INCORRECTA: /c/* apunta a /_t/index.html');
+    console.error('     Cloudflare Pages redirige index.html con 308, rompiendo el rewrite.');
+    console.error('     DEBE ser: /c/*  /_t/  200');
+    errors++;
+  } else if (rContent.includes('/c/*  /_t/  200') || rContent.includes('/c/*  /_t/ 200')) {
+    console.log('  ✅ Regla de embudos correcta: /c/* → /_t/ (200)');
+  } else {
+    console.error('  ⚠️  Regla /c/* existe pero el destino no es /_t/ — verificar manualmente');
+    errors++;
+  }
+}
+
 console.log('');
 if (errors > 0) {
   console.error(`\n🚫 DESPLIEGUE BLOQUEADO — ${errors} error(es) detectado(s)`);

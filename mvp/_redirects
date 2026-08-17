@@ -1,2 +1,7 @@
 /c/*  /_t/  200
+# ⚠️ BLINDADO: NO CAMBIAR la línea anterior.
+# /c/* DEBE apuntar a /_t/ (sin index.html) porque Cloudflare Pages
+# redirige /x/index.html → /x/ con 308, rompiendo el rewrite 200.
+# Si se cambia, los embudos de los clientes mostrarán la landing de AURA.
+# Test automático: scripts/post-deploy-check.mjs verifica esto.
 /reservar/*  /reservar  200

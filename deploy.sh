@@ -85,5 +85,22 @@ git push origin main --force 2>/dev/null || true
 echo ""
 
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${GREEN}  ✅ DESPLIEGUE COMPLETADO — auracrm.co actualizado${NC}"
+echo -e "${GREEN}  ⏳ Verificando rutas críticas post-deploy...${NC}"
+echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+
+# PASO 6: Post-deploy check (embudos, landing, dashboard)
+sleep 5  # Esperar propagación de Cloudflare
+echo -e "${GREEN}[POST-DEPLOY]${NC} Verificando que los embudos de clientes funcionan..."
+node scripts/post-deploy-check.mjs
+if [ $? -ne 0 ]; then
+  echo -e "${RED}🚨 POST-DEPLOY FALLIDO — Los embudos NO funcionan correctamente.${NC}"
+  echo -e "${RED}   Revisa mvp/_redirects y mvp/_t/index.html${NC}"
+  echo -e "${RED}   La regla DEBE ser: /c/*  /_t/  200${NC}"
+  exit 1
+fi
+
+echo ""
+echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${GREEN}  ✅ DESPLIEGUE COMPLETADO Y VERIFICADO — auracrm.co OK${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
