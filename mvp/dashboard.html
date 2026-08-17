@@ -10,29 +10,29 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png"/><link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png"/><link rel="icon" href="/favicon.ico"/><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet"/>
 <style>
 :root{
-  --bg:#F8F9FC;--bg2:#F1F3F8;--card:#FFFFFF;--ink:#1A1D26;--ink-soft:#4A5568;--muted:#8492A6;
-  --terra:#7C3AED;--terra-d:#6D28D9;--champ:#F59E0B;--mint:#10B981;--line:#E5E7EB;
-  --accent:#7C3AED;--accent-2:#6D28D9;
-  --hot:#EF4444;--warm:#F59E0B;--cold:#8492A6;
+  --bg:#FDF8F4;--bg2:#F9F1EB;--card:#FFFFFF;--ink:#2D1B0E;--ink-soft:#5C4033;--muted:#8B7355;
+  --terra:#A85942;--terra-d:#8B4533;--champ:#D4A574;--mint:#1f8c69;--line:#E8DDD4;
+  --accent:#A85942;--accent-2:#8B4533;
+  --hot:#C0392B;--warm:#D4A574;--cold:#8B7355;
   --ease:cubic-bezier(.2,.8,.2,1);
   --ease-out:cubic-bezier(0.23,1,0.32,1);
-  --shadow-sm:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
-  --shadow-md:0 4px 6px -1px rgba(0,0,0,.07),0 2px 4px -1px rgba(0,0,0,.04);
-  --shadow-lg:0 10px 25px -5px rgba(0,0,0,.08),0 8px 10px -6px rgba(0,0,0,.04);
-  --shadow-glow:0 0 20px rgba(124,58,237,.15);
+  --shadow-sm:0 1px 3px rgba(45,27,14,.06),0 1px 2px rgba(45,27,14,.04);
+  --shadow-md:0 4px 6px -1px rgba(45,27,14,.07),0 2px 4px -1px rgba(45,27,14,.04);
+  --shadow-lg:0 10px 25px -5px rgba(45,27,14,.08),0 8px 10px -6px rgba(45,27,14,.04);
+  --shadow-glow:0 0 20px rgba(168,89,66,.15);
   --radius:14px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden}
-::selection{background:rgba(124,58,237,.15);color:var(--ink)}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::selection{background:rgba(168,89,66,.15);color:var(--ink)}
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:rgba(124,58,237,.2);border-radius:99px}
 ::-webkit-scrollbar-thumb:hover{background:rgba(124,58,237,.4)}
-.serif{font-family:'Fraunces',serif}
+.serif{font-family:'Playfair Display',serif}
 a{color:inherit;text-decoration:none}
 
 /* layout */
@@ -44,10 +44,10 @@ a{color:inherit;text-decoration:none}
 .side.collapsed .nav-item .ic{margin:0}
 .side.collapsed .brand{justify-content:center;padding:.3rem 0 1rem}
 .brand{display:flex;align-items:center;gap:.6rem;padding:.3rem .5rem 1.4rem}
-.brand .lo{width:34px;height:34px;border-radius:50%;background:#fff;border:1.5px solid var(--champ);display:grid;place-items:center;font-family:'Fraunces',serif;font-style:italic;font-weight:600;color:var(--terra-d);flex:none}
-.brand b{font-family:'Fraunces',serif;font-weight:600;font-size:1.25rem}
+.brand .lo{width:34px;height:34px;border-radius:50%;background:#fff;border:1.5px solid var(--champ);display:grid;place-items:center;font-family:'Playfair Display',serif;font-style:italic;font-weight:600;color:var(--terra-d);flex:none}
+.brand b{font-family:'Playfair Display',serif;font-weight:600;font-size:1.25rem}
 .brand-wm{text-align:center;padding:.6rem .5rem 1.5rem}
-.brand-wm .wm{font-family:'Fraunces',serif;font-weight:500;font-size:1.65rem;letter-spacing:.2em;color:var(--terra-d)}
+.brand-wm .wm{font-family:'Playfair Display',serif;font-weight:500;font-size:1.65rem;letter-spacing:.2em;color:var(--terra-d)}
 .brand-wm .wtag{font-size:.55rem;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);margin-top:.15rem}
 .brand-wm .wln{width:30px;height:1px;background:var(--champ);margin:.6rem auto 0}
 @media(max-width:860px){.brand-wm{width:100%;padding:.2rem .5rem .5rem}.brand-wm .wln{display:none}}
@@ -60,7 +60,7 @@ a{color:inherit;text-decoration:none}
 .side-foot{margin-top:auto;padding:.8rem;border-radius:12px;background:rgba(124,58,237,.05);font-size:.78rem;color:var(--ink-soft)}
 .main{flex:1;min-width:0;padding:1.8rem 2rem 4rem;transition:margin-left .28s var(--ease-out)}
 .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.6rem;flex-wrap:wrap;gap:1rem}
-.top h1{font-family:'Fraunces',serif;font-weight:600;font-size:2rem;letter-spacing:-.01em}
+.top h1{font-family:'Playfair Display',serif;font-weight:600;font-size:2rem;letter-spacing:-.01em}
 .top .sub2{color:var(--muted);font-size:.9rem;margin-top:.25rem;max-width:680px;line-height:1.5}
 .actions{display:flex;gap:.6rem}
 .btn{padding:.6rem 1rem;border-radius:11px;border:1px solid var(--line);background:#fff;color:var(--ink);font-weight:600;font-size:.86rem;cursor:pointer;transition:all .16s var(--ease)}
@@ -160,7 +160,7 @@ a{color:inherit;text-decoration:none}
 .kpi{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:1.1rem 1.2rem;box-shadow:0 8px 24px -18px rgba(42,33,28,.25);position:relative;overflow:hidden}
 .kpi::after{content:"";position:absolute;top:0;right:0;width:60px;height:60px;border-radius:50%;background:radial-gradient(circle,rgba(200,116,90,.12),transparent 70%)}
 .kpi small{color:var(--muted);font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
-.kpi b{font-family:'Fraunces',serif;font-size:2.1rem;font-weight:600;display:block;margin-top:.3rem;line-height:1}
+.kpi b{font-family:'Playfair Display',serif;font-size:2.1rem;font-weight:600;display:block;margin-top:.3rem;line-height:1}
 .kpi .delta{font-size:.74rem;color:#1f8c69;font-weight:600;margin-top:.3rem;display:inline-block}
 
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:1.3rem;box-shadow:var(--shadow-sm);margin-bottom:1.2rem;transition:box-shadow .25s var(--ease),transform .25s var(--ease),border-color .25s var(--ease);animation:cardIn .4s var(--ease-out) both}
@@ -182,7 +182,7 @@ table tbody tr:hover{background:rgba(124,58,237,.03)}
 .search-global .sg-kbd{font-size:.65rem;background:var(--card);border:1px solid var(--line);border-radius:5px;padding:.15rem .4rem;color:var(--muted);font-weight:600}
 .collapse-btn{position:absolute;top:50%;right:-12px;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;background:var(--card);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.7rem;color:var(--muted);transition:all .2s var(--ease);box-shadow:var(--shadow-sm);z-index:51}
 .collapse-btn:hover{background:var(--terra);color:#fff;border-color:var(--terra)}
-.card h3{font-family:'Fraunces',serif;font-weight:600;font-size:1.2rem;margin-bottom:.2rem}
+.card h3{font-family:'Playfair Display',serif;font-weight:600;font-size:1.2rem;margin-bottom:.2rem}
 .card .sub{color:var(--muted);font-size:.84rem;margin-bottom:.4rem}
 
 /* search */
@@ -205,7 +205,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 .tag.booked{background:rgba(164,229,205,.3);color:#1f8c69}
 .tag.whatsapp{background:rgba(37,211,102,.15);color:#1f8c69}
 .empty{text-align:center;padding:2.5rem 1rem;color:var(--muted)}
-.empty b{display:block;font-family:'Fraunces',serif;font-size:1.1rem;color:var(--ink);margin-bottom:.4rem}
+.empty b{display:block;font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--ink);margin-bottom:.4rem}
 
 /* calendar config */
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:.5rem;margin:.8rem 0}
@@ -375,7 +375,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 @keyframes cwCheck{0%{transform:scale(0) rotate(-30deg)}60%{transform:scale(1.2) rotate(8deg)}to{transform:scale(1) rotate(0)}}
 #cashWin .cw-check svg{width:40px;height:40px;stroke:#fff;stroke-width:4;fill:none;stroke-dasharray:48;stroke-dashoffset:48;animation:cwDraw .4s ease-out .5s forwards}
 @keyframes cwDraw{to{stroke-dashoffset:0}}
-#cashWin .cw-amt{font-family:'Fraunces',serif;font-weight:600;font-size:2.6rem;color:#1f8c69;line-height:1;margin:.1rem 0}
+#cashWin .cw-amt{font-family:'Playfair Display',serif;font-weight:600;font-size:2.6rem;color:#1f8c69;line-height:1;margin:.1rem 0}
 #cashWin .cw-lbl{font-size:.95rem;color:var(--ink);font-weight:700;margin-top:.3rem}
 #cashWin .cw-sub{font-size:.78rem;color:var(--muted);margin-top:.25rem}
 .cw-confetti{position:absolute;top:48%;left:50%;width:11px;height:14px;border-radius:2px;opacity:0;will-change:transform}
@@ -437,7 +437,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 .drawer{position:fixed;top:0;right:0;width:min(440px,92vw);height:100vh;background:var(--card);box-shadow:-20px 0 60px -30px rgba(42,33,28,.4);transform:translateX(105%);transition:transform .35s var(--ease),visibility .35s;z-index:50;padding:1.6rem;overflow-y:auto;visibility:hidden}
 .drawer.on{transform:none;visibility:visible}
 .drawer .x{position:absolute;top:1.2rem;right:1.2rem;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:1rem}
-.drawer h2{font-family:'Fraunces',serif;font-weight:600;font-size:1.5rem}
+.drawer h2{font-family:'Playfair Display',serif;font-weight:600;font-size:1.5rem}
 .drawer .dmeta{color:var(--muted);font-size:.85rem;margin-top:.2rem}
 .meta{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-top:1.2rem}
 .meta>div{background:var(--bg);border-radius:11px;padding:.7rem .8rem}
@@ -502,7 +502,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
   .kcol-body{max-height:calc(100vh - 300px)}
 }
 .mobile-head{display:none;align-items:center;justify-content:space-between;padding:.9rem .2rem 1rem;border-bottom:1px solid var(--line);margin-bottom:1rem}
-.mobile-head .wm{font-family:'Fraunces',serif;font-weight:500;font-size:1.5rem;letter-spacing:.2em;color:var(--terra-d)}
+.mobile-head .wm{font-family:'Playfair Display',serif;font-weight:500;font-size:1.5rem;letter-spacing:.2em;color:var(--terra-d)}
 .mobile-head .bell{position:relative;font-size:1.2rem;color:var(--ink-soft)}
 .mobile-head .bell span{position:absolute;top:-4px;right:-4px;background:var(--terra);color:#fff;font-size:.6rem;width:15px;height:15px;border-radius:50%;display:grid;place-items:center}
 .client-local-clock{margin-top:.58rem;padding:.5rem .58rem;border-radius:9px;background:rgba(255,255,255,.38);border:1px solid rgba(123,77,64,.12);font-size:.68rem;line-height:1.35;color:var(--ink-soft)}
@@ -568,14 +568,14 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
       </div>
       <!-- Mi día: centro de mando -->
       <div id="miDia" style="display:none;background:linear-gradient(135deg,var(--terra),var(--terra-d));color:#fff;border-radius:16px;padding:1rem 1.2rem;margin-bottom:1rem;align-items:center;gap:1rem;flex-wrap:wrap;box-shadow:0 12px 30px -14px rgba(176,93,68,.6)">
-        <div style="flex:1;min-width:180px"><div style="font-size:.78rem;opacity:.85">Tu día de un vistazo</div><div id="miDiaTitle" style="font-size:1.15rem;font-weight:800;font-family:'Fraunces',serif">Cargando…</div></div>
+        <div style="flex:1;min-width:180px"><div style="font-size:.78rem;opacity:.85">Tu día de un vistazo</div><div id="miDiaTitle" style="font-size:1.15rem;font-weight:800;font-family:'Playfair Display',serif">Cargando…</div></div>
         <div id="miDiaChips" style="display:flex;gap:.5rem;flex-wrap:wrap"></div>
       </div>
       <!-- checklist de activación (cuenta nueva) -->
       <div class="card" id="setupCard" style="display:none;background:linear-gradient(135deg,#fff,#FBF1E8);border:1px solid var(--champ)">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap">
           <div><h3>Pon en marcha tu clínica</h3><p class="sub">Completa estos pasos para empezar a recibir pacientes.</p></div>
-          <div style="font-family:'Fraunces',serif;font-size:1.6rem;color:var(--terra-d)" id="setupPct">0%</div>
+          <div style="font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--terra-d)" id="setupPct">0%</div>
         </div>
         <div id="setupList" style="margin-top:.6rem"></div>
       </div>
@@ -621,7 +621,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
       <div class="card" id="recoveredCard" style="background:linear-gradient(135deg,#1f9d63,#0f6b3f);color:#fff;border:0;position:relative;overflow:hidden">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
           <div><div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.7)">Recuperado gracias a AURA</div>
-            <div style="display:flex;align-items:baseline;gap:.5rem;margin-top:.2rem"><span id="recMain" style="font-family:'Fraunces',serif;font-size:2.5rem;font-weight:600">—</span><span id="recSub" style="font-size:.82rem;color:rgba(255,255,255,.75)">este mes</span></div></div>
+            <div style="display:flex;align-items:baseline;gap:.5rem;margin-top:.2rem"><span id="recMain" style="font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:600">—</span><span id="recSub" style="font-size:.82rem;color:rgba(255,255,255,.75)">este mes</span></div></div>
           <div style="display:flex;gap:.3rem" id="recTabs">
             <button class="pbtn on" data-p="month" onclick="setRecPeriod('month',this)" style="background:rgba(255,255,255,.16);color:#fff;border-color:transparent">Mes</button>
             <button class="pbtn" data-p="year" onclick="setRecPeriod('year',this)" style="background:transparent;color:#fff;border-color:rgba(255,255,255,.3)">Año</button>
@@ -762,9 +762,9 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 
       <!-- KPIs del dia -->
       <div class="grid4" style="display:grid;grid-template-columns:repeat(4,1fr);gap:.9rem;margin-bottom:1rem">
-        <div class="card" style="padding:1rem"><div class="sub" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Ingresos del día</div><div id="cajaTotal" style="font-family:'Fraunces',serif;font-size:2rem;font-weight:600;color:var(--ink)">—</div><div id="cajaVsPrev" style="font-size:.76rem;color:var(--muted)"></div></div>
-        <div class="card" style="padding:1rem"><div class="sub" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Tickets</div><div id="cajaTickets" style="font-family:'Fraunces',serif;font-size:2rem;font-weight:600;color:var(--ink)">—</div><div class="sub" style="font-size:.76rem">cobros hoy</div></div>
-        <div class="card" style="padding:1rem"><div class="sub" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Margen estimado</div><div id="cajaMargin" style="font-family:'Fraunces',serif;font-size:2rem;font-weight:600;color:#1f8c69">—</div><div class="sub" style="font-size:.76rem">ingresos − coste producto</div></div>
+        <div class="card" style="padding:1rem"><div class="sub" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Ingresos del día</div><div id="cajaTotal" style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:var(--ink)">—</div><div id="cajaVsPrev" style="font-size:.76rem;color:var(--muted)"></div></div>
+        <div class="card" style="padding:1rem"><div class="sub" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Tickets</div><div id="cajaTickets" style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:var(--ink)">—</div><div class="sub" style="font-size:.76rem">cobros hoy</div></div>
+        <div class="card" style="padding:1rem"><div class="sub" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Margen estimado</div><div id="cajaMargin" style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:#1f8c69">—</div><div class="sub" style="font-size:.76rem">ingresos − coste producto</div></div>
         <div class="card" style="padding:1rem"><div class="sub" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Por método</div><div id="cajaMethods" style="font-size:.82rem;margin-top:.3rem;line-height:1.5">—</div></div>
       </div>
 
@@ -793,7 +793,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
           </div>
         </div>
         <div style="display:flex;align-items:baseline;gap:.6rem;margin:1rem 0 .2rem">
-          <div id="profitMain" style="font-family:'Fraunces',serif;font-size:2.6rem;font-weight:600;color:#fff">—</div>
+          <div id="profitMain" style="font-family:'Playfair Display',serif;font-size:2.6rem;font-weight:600;color:#fff">—</div>
           <div id="profitLabel" style="font-size:.8rem;color:rgba(255,255,255,.55)">beneficio neto</div>
         </div>
         <div id="profitBreakdown" style="margin-top:.8rem;font-size:.86rem"></div>
@@ -968,7 +968,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
         <h3>Saldo de SMS</h3>
         <p class="sub">Cada confirmación y recordatorio que enviamos a tus pacientes gasta 1 SMS. Empiezas con 100 gratis.</p>
         <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin:.6rem 0">
-          <div style="font-family:'Fraunces',serif;font-size:2.4rem;font-weight:600;color:var(--ink)" id="smsCredits">—</div>
+          <div style="font-family:'Playfair Display',serif;font-size:2.4rem;font-weight:600;color:var(--ink)" id="smsCredits">—</div>
           <div style="font-size:.85rem;color:var(--muted)">SMS disponibles</div>
         </div>
         <div id="smsWarn" style="display:none;font-size:.85rem;color:#b45309;background:#fef3c7;padding:.6rem .8rem;border-radius:9px;margin-bottom:.7rem"></div>
@@ -1304,8 +1304,8 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
   <div id="clSummary" style="margin-top:.8rem"></div>
   <!-- TARJETA RESUMEN "de un vistazo": gastado / pendiente / próxima cita / última visita -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.6rem">
-    <div style="background:var(--bg2);border-radius:12px;padding:.6rem .7rem"><div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Gastado</div><div id="dSpent" style="font-family:'Fraunces',serif;font-size:1.2rem;font-weight:600;color:#1f8c69">0€</div></div>
-    <div style="background:var(--bg2);border-radius:12px;padding:.6rem .7rem"><div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Pendiente</div><div id="dPending" style="font-family:'Fraunces',serif;font-size:1.2rem;font-weight:600;color:#b0432e">0€</div></div>
+    <div style="background:var(--bg2);border-radius:12px;padding:.6rem .7rem"><div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Gastado</div><div id="dSpent" style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:600;color:#1f8c69">0€</div></div>
+    <div style="background:var(--bg2);border-radius:12px;padding:.6rem .7rem"><div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Pendiente</div><div id="dPending" style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:600;color:#b0432e">0€</div></div>
     <div style="background:var(--bg2);border-radius:12px;padding:.6rem .7rem"><div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Próxima cita</div><div id="dNextAppt" style="font-size:.92rem;font-weight:700;color:#3a342e;margin-top:.15rem">—</div></div>
     <div style="background:var(--bg2);border-radius:12px;padding:.6rem .7rem"><div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Última visita</div><div id="dLastVisit" style="font-size:.92rem;font-weight:700;color:#3a342e;margin-top:.15rem">—</div></div>
   </div>
@@ -1403,7 +1403,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
     <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem">Evolución / visitas</div>
     <div id="clTimeline" style="font-size:.85rem"></div>
     <!-- Galería de fotos -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin:.9rem 0 .4rem"><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">📸 Fotos (antes / después)</div><div style="display:flex;gap:.5rem"><button onclick="openCroquisFromDrawer()" style="cursor:pointer;font-size:.74rem;color:#7C3AED;font-weight:600;background:none;border:1px solid #7C3AED;border-radius:8px;padding:.25rem .5rem">🖊️ Croquis</button><label style="cursor:pointer;font-size:.74rem;color:#A85942;font-weight:600">＋ Subir<input type="file" accept="image/*,video/*" style="display:none" onchange="uploadClinicalPhoto(this)"/></label></div></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:.9rem 0 .4rem"><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">📸 Fotos (antes / después)</div><div style="display:flex;gap:.5rem"><button onclick="openCroquisFromDrawer()" style="cursor:pointer;font-size:.74rem;color:#A85942;font-weight:600;background:none;border:1px solid #A85942;border-radius:8px;padding:.25rem .5rem">🖊️ Croquis</button><label style="cursor:pointer;font-size:.74rem;color:#A85942;font-weight:600">＋ Subir<input type="file" accept="image/*,video/*" style="display:none" onchange="uploadClinicalPhoto(this)"/></label></div></div>
     <div id="clGallery" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.35rem"></div>
   </div>
   <!-- Notas internas -->
@@ -2427,7 +2427,7 @@ async function loadFunnelMetrics(){
   stages.forEach((s,i)=>{
     const pct=Math.round((s.val/max)*100);
     const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:.8rem;margin-bottom:.6rem';
-    row.innerHTML=`<b style="width:170px;font-size:.82rem;font-weight:600;color:var(--ink-soft)">${s.name}</b><div style="flex:1;height:30px;background:var(--bg2);border-radius:8px;overflow:hidden"><i style="display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--terra),var(--champ));transition:width .8s var(--ease)"></i></div><span style="width:46px;text-align:right;font-family:'Fraunces',serif;font-weight:600">${s.val}</span>`;
+    row.innerHTML=`<b style="width:170px;font-size:.82rem;font-weight:600;color:var(--ink-soft)">${s.name}</b><div style="flex:1;height:30px;background:var(--bg2);border-radius:8px;overflow:hidden"><i style="display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--terra),var(--champ));transition:width .8s var(--ease)"></i></div><span style="width:46px;text-align:right;font-family:'Playfair Display',serif;font-weight:600">${s.val}</span>`;
     c.appendChild(row);
     setTimeout(()=>{row.querySelector('i').style.width=Math.max(pct,4)+'%';},100+i*120);
   });
@@ -4730,7 +4730,7 @@ async function loadFunnelStatsPanel(){
     {label:'WhatsApp',val:stats.whatsapp||0,icon:'💬'},
   ];
   const kpiEl=document.getElementById('fStatsKPIs');
-  kpiEl.innerHTML=kpis.map(k=>`<div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:.8rem;text-align:center"><div style="font-size:1.6rem">${k.icon}</div><div style="font-family:'Fraunces',serif;font-size:1.4rem;font-weight:700;margin:.2rem 0">${k.val}</div><div style="font-size:.75rem;color:var(--muted)">${k.label}</div></div>`).join('');
+  kpiEl.innerHTML=kpis.map(k=>`<div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:.8rem;text-align:center"><div style="font-size:1.6rem">${k.icon}</div><div style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin:.2rem 0">${k.val}</div><div style="font-size:.75rem;color:var(--muted)">${k.label}</div></div>`).join('');
   // Embudo visual (barras decrecientes)
   const funnelEl=document.getElementById('fStatsFunnel');
   const fStages=[
@@ -4744,7 +4744,7 @@ async function loadFunnelStatsPanel(){
   funnelEl.innerHTML=fStages.map((s,i)=>{
     const pct=Math.max(Math.round(s.val/maxF*100),4);
     const dropPct=i>0&&fStages[i-1].val?Math.round((1-s.val/fStages[i-1].val)*100):0;
-    return `<div style="margin-bottom:.4rem"><div style="display:flex;align-items:center;gap:.6rem"><span style="width:160px;font-size:.78rem;font-weight:600;color:var(--ink-soft)">${s.name}</span><div style="flex:1;height:28px;background:var(--bg2);border-radius:6px;overflow:hidden;position:relative"><div style="height:100%;width:${pct}%;background:${s.color};border-radius:6px;transition:width .6s ease"></div></div><span style="width:40px;text-align:right;font-family:'Fraunces',serif;font-weight:700;font-size:.9rem">${s.val}</span>${dropPct>0?`<span style="font-size:.68rem;color:#b0432e;width:36px">-${dropPct}%</span>`:`<span style="width:36px"></span>`}</div></div>`;
+    return `<div style="margin-bottom:.4rem"><div style="display:flex;align-items:center;gap:.6rem"><span style="width:160px;font-size:.78rem;font-weight:600;color:var(--ink-soft)">${s.name}</span><div style="flex:1;height:28px;background:var(--bg2);border-radius:6px;overflow:hidden;position:relative"><div style="height:100%;width:${pct}%;background:${s.color};border-radius:6px;transition:width .6s ease"></div></div><span style="width:40px;text-align:right;font-family:'Playfair Display',serif;font-weight:700;font-size:.9rem">${s.val}</span>${dropPct>0?`<span style="font-size:.68rem;color:#b0432e;width:36px">-${dropPct}%</span>`:`<span style="width:36px"></span>`}</div></div>`;
   }).join('');
   // Conversión
   const convEl=document.getElementById('fStatsConversion');
@@ -4752,7 +4752,7 @@ async function loadFunnelStatsPanel(){
   const cvLead=views?Math.round(leads/views*100):0;
   const cvSched=leads?Math.round(scheds/leads*100):0;
   const cvTotal=views?Math.round(scheds/views*100):0;
-  convEl.innerHTML=`<div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap"><div><span style="font-size:.78rem;color:var(--muted)">Visita → Lead</span><div style="font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:${cvLead>=30?'#1f6b4f':cvLead>=15?'#9a6a1a':'#b0432e'}">${cvLead}%</div></div><div><span style="font-size:.78rem;color:var(--muted)">Lead → Cita</span><div style="font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:${cvSched>=40?'#1f6b4f':cvSched>=20?'#9a6a1a':'#b0432e'}">${cvSched}%</div></div><div><span style="font-size:.78rem;color:var(--muted)">Total (Visita → Cita)</span><div style="font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:var(--terra)">${cvTotal}%</div></div><div style="margin-left:auto;font-size:.78rem;color:var(--muted)">Últimos ${days} días</div></div>`;
+  convEl.innerHTML=`<div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap"><div><span style="font-size:.78rem;color:var(--muted)">Visita → Lead</span><div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:${cvLead>=30?'#1f6b4f':cvLead>=15?'#9a6a1a':'#b0432e'}">${cvLead}%</div></div><div><span style="font-size:.78rem;color:var(--muted)">Lead → Cita</span><div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:${cvSched>=40?'#1f6b4f':cvSched>=20?'#9a6a1a':'#b0432e'}">${cvSched}%</div></div><div><span style="font-size:.78rem;color:var(--muted)">Total (Visita → Cita)</span><div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--terra)">${cvTotal}%</div></div><div style="margin-left:auto;font-size:.78rem;color:var(--muted)">Últimos ${days} días</div></div>`;
   // Leads table
   const leadsEl=document.getElementById('fStatsLeads');
   if(!(data.leads||[]).length){ leadsEl.innerHTML='<p style="color:var(--muted);font-size:.84rem">Sin leads aún. Cuando entren pacientes por el embudo aparecerán aquí.</p>'; }

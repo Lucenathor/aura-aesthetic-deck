@@ -1010,7 +1010,7 @@ async function loadFunnelMetrics(){
   stages.forEach((s,i)=>{
     const pct=Math.round((s.val/max)*100);
     const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:.8rem;margin-bottom:.6rem';
-    row.innerHTML=`<b style="width:170px;font-size:.82rem;font-weight:600;color:var(--ink-soft)">${s.name}</b><div style="flex:1;height:30px;background:var(--bg2);border-radius:8px;overflow:hidden"><i style="display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--terra),var(--champ));transition:width .8s var(--ease)"></i></div><span style="width:46px;text-align:right;font-family:'Fraunces',serif;font-weight:600">${s.val}</span>`;
+    row.innerHTML=`<b style="width:170px;font-size:.82rem;font-weight:600;color:var(--ink-soft)">${s.name}</b><div style="flex:1;height:30px;background:var(--bg2);border-radius:8px;overflow:hidden"><i style="display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--terra),var(--champ));transition:width .8s var(--ease)"></i></div><span style="width:46px;text-align:right;font-family:'Playfair Display',serif;font-weight:600">${s.val}</span>`;
     c.appendChild(row);
     setTimeout(()=>{row.querySelector('i').style.width=Math.max(pct,4)+'%';},100+i*120);
   });
@@ -3313,7 +3313,7 @@ async function loadFunnelStatsPanel(){
     {label:'WhatsApp',val:stats.whatsapp||0,icon:'💬'},
   ];
   const kpiEl=document.getElementById('fStatsKPIs');
-  kpiEl.innerHTML=kpis.map(k=>`<div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:.8rem;text-align:center"><div style="font-size:1.6rem">${k.icon}</div><div style="font-family:'Fraunces',serif;font-size:1.4rem;font-weight:700;margin:.2rem 0">${k.val}</div><div style="font-size:.75rem;color:var(--muted)">${k.label}</div></div>`).join('');
+  kpiEl.innerHTML=kpis.map(k=>`<div style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:.8rem;text-align:center"><div style="font-size:1.6rem">${k.icon}</div><div style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:700;margin:.2rem 0">${k.val}</div><div style="font-size:.75rem;color:var(--muted)">${k.label}</div></div>`).join('');
   // Embudo visual (barras decrecientes)
   const funnelEl=document.getElementById('fStatsFunnel');
   const fStages=[
@@ -3327,7 +3327,7 @@ async function loadFunnelStatsPanel(){
   funnelEl.innerHTML=fStages.map((s,i)=>{
     const pct=Math.max(Math.round(s.val/maxF*100),4);
     const dropPct=i>0&&fStages[i-1].val?Math.round((1-s.val/fStages[i-1].val)*100):0;
-    return `<div style="margin-bottom:.4rem"><div style="display:flex;align-items:center;gap:.6rem"><span style="width:160px;font-size:.78rem;font-weight:600;color:var(--ink-soft)">${s.name}</span><div style="flex:1;height:28px;background:var(--bg2);border-radius:6px;overflow:hidden;position:relative"><div style="height:100%;width:${pct}%;background:${s.color};border-radius:6px;transition:width .6s ease"></div></div><span style="width:40px;text-align:right;font-family:'Fraunces',serif;font-weight:700;font-size:.9rem">${s.val}</span>${dropPct>0?`<span style="font-size:.68rem;color:#b0432e;width:36px">-${dropPct}%</span>`:`<span style="width:36px"></span>`}</div></div>`;
+    return `<div style="margin-bottom:.4rem"><div style="display:flex;align-items:center;gap:.6rem"><span style="width:160px;font-size:.78rem;font-weight:600;color:var(--ink-soft)">${s.name}</span><div style="flex:1;height:28px;background:var(--bg2);border-radius:6px;overflow:hidden;position:relative"><div style="height:100%;width:${pct}%;background:${s.color};border-radius:6px;transition:width .6s ease"></div></div><span style="width:40px;text-align:right;font-family:'Playfair Display',serif;font-weight:700;font-size:.9rem">${s.val}</span>${dropPct>0?`<span style="font-size:.68rem;color:#b0432e;width:36px">-${dropPct}%</span>`:`<span style="width:36px"></span>`}</div></div>`;
   }).join('');
   // Conversión
   const convEl=document.getElementById('fStatsConversion');
@@ -3335,7 +3335,7 @@ async function loadFunnelStatsPanel(){
   const cvLead=views?Math.round(leads/views*100):0;
   const cvSched=leads?Math.round(scheds/leads*100):0;
   const cvTotal=views?Math.round(scheds/views*100):0;
-  convEl.innerHTML=`<div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap"><div><span style="font-size:.78rem;color:var(--muted)">Visita → Lead</span><div style="font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:${cvLead>=30?'#1f6b4f':cvLead>=15?'#9a6a1a':'#b0432e'}">${cvLead}%</div></div><div><span style="font-size:.78rem;color:var(--muted)">Lead → Cita</span><div style="font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:${cvSched>=40?'#1f6b4f':cvSched>=20?'#9a6a1a':'#b0432e'}">${cvSched}%</div></div><div><span style="font-size:.78rem;color:var(--muted)">Total (Visita → Cita)</span><div style="font-family:'Fraunces',serif;font-size:1.3rem;font-weight:700;color:var(--terra)">${cvTotal}%</div></div><div style="margin-left:auto;font-size:.78rem;color:var(--muted)">Últimos ${days} días</div></div>`;
+  convEl.innerHTML=`<div style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap"><div><span style="font-size:.78rem;color:var(--muted)">Visita → Lead</span><div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:${cvLead>=30?'#1f6b4f':cvLead>=15?'#9a6a1a':'#b0432e'}">${cvLead}%</div></div><div><span style="font-size:.78rem;color:var(--muted)">Lead → Cita</span><div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:${cvSched>=40?'#1f6b4f':cvSched>=20?'#9a6a1a':'#b0432e'}">${cvSched}%</div></div><div><span style="font-size:.78rem;color:var(--muted)">Total (Visita → Cita)</span><div style="font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--terra)">${cvTotal}%</div></div><div style="margin-left:auto;font-size:.78rem;color:var(--muted)">Últimos ${days} días</div></div>`;
   // Leads table
   const leadsEl=document.getElementById('fStatsLeads');
   if(!(data.leads||[]).length){ leadsEl.innerHTML='<p style="color:var(--muted);font-size:.84rem">Sin leads aún. Cuando entren pacientes por el embudo aparecerán aquí.</p>'; }
