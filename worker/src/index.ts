@@ -311,7 +311,7 @@ async function sendSMS(env: Env, number: string, message: string, sender?: strin
   }
 }
 
-// ─── AI invocation (gpt-5.5-pro ó fallback Workers AI) ──────────────
+// ─── AI invocation (GPT-5.6 Sol ó fallback GPT-5.6 Terra / Workers AI) ──────────────
 async function runAI(env: Env, messages: any[], jsonOut = false, model?: string): Promise<string> {
   // Forzar Llama (Workers AI, gratis) cuando se pide explícitamente
   if (model === 'llama') {
@@ -325,7 +325,7 @@ async function runAI(env: Env, messages: any[], jsonOut = false, model?: string)
       method: 'POST',
       headers: { Authorization: `Bearer ${env.OPENAI_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: model || 'gpt-5.5',
+        model: model || 'gpt-5.6-sol',
         messages,
         max_completion_tokens: jsonOut ? 1800 : 320,
         response_format: jsonOut ? { type: 'json_object' } : undefined,
@@ -333,12 +333,12 @@ async function runAI(env: Env, messages: any[], jsonOut = false, model?: string)
     });
     const d: any = await r.json();
     if (d?.error) {
-      // Fallback a 4o si el modelo no está disponible
+      // Fallback a GPT-5.6 Terra si Sol no está disponible
       const r2 = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { Authorization: `Bearer ${env.OPENAI_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: 'gpt-5.6-terra',
           messages,
           temperature: jsonOut ? 0.3 : 0.85,
           max_tokens: jsonOut ? 1800 : 320,
