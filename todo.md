@@ -43,3 +43,6 @@
 - [x] Crear panel Setter IA para configurar personalidad, velocidad, tono y recursos globales por clínica.
 - [x] Crear panel de recursos por tratamiento con fotos, vídeo, reseñas, rangos de precio, recuperación, FAQs y enlace de reserva.
 - [x] Probar conversaciones largas de principio a cierre y refinar el Setter Brain.
+- [ ] Investigar benchmarks públicos y marcos de evaluación aplicables a agentes conversacionales.
+- [ ] Evaluar el Setter Brain con una rúbrica estricta de resolución, seguridad, continuidad, naturalidad y cierre.
+- [ ] Comparar las métricas de forma transparente con referencias públicas y documentar los límites de comparabilidad.

@@ -64,10 +64,12 @@ const MEDICAL_ESCALATION = /embaraz|lactan|amamant|alerg|contraindica|medicaci[o
 const HUMAN_REQUEST = /hablar con (una )?(persona|doctora|doctor|recepci[oó]n|alguien)|humano|ll[aá]mame/i;
 const BOOKING_SIGNAL = /reserv|cita|hueco|disponib|cu[aá]ndo puedo|agenda|jueves|viernes|lunes|martes|mi[eé]rcoles|s[aá]bado/i;
 const PRICE_SIGNAL = /precio|cu[aá]nto cuesta|caro|barato|presupuesto|euros|€/i;
-const RESULTS_SIGNAL = /foto|resultado|antes y despu[eé]s|c[oó]mo queda|natural|ejemplo|caso/i;
-const TRUST_SIGNAL = /miedo|fiarme|conf[ií]o|seguro|seguridad|me quedar[aá] mal|artificial|doctora.*buena|experiencia/i;
+const RESULTS_SIGNAL = /foto|resultado|antes y despu[eé]s|c[oó]mo queda|ejemplo|caso/i;
+const TRUST_SIGNAL = /miedo|fiarme|conf[ií]o|seguro|seguridad|me quedar[aá] mal|artificial|doctora.*buena|experiencia|se note|se note demasiado/i;
 const TIMING_SIGNAL = /boda|evento|vacaciones|pronto|esta semana|urgente|cumple|viaje/i;
 const THINKING_SIGNAL = /me lo pienso|pensarlo|m[aá]s adelante|no s[eé]|dudas|consultarlo/i;
+const OFFER_SIGNAL = /oferta|promoci[oó]n|descuento|rebaja|financiaci[oó]n/i;
+const PRIVACY_SIGNAL = /qu[eé].*(cont[oó]|dijo|pag[oó])|datos.*(amiga|paciente|persona)|cu[aá]nto.*(pag[oó]|cobr)/i;
 
 function has(text: string, pattern: RegExp) { return pattern.test(text); }
 
@@ -87,6 +89,11 @@ export function assessSetterConversation(messages: Array<{ role?: string; conten
   if (has(latest, PRICE_SIGNAL)) {
     flags.push('precio');
     return { stage:'informar', nextAction:'responder_precio', objection:'precio', flags, needsHuman:false, resourceType:'precio', reason:'La pregunta explícita de precio necesita transparencia y una pregunta de contexto.' };
+  }
+
+  if (has(latest, OFFER_SIGNAL) || has(latest, PRIVACY_SIGNAL)) {
+    flags.push(has(latest, PRIVACY_SIGNAL) ? 'privacidad' : 'promocion');
+    return { stage:'informar', nextAction:'preguntar_duda', flags, needsHuman:false, reason:'Hay que responder con transparencia, sin revelar datos de terceros ni inventar promociones.' };
   }
 
   if (has(latest, RESULTS_SIGNAL)) {

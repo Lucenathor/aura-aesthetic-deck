@@ -5426,12 +5426,8 @@ async function handleChat(req: Request, env: Env) {
       `\nNombre de la clínica que está probando: ${t?.name || 'tu clínica'}.`;
   } else {
     await ensureSetterBrainSchema(env);
-    // === ARSENAL DEL SETTER: datos de clínica + recursos verificados por tratamiento ===
+    // === ARSENAL DEL SETTER: solo acciones y recursos previamente aprobados ===
     const arsenal: string[] = [];
-    if (t?.doctor_name) arsenal.push(`doctora: ${t.doctor_name}`);
-    if (t?.doctor_specialty) arsenal.push(`especialidad: ${t.doctor_specialty}`);
-    if (t?.doctor_experience) arsenal.push(`experiencia: ${t.doctor_experience}`);
-    if (t?.clinic_usp) arsenal.push(`diferencial: ${t.clinic_usp}`);
     if (t?.booking_url) arsenal.push(`[ENLACE RESERVA] ${t.booking_url}`);
     // Recursos específicos por tratamiento
     const treatmentKey = (context.treatment || '').toLowerCase().trim();
