@@ -508,6 +508,22 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 .client-local-clock{margin-top:.58rem;padding:.5rem .58rem;border-radius:9px;background:rgba(255,255,255,.38);border:1px solid rgba(123,77,64,.12);font-size:.68rem;line-height:1.35;color:var(--ink-soft)}
 .client-local-clock b{display:block;color:var(--ink);font-size:.76rem;letter-spacing:.01em}
 .client-local-clock span{display:block;margin-top:.08rem;font-size:.62rem;opacity:.78}
+/* ═══ SETTINGS LAYOUT: sidebar fijo + paneles ═══ */
+.settings-layout{display:flex;gap:0;min-height:calc(100vh - 140px)}
+.settings-nav{position:sticky;top:80px;align-self:flex-start;width:220px;min-width:220px;background:var(--card);border-radius:14px;border:1px solid var(--line);padding:.6rem .5rem;display:flex;flex-direction:column;gap:.2rem;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.settings-nav-item{display:flex;align-items:center;gap:.6rem;padding:.65rem .8rem;border-radius:10px;font-size:.88rem;font-weight:500;color:var(--ink-soft);cursor:pointer;transition:all .18s ease}
+.settings-nav-item:hover{background:var(--bg2);color:var(--ink)}
+.settings-nav-item.active{background:var(--terra);color:#fff;font-weight:600;box-shadow:0 2px 8px rgba(168,89,66,.25)}
+.settings-nav-item .sn-icon{font-size:1rem;width:22px;text-align:center;flex:none}
+.settings-content{flex:1;min-width:0}
+.settings-panel{display:none}
+.settings-panel.active{display:block}
+@media(max-width:768px){
+  .settings-layout{flex-direction:column}
+  .settings-nav{position:relative;top:0;width:100%;min-width:0;flex-direction:row;overflow-x:auto;gap:.3rem;padding:.5rem;margin-bottom:.8rem;border-radius:12px}
+  .settings-nav-item{white-space:nowrap;padding:.5rem .7rem;font-size:.8rem}
+  .settings-nav-item .sn-icon{font-size:.85rem;width:18px}
+}
 </style>
 </head>
 <body>
@@ -833,7 +849,22 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
     </section>
 
     <section class="view" id="v-ajustes">
-      <div class="top"><div><h1>Ajustes</h1><div class="sub2">Configúralo una vez: tu horario, tus tratamientos y precios, y los SMS automáticos que AURA envía sola a tus pacientes.</div></div></div>
+      <div class="top"><div><h1>Ajustes</h1><div class="sub2">Configura tu clínica paso a paso. Usa el menú lateral para navegar entre secciones.</div></div></div>
+      <div class="settings-layout">
+        <nav class="settings-nav" id="settingsNav">
+          <div class="settings-nav-item active" data-stab="horario"><span class="sn-icon">🕐</span>Horario</div>
+          <div class="settings-nav-item" data-stab="tratamientos"><span class="sn-icon">💉</span>Tratamientos</div>
+          <div class="settings-nav-item" data-stab="comunicaciones"><span class="sn-icon">💬</span>Comunicaciones</div>
+          <div class="settings-nav-item" data-stab="reservas"><span class="sn-icon">📅</span>Reservas</div>
+          <div class="settings-nav-item" data-stab="fidelizacion"><span class="sn-icon">⭐</span>Fidelización</div>
+          <div class="settings-nav-item" data-stab="clinica"><span class="sn-icon">🏥</span>Mi clínica</div>
+          <div class="settings-nav-item" data-stab="marketing"><span class="sn-icon">📊</span>Marketing</div>
+          <div class="settings-nav-item" data-stab="llamadas"><span class="sn-icon">📞</span>Llamadas</div>
+          <div class="settings-nav-item" data-stab="datos"><span class="sn-icon">📁</span>Importar datos</div>
+        </nav>
+        <div class="settings-content" id="settingsContent">
+      <!-- HORARIO -->
+      <div class="settings-panel active" data-spanel="horario">
       <div class="card">
         <h3>Horario de la clínica</h3>
         <p class="sub">Activa los días que abres y marca las horas. Puedes añadir un segundo tramo si cierras a mediodía. Esto controla los huecos que ofrece tu embudo a los pacientes.</p>
@@ -844,7 +875,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
           <div class="field"><label>Intervalo de la agenda</label><select id="calInterval"><option value="15">15 min (Máxima precisión)</option><option value="30">30 min (Vista más limpia)</option></select></div>
           <div class="field"><label>Profesional principal</label><input id="calPro" placeholder="Dra. Elvira"/></div>
         </div>
-        <button class="btn prim" style="margin-top:1.1rem" onclick="saveSchedule()">Guardar horario</button>
+      <button class="btn prim" style="margin-top:1.1rem" onclick="saveSchedule()">Guardar horario</button>
         <span id="calMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
       </div>
       <div class="card">
@@ -859,6 +890,9 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
         <span id="vacMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
         <div id="vacList" style="margin-top:1rem"></div>
       </div>
+      </div>
+      <!-- TRATAMIENTOS -->
+      <div class="settings-panel" data-spanel="tratamientos">
       <div class="card">
         <h3>Catálogo de tratamientos</h3>
         <p class="sub">Define tus tratamientos con su duración y precio. Al crear una cita, se rellenan solos y el bloque de la agenda toma el tamaño exacto del tratamiento.</p>
@@ -868,26 +902,87 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
           <div class="field"><label>Precio (€)</label><input type="number" id="tcPrice" placeholder="350" min="0"/></div>
         </div>
         <button class="btn prim" style="margin-top:.9rem" onclick="addTreatment()">Añadir tratamiento</button>
-        <span id="tcMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
+      <span id="tcMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
         <div id="tcList" style="margin-top:1rem"></div>
       </div>
+      </div>
+      <!-- COMUNICACIONES -->
+      <div class="settings-panel" data-spanel="comunicaciones">
       <div class="card">
         <h3>Reseñas automáticas en Google</h3>
         <p class="sub">Tras cada visita atendida, AURA envía un SMS al paciente pidiéndole una reseña con el enlace directo a tu Google. Más reseñas = más pacientes nuevos.</p>
         <div class="field"><label>Enlace para dejar reseña en Google</label><input id="gReviewUrl" placeholder="https://g.page/r/...   o   https://search.google.com/local/writereview?placeid=..."/></div>
         <p class="sub" style="margin-top:.4rem;font-size:.8rem">Cómo obtenerlo: en tu ficha de Google Business → "Pedir reseñas" → copia el enlace corto. Déjalo vacío para desactivar.</p>
         <button class="btn prim" style="margin-top:.6rem" onclick="saveReviewUrl()">Guardar enlace</button>
-        <span id="gRevMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
+      <span id="gRevMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
       </div>
-      <div class="card" id="callCard">
-        <h3>Llamadas desde el panel</h3>
-        <p class="sub">Llama a tus pacientes con un clic desde su ficha. AURA hace sonar primero el teléfono de recepción y, al descolgar, te conecta con el paciente. La llamada se graba, se transcribe y AURA te deja un resumen con la próxima acción.</p>
-        <div class="field"><label>Teléfono de recepción (al que AURA te llama primero)</label><input id="callAgentPhone" placeholder="+34 6XX XXX XXX"/></div>
-        <div class="field"><label>Número español de la clínica (se muestra al paciente)</label><input id="callFromNumber" placeholder="+34 9XX XXX XXX (lo da de alta AURA)"/></div>
-        <p class="sub" style="margin-top:.4rem;font-size:.8rem" id="callCfgHint">Deja el número de la clínica vacío para usar el número AURA por defecto. La llamada avisa de que puede grabarse (cumplimiento RGPD).</p>
-        <button class="btn prim" style="margin-top:.6rem" onclick="saveCallConfig()">Guardar</button>
-        <span id="callCfgMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
+      <div class="card" id="smsPrevCard">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
+          <div><h3 style="margin:0">Así lo recibe tu paciente</h3><p class="sub" style="margin:.2rem 0 0">Previsualización del recorrido de SMS, fase por fase.</p></div>
+          <button class="btn prim" id="smsPlayBtn" onclick="playSmsPrev()">▶ Reproducir</button>
+        </div>
+        <div class="sms-stage">
+          <div class="sms-phone">
+            <div class="sms-notch"></div>
+            <div class="sms-head"><span class="sms-ava">CE</span><div><b>Clínica Elvira</b><span>mensaje de texto</span></div></div>
+            <div class="sms-body" id="smsPrevBody"></div>
+          </div>
+          <div class="sms-timeline" id="smsTimeline"></div>
+        </div>
       </div>
+      <div class="card" id="smsTplCard">
+        <h3>Mensajes automáticos (SMS)</h3>
+        <p class="sub">Estos SMS se envían solos a tus pacientes en cada momento. Edita el texto o genéralos con IA para tu clínica. Variables: {clinica} {nombre} {link} {fecha} {hora} {direccion} {tel}.</p>
+        <div style="display:flex;gap:.5rem;margin:.4rem 0 .8rem;flex-wrap:wrap"><button class="btn prim" onclick="genSms()">Generar con IA para mi clínica</button><button class="btn" onclick="saveSmsTpl()">Guardar textos</button><span id="smsTplMsg" style="font-size:.82rem;color:#1f8c69;align-self:center"></span></div>
+        <div id="smsTplList"></div>
+      </div>
+      <div class="card" id="smsCard">
+        <h3>Saldo de SMS</h3>
+        <p class="sub">Cada confirmación y recordatorio que enviamos a tus pacientes gasta 1 SMS. Empiezas con 100 gratis.</p>
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin:.6rem 0">
+          <div style="font-family:'Playfair Display',serif;font-size:2.4rem;font-weight:600;color:var(--ink)" id="smsCredits">—</div>
+          <div style="font-size:.85rem;color:var(--muted)">SMS disponibles</div>
+        </div>
+        <div id="smsWarn" style="display:none;font-size:.85rem;color:#b45309;background:#fef3c7;padding:.6rem .8rem;border-radius:9px;margin-bottom:.7rem"></div>
+        <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
+          <button class="btn prim" onclick="buySms()">Comprar 1.000 SMS · 75€</button>
+          <span style="font-size:.8rem;color:var(--muted)">0,075€ por SMS · sin permanencia</span>
+        </div>
+        <div id="smsMsg" style="font-size:.82rem;margin-top:.6rem;color:#1f8c69"></div>
+      </div>
+      </div>
+      <!-- RESERVAS -->
+      <div class="settings-panel" data-spanel="reservas">
+      <div class="card" id="bookingCard">
+        <h3>📅 Reserva online pública</h3>
+        <p class="sub">Activa una página donde tus pacientes pueden reservar cita directamente, sin llamar. Comparte el enlace en tu web, Instagram o WhatsApp.</p>
+        <div style="margin:.8rem 0;padding:.7rem;background:#f0fdf4;border-radius:8px;font-size:.82rem">
+          <b>Tu enlace de reserva:</b> <a id="bookingLink" href="#" target="_blank" style="color:#C8745A;word-break:break-all"></a>
+          <button onclick="navigator.clipboard.writeText(document.getElementById('bookingLink').href);toast('Enlace copiado ✓')" style="margin-left:.5rem;font-size:.72rem;padding:.2rem .5rem;border:1px solid #ddd;border-radius:4px;cursor:pointer">Copiar</button>
+        </div>
+        <div class="row2" style="align-items:end">
+          <div class="field"><label>Horas mínimas para cancelar gratis</label><input type="number" id="bkCancelH" value="24" min="1" max="168" style="width:80px"></div>
+          <div class="field"><label>Depósito fijo (€)</label><input type="number" id="bkDeposit" value="0" min="0" step="5" style="width:80px"></div>
+          <div class="field"><label>Tratamientos disponibles (separados por coma)</label><input id="bkTreatments" placeholder="Valoración, Aumento de labios, Botox"></div>
+        </div>
+        <div class="field"><label>Mensaje de bienvenida</label><input id="bkWelcome" placeholder="Elige tu horario y reserva en 30 segundos"></div>
+        <button class="btn prim" style="margin-top:.8rem" onclick="saveBookingCfg()">Guardar configuración de reserva</button>
+        <span id="bkMsg" style="margin-left:.8rem;font-size:.82rem;color:#1f8c69"></span>
+      </div>
+      <div class="card" style="margin-top:1rem;background:#f8f7ff;border:1px solid #e0e0ff">
+        <h3>🔗 Widget embebible para tu web</h3>
+        <p class="sub">Pega este código en tu web y tus pacientes podrán reservar directamente sin salir de tu página.</p>
+        <div style="margin:.8rem 0;padding:.7rem;background:#fff;border-radius:8px;border:1px solid #e5e7eb">
+          <code id="widgetCode" style="font-size:.72rem;color:#4f46e5;word-break:break-all;display:block;white-space:pre-wrap"></code>
+        </div>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn prim" style="font-size:.82rem" onclick="navigator.clipboard.writeText(document.getElementById('widgetCode').textContent);toast('Código copiado ✓')">Copiar código</button>
+          <button class="btn" style="font-size:.82rem" onclick="window.open('https://auracrm.co/widget?t='+T,'_blank')">Vista previa →</button>
+        </div>
+      </div>
+      </div>
+      <!-- FIDELIZACIÓN -->
+      <div class="settings-panel" data-spanel="fidelizacion">
       <div class="card" id="loyaltyCard">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
           <h3 style="margin:0">Programa de puntos y recompensas</h3>
@@ -944,80 +1039,23 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
           <div id="portalQrBox" style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap"></div>
         </div>
       </div>
-      <div class="card" id="smsPrevCard">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
-          <div><h3 style="margin:0">Así lo recibe tu paciente</h3><p class="sub" style="margin:.2rem 0 0">Previsualización del recorrido de SMS, fase por fase.</p></div>
-          <button class="btn prim" id="smsPlayBtn" onclick="playSmsPrev()">▶ Reproducir</button>
-        </div>
-        <div class="sms-stage">
-          <div class="sms-phone">
-            <div class="sms-notch"></div>
-            <div class="sms-head"><span class="sms-ava">CE</span><div><b>Clínica Elvira</b><span>mensaje de texto</span></div></div>
-            <div class="sms-body" id="smsPrevBody"></div>
-          </div>
-          <div class="sms-timeline" id="smsTimeline"></div>
-        </div>
       </div>
-      <div class="card" id="smsTplCard">
-        <h3>Mensajes automáticos (SMS)</h3>
-        <p class="sub">Estos SMS se envían solos a tus pacientes en cada momento. Edita el texto o genéralos con IA para tu clínica. Variables: {clinica} {nombre} {link} {fecha} {hora} {direccion} {tel}.</p>
-        <div style="display:flex;gap:.5rem;margin:.4rem 0 .8rem;flex-wrap:wrap"><button class="btn prim" onclick="genSms()">Generar con IA para mi clínica</button><button class="btn" onclick="saveSmsTpl()">Guardar textos</button><span id="smsTplMsg" style="font-size:.82rem;color:#1f8c69;align-self:center"></span></div>
-        <div id="smsTplList"></div>
+      <!-- MI CLÍNICA -->
+      <div class="settings-panel" data-spanel="clinica">
+      <div class="card" id="portalCard2">
+        <h3>Datos de tu clínica</h3>
+        <p class="sub">Estos datos aparecen en el portal del paciente, en las facturas y en los embudos.</p>
+        <div class="row2"><div class="field"><label>Nombre de la clínica</label><input id="tmName" placeholder="Clínica Bella"/></div><div class="field"><label>Logo (URL de imagen)</label><input id="tmLogo" placeholder="https://..."/></div></div>
+        <div class="row2"><div class="field"><label>Dirección</label><input id="tmAddr" placeholder="Calle Serrano 45"/></div><div class="field"><label>Ciudad</label><input id="tmCity" placeholder="Madrid"/></div></div>
+        <div class="row2"><div class="field"><label>WhatsApp / Teléfono</label><input id="tmWa" placeholder="+34600112233"/></div><div class="field"><label>Email de contacto</label><input id="tmEmail" placeholder="hola@clinica.es"/></div></div>
+        <div class="row2"><div class="field"><label>Color principal</label><input id="tmBrand" type="color" value="#5e1a2a" style="height:42px;padding:.2rem"/></div><div class="field"><label>Color de acento</label><input id="tmAccent" type="color" value="#d4a574" style="height:42px;padding:.2rem"/></div></div>
+        <button class="btn prim" style="margin-top:.6rem" onclick="saveClinicMeta()">Guardar datos de la clínica</button>
+        <span id="tmMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
       </div>
-      <div class="card" id="smsCard">
-        <h3>Saldo de SMS</h3>
-        <p class="sub">Cada confirmación y recordatorio que enviamos a tus pacientes gasta 1 SMS. Empiezas con 100 gratis.</p>
-        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin:.6rem 0">
-          <div style="font-family:'Playfair Display',serif;font-size:2.4rem;font-weight:600;color:var(--ink)" id="smsCredits">—</div>
-          <div style="font-size:.85rem;color:var(--muted)">SMS disponibles</div>
-        </div>
-        <div id="smsWarn" style="display:none;font-size:.85rem;color:#b45309;background:#fef3c7;padding:.6rem .8rem;border-radius:9px;margin-bottom:.7rem"></div>
-        <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
-          <button class="btn prim" onclick="buySms()">Comprar 1.000 SMS · 75€</button>
-          <span style="font-size:.8rem;color:var(--muted)">0,075€ por SMS · sin permanencia</span>
-        </div>
-        <div id="smsMsg" style="font-size:.82rem;margin-top:.6rem;color:#1f8c69"></div>
       </div>
-      <div class="card" id="importCard">
-        <h3>Importar datos</h3>
-        <p class="sub">Sube un archivo Excel o CSV con tus pacientes, productos o tratamientos. AURA detecta las columnas automáticamente, te muestra una vista previa y solo importa los datos válidos. Ideal para migrar desde otro software.</p>
-        <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin:.7rem 0">
-          <button class="btn prim" onclick="openImporter('leads')">📋 Importar pacientes</button>
-          <button class="btn" onclick="openImporter('products')">📦 Importar productos</button>
-          <button class="btn" onclick="openImporter('treatments')">💉 Importar tratamientos</button>
-          <button class="btn" onclick="openImporter('historial')">📊 Importar historial de visitas</button>
-        </div>
-        <div style="font-size:.78rem;color:var(--muted);margin-top:.3rem">Formatos: .csv, .xlsx, .xls · Máximo 5.000 filas por importación · Deduplicación automática por teléfono (pacientes) o nombre (productos) · Importa también el gasto histórico, notas clínicas, alergias y más</div>
-      </div>
-      <div class="card" id="bookingCard">
-        <h3>📅 Reserva online pública</h3>
-        <p class="sub">Activa una página donde tus pacientes pueden reservar cita directamente, sin llamar. Comparte el enlace en tu web, Instagram o WhatsApp.</p>
-        <div style="margin:.8rem 0;padding:.7rem;background:#f0fdf4;border-radius:8px;font-size:.82rem">
-          <b>Tu enlace de reserva:</b> <a id="bookingLink" href="#" target="_blank" style="color:#C8745A;word-break:break-all"></a>
-          <button onclick="navigator.clipboard.writeText(document.getElementById('bookingLink').href);toast('Enlace copiado ✓')" style="margin-left:.5rem;font-size:.72rem;padding:.2rem .5rem;border:1px solid #ddd;border-radius:4px;cursor:pointer">Copiar</button>
-        </div>
-        <div class="row2" style="align-items:end">
-          <div class="field"><label>Horas mínimas para cancelar gratis</label><input type="number" id="bkCancelH" value="24" min="1" max="168" style="width:80px"></div>
-          <div class="field"><label>Depósito fijo (€)</label><input type="number" id="bkDeposit" value="0" min="0" step="5" style="width:80px"></div>
-          <div class="field"><label>Tratamientos disponibles (separados por coma)</label><input id="bkTreatments" placeholder="Valoración, Aumento de labios, Botox"></div>
-        </div>
-        <div class="field"><label>Mensaje de bienvenida</label><input id="bkWelcome" placeholder="Elige tu horario y reserva en 30 segundos"></div>
-        <button class="btn prim" style="margin-top:.8rem" onclick="saveBookingCfg()">Guardar configuración de reserva</button>
-        <span id="bkMsg" style="margin-left:.8rem;font-size:.82rem;color:#1f8c69"></span>
-      </div>
-      <div class="card" style="margin-top:1rem;background:#f8f7ff;border:1px solid #e0e0ff">
-        <h3>🔗 Widget embebible para tu web</h3>
-        <p class="sub">Pega este código en tu web y tus pacientes podrán reservar directamente sin salir de tu página.</p>
-        <div style="margin:.8rem 0;padding:.7rem;background:#fff;border-radius:8px;border:1px solid #e5e7eb">
-          <code id="widgetCode" style="font-size:.72rem;color:#4f46e5;word-break:break-all;display:block;white-space:pre-wrap"></code>
-        </div>
-        <div style="display:flex;gap:.5rem">
-          <button class="btn prim" style="font-size:.82rem" onclick="navigator.clipboard.writeText(document.getElementById('widgetCode').textContent);toast('Código copiado ✓')">Copiar código</button>
-          <button class="btn" style="font-size:.82rem" onclick="window.open('https://auracrm.co/widget?t='+T,'_blank')">Vista previa →</button>
-        </div>
-      </div>
-      <!-- META PIXEL + SLUG -->
-      <div class="card" style="margin-top:1rem">
+      <!-- MARKETING -->
+      <div class="settings-panel" data-spanel="marketing">
+      <div class="card" style="margin-top:0">
         <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem"><h3 style="margin:0">Meta Pixel (Facebook Ads)</h3><span id="pixelStatus" style="font-size:.72rem;padding:.2rem .5rem;border-radius:6px;font-weight:700"></span></div>
         <p class="sub" style="margin:0 0 .8rem">Pega tu Pixel ID y AURA dispara automaticamente estos eventos en tus embudos:</p>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem">
@@ -1032,6 +1070,35 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
         <button class="btn prim" style="margin-top:.8rem" onclick="savePixelSlug()">Guardar Pixel y Slug</button>
         <span id="pixelMsg" style="margin-left:.8rem;font-size:.82rem;color:#1f8c69"></span>
       </div>
+      </div>
+      <!-- LLAMADAS -->
+      <div class="settings-panel" data-spanel="llamadas">
+      <div class="card" id="callCard">
+        <h3>Llamadas desde el panel</h3>
+        <p class="sub">Llama a tus pacientes con un clic desde su ficha. AURA hace sonar primero el teléfono de recepción y, al descolgar, te conecta con el paciente. La llamada se graba, se transcribe y AURA te deja un resumen con la próxima acción.</p>
+        <div class="field"><label>Teléfono de recepción (al que AURA te llama primero)</label><input id="callAgentPhone" placeholder="+34 6XX XXX XXX"/></div>
+        <div class="field"><label>Número español de la clínica (se muestra al paciente)</label><input id="callFromNumber" placeholder="+34 9XX XXX XXX (lo da de alta AURA)"/></div>
+        <p class="sub" style="margin-top:.4rem;font-size:.8rem" id="callCfgHint">Deja el número de la clínica vacío para usar el número AURA por defecto. La llamada avisa de que puede grabarse (cumplimiento RGPD).</p>
+        <button class="btn prim" style="margin-top:.6rem" onclick="saveCallConfig()">Guardar</button>
+        <span id="callCfgMsg" style="margin-left:.8rem;font-size:.85rem;color:#1f8c69"></span>
+      </div>
+      </div>
+      <!-- DATOS -->
+      <div class="settings-panel" data-spanel="datos">
+      <div class="card" id="importCard">
+        <h3>Importar datos</h3>
+        <p class="sub">Sube un archivo Excel o CSV con tus pacientes, productos o tratamientos. AURA detecta las columnas automáticamente, te muestra una vista previa y solo importa los datos válidos. Ideal para migrar desde otro software.</p>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin:.7rem 0">
+          <button class="btn prim" onclick="openImporter('leads')">📋 Importar pacientes</button>
+          <button class="btn" onclick="openImporter('products')">📦 Importar productos</button>
+          <button class="btn" onclick="openImporter('treatments')">💉 Importar tratamientos</button>
+          <button class="btn" onclick="openImporter('historial')">📊 Importar historial de visitas</button>
+        </div>
+      <div style="font-size:.78rem;color:var(--muted);margin-top:.3rem">Formatos: .csv, .xlsx, .xls · Máximo 5.000 filas por importación · Deduplicación automática por teléfono (pacientes) o nombre (productos) · Importa también el gasto histórico, notas clínicas, alergias y más</div>
+      </div>
+      </div>
+      </div><!-- end settings-content -->
+      </div><!-- end settings-layout -->
     </section>
 
     <!-- ADMINISTRACIÓN (solo super admin): onboarding de clínicas -->
@@ -6604,6 +6671,24 @@ async function __auraInit(){
   try{ loadAll(); }catch(e){console.error('loadAll',e);}
 }
 if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded',__auraInit); } else { __auraInit(); }
+// ═══ SETTINGS NAV: menú lateral fijo con subcategorías ═══
+(function(){
+  const nav=document.getElementById('settingsNav');
+  if(!nav)return;
+  nav.addEventListener('click',function(e){
+    const item=e.target.closest('.settings-nav-item');
+    if(!item)return;
+    const tab=item.dataset.stab;
+    if(!tab)return;
+    // Desactivar todos
+    nav.querySelectorAll('.settings-nav-item').forEach(n=>n.classList.remove('active'));
+    document.querySelectorAll('.settings-panel').forEach(p=>p.classList.remove('active'));
+    // Activar el seleccionado
+    item.classList.add('active');
+    const panel=document.querySelector('.settings-panel[data-spanel="'+tab+'"]');
+    if(panel){panel.classList.add('active');panel.scrollIntoView({behavior:'smooth',block:'start'});}
+  });
+})();
 </script>
 <button id="copilotFab" onclick="openCopilot()" title="Copiloto IA" style="display:none;position:fixed;right:18px;bottom:18px;z-index:9990;width:58px;height:58px;border:none;border-radius:50%;background:linear-gradient(135deg,var(--terra),#8a4533);color:#fff;font-size:1.5rem;box-shadow:0 6px 20px rgba(176,93,68,.45);cursor:pointer;transition:transform .15s ease" onmousedown="this.style.transform='scale(.94)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'">✦</button>
 </body>

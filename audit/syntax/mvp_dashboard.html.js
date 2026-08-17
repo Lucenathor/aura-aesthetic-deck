@@ -5187,3 +5187,21 @@ async function __auraInit(){
   try{ loadAll(); }catch(e){console.error('loadAll',e);}
 }
 if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded',__auraInit); } else { __auraInit(); }
+// ═══ SETTINGS NAV: menú lateral fijo con subcategorías ═══
+(function(){
+  const nav=document.getElementById('settingsNav');
+  if(!nav)return;
+  nav.addEventListener('click',function(e){
+    const item=e.target.closest('.settings-nav-item');
+    if(!item)return;
+    const tab=item.dataset.stab;
+    if(!tab)return;
+    // Desactivar todos
+    nav.querySelectorAll('.settings-nav-item').forEach(n=>n.classList.remove('active'));
+    document.querySelectorAll('.settings-panel').forEach(p=>p.classList.remove('active'));
+    // Activar el seleccionado
+    item.classList.add('active');
+    const panel=document.querySelector('.settings-panel[data-spanel="'+tab+'"]');
+    if(panel){panel.classList.add('active');panel.scrollIntoView({behavior:'smooth',block:'start'});}
+  });
+})();
