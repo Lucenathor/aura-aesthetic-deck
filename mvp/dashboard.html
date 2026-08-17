@@ -524,6 +524,21 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
   .settings-nav-item{white-space:nowrap;padding:.5rem .7rem;font-size:.8rem}
   .settings-nav-item .sn-icon{font-size:.85rem;width:18px}
 }
+/* ═══ MEJORAS AGENDA PRO: tooltip, animaciones, hover en huecos ═══ */
+.agenda-slot-bg:hover { background: rgba(168,89,66,0.06); cursor: pointer; }
+.agenda-slot-bg:hover::after { content: '+ Nueva cita'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: .65rem; color: var(--terra); opacity: .7; pointer-events: none; font-weight: 600; }
+.agenda-slot-bg { position: relative; }
+.agenda-appt { animation: apptFadeIn .3s cubic-bezier(.23,1,.32,1) both; }
+@keyframes apptFadeIn { from { opacity: 0; transform: translateY(4px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.agenda-appt::after { content: attr(title); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: .4rem .7rem; border-radius: 8px; font-size: .72rem; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 200; box-shadow: 0 4px 12px rgba(0,0,0,.2); max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+.agenda-appt:hover::after { opacity: 1; }
+.agenda-grid { min-height: calc(14 * 120px); }
+.agenda-pro-header { gap: .3rem; background: #fdf8f4; border-bottom: 2px solid var(--line); }
+.agenda-pro-occ { font-size: .65rem; font-weight: 500; }
+.agenda-pro-occ-bar { height: 4px; border-radius: 3px; }
+.agenda-pro-occ-fill { transition: width .4s ease; }
+.agenda-now-line { height: 2.5px; background: linear-gradient(90deg, #e74c3c, #ff6b6b); box-shadow: 0 0 6px rgba(231,76,60,.4); }
+.agenda-now-line::before { width: 12px; height: 12px; left: -6px; top: -5px; box-shadow: 0 0 6px rgba(231,76,60,.5); }
 </style>
 </head>
 <body>
@@ -6694,21 +6709,3 @@ if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded
 <button id="copilotFab" onclick="openCopilot()" title="Copiloto IA" style="display:none;position:fixed;right:18px;bottom:18px;z-index:9990;width:58px;height:58px;border:none;border-radius:50%;background:linear-gradient(135deg,var(--terra),#8a4533);color:#fff;font-size:1.5rem;box-shadow:0 6px 20px rgba(176,93,68,.45);cursor:pointer;transition:transform .15s ease" onmousedown="this.style.transform='scale(.94)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'">✦</button>
 </body>
 </html>
-/* ═══ MEJORAS AGENDA PRO: tooltip, animaciones, hover en huecos ═══ */
-.agenda-slot-bg:hover { background: rgba(168,89,66,0.06); cursor: pointer; }
-.agenda-slot-bg:hover::after { content: '+ Nueva cita'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: .65rem; color: var(--terra); opacity: .7; pointer-events: none; font-weight: 600; }
-.agenda-slot-bg { position: relative; }
-.agenda-appt { animation: apptFadeIn .3s cubic-bezier(.23,1,.32,1) both; }
-@keyframes apptFadeIn { from { opacity: 0; transform: translateY(4px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
-.agenda-appt::after { content: attr(title); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: .4rem .7rem; border-radius: 8px; font-size: .72rem; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 200; box-shadow: 0 4px 12px rgba(0,0,0,.2); max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
-.agenda-appt:hover::after { opacity: 1; }
-.agenda-grid { min-height: calc(14 * 120px); } /* Cuadrícula siempre visible 8:00-21:00 */
-.agenda-pro-header { gap: .3rem; }
-.agenda-pro-occ { font-size: .65rem; font-weight: 500; }
-.agenda-pro-occ-bar { height: 4px; border-radius: 3px; }
-.agenda-pro-occ-fill { transition: width .4s ease; }
-/* Mejor contraste en la cabecera de profesional */
-.agenda-pro-header { background: #fdf8f4; border-bottom: 2px solid var(--line); }
-/* Hora actual más prominente */
-.agenda-now-line { height: 2.5px; background: linear-gradient(90deg, #e74c3c, #ff6b6b); box-shadow: 0 0 6px rgba(231,76,60,.4); }
-.agenda-now-line::before { width: 12px; height: 12px; left: -6px; top: -5px; box-shadow: 0 0 6px rgba(231,76,60,.5); }
