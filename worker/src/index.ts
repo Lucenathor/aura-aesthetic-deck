@@ -4383,8 +4383,9 @@ export default {
       if (p === '/api/appt-arrived' && req.method === 'POST') {
         const b:any = await req.json();
         if (!b.appointment_id) return json({ error:'missing appointment_id' }, 400);
-        await env.aura_db.prepare("UPDATE appointments SET status='arrived' WHERE id=? AND tenant_id=?").bind(b.appointment_id, b.tenant_id||tenant).run();
-        return json({ ok:true, status:'arrived' });
+        const newStatus = b.status || 'arrived';
+        await env.aura_db.prepare("UPDATE appointments SET status=? WHERE id=? AND tenant_id=?").bind(newStatus, b.appointment_id, b.tenant_id||tenant).run();
+        return json({ ok:true, status:newStatus });
       }
 
       // MARCAR NO-SHOW manual

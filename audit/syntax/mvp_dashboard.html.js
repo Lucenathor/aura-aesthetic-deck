@@ -1381,10 +1381,11 @@ function renderAgendaCal(){
     const dayStr=calRef.toISOString().slice(0,10);
     const dayClosed=agClosed(dayStr);
     const todays=agApptsFiltered(dayStr);
-    const conf=todays.filter(a=>a.confirmed==1).length; const pend=todays.filter(a=>!(a.confirmed==1)&&a.status!=='attended'&&a.status!=='noshow').length;
+    const conf=todays.filter(a=>a.confirmed==1).length; const pend=todays.filter(a=>!(a.confirmed==1)&&a.status!=="attended"&&a.status!=="noshow"&&a.status!=="completed").length; const completed=todays.filter(a=>a.status==="completed").length;
     // Detectar citas que llevan +1h sin marcar llegada (alerta no-show)
     const nowMs=Date.now(); const noshowAlert=_agAppts.filter(a=>a.date_iso&&a.date_iso.slice(0,10)===dayStr&&['booked','confirmed','pending'].includes(a.status)&&(nowMs-new Date(a.date_iso).getTime())>3600000&&(nowMs-new Date(a.date_iso).getTime())<7200000);
     let summaryHtml='<span><b style="color:var(--ink)">'+todays.length+'</b> citas</span><span><b style="color:#1f6b4f">'+conf+'</b> confirmadas</span><span><b style="color:#b0432e">'+pend+'</b> por confirmar</span>';
+    if(completed>0){ summaryHtml+='<span style="background:#e0e7ff;border:1px solid #818cf8;border-radius:8px;padding:.15rem .5rem;font-weight:700;color:#3730a3">&#128176; '+completed+' pendiente'+(completed>1?'s':'')+' de cobro</span>'; }
     if(noshowAlert.length>0){ summaryHtml+='<span style="background:#fff3cd;border:1px solid #ffc107;border-radius:8px;padding:.15rem .5rem;font-weight:700;color:#856404;animation:pulse 1.5s infinite">⚠️ '+noshowAlert.length+' paciente'+(noshowAlert.length>1?'s':'')+' sin marcar llegada (+1h)</span>'; }
     document.getElementById('calSummary').innerHTML=summaryHtml;
     const nowH=(dayStr===new Date().toISOString().slice(0,10))?new Date().getHours():-1;

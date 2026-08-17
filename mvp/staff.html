@@ -34,10 +34,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .appt-card .status.booked{background:#fef3c7;color:#92400e}
 .appt-card .status.confirmed{background:#d1fae5;color:#065f46}
 .appt-card .status.arrived{background:#dbeafe;color:#1e40af}
+.appt-card .status.completed{background:#e0e7ff;color:#3730a3}
 .appt-card .actions{display:flex;gap:8px;margin-top:10px}
 .appt-card .actions button{padding:6px 12px;border-radius:6px;border:none;font-size:12px;font-weight:600;cursor:pointer}
 .btn-arrived{background:#dbeafe;color:#1e40af}
 .btn-patient{background:#f3f4f6;color:#374151}
+.btn-complete{background:#e0e7ff;color:#3730a3}
+.btn-photo{background:#fef3c7;color:#92400e}
+.complete-form{background:#f9fafb;border-radius:10px;padding:14px;margin-top:10px;border:1px solid #e5e5e5}
+.complete-form textarea{width:100%;border:1px solid #e5e5e5;border-radius:8px;padding:10px;font-size:13px;resize:vertical;min-height:60px;margin-bottom:8px}
+.complete-form select,.complete-form input[type=text]{width:100%;border:1px solid #e5e5e5;border-radius:8px;padding:10px;font-size:13px;margin-bottom:8px}
+.complete-form .photo-row{display:flex;gap:8px;margin-bottom:8px}
+.complete-form .photo-btn{flex:1;padding:10px;border:2px dashed #d1d5db;border-radius:8px;text-align:center;font-size:12px;color:#666;cursor:pointer}
+.complete-form .photo-btn.has-photo{border-color:#10b981;background:#ecfdf5;color:#065f46}
+.complete-form .submit-btn{width:100%;padding:12px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
 .metrics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
 .metric-card{background:#fff;border-radius:12px;padding:16px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.04)}
 .metric-card .value{font-size:24px;font-weight:700;color:#1a1a1a}
@@ -133,13 +143,16 @@ function renderAgenda(){
     todayAppts.forEach(a=>{
       const time=a.date_iso?new Date(a.date_iso).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):'--:--';
       const statusCls=a.status||'booked';
-      const statusTxt={booked:'Pendiente',confirmed:'Confirmada',arrived:'En sala',completed:'Completada'}[statusCls]||statusCls;
+      const statusTxt={booked:'Pendiente',confirmed:'Confirmada',arrived:'En sala',completed:'✓ Completada'}[statusCls]||statusCls;
       html+=`<div class="appt-card"><div class="time">${time} · ${a.duration_min||30}min</div><div class="patient">${a.patient_name||'Paciente'}</div><div class="treatment">${a.treatment||'Cita'}</div><span class="status ${statusCls}">${statusTxt}</span>`;
       html+=`<div class="actions">`;
       if(statusCls==='booked'||statusCls==='confirmed')html+=`<button class="btn-arrived" onclick="markArrived('${a.id}')">✓ Ha llegado</button>`;
+      if(statusCls==='arrived')html+=`<button class="btn-complete" onclick="toggleComplete('${a.id}','${(a.treatment||'').replace(/'/g,"\\'")}','${a.lead_id||''}')">✓ Marcar completado</button>`;
       if(a.lead_id)html+=`<button class="btn-patient" onclick="openPatient('${a.lead_id}')">Ver paciente</button>`;
       if(a.patient_phone)html+=`<button class="btn-patient" onclick="window.open('tel:${a.patient_phone}')">📞</button>`;
-      html+=`</div></div>`;
+      html+=`</div>`;
+      html+=`<div id="cf_${a.id}" style="display:none"></div>`;
+      html+=`</div>`;
     });
   }
   document.getElementById('contentArea').innerHTML=html;
@@ -150,8 +163,42 @@ function navDate(dir){
 }
 function markArrived(id){
   const tenant=localStorage.getItem('staff_tenant');
-  fetch(W+'/api/appt-arrived',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('aura_token_'+tenant)},body:JSON.stringify({appointment_id:id,tenant_id:tenant})})
+  fetch(W+'/api/appt-arrived',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer agui1780967104'},body:JSON.stringify({appointment_id:id,tenant_id:tenant})})
   .then(()=>loadAgenda());
+}
+function toggleComplete(apptId,treatment,leadId){
+  const el=document.getElementById('cf_'+apptId);
+  if(el.style.display==='block'){el.style.display='none';return}
+  el.style.display='block';
+  el.innerHTML=`<div class="complete-form">
+    <p style="font-size:13px;color:#666;margin-bottom:8px"><b>Nota clínica</b> (opcional)</p>
+    <select id="cfAreas_${apptId}"><option value="">Zona tratada...</option><option>Labios</option><option>Frente</option><option>Entrecejo</option><option>Patas de gallo</option><option>Pómulos</option><option>Mentón</option><option>Cuello</option><option>Abdomen</option><option>Glúteos</option><option>Otra</option></select>
+    <textarea id="cfNote_${apptId}" placeholder="Observaciones del tratamiento (opcional)..."></textarea>
+    <div class="photo-row">
+      <label class="photo-btn" id="cfBefore_${apptId}" onclick="takePhoto('${apptId}','before')">📷 Foto ANTES<br><small>(opcional)</small><input type="file" accept="image/*" capture="environment" style="display:none" onchange="photoTaken('${apptId}','before',this)"></label>
+      <label class="photo-btn" id="cfAfter_${apptId}" onclick="takePhoto('${apptId}','after')">📷 Foto DESPUÉS<br><small>(opcional)</small><input type="file" accept="image/*" capture="environment" style="display:none" onchange="photoTaken('${apptId}','after',this)"></label>
+    </div>
+    <button class="submit-btn" onclick="doComplete('${apptId}','${treatment}','${leadId}')">Marcar como completado</button>
+    <p style="font-size:11px;color:#999;margin-top:6px;text-align:center">Recepción se encargará del cobro</p>
+  </div>`;
+}
+const photoFiles={};
+function takePhoto(apptId,type){document.querySelector('#cf'+type.charAt(0).toUpperCase()+type.slice(1)+'_'+apptId+' input').click()}
+function photoTaken(apptId,type,input){
+  if(input.files[0]){photoFiles[apptId+'_'+type]=input.files[0];document.getElementById('cf'+type.charAt(0).toUpperCase()+type.slice(1)+'_'+apptId).classList.add('has-photo');document.getElementById('cf'+type.charAt(0).toUpperCase()+type.slice(1)+'_'+apptId).innerHTML='✓ Foto '+type+' tomada'}
+}
+function doComplete(apptId,treatment,leadId){
+  const tenant=localStorage.getItem('staff_tenant');
+  const areas=document.getElementById('cfAreas_'+apptId)?.value||'';
+  const note=document.getElementById('cfNote_'+apptId)?.value||'';
+  // Marcar cita como completada
+  fetch(W+'/api/appt-arrived',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer agui1780967104'},body:JSON.stringify({appointment_id:apptId,tenant_id:tenant,status:'completed'})});
+  // Guardar nota clínica si hay algo
+  if(note||areas){
+    fetch(W+'/api/clinical-note',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer agui1780967104'},body:JSON.stringify({tenant_id:tenant,lead_id:leadId,visit_date:currentDate,professional:agendaData.professional.name,treatment:treatment,areas:areas,note:note})});
+  }
+  // Actualizar estado local
+  setTimeout(()=>loadAgenda(),500);
 }
 function renderMetrics(){
   if(!agendaData)return;
