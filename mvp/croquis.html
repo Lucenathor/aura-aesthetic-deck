@@ -219,6 +219,14 @@ const TENANT=params.get('tenant')||'';
 const LEAD=params.get('lead')||'';
 const VISIT=params.get('visit')||'';
 const RAW_GENDER=params.get('gender')||params.get('sex')||'';
+let inheritedStaffToken='';
+window.addEventListener('message',function(event){
+  if(event.origin!==location.origin)return;
+  const data=event.data||{};
+  if(data.type==='aura-staff-session'&&data.tenant===TENANT&&typeof data.token==='string'&&data.token.length>=16){
+    inheritedStaffToken=data.token;
+  }
+});
 if(params.get('name')){
   document.getElementById('patientName').textContent=decodeURIComponent(params.get('name'));
 }
@@ -475,7 +483,7 @@ async function saveCroquis(){
   var dataUrl=canvas.toDataURL('image/png');
   var WORKER=localStorage.getItem('aura_worker')||'https://aura-chat-worker.adrian-7b9.workers.dev';
   var TOKEN=localStorage.getItem('aura_token')||'';
-  var STAFF_TOKEN=localStorage.getItem('staff_token')||'';
+  var STAFF_TOKEN=inheritedStaffToken||localStorage.getItem('staff_token')||'';
   try{
     if(saveButton){saveButton.disabled=true;saveButton.textContent='Guardando…';}
     var templateMeta=document.querySelector('.tpl-card.active')?(templateFamily+'-'+document.querySelector('.tpl-card.active').id.replace('tpl-','')):'photo';

@@ -218,7 +218,16 @@ function renderIcal(){
 function copyIcal(){navigator.clipboard.writeText(agendaData.ical_url);alert('URL copiada')}
 function openCroquis(leadId,name,visitId,gender){
   const url='/croquis?tenant='+encodeURIComponent(TENANT)+'&lead='+encodeURIComponent(leadId)+'&name='+encodeURIComponent(name)+'&visit='+encodeURIComponent(visitId)+'&gender='+encodeURIComponent(gender||'');
-  window.open(url,'croquis','width=900,height=750,resizable=yes');
+  const croquisWindow=window.open(url,'croquis','width=900,height=750,resizable=yes');
+  if(!croquisWindow||!staffToken)return;
+  const staffSession={type:'aura-staff-session',token:staffToken,tenant:TENANT};
+  let tries=0;
+  const shareSession=()=>{
+    if(croquisWindow.closed||tries++>=8){clearInterval(shareTimer);return;}
+    croquisWindow.postMessage(staffSession,location.origin);
+  };
+  const shareTimer=setInterval(shareSession,400);
+  setTimeout(shareSession,150);
 }
 function openPatient(leadId){
   fetch(W+'/api/staff-patient?token='+staffToken+'&lead_id='+leadId)

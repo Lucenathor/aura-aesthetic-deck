@@ -12,3 +12,4 @@
 - [x] Añadir paneo por arrastre tras ampliar el canvas, con soporte de ratón y gestos táctiles.
 - [x] Generar e integrar perfiles izquierdo y derecho coherentes para las anatomías femenina y masculina.
 - [x] Conservar en la ficha el metadato exacto de lateral izquierdo o derecho al guardar el croquis.
+- [ ] Corregir el guardado del croquis desde la sesión de profesional iniciada con PIN, sin requerir sesión de propietario.
