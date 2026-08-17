@@ -22,3 +22,9 @@
 - [ ] Rediseñar la agenda de AURA: siempre visible, interactiva, creación de cita al clic en hueco vacío.
 - [x] Cuadrícula siempre visible con columnas por profesional, franjas horarias 08:00-21:00, tooltip al hover, animaciones suaves.
 - [ ] Implementar vista semanal con columnas por profesional y franjas horarias.
+- [ ] Duración configurable por tratamiento en el catálogo (duration_min, buffer_before, buffer_after)
+- [ ] Buffer/margen global entre citas configurable en Ajustes → Horario
+- [ ] Auto-rellenar duración de cita desde el tratamiento seleccionado
+- [ ] Ajuste manual de duración al crear/editar cita (selector editable)
+- [ ] Drag del borde inferior del bloque para estirar/encoger duración en cuadrícula
+- [ ] Visualización del buffer en la cuadrícula (zona gris/rayada)

@@ -455,6 +455,7 @@ async function ensureAvailabilitySchema(env: Env) {
   try {
     await env.aura_db.exec("CREATE TABLE IF NOT EXISTS schedule_by_day (tenant_id TEXT NOT NULL, dow INTEGER NOT NULL, is_open INTEGER DEFAULT 1, t1_start TEXT DEFAULT '10:00', t1_end TEXT DEFAULT '14:00', t2_start TEXT, t2_end TEXT, PRIMARY KEY (tenant_id, dow))");
     await env.aura_db.exec("CREATE TABLE IF NOT EXISTS vacations (id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, start_date TEXT NOT NULL, end_date TEXT NOT NULL, reason TEXT, created_at INTEGER)");
+    try { await env.aura_db.exec('ALTER TABLE calendar_config ADD COLUMN slot_interval INTEGER DEFAULT 15'); } catch(e){}
     __availSchemaReady = true;
   } catch (e) { console.error('ensureAvailabilitySchema', e); }
 }
@@ -547,6 +548,11 @@ async function ensureInventorySchema(env: Env) {
   try { await env.aura_db.exec('ALTER TABLE treatment_catalog ADD COLUMN pack_price REAL DEFAULT 0'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE treatment_catalog ADD COLUMN pack_original REAL DEFAULT 0'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE treatment_catalog ADD COLUMN next_days INTEGER DEFAULT 0'); } catch(e){}
+  // Buffer time por tratamiento (estilo Calendly)
+  try { await env.aura_db.exec('ALTER TABLE treatment_catalog ADD COLUMN buffer_before INTEGER DEFAULT 0'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE treatment_catalog ADD COLUMN buffer_after INTEGER DEFAULT 0'); } catch(e){}
+  // Buffer global entre citas (fallback si el tratamiento no define buffer propio)
+  try { await env.aura_db.exec('ALTER TABLE booking_config ADD COLUMN default_buffer INTEGER DEFAULT 0'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE funnels ADD COLUMN treatment_name TEXT'); } catch(e){}
   // Slug público aleatorio para URLs de embudo (no adivinable)
   try { await env.aura_db.exec('ALTER TABLE tenants ADD COLUMN public_slug TEXT'); } catch(e){}
@@ -1541,8 +1547,10 @@ export default {
         const tenant = url.searchParams.get('tenant');
         if (!tenant) return json({ error: 'missing tenant' }, 400);
         const schedule = await getScheduleByDay(env, tenant);
-        const cfg: any = await env.aura_db.prepare('SELECT slot_min, professional FROM calendar_config WHERE tenant_id=?').bind(tenant).first();
-        return json({ schedule, slot_min: cfg?.slot_min || 60, professional: cfg?.professional || '' });
+        const cfg: any = await env.aura_db.prepare('SELECT slot_min, professional, slot_interval FROM calendar_config WHERE tenant_id=?').bind(tenant).first();
+        let defaultBuffer = 0;
+        try { const bkCfg: any = await env.aura_db.prepare('SELECT default_buffer FROM booking_config WHERE tenant_id=?').bind(tenant).first(); defaultBuffer = bkCfg?.default_buffer || 0; } catch(e){}
+        return json({ schedule, slot_min: cfg?.slot_min || 60, professional: cfg?.professional || '', slot_interval: cfg?.slot_interval || 15, default_buffer: defaultBuffer });
       }
       // DISPONIBILIDAD: guardar horario por día (array de 7 filas)
       if (p === '/api/schedule-by-day' && req.method === 'POST') {
@@ -1560,12 +1568,20 @@ export default {
           ).bind(tenant, dow, r.is_open?1:0, r.t1_start||'10:00', r.t1_end||'19:00', r.t2_start||null, r.t2_end||null).run();
         }
         // mantener slot_min y profesional en calendar_config para compatibilidad
-        if (b.slot_min || b.professional !== undefined) {
+        if (b.slot_min || b.professional !== undefined || b.slot_interval || b.default_buffer !== undefined) {
           await env.aura_db.prepare(
             `INSERT INTO calendar_config (tenant_id,days,start_hour,end_hour,slot_min,professional,updated_at)
              VALUES (?,?,?,?,?,?,CURRENT_TIMESTAMP)
              ON CONFLICT(tenant_id) DO UPDATE SET slot_min=excluded.slot_min,professional=excluded.professional,updated_at=CURRENT_TIMESTAMP`
           ).bind(tenant, '1,2,3,4,5', 10, 19, b.slot_min||60, b.professional||'').run();
+        }
+        // Guardar slot_interval y default_buffer en booking_config
+        if (b.slot_interval || b.default_buffer !== undefined) {
+          try {
+            await env.aura_db.prepare(`INSERT INTO booking_config (tenant_id,updated_at) VALUES (?,?) ON CONFLICT(tenant_id) DO NOTHING`).bind(tenant, Date.now()).run();
+            if (b.slot_interval) await env.aura_db.prepare(`UPDATE booking_config SET slot_interval=? WHERE tenant_id=?`).bind(b.slot_interval, tenant).run();
+            if (b.default_buffer !== undefined) await env.aura_db.prepare(`UPDATE booking_config SET default_buffer=? WHERE tenant_id=?`).bind(b.default_buffer, tenant).run();
+          } catch(e){}
         }
         return json({ ok: true });
       }
@@ -2960,15 +2976,16 @@ export default {
         const b:any = await req.json();
         if (b.delete) { await env.aura_db.prepare('DELETE FROM treatment_catalog WHERE id=? AND tenant_id=?').bind(b.delete, b.tenant_id).run(); return json({ok:true}); }
         const upL=b.upsell_label||null, upP=Number(b.upsell_price)||0, pkL=b.pack_label||null, pkP=Number(b.pack_price)||0, pkO=Number(b.pack_original)||0, nDays=Number(b.next_days)||0;
+        const bufB=Number(b.buffer_before)||0, bufA=Number(b.buffer_after)||0;
         if (b.id) {
-          await env.aura_db.prepare('UPDATE treatment_catalog SET name=?, duration_min=?, price=?, color=?, upsell_label=?, upsell_price=?, pack_label=?, pack_price=?, pack_original=?, next_days=? WHERE id=? AND tenant_id=?')
-            .bind(b.name||'Tratamiento', Number(b.duration_min)||30, Number(b.price)||0, b.color||'#9B7BFF', upL, upP, pkL, pkP, pkO, nDays, b.id, b.tenant_id).run();
+          await env.aura_db.prepare('UPDATE treatment_catalog SET name=?, duration_min=?, price=?, color=?, upsell_label=?, upsell_price=?, pack_label=?, pack_price=?, pack_original=?, next_days=?, buffer_before=?, buffer_after=? WHERE id=? AND tenant_id=?')
+            .bind(b.name||'Tratamiento', Number(b.duration_min)||30, Number(b.price)||0, b.color||'#9B7BFF', upL, upP, pkL, pkP, pkO, nDays, bufB, bufA, b.id, b.tenant_id).run();
           return json({ ok:true, id:b.id });
         }
         const id = 'tc_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
         const colors=['#9B7BFF','#FF6B5A','#34a877','#d9a23a','#3a8fd9','#c0568f'];
-        await env.aura_db.prepare('INSERT INTO treatment_catalog (id,tenant_id,name,duration_min,price,color,created_at,upsell_label,upsell_price,pack_label,pack_price,pack_original,next_days) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')
-          .bind(id, b.tenant_id, b.name||'Tratamiento', Number(b.duration_min)||30, Number(b.price)||0, b.color||colors[Math.floor(Math.random()*colors.length)], Date.now(), upL, upP, pkL, pkP, pkO, nDays).run();
+        await env.aura_db.prepare('INSERT INTO treatment_catalog (id,tenant_id,name,duration_min,price,color,created_at,upsell_label,upsell_price,pack_label,pack_price,pack_original,next_days,buffer_before,buffer_after) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+          .bind(id, b.tenant_id, b.name||'Tratamiento', Number(b.duration_min)||30, Number(b.price)||0, b.color||colors[Math.floor(Math.random()*colors.length)], Date.now(), upL, upP, pkL, pkP, pkO, nDays, bufB, bufA).run();
         return json({ ok:true, id });
       }
 

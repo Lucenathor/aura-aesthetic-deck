@@ -1809,7 +1809,7 @@ function openNewAppt(iso, proId){
   let dtVal=String(iso).slice(0,16);
   try{ const dd=new Date(iso); let hh=dd.getHours(); if(hh<8||hh>21){ dd.setHours(10,0,0,0); } dtVal=new Date(dd.getTime()-dd.getTimezoneOffset()*60000).toISOString().slice(0,16); }catch(e){}
   // Selector de tratamientos del catálogo (rellena duración y precio)
-  const catOpts=(CATALOG||[]).map(t=>'<option value="'+t.id+'" data-dur="'+t.duration_min+'" data-price="'+(t.price||0)+'">'+t.name+' · '+t.duration_min+' min'+(t.price?' · '+t.price+'€':'')+'</option>').join('');
+  const catOpts=(CATALOG||[]).map(t=>'<option value="'+t.id+'" data-dur="'+t.duration_min+'" data-price="'+(t.price||0)+'" data-bufbefore="'+(t.buffer_before||0)+'" data-bufafter="'+(t.buffer_after||0)+'">'+t.name+' · '+t.duration_min+' min'+(t.price?' · '+t.price+'€':'')+(t.buffer_before||t.buffer_after?' · ⏱️':'')+'</option>').join('');
   const treatField = (CATALOG&&CATALOG.length)
     ? '<select id="naTreatSel" onchange="onTreatPick(this)" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"><option value="">Elige tratamiento…</option>'+catOpts+'<option value="__custom">Otro (escribir)…</option></select><input id="naTreat" placeholder="Tratamiento" style="display:none;width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/>'
     : '<input id="naTreat" placeholder="Tratamiento" style="width:100%;padding:.6rem;border:1px solid var(--line);border-radius:9px;margin-bottom:.5rem"/>';
@@ -1928,13 +1928,16 @@ async function loadSchedule(){
     if(d.slot_min)document.getElementById('calSlot').value=d.slot_min;
     if(d.slot_interval){document.getElementById('calInterval').value=d.slot_interval;var sis=document.getElementById('calIntervalSetting');if(sis)sis.value=d.slot_interval;}
     if(d.professional)document.getElementById('calPro').value=d.professional;
+    if(d.default_buffer!=null){var db=document.getElementById('calDefaultBuffer');if(db)db.value=d.default_buffer;}
+    window.AURA_DEFAULT_BUFFER=d.default_buffer||0;
   }catch(e){}
   renderSchedule();
 }
 async function saveSchedule(){
   const schedule=DOW_ORDER.concat([]).map(dow=>{const r=SCHED[dow]||{};return {dow,is_open:r.is_open?1:0,t1_start:r.t1_start||'10:00',t1_end:r.t1_end||'14:00',t2_start:r.t2_start||null,t2_end:r.t2_end||null};});
   const intVal=document.getElementById('calIntervalSetting')?document.getElementById('calIntervalSetting').value:document.getElementById('calInterval').value;
-  const body={tenant_id:T,schedule,slot_min:+document.getElementById('calSlot').value,slot_interval:+intVal,professional:document.getElementById('calPro').value};
+  const defBuf=document.getElementById('calDefaultBuffer')?+document.getElementById('calDefaultBuffer').value:0;
+  const body={tenant_id:T,schedule,slot_min:+document.getElementById('calSlot').value,slot_interval:+intVal,professional:document.getElementById('calPro').value,default_buffer:defBuf};
   const m=document.getElementById('calMsg');
   try{await fetch(WORKER+'/api/schedule-by-day',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});m.style.color='#1f8c69';m.textContent='Horario guardado ✓';setTimeout(()=>m.textContent='',2500);if(typeof loadAgenda==='function'){try{loadAgenda();}catch(e){}}}catch(e){m.style.color='#b45309';m.textContent='Error al guardar';}
 }

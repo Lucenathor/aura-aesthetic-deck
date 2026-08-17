@@ -53,3 +53,50 @@
 - Que se guarde la preferencia y se aplique al cargar la agenda
 - Opción de 5 y 10 minutos para clínicas con muchos servicios rápidos
 - Buffer time configurable por servicio (nice to have)
+
+## Hallazgos de Calendly
+
+### Buffer Time (Calendly)
+- Se configura POR TIPO DE EVENTO (= por tratamiento en nuestro caso)
+- Dos opciones independientes: "Before event" y "After event"
+- Ejemplo: 30 min cita + 15 min buffer antes + 15 min buffer después = 60 min totales bloqueados
+- Los buffers solo aplican a citas reservadas por el sistema (no bloquean manualmente)
+- Se pueden mostrar u ocultar en el calendario conectado
+- Recomendación de expertos: usar solo before O after, no ambos (evita "double buffers")
+
+### Start Time Increments (Calendly)
+- Configurable en Booking Page Options
+- Define a qué intervalos se muestran los slots disponibles al reservar
+- Independiente de la duración del evento
+
+### Duración por evento (Calendly)
+- Cada "event type" tiene su propia duración fija
+- El invitado no puede cambiarla; solo el host
+- En nuestro caso: cada TRATAMIENTO define su duración
+
+## PLAN DE IMPLEMENTACIÓN PARA AURA
+
+### 1. Duración por tratamiento (treatment_catalog)
+- Añadir campo `duration_min` al catálogo de tratamientos
+- Al crear una cita con ese tratamiento, se auto-rellena la duración
+- La secretaria puede ajustarla manualmente al crear/editar (como Excel, estirando)
+
+### 2. Buffer time por tratamiento
+- Añadir campos `buffer_before` y `buffer_after` al catálogo
+- Opcionales (0 por defecto)
+- Al reservar, el sistema bloquea: buffer_before + duración + buffer_after
+- Se muestra visualmente en la cuadrícula como zona gris/rayada
+
+### 3. Buffer time global (fallback)
+- En Ajustes → Horario: "Margen entre citas" (0, 5, 10, 15 min)
+- Se aplica si el tratamiento no tiene buffer propio definido
+
+### 4. Ajuste manual de duración (secretaria)
+- Al crear cita: selector de duración pre-rellenado por tratamiento, editable
+- En la cuadrícula: arrastrar el borde inferior del bloque para estirar/encoger
+- Como en Pabau: "drag the bottom of the appointment to increase or decrease duration"
+
+### 5. Resumen de campos a añadir:
+- treatment_catalog: duration_min (INT), buffer_before (INT default 0), buffer_after (INT default 0)
+- booking_config: default_buffer (INT default 0)
+- appointments: duration_min ya existe, se auto-rellena desde tratamiento
