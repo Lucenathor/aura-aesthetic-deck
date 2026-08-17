@@ -1926,14 +1926,15 @@ async function loadSchedule(){
   try{const r=await fetch(WORKER+'/api/schedule-by-day?tenant='+T);const d=await r.json();
     SCHED={};(d.schedule||[]).forEach(s=>{SCHED[s.dow]={is_open:s.is_open,t1_start:s.t1_start,t1_end:s.t1_end,t2_start:s.t2_start,t2_end:s.t2_end};});
     if(d.slot_min)document.getElementById('calSlot').value=d.slot_min;
-    if(d.slot_interval)document.getElementById('calInterval').value=d.slot_interval;
+    if(d.slot_interval){document.getElementById('calInterval').value=d.slot_interval;var sis=document.getElementById('calIntervalSetting');if(sis)sis.value=d.slot_interval;}
     if(d.professional)document.getElementById('calPro').value=d.professional;
   }catch(e){}
   renderSchedule();
 }
 async function saveSchedule(){
   const schedule=DOW_ORDER.concat([]).map(dow=>{const r=SCHED[dow]||{};return {dow,is_open:r.is_open?1:0,t1_start:r.t1_start||'10:00',t1_end:r.t1_end||'14:00',t2_start:r.t2_start||null,t2_end:r.t2_end||null};});
-  const body={tenant_id:T,schedule,slot_min:+document.getElementById('calSlot').value,slot_interval:+document.getElementById('calInterval').value,professional:document.getElementById('calPro').value};
+  const intVal=document.getElementById('calIntervalSetting')?document.getElementById('calIntervalSetting').value:document.getElementById('calInterval').value;
+  const body={tenant_id:T,schedule,slot_min:+document.getElementById('calSlot').value,slot_interval:+intVal,professional:document.getElementById('calPro').value};
   const m=document.getElementById('calMsg');
   try{await fetch(WORKER+'/api/schedule-by-day',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});m.style.color='#1f8c69';m.textContent='Horario guardado ✓';setTimeout(()=>m.textContent='',2500);if(typeof loadAgenda==='function'){try{loadAgenda();}catch(e){}}}catch(e){m.style.color='#b45309';m.textContent='Error al guardar';}
 }

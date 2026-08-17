@@ -759,7 +759,8 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
             <b id="calTitle" class="serif" style="font-size:1.05rem;margin-left:.3rem"></b>
           </div>
           <div style="display:flex;gap:.3rem">
-            <select id="calInterval" class="cal-interval-sel" onchange="renderAgendaCal()"><option value="15">15 min</option><option value="30">30 min</option></select>
+            <select id="calInterval" class="cal-interval-sel" onchange="renderAgendaCal()"><option value="5">5 min</option><option value="10">10 min</option><option value="15" selected>15 min</option><option value="30">30 min</option><option value="60">60 min</option></select>
+
             <button class="btn" style="padding:.3rem .6rem;font-size:.78rem" onclick="openTimeBlock()" title="Bloquear tiempo">🚫</button>
             <button class="btn agv on" data-v="day" style="padding:.3rem .7rem;font-size:.78rem">Día</button>
             <button class="btn agv" data-v="week" style="padding:.3rem .7rem;font-size:.78rem">Semana</button>
@@ -887,7 +888,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
         <button class="btn" style="margin-top:.4rem" onclick="applyToAll()">Aplicar el horario del primer día abierto a todos</button>
         <div class="row2" style="margin-top:.4rem">
           <div class="field"><label>Duración de cada cita</label><select id="calSlot"><option value="15">15 min</option><option value="20">20 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="60" selected>60 min</option></select></div>
-          <div class="field"><label>Intervalo de la agenda</label><select id="calInterval"><option value="15">15 min (Máxima precisión)</option><option value="30">30 min (Vista más limpia)</option></select></div>
+          <div class="field"><label>Intervalo visual de la agenda</label><select id="calIntervalSetting"><option value="5">5 min (Servicios rápidos)</option><option value="10">10 min (Alta densidad)</option><option value="15" selected>15 min (Estándar clínicas)</option><option value="30">30 min (Vista limpia)</option><option value="60">60 min (Consultas largas)</option></select><small style="display:block;font-size:.7rem;color:var(--muted);margin-top:.2rem">Define cada cuántos minutos se divide la cuadrícula del calendario. La duración real de cada cita la marca el tratamiento.</small></div>
           <div class="field"><label>Profesional principal</label><input id="calPro" placeholder="Dra. Elvira"/></div>
         </div>
       <button class="btn prim" style="margin-top:1.1rem" onclick="saveSchedule()">Guardar horario</button>
@@ -3425,14 +3426,15 @@ async function loadSchedule(){
   try{const r=await fetch(WORKER+'/api/schedule-by-day?tenant='+T);const d=await r.json();
     SCHED={};(d.schedule||[]).forEach(s=>{SCHED[s.dow]={is_open:s.is_open,t1_start:s.t1_start,t1_end:s.t1_end,t2_start:s.t2_start,t2_end:s.t2_end};});
     if(d.slot_min)document.getElementById('calSlot').value=d.slot_min;
-    if(d.slot_interval)document.getElementById('calInterval').value=d.slot_interval;
+    if(d.slot_interval){document.getElementById('calInterval').value=d.slot_interval;var sis=document.getElementById('calIntervalSetting');if(sis)sis.value=d.slot_interval;}
     if(d.professional)document.getElementById('calPro').value=d.professional;
   }catch(e){}
   renderSchedule();
 }
 async function saveSchedule(){
   const schedule=DOW_ORDER.concat([]).map(dow=>{const r=SCHED[dow]||{};return {dow,is_open:r.is_open?1:0,t1_start:r.t1_start||'10:00',t1_end:r.t1_end||'14:00',t2_start:r.t2_start||null,t2_end:r.t2_end||null};});
-  const body={tenant_id:T,schedule,slot_min:+document.getElementById('calSlot').value,slot_interval:+document.getElementById('calInterval').value,professional:document.getElementById('calPro').value};
+  const intVal=document.getElementById('calIntervalSetting')?document.getElementById('calIntervalSetting').value:document.getElementById('calInterval').value;
+  const body={tenant_id:T,schedule,slot_min:+document.getElementById('calSlot').value,slot_interval:+intVal,professional:document.getElementById('calPro').value};
   const m=document.getElementById('calMsg');
   try{await fetch(WORKER+'/api/schedule-by-day',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});m.style.color='#1f8c69';m.textContent='Horario guardado ✓';setTimeout(()=>m.textContent='',2500);if(typeof loadAgenda==='function'){try{loadAgenda();}catch(e){}}}catch(e){m.style.color='#b45309';m.textContent='Error al guardar';}
 }
