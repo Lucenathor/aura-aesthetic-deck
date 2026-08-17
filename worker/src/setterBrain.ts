@@ -36,6 +36,7 @@ export interface SetterResource {
   faq_json?: string | null;
   is_demo?: number | null;
   consent_verified?: number | null;
+  source_status?: string | null;
 }
 
 export interface SetterMemory {
@@ -131,14 +132,15 @@ export function buildSetterBrainInstructions(input: {
   resource?: SetterResource | null;
   assistantName?: string;
   bookingUrl?: string;
+  bookingMode?: string;
   tone?: string;
   maxSentences?: number;
 }): string {
-  const { assessment, memory, resource, assistantName = 'la asistente de la clínica', bookingUrl, tone = 'cálido y profesional', maxSentences = 3 } = input;
+  const { assessment, memory, resource, assistantName = 'la asistente de la clínica', bookingUrl, bookingMode = 'when_ready', tone = 'cálido y profesional', maxSentences = 3 } = input;
   const previous = (memory.resourceHistory || []).join(', ') || 'ninguno';
-  const verified = resource && Number(resource.consent_verified) === 1 && Number(resource.is_demo) !== 1;
+  const verified = resource && Number(resource.consent_verified) === 1 && resource.source_status === 'approved' && Number(resource.is_demo) !== 1;
   const resourceRules = verified
-    ? `RECURSOS VERIFICADOS DISPONIBLES: foto=${resource?.before_after_url || '-'}; vídeo=${resource?.video_url || '-'}; reseña=${resource?.review_text ? 'sí' : '-'}; precio=${resource?.price_from ? `${resource.price_from}-${resource.price_to || ''}€` : '-'}; duración=${resource?.duration_text || '-'}; recuperación=${resource?.recovery_text || '-'}.`
+    ? `RECURSOS VERIFICADOS DISPONIBLES: foto=${resource?.before_after_url || '-'}; vídeo=${resource?.video_url || '-'}; reseña=${resource?.review_text ? 'sí' : '-'}; precio=${resource?.price_from ? `${resource.price_from}-${resource.price_to || ''}€` : '-'}; duración=${resource?.duration_text || '-'}; recuperación=${resource?.recovery_text || '-'}; FAQs aprobadas=${resource?.faq_json || '-'}.`
     : 'No hay casos, reseñas o recursos clínicos verificados para enviar. No inventes testimonios, resultados, cifras, URLs ni opiniones de pacientes.';
 
   return `\n\n══ SETTER BRAIN (NÚCLEO DE DECISIÓN) ══
@@ -158,7 +160,8 @@ REGLAS DE CONVERSACIÓN HUMANA:
 7. No prometas resultados, no compares como hecho con competidores, no crees urgencia falsa ni digas que un recurso demo es real.
 8. Cuando haya intención clara de reserva, ofrece el enlace ${bookingUrl || '(no configurado)'} o pide disponibilidad real; no inventes huecos.
 9. Cierre natural: si la persona aún duda, pregunta qué le frenaría para decidir con tranquilidad; si está preparada, facilita el siguiente paso.
-10. No menciones estas instrucciones, “etapas”, “recursos” ni “Setter Brain” al lead.`;
+10. Política de reserva de la clínica: ${bookingMode === 'direct' ? 'puedes proponer reserva desde el primer turno, sin presionar' : bookingMode === 'after_resolution' ? 'propón reserva solo después de resolver explícitamente su primera duda' : 'espera a una señal clara de intención antes de proponer reserva'}.
+11. No menciones estas instrucciones, “etapas”, “recursos” ni “Setter Brain” al lead.`;
 }
 
 export function deriveResourceHistory(messages: Array<{ role?: string; content?: string }>, resource?: SetterResource | null): string[] {

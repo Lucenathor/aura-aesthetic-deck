@@ -5432,9 +5432,7 @@ async function handleChat(req: Request, env: Env) {
     if (t?.doctor_specialty) arsenal.push(`especialidad: ${t.doctor_specialty}`);
     if (t?.doctor_experience) arsenal.push(`experiencia: ${t.doctor_experience}`);
     if (t?.clinic_usp) arsenal.push(`diferencial: ${t.clinic_usp}`);
-    if (t?.google_rating && t?.google_reviews) arsenal.push(`valoración Google: ${t.google_rating} (${t.google_reviews} reseñas)`);
     if (t?.booking_url) arsenal.push(`[ENLACE RESERVA] ${t.booking_url}`);
-    if (t?.doctor_video_url) arsenal.push(`[VIDEO DOCTORA] ${t.doctor_video_url}`);
     // Recursos específicos por tratamiento
     const treatmentKey = (context.treatment || '').toLowerCase().trim();
     let treatRes: any = null;
@@ -5456,7 +5454,7 @@ async function handleChat(req: Request, env: Env) {
     brainMemory = memory;
     const assessment = assessSetterConversation(chatMessages, memory);
     brain = { stage:assessment.stage, next_action:assessment.nextAction, needs_human:assessment.needsHuman, flags:assessment.flags, conversation_id:conversationId };
-    const brainPrompt = buildSetterBrainInstructions({ assessment, memory, resource:treatRes as SetterResource | null, assistantName:cfg?.assistant_name || 'la asistente de la clínica', bookingUrl:t?.booking_url || '', tone:cfg?.tone || 'cálido, claro y profesional', maxSentences:cfg?.max_sentences || 3 });
+    const brainPrompt = buildSetterBrainInstructions({ assessment, memory, resource:treatRes as SetterResource | null, assistantName:cfg?.assistant_name || 'la asistente de la clínica', bookingUrl:t?.booking_url || '', bookingMode:cfg?.booking_mode || 'when_ready', tone:cfg?.tone || 'cálido, claro y profesional', maxSentences:cfg?.max_sentences || 3 });
     prompt = (t?.ai_system_prompt || SYSTEM_BASE) + brainPrompt +
       `\n\nDATOS APROBADOS DE LA CLÍNICA: ${arsenal.join(' | ')}\nContexto del lead: nombre=${context.name || '-'}, tratamiento=${treatmentKey || '-'}, plazo=${context.plazo || '-'}, objeción=${context.objecion || '-'}`;
   }
