@@ -46,7 +46,7 @@
 - [x] Investigar benchmarks públicos y marcos de evaluación aplicables a agentes conversacionales.
 - [x] Evaluar el Setter Brain con una rúbrica estricta de resolución, seguridad, continuidad, naturalidad y cierre.
 - [x] Comparar las métricas de forma transparente con referencias públicas y documentar los límites de comparabilidad.
-- [ ] Investigar prácticas avanzadas de setting clínico, escritura conversacional y resolución amable de objeciones.
-- [ ] Crear y ejecutar una batería reproducible de 100 conversaciones multietapa con perfiles de paciente diversos.
-- [ ] Analizar patrones de fallo y refinar el Setter Brain sin usar promesas o recursos no autorizados.
-- [ ] Entregar un informe con métricas, segmentación de clientes y recomendaciones operativas.
+- [x] Investigar prácticas avanzadas de setting clínico, escritura conversacional y resolución amable de objeciones.
+- [x] Crear y ejecutar una batería reproducible de 100 conversaciones multietapa con perfiles de paciente diversos.
+- [x] Analizar patrones de fallo y refinar el Setter Brain sin usar promesas o recursos no autorizados.
+- [x] Entregar un informe con métricas, segmentación de clientes y recomendaciones operativas.
