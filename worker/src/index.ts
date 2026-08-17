@@ -566,6 +566,27 @@ async function ensureInventorySchema(env: Env) {
   try { await env.aura_db.exec('ALTER TABLE tenants ADD COLUMN before_after_url TEXT'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE tenants ADD COLUMN doctor_video_url TEXT'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE tenants ADD COLUMN top_review TEXT'); } catch(e){}
+  // Tabla de recursos del setter por tratamiento
+  try { await env.aura_db.exec(`CREATE TABLE IF NOT EXISTS setter_resources (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    treatment TEXT NOT NULL,
+    before_after_url TEXT,
+    before_after_caption TEXT,
+    video_url TEXT,
+    video_caption TEXT,
+    review_text TEXT,
+    review_author TEXT,
+    price_from REAL,
+    price_to REAL,
+    duration_text TEXT,
+    recovery_text TEXT,
+    tips TEXT,
+    cta_text TEXT,
+    created_at INTEGER,
+    updated_at INTEGER
+  )`); } catch(e){}
+  try { await env.aura_db.exec('CREATE INDEX IF NOT EXISTS idx_setter_res ON setter_resources (tenant_id, treatment)'); } catch(e){}
   // Asignar slug a tenants que no lo tienen
   try {
     const noSlug: any = await env.aura_db.prepare('SELECT id FROM tenants WHERE public_slug IS NULL OR public_slug=""').all();
@@ -1872,6 +1893,30 @@ export default {
           await env.aura_db.prepare('UPDATE tenants SET sms_credits = COALESCE(sms_credits,0) + ? WHERE id=?').bind(amount, id).run();
           const t:any = await env.aura_db.prepare('SELECT sms_credits FROM tenants WHERE id=?').bind(id).first();
           return json({ ok:true, sms_credits: t?t.sms_credits:null });
+        }
+
+        // ===== SETTER RESOURCES (recursos por tratamiento para el chat IA) =====
+        await ensureInventorySchema(env);
+        if (p === '/api/admin-setter-resources' && req.method === 'GET') {
+          const tid = url.searchParams.get('tenant_id') || url.searchParams.get('id') || '';
+          if (!tid) return json({ ok:false, error:'tenant_id_required' });
+          const r:any = await env.aura_db.prepare('SELECT * FROM setter_resources WHERE tenant_id=? ORDER BY treatment').bind(tid).all();
+          return json({ ok:true, resources: r.results||[] });
+        }
+        if (p === '/api/admin-setter-resources' && req.method === 'POST') {
+          const b:any = await req.json();
+          if (!b.tenant_id || !b.treatment) return json({ ok:false, error:'tenant_id and treatment required' });
+          const id = 'sr_' + Math.random().toString(36).slice(2,12);
+          const now = Date.now();
+          await env.aura_db.prepare(`INSERT OR REPLACE INTO setter_resources (id,tenant_id,treatment,before_after_url,before_after_caption,video_url,video_caption,review_text,review_author,price_from,price_to,duration_text,recovery_text,tips,cta_text,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+            .bind(b.id||id, b.tenant_id, b.treatment, b.before_after_url||null, b.before_after_caption||null, b.video_url||null, b.video_caption||null, b.review_text||null, b.review_author||null, b.price_from||null, b.price_to||null, b.duration_text||null, b.recovery_text||null, b.tips||null, b.cta_text||null, b.created_at||now, now).run();
+          return json({ ok:true, id: b.id||id });
+        }
+        if (p === '/api/admin-setter-resources' && req.method === 'DELETE') {
+          const b:any = await req.json();
+          if (!b.id) return json({ ok:false, error:'id_required' });
+          await env.aura_db.prepare('DELETE FROM setter_resources WHERE id=?').bind(b.id).run();
+          return json({ ok:true });
         }
 
         // NOTAS internas por clínica
@@ -5302,25 +5347,36 @@ async function handleChat(req: Request, env: Env) {
     prompt = SALES_DEMO_PROMPT +
       `\nNombre de la clínica que está probando: ${t?.name || 'tu clínica'}.`;
   } else {
-    // Arsenal del setter: recursos de la clínica para usar en la conversación
+    // === ARSENAL DEL SETTER: recursos globales + por tratamiento ===
     const arsenal: string[] = [];
     if (t?.doctor_name) arsenal.push(`doctora: ${t.doctor_name}`);
     if (t?.doctor_specialty) arsenal.push(`especialidad: ${t.doctor_specialty}`);
     if (t?.doctor_experience) arsenal.push(`experiencia: ${t.doctor_experience}`);
-    if (t?.clinic_usp) arsenal.push(`diferencial de la clínica: ${t.clinic_usp}`);
-    if (t?.price_range) arsenal.push(`rango de precio orientativo: ${t.price_range}`);
-    if (t?.booking_url) arsenal.push(`enlace de reserva directa: ${t.booking_url}`);
-    if (t?.before_after_url) arsenal.push(`[RECURSO] foto antes/después disponible: ${t.before_after_url} — envíala cuando el lead pida ver resultados o dude`);
-    if (t?.doctor_video_url) arsenal.push(`[RECURSO] vídeo de la doctora disponible: ${t.doctor_video_url} — envíalo cuando el lead desconfíe o pregunte quién le va a tratar`);
-    if (t?.top_review) arsenal.push(`[RECURSO] reseña real de paciente: "${t.top_review}" — cítala como social proof cuando el lead dude`);
-    if (t?.google_rating && t?.google_reviews) arsenal.push(`valoración Google: ${t.google_rating}⭐ (${t.google_reviews} reseñas)`);
-    
-    const arsenalBlock = arsenal.length > 0 
-      ? `\n\nARSENAL DE RECURSOS (usa estos datos cuando sea oportuno en la conversación):\n${arsenal.join('\n')}\n\nCUANDO ENVIAR RECURSOS:\n- si pide ver resultados → envía la foto antes/después\n- si desconfía o pregunta quién le trata → envía el vídeo de la doctora\n- si duda → cita la reseña real\n- si está lista para reservar → envía el enlace de reserva directa\n- NUNCA envíes todos los recursos de golpe. uno por turno, el más relevante.`
-      : '';
-    
-    prompt = (t?.ai_system_prompt || SYSTEM_BASE) + arsenalBlock +
-      `\n\nContexto del lead: nombre=${body.context?.name || '-'}, tratamiento=${body.context?.treatment || '-'}, plazo=${body.context?.plazo || '-'}, objecion=${body.context?.objecion || '-'}`;
+    if (t?.clinic_usp) arsenal.push(`diferencial: ${t.clinic_usp}`);
+    if (t?.google_rating && t?.google_reviews) arsenal.push(`valoración Google: ${t.google_rating} (${t.google_reviews} reseñas)`);
+    if (t?.booking_url) arsenal.push(`[ENLACE RESERVA] ${t.booking_url}`);
+    if (t?.doctor_video_url) arsenal.push(`[VIDEO DOCTORA] ${t.doctor_video_url}`);
+    // Recursos específicos por tratamiento
+    const treatmentKey = (body.context?.treatment || '').toLowerCase().trim();
+    let treatRes: any = null;
+    if (treatmentKey) { try { treatRes = await env.aura_db.prepare('SELECT * FROM setter_resources WHERE tenant_id=? AND treatment=?').bind(tenantId, treatmentKey).first(); } catch(e) {} }
+    const treatBlock: string[] = [];
+    if (treatRes) {
+      if (treatRes.before_after_url) treatBlock.push(`[FOTO ANTES/DESPUES] ${treatRes.before_after_url} — "${treatRes.before_after_caption || 'Resultado real'}"`);
+      if (treatRes.video_url) treatBlock.push(`[VIDEO TRATAMIENTO] ${treatRes.video_url} — "${treatRes.video_caption || 'Video del procedimiento'}"`);
+      if (treatRes.review_text) treatBlock.push(`[RESENA REAL] "${treatRes.review_text}" — ${treatRes.review_author || 'Paciente verificada'}`);
+      if (treatRes.price_from) treatBlock.push(`[PRECIO] desde ${treatRes.price_from}E${treatRes.price_to ? ' hasta ' + treatRes.price_to + 'E' : ''}`);
+      if (treatRes.duration_text) treatBlock.push(`[DURACION] ${treatRes.duration_text}`);
+      if (treatRes.recovery_text) treatBlock.push(`[RECUPERACION] ${treatRes.recovery_text}`);
+      if (treatRes.tips) treatBlock.push(`[TIPS] ${treatRes.tips}`);
+    } else {
+      if (t?.before_after_url) treatBlock.push(`[FOTO ANTES/DESPUES] ${t.before_after_url}`);
+      if (t?.top_review) treatBlock.push(`[RESENA REAL] "${t.top_review}"`);
+      if (t?.price_range) treatBlock.push(`[PRECIO] ${t.price_range}`);
+    }
+    const fullArsenal = `\n\nARSENAL DEL SETTER:\nDATOS CLINICA: ${arsenal.join(' | ')}\nRECURSOS TRATAMIENTO (${treatmentKey || 'general'}): ${treatBlock.join(' | ')}\n\nREGLAS OBLIGATORIAS DE USO DE RECURSOS:\n1. DEBES incluir AL MENOS 1 recurso en CADA respuesta. Elige el mas relevante segun lo que diga el lead.\n2. Si pregunta precio → incluye el [PRECIO]\n3. Si pide ver resultados → pega la URL de [FOTO ANTES/DESPUES]\n4. Si desconfia/tiene miedo → pega URL de [VIDEO DOCTORA] o cita la [RESENA REAL]\n5. Si pregunta duracion/recuperacion → incluye [DURACION] o [RECUPERACION]\n6. Si esta lista → pega [ENLACE RESERVA]\n7. Si no encaja ninguno → cita la resena como social proof\n8. FORMATO: pega URLs directamente en el texto. Cita resenas entre comillas. Menciona precios de forma natural.\n9. NUNCA digas "te envio un recurso". Simplemente incluyelo.`;
+    prompt = (t?.ai_system_prompt || SYSTEM_BASE) + fullArsenal +
+      `\n\nContexto del lead: nombre=${body.context?.name || '-'}, tratamiento=${treatmentKey || '-'}, plazo=${body.context?.plazo || '-'}, objecion=${body.context?.objecion || '-'}`;
   }
 
   const messages = [{ role: 'system', content: prompt }, ...(body.messages || []).slice(-12)];

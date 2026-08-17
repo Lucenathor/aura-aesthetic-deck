@@ -32,3 +32,8 @@
 - [ ] Mejorar prompt del chat IA para usar recursos multimedia del arsenal cuando el paciente duda
 - [ ] Probar 30 conversaciones variadas y afinar el prompt hasta 10/10
 - [ ] Sistema de envío de recursos en el chat (fotos, vídeo, enlace) según contexto de la conversación
+- [ ] Crear tabla setter_resources con recursos por tratamiento (foto antes/después, reseña, vídeo, precio, tips)
+- [ ] Generar recursos de prueba para los 5 tratamientos principales (labios, botox, rellenos, peeling, radiofrecuencia)
+- [ ] Sección en el dashboard para gestionar recursos del setter por tratamiento
+- [ ] Mejorar prompt para que SIEMPRE envíe recurso multimedia según tratamiento y momento
+- [ ] Probar 30+ conversaciones hasta 10/10
