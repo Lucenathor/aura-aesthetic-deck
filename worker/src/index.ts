@@ -3974,9 +3974,9 @@ export default {
         const id = appId();
         await env.aura_db
           .prepare(
-            `INSERT INTO appointments (id,tenant_id,lead_id,treatment,date_iso,duration_min,status) VALUES (?,?,?,?,?,?,?)`
+            `INSERT INTO appointments (id,tenant_id,lead_id,treatment,date_iso,duration_min,status,professional_id) VALUES (?,?,?,?,?,?,?,?)`
           )
-          .bind(id, b.tenant_id, b.lead_id || null, b.treatment || null, b.date_iso, b.duration_min || 30, 'booked')
+          .bind(id, b.tenant_id, b.lead_id || null, b.treatment || null, b.date_iso, b.duration_min || 30, 'booked', b.professional_id || null)
           .run();
         if (b.lead_id) {
           await env.aura_db
@@ -4037,7 +4037,7 @@ export default {
       }
 
       if (p === '/api/appointments' && req.method === 'GET') {
-        const tenant = url.searchParams.get('tenant');
+        const tenant = url.searchParams.get('tenant'); 
         if (!tenant) return json({ error: 'missing tenant' }, 400);
         const prof = url.searchParams.get('professional') || '';
         let r;
@@ -4413,18 +4413,19 @@ export default {
         const icalToken = (parts[5] || '').replace('.ics','');
         const expectedToken = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(icalTenant+icalPro+'aura-ical-2026')).then((h:ArrayBuffer)=>Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16));
         if (icalToken !== expectedToken) return new Response('Unauthorized', {status:401});
-        const from = new Date(Date.now()-90*86400000).toISOString().slice(0,10);
-        const to = new Date(Date.now()+90*86400000).toISOString().slice(0,10);
-        const rows:any = await env.aura_db.prepare("SELECT a.*, l.name as lead_name, l.phone FROM appointments a LEFT JOIN leads l ON a.lead_id=l.id WHERE a.tenant_id=? AND a.professional_id=? AND a.date_iso BETWEEN ? AND ? AND a.status NOT IN ('cancelled') ORDER BY a.date_iso").bind(icalTenant, icalPro, from, to).all();
+        const from = new Date(Date.now()-7*86400000).toISOString().slice(0,10);
+        const to = new Date(Date.now()+120*86400000).toISOString().slice(0,10);
+        const rows:any = await env.aura_db.prepare("SELECT a.*, l.name as lead_name, l.phone FROM appointments a LEFT JOIN leads l ON a.lead_id=l.id WHERE a.tenant_id=? AND a.professional_id=? AND a.date_iso BETWEEN ? AND ? AND a.status NOT IN ('cancelled','noshow') ORDER BY a.date_iso").bind(icalTenant, icalPro, from, to).all();
         const events = (rows.results||[]).map((a:any) => {
           const dur = a.duration_min || 30;
           const endDate = new Date(new Date(a.date_iso).getTime()+dur*60000);
           const startFmt = new Date(a.date_iso).toISOString().replace(/[-:.]/g,'').slice(0,15)+'Z';
           const endFmt = endDate.toISOString().replace(/[-:.]/g,'').slice(0,15)+'Z';
-          return `BEGIN:VEVENT\r\nUID:${a.id}@auracrm.co\r\nDTSTAMP:${new Date().toISOString().replace(/[-:.]/g,'').slice(0,15)}Z\r\nDTSTART:${startFmt}\r\nDTEND:${endFmt}\r\nSUMMARY:${(a.lead_name||'Paciente')} - ${a.treatment||'Cita'}\r\nDESCRIPTION:Tel: ${a.phone||'N/A'}\\nEstado: ${a.status||'booked'}\r\nSTATUS:${a.status==='noshow'?'CANCELLED':'CONFIRMED'}\r\nEND:VEVENT`;
+          return `BEGIN:VEVENT\r\nUID:${a.id}@auracrm.co\r\nDTSTAMP:${new Date().toISOString().replace(/[-:.]/g,'').slice(0,15)}Z\r\nDTSTART:${startFmt}\r\nDTEND:${endFmt}\r\nSUMMARY:${(a.lead_name||'Paciente')} - ${a.treatment||'Cita'}\r\nDESCRIPTION:Tel: ${a.phone||'N/A'}\\nEstado: ${a.status==='confirmed'?'Confirmada':'Pendiente'}\\nTratamiento: ${a.treatment||''}\\nDuración: ${dur}min\r\nSTATUS:CONFIRMED\r\nEND:VEVENT`;
         }).join('\r\n');
-        const ical = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//AURA CRM//ES\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:AURA - Agenda\r\nX-WR-TIMEZONE:Europe/Madrid\r\n${events}\r\nEND:VCALENDAR`;
-        return new Response(ical, { headers: { 'Content-Type':'text/calendar; charset=utf-8', 'Content-Disposition':'inline; filename="agenda.ics"', 'Cache-Control':'no-cache, max-age=300' } });
+        const proName = (rows.results||[])[0]?.professional_id || icalPro;
+        const ical = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//AURA CRM//auracrm.co//ES\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-CALNAME:AURA Clinica\r\nX-WR-TIMEZONE:Europe/Madrid\r\nREFRESH-INTERVAL;VALUE=DURATION:PT15M\r\nX-PUBLISHED-TTL:PT15M\r\n${events}\r\nEND:VCALENDAR`;
+        return new Response(ical, { headers: { 'Content-Type':'text/calendar; charset=utf-8', 'Content-Disposition':'inline; filename="agenda.ics"', 'Cache-Control':'no-cache, no-store, must-revalidate, max-age=0', 'Pragma':'no-cache', 'Expires':'0', 'Last-Modified': new Date().toUTCString() } });
       }
 
       // Generar URL de iCal feed para un profesional
@@ -4433,7 +4434,58 @@ export default {
         if (!proId || !tenant) return json({ error:'missing params' }, 400);
         const token = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(tenant+proId+'aura-ical-2026')).then((h:ArrayBuffer)=>Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16));
         const icalUrl = `https://aura-chat-worker.adrian-7b9.workers.dev/api/ical/${tenant}/${proId}/${token}.ics`;
-        return json({ ok:true, url:icalUrl, instructions:'Copia esta URL y pegala en Google Calendar > Otros calendarios > Desde URL. Se actualizara automaticamente.' });
+        return json({ ok:true, url:icalUrl, instructions:'Copia esta URL y pégala en Google Calendar > Otros calendarios > Desde URL. IMPORTANTE: después ve a calendar.google.com/calendar/u/0/syncselect y activa el sync del nuevo calendario. En Apple Calendar (iPhone/Mac) se actualiza cada 15 min automáticamente.', sync_url:'https://calendar.google.com/calendar/u/0/syncselect', tips:['Apple Calendar (iPhone/iPad): Ajustes > Calendario > Cuentas > Añadir cuenta > Otro > Suscripción a calendario > pega la URL','Google Calendar (PC): Otros calendarios > + > Desde URL > pega > Añadir','Outlook: Añadir calendario > Suscribirse desde web > pega la URL'] });
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // PANEL DEL PROFESIONAL (staff login con PIN + agenda personal)
+      // ═══════════════════════════════════════════════════════════════
+
+      if (p === '/api/staff-login' && req.method === 'POST') {
+        const b:any = await req.json();
+        if (!b.tenant_id || !b.pin) return json({ error:'Introduce tu PIN' }, 400);
+        const pro:any = await env.aura_db.prepare("SELECT id,name,color,role FROM professionals WHERE tenant_id=? AND pin=? AND active=1").bind(b.tenant_id, b.pin).first();
+        if (!pro) return json({ error:'PIN incorrecto' }, 401);
+        const staffToken = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pro.id+b.tenant_id+'staff-2026-'+Date.now())).then((h:ArrayBuffer)=>Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,32));
+        await env.AURA_IMG.put('staff_session_'+staffToken, JSON.stringify({pro_id:pro.id, tenant_id:b.tenant_id, name:pro.name, role:pro.role, exp:Date.now()+24*3600000}));
+        return json({ ok:true, token:staffToken, professional:pro });
+      }
+
+      if (p === '/api/staff-agenda' && req.method === 'GET') {
+        const staffToken = url.searchParams.get('token') || '';
+        const sessionData = await env.AURA_IMG.get('staff_session_'+staffToken);
+        if (!sessionData) return json({ error:'Sesión expirada' }, 401);
+        const sess = JSON.parse(sessionData);
+        if (sess.exp < Date.now()) { await env.AURA_IMG.delete('staff_session_'+staffToken); return json({ error:'Sesión expirada' }, 401); }
+        const dateParam = url.searchParams.get('date') || new Date().toISOString().slice(0,10);
+        const weekEnd = new Date(new Date(dateParam).getTime()+7*86400000).toISOString().slice(0,10);
+        const appts:any = await env.aura_db.prepare("SELECT a.*, l.name as patient_name, l.phone as patient_phone, l.email as patient_email FROM appointments a LEFT JOIN leads l ON a.lead_id=l.id WHERE a.tenant_id=? AND a.professional_id=? AND a.date_iso BETWEEN ? AND ? AND a.status NOT IN ('cancelled') ORDER BY a.date_iso").bind(sess.tenant_id, sess.pro_id, dateParam, weekEnd).all();
+        // Métricas del mes
+        const monthStart = dateParam.slice(0,7)+'-01';
+        const monthEnd = dateParam.slice(0,7)+'-31';
+        const monthAppts:any = await env.aura_db.prepare("SELECT COUNT(*) as total, SUM(CASE WHEN status='completed' OR status='arrived' THEN 1 ELSE 0 END) as completed FROM appointments WHERE tenant_id=? AND professional_id=? AND date_iso BETWEEN ? AND ?").bind(sess.tenant_id, sess.pro_id, monthStart, monthEnd).first();
+        const monthRevenue:any = await env.aura_db.prepare("SELECT COALESCE(SUM(amount),0) as total FROM treatments_log WHERE tenant_id=? AND professional=? AND date_iso BETWEEN ? AND ?").bind(sess.tenant_id, sess.name, monthStart, monthEnd).first();
+        // Bloques de tiempo
+        const blocks:any = await env.aura_db.prepare("SELECT * FROM time_blocks WHERE tenant_id=? AND professional_id=? AND block_date BETWEEN ? AND ?").bind(sess.tenant_id, sess.pro_id, dateParam, weekEnd).all();
+        // iCal URL
+        const icalToken = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sess.tenant_id+sess.pro_id+'aura-ical-2026')).then((h:ArrayBuffer)=>Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16));
+        const icalUrl = `https://aura-chat-worker.adrian-7b9.workers.dev/api/ical/${sess.tenant_id}/${sess.pro_id}/${icalToken}.ics`;
+        return json({ ok:true, professional:{id:sess.pro_id, name:sess.name, role:sess.role}, appointments:appts.results||[], blocks:blocks.results||[], metrics:{month_appointments:monthAppts?.total||0, month_completed:monthAppts?.completed||0, month_revenue:monthRevenue?.total||0}, ical_url:icalUrl });
+      }
+
+      if (p === '/api/staff-patient' && req.method === 'GET') {
+        const staffToken = url.searchParams.get('token') || '';
+        const sessionData = await env.AURA_IMG.get('staff_session_'+staffToken);
+        if (!sessionData) return json({ error:'Sesión expirada' }, 401);
+        const sess = JSON.parse(sessionData);
+        const leadId = url.searchParams.get('lead_id') || '';
+        if (!leadId) return json({ error:'missing lead_id' }, 400);
+        const lead:any = await env.aura_db.prepare("SELECT * FROM leads WHERE id=? AND tenant_id=?").bind(leadId, sess.tenant_id).first();
+        const clinical:any = await env.aura_db.prepare("SELECT * FROM patient_clinical WHERE lead_id=? AND tenant_id=?").bind(leadId, sess.tenant_id).first();
+        const notes:any = await env.aura_db.prepare("SELECT * FROM clinical_notes WHERE lead_id=? AND tenant_id=? ORDER BY created_at DESC LIMIT 10").bind(leadId, sess.tenant_id).all();
+        const consents:any = await env.aura_db.prepare("SELECT id,title,status,created_at FROM consents_signed WHERE lead_id=? AND tenant_id=? ORDER BY created_at DESC").bind(leadId, sess.tenant_id).all();
+        const history:any = await env.aura_db.prepare("SELECT treatment,date_iso,amount,professional FROM treatments_log WHERE lead_id=? AND tenant_id=? ORDER BY date_iso DESC LIMIT 20").bind(leadId, sess.tenant_id).all();
+        return json({ ok:true, patient:lead, clinical:clinical||{}, notes:notes.results||[], consents:consents.results||[], history:history.results||[] });
       }
 
       // ═══════════════════════════════════════════════════════════════

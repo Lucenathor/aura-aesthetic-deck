@@ -1,0 +1,196 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AURA Staff — Mi Agenda</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f8f7f5;color:#1a1a1a;min-height:100vh}
+.login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1a1a1a 0%,#2d2520 100%)}
+.login-card{background:#fff;border-radius:16px;padding:40px;width:90%;max-width:380px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login-card h1{font-size:28px;margin-bottom:8px;color:#1a1a1a}
+.login-card p{color:#666;margin-bottom:24px}
+.login-card input{width:100%;padding:14px;border:2px solid #e5e5e5;border-radius:10px;font-size:18px;text-align:center;letter-spacing:8px;margin-bottom:16px;transition:border .2s}
+.login-card input:focus{outline:none;border-color:#c9a96e}
+.login-card button{width:100%;padding:14px;background:#1a1a1a;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;transition:transform .1s}
+.login-card button:active{transform:scale(.97)}
+.login-card .error{color:#e53e3e;font-size:13px;margin-top:8px}
+.app{display:none}
+.header{background:#1a1a1a;color:#fff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header h2{font-size:18px;font-weight:600}
+.header .pro-name{display:flex;align-items:center;gap:8px}
+.header .pro-avatar{width:32px;height:32px;border-radius:50%;background:#c9a96e;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+.header .logout{background:none;border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer}
+.tabs{display:flex;background:#fff;border-bottom:1px solid #e5e5e5;overflow-x:auto;position:sticky;top:60px;z-index:99}
+.tabs button{flex:1;padding:12px 16px;border:none;background:none;font-size:14px;font-weight:500;color:#666;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button.active{color:#1a1a1a;border-bottom-color:#c9a96e}
+.content{padding:16px;max-width:600px;margin:0 auto}
+.date-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.date-nav h3{font-size:16px;font-weight:600}
+.date-nav button{background:#fff;border:1px solid #e5e5e5;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:14px}
+.appt-card{background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;border-left:4px solid #c9a96e;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:transform .15s}
+.appt-card:active{transform:scale(.98)}
+.appt-card .time{font-size:13px;color:#666;font-weight:600}
+.appt-card .patient{font-size:16px;font-weight:600;margin:4px 0}
+.appt-card .treatment{font-size:14px;color:#555}
+.appt-card .status{display:inline-block;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-top:6px}
+.appt-card .status.booked{background:#fef3c7;color:#92400e}
+.appt-card .status.confirmed{background:#d1fae5;color:#065f46}
+.appt-card .status.arrived{background:#dbeafe;color:#1e40af}
+.appt-card .actions{display:flex;gap:8px;margin-top:10px}
+.appt-card .actions button{padding:6px 12px;border-radius:6px;border:none;font-size:12px;font-weight:600;cursor:pointer}
+.btn-arrived{background:#dbeafe;color:#1e40af}
+.btn-patient{background:#f3f4f6;color:#374151}
+.metrics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.metric-card{background:#fff;border-radius:12px;padding:16px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.metric-card .value{font-size:24px;font-weight:700;color:#1a1a1a}
+.metric-card .label{font-size:11px;color:#666;margin-top:4px;text-transform:uppercase}
+.ical-box{background:#fff;border-radius:12px;padding:16px;margin-top:16px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.ical-box h4{margin-bottom:8px;font-size:14px}
+.ical-box .url-box{background:#f9f9f9;border:1px solid #e5e5e5;border-radius:8px;padding:10px;font-size:11px;word-break:break-all;color:#555;margin-bottom:10px}
+.ical-box button{background:#1a1a1a;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-size:13px;cursor:pointer;width:100%}
+.patient-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:flex-end;justify-content:center}
+.patient-modal.show{display:flex}
+.patient-sheet{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:600px;max-height:85vh;overflow-y:auto;padding:24px}
+.patient-sheet h3{font-size:18px;margin-bottom:12px}
+.patient-sheet .close-btn{position:absolute;top:16px;right:16px;background:none;border:none;font-size:24px;cursor:pointer}
+.alert-banner{background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:10px;margin-bottom:12px;font-size:13px;color:#991b1b}
+.info-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:14px}
+.info-row .label{color:#666}
+.empty-state{text-align:center;padding:40px 20px;color:#999}
+.empty-state .icon{font-size:48px;margin-bottom:12px}
+@media(max-width:400px){.metrics-grid{grid-template-columns:repeat(2,1fr)}}
+</style></head><body>
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <h1>AURA</h1>
+    <p>Panel del profesional</p>
+    <input type="text" id="tenantInput" placeholder="ID de clínica" style="letter-spacing:normal;font-size:14px">
+    <input type="password" id="pinInput" placeholder="Tu PIN" maxlength="6" inputmode="numeric">
+    <button onclick="doLogin()">Entrar</button>
+    <div class="error" id="loginError"></div>
+  </div>
+</div>
+<div class="app" id="app">
+  <div class="header">
+    <div class="pro-name"><div class="pro-avatar" id="proAvatar">D</div><h2 id="proName">Doctor</h2></div>
+    <button class="logout" onclick="doLogout()">Salir</button>
+  </div>
+  <div class="tabs">
+    <button class="active" onclick="showTab('agenda')">Agenda</button>
+    <button onclick="showTab('metrics')">Métricas</button>
+    <button onclick="showTab('calendar')">Google Cal</button>
+  </div>
+  <div class="content" id="contentArea"></div>
+</div>
+<div class="patient-modal" id="patientModal">
+  <div class="patient-sheet" id="patientSheet"></div>
+</div>
+<script>
+const W='https://aura-chat-worker.adrian-7b9.workers.dev';
+let staffToken='',currentDate=new Date().toISOString().slice(0,10),agendaData=null;
+
+function doLogin(){
+  const tenant=document.getElementById('tenantInput').value.trim();
+  const pin=document.getElementById('pinInput').value.trim();
+  if(!tenant||!pin){document.getElementById('loginError').textContent='Introduce clínica y PIN';return}
+  fetch(W+'/api/staff-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:tenant,pin:pin})})
+  .then(r=>r.json()).then(d=>{
+    if(d.error){document.getElementById('loginError').textContent=d.error;return}
+    staffToken=d.token;
+    localStorage.setItem('staff_token',staffToken);
+    localStorage.setItem('staff_tenant',tenant);
+    document.getElementById('proName').textContent=d.professional.name;
+    document.getElementById('proAvatar').textContent=(d.professional.name||'D')[0];
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('app').style.display='block';
+    loadAgenda();
+  });
+}
+function doLogout(){localStorage.clear();staffToken='';location.reload()}
+function showTab(t){
+  document.querySelectorAll('.tabs button').forEach((b,i)=>b.classList.toggle('active',b.textContent.toLowerCase().includes(t.slice(0,4))));
+  if(t==='agenda')loadAgenda();
+  else if(t==='metrics')renderMetrics();
+  else if(t==='calendar')renderIcal();
+}
+function loadAgenda(){
+  fetch(W+'/api/staff-agenda?token='+staffToken+'&date='+currentDate)
+  .then(r=>r.json()).then(d=>{
+    if(d.error){doLogout();return}
+    agendaData=d;
+    renderAgenda();
+  });
+}
+function renderAgenda(){
+  if(!agendaData)return;
+  const today=currentDate;
+  const todayAppts=agendaData.appointments.filter(a=>a.date_iso&&a.date_iso.slice(0,10)===today);
+  const dateObj=new Date(today+'T12:00:00');
+  const dayName=dateObj.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+  let html=`<div class="date-nav"><button onclick="navDate(-1)">← Ayer</button><h3>${dayName}</h3><button onclick="navDate(1)">Mañana →</button></div>`;
+  if(todayAppts.length===0){
+    html+=`<div class="empty-state"><div class="icon">☀️</div><p>No tienes citas hoy</p></div>`;
+  } else {
+    todayAppts.sort((a,b)=>a.date_iso.localeCompare(b.date_iso));
+    todayAppts.forEach(a=>{
+      const time=a.date_iso?new Date(a.date_iso).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):'--:--';
+      const statusCls=a.status||'booked';
+      const statusTxt={booked:'Pendiente',confirmed:'Confirmada',arrived:'En sala',completed:'Completada'}[statusCls]||statusCls;
+      html+=`<div class="appt-card"><div class="time">${time} · ${a.duration_min||30}min</div><div class="patient">${a.patient_name||'Paciente'}</div><div class="treatment">${a.treatment||'Cita'}</div><span class="status ${statusCls}">${statusTxt}</span>`;
+      html+=`<div class="actions">`;
+      if(statusCls==='booked'||statusCls==='confirmed')html+=`<button class="btn-arrived" onclick="markArrived('${a.id}')">✓ Ha llegado</button>`;
+      if(a.lead_id)html+=`<button class="btn-patient" onclick="openPatient('${a.lead_id}')">Ver paciente</button>`;
+      if(a.patient_phone)html+=`<button class="btn-patient" onclick="window.open('tel:${a.patient_phone}')">📞</button>`;
+      html+=`</div></div>`;
+    });
+  }
+  document.getElementById('contentArea').innerHTML=html;
+}
+function navDate(dir){
+  const d=new Date(currentDate+'T12:00:00');d.setDate(d.getDate()+dir);
+  currentDate=d.toISOString().slice(0,10);loadAgenda();
+}
+function markArrived(id){
+  const tenant=localStorage.getItem('staff_tenant');
+  fetch(W+'/api/appt-arrived',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('aura_token_'+tenant)},body:JSON.stringify({appointment_id:id,tenant_id:tenant})})
+  .then(()=>loadAgenda());
+}
+function renderMetrics(){
+  if(!agendaData)return;
+  const m=agendaData.metrics;
+  let html=`<div class="metrics-grid"><div class="metric-card"><div class="value">${m.month_appointments}</div><div class="label">Citas este mes</div></div><div class="metric-card"><div class="value">${m.month_completed}</div><div class="label">Completadas</div></div><div class="metric-card"><div class="value">${m.month_revenue.toLocaleString('es-ES')}€</div><div class="label">Facturado</div></div></div>`;
+  html+=`<div class="ical-box"><h4>📊 Resumen</h4><p style="font-size:14px;color:#555">Ocupación: ${m.month_appointments>0?Math.round(m.month_completed/m.month_appointments*100):0}% completadas</p></div>`;
+  document.getElementById('contentArea').innerHTML=html;
+}
+function renderIcal(){
+  if(!agendaData)return;
+  const url=agendaData.ical_url;
+  let html=`<div class="ical-box"><h4>📅 Sincronizar con Google Calendar</h4><p style="font-size:13px;color:#666;margin-bottom:12px">Copia esta URL y pégala en tu calendario. Se actualizará automáticamente.</p><div class="url-box" id="icalUrl">${url}</div><button onclick="copyIcal()">Copiar URL</button></div>`;
+  html+=`<div class="ical-box" style="margin-top:12px"><h4>Instrucciones</h4><ul style="font-size:13px;color:#555;padding-left:16px;line-height:1.8"><li><b>iPhone/iPad:</b> Ajustes → Calendario → Cuentas → Añadir → Otro → Suscripción a calendario → pega la URL</li><li><b>Google Calendar (PC):</b> Otros calendarios → + → Desde URL → pega → Añadir</li><li><b>Outlook:</b> Añadir calendario → Suscribirse desde web → pega la URL</li></ul></div>`;
+  document.getElementById('contentArea').innerHTML=html;
+}
+function copyIcal(){navigator.clipboard.writeText(agendaData.ical_url);alert('URL copiada')}
+function openPatient(leadId){
+  fetch(W+'/api/staff-patient?token='+staffToken+'&lead_id='+leadId)
+  .then(r=>r.json()).then(d=>{
+    if(d.error)return;
+    const p=d.patient||{};const c=d.clinical||{};
+    let html=`<button onclick="closePatient()" style="float:right;background:none;border:none;font-size:24px;cursor:pointer">✕</button>`;
+    html+=`<h3>${p.name||'Paciente'}</h3><p style="color:#666;font-size:13px">${p.phone||''} · ${p.email||''}</p>`;
+    if(c.allergies)html+=`<div class="alert-banner">⚠️ Alergias: ${c.allergies}</div>`;
+    if(c.conditions)html+=`<div class="alert-banner" style="background:#fef9c3;border-color:#fde047;color:#854d0e">⚠️ ${c.conditions}</div>`;
+    html+=`<h4 style="margin:16px 0 8px;font-size:14px">Historial reciente</h4>`;
+    (d.history||[]).slice(0,5).forEach(h=>{html+=`<div class="info-row"><span>${h.treatment||'—'}</span><span class="label">${h.date_iso?h.date_iso.slice(0,10):''} · ${h.amount||0}€</span></div>`});
+    if(d.notes&&d.notes.length){html+=`<h4 style="margin:16px 0 8px;font-size:14px">Notas clínicas</h4>`;d.notes.slice(0,3).forEach(n=>{html+=`<div class="info-row"><span>${n.treatment||''} - ${n.areas||''}</span><span class="label">${n.visit_date||''}</span></div>`})}
+    if(d.consents&&d.consents.length){html+=`<h4 style="margin:16px 0 8px;font-size:14px">Consentimientos</h4>`;d.consents.forEach(cs=>{html+=`<div class="info-row"><span>${cs.title}</span><span class="label" style="color:${cs.status==='signed'?'#065f46':'#92400e'}">${cs.status==='signed'?'✓ Firmado':'⏳ Pendiente'}</span></div>`})}
+    document.getElementById('patientSheet').innerHTML=html;
+    document.getElementById('patientModal').classList.add('show');
+  });
+}
+function closePatient(){document.getElementById('patientModal').classList.remove('show')}
+// Auto-login si hay sesión guardada
+(function(){
+  const t=localStorage.getItem('staff_token');
+  if(t){staffToken=t;document.getElementById('loginScreen').style.display='none';document.getElementById('app').style.display='block';loadAgenda()}
+  const params=new URLSearchParams(location.search);
+  if(params.get('t'))document.getElementById('tenantInput').value=params.get('t');
+})();
+</script></body></html>
