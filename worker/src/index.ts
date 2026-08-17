@@ -3559,6 +3559,25 @@ export default {
           await env.aura_db.prepare('INSERT INTO patient_media (id,tenant_id,lead_id,phone,url,mtype,caption,source,created_at) VALUES (?,?,?,?,?,?,?,?,?)').bind(id, t2, leadId||null, phone||null, mediaUrl, mt, b.caption||'', 'upload', Date.now()).run();
           return json({ ok:true, id, url: mediaUrl });
         }
+        // Guardar croquis médico digital (base64 PNG)
+        if (p === '/api/patient-media' && req.method === 'POST') {
+          const b:any = await req.json(); if(!b.tenant_id) return json({error:'missing tenant'},400);
+          const t2=b.tenant_id; const leadId=b.lead_id||'';
+          const dataUrl=b.data_url||'';
+          const m=dataUrl.match(/^data:([^;]+);base64,(.+)$/); if(!m) return json({ ok:false, error:'bad_data' });
+          const ct=m[1]; const bin=atob(m[2]); const bytes=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+          const ext='png';
+          const key='croquis_'+t2+'_'+Math.random().toString(36).slice(2,12)+'.'+ext;
+          if (env.aura_r2) { try { await env.aura_r2.put('img/'+key, bytes.buffer, { httpMetadata:{ contentType: ct } }); } catch(e){ await env.AURA_IMG.put(key, bytes.buffer, { metadata:{ contentType: ct } }); } }
+          else { await env.AURA_IMG.put(key, bytes.buffer, { metadata:{ contentType: ct } }); }
+          const mediaUrl='/img/'+key;
+          const id='pm_'+Math.random().toString(36).slice(2,12);
+          const caption='Croquis '+(b.template||'face-front')+' — '+(new Date().toLocaleDateString('es-ES'));
+          await env.aura_db.prepare('INSERT INTO patient_media (id,tenant_id,lead_id,phone,url,mtype,caption,source,created_at) VALUES (?,?,?,?,?,?,?,?,?)').bind(id, t2, leadId, null, mediaUrl, 'img', caption, 'croquis', Date.now()).run();
+          // Auditoría
+          try { await env.aura_db.prepare("INSERT INTO clinical_audit_log (id,tenant_id,lead_id,action,resource,actor,actor_role,data_before,ip,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind('au_'+uid(), t2, leadId, 'create', 'croquis:'+id, 'professional', 'medico', null, req.headers.get('cf-connecting-ip')||'', Date.now()).run(); } catch(e){}
+          return json({ ok:true, id, url: mediaUrl });
+        }
         if (p === '/api/wa-patient-media-delete' && req.method === 'POST') {
           const b:any = await req.json(); if(!b.tenant_id||!b.id) return json({error:'missing'},400);
           const _delMediaRole = await getSessionRole(env, req, url);

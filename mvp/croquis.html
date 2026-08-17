@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>AURA · Croquis Médico</title>
+<link rel="icon" href="/favicon.ico"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#F8F9FC;--card:#fff;--ink:#1A1D26;--ink-soft:#4A5568;--muted:#8492A6;--terra:#7C3AED;--terra-d:#6D28D9;--line:#E5E7EB;--ease:cubic-bezier(.2,.8,.2,1)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);overflow:hidden;height:100vh}
+.croquis-app{display:flex;height:100vh}
+.croquis-sidebar{width:260px;background:var(--card);border-right:1px solid var(--line);padding:1rem;display:flex;flex-direction:column;gap:.8rem;overflow-y:auto}
+.croquis-canvas-area{flex:1;display:flex;align-items:center;justify-content:center;position:relative;background:#f0f2f5}
+.croquis-topbar{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:.6rem;padding:.6rem 1rem;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);z-index:10}
+.tool-group{display:flex;gap:.3rem;padding:.3rem;background:var(--bg);border-radius:10px}
+.tool-btn{width:36px;height:36px;border:none;border-radius:8px;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem;transition:all .15s var(--ease);color:var(--ink-soft)}
+.tool-btn:hover{background:rgba(124,58,237,.08);color:var(--terra)}
+.tool-btn.active{background:var(--terra);color:#fff;box-shadow:0 4px 12px rgba(124,58,237,.3)}
+.color-btn{width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:all .15s var(--ease)}
+.color-btn:hover{transform:scale(1.15)}
+.color-btn.active{border-color:var(--ink);box-shadow:0 0 0 2px rgba(0,0,0,.15)}
+.size-slider{width:80px;accent-color:var(--terra)}
+.template-card{padding:.6rem;border:2px solid var(--line);border-radius:10px;cursor:pointer;text-align:center;transition:all .15s var(--ease)}
+.template-card:hover{border-color:var(--terra);background:rgba(124,58,237,.03)}
+.template-card.active{border-color:var(--terra);background:rgba(124,58,237,.06);box-shadow:0 0 0 3px rgba(124,58,237,.1)}
+.template-card img,.template-card svg{width:100%;height:80px;object-fit:contain}
+.template-card span{display:block;font-size:.72rem;font-weight:600;margin-top:.3rem;color:var(--ink-soft)}
+#drawCanvas{cursor:crosshair;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.08);touch-action:none}
+.croquis-info{font-size:.75rem;color:var(--muted);padding:.4rem .6rem;background:var(--bg);border-radius:8px}
+.btn-save{width:100%;padding:.7rem;border:none;border-radius:10px;background:linear-gradient(135deg,var(--terra),var(--terra-d));color:#fff;font-weight:700;font-size:.88rem;cursor:pointer;transition:all .15s var(--ease)}
+.btn-save:hover{box-shadow:0 8px 20px rgba(124,58,237,.4);transform:translateY(-1px)}
+.btn-save:active{transform:scale(.97)}
+.section-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.4rem}
+.undo-redo{display:flex;gap:.3rem}
+.undo-redo button{width:32px;height:32px;border:1px solid var(--line);border-radius:8px;background:var(--card);cursor:pointer;font-size:.9rem;transition:all .12s var(--ease)}
+.undo-redo button:hover{border-color:var(--terra);color:var(--terra)}
+@media(max-width:768px){
+  .croquis-sidebar{width:100%;height:auto;max-height:140px;flex-direction:row;flex-wrap:wrap;border-right:none;border-bottom:1px solid var(--line)}
+  .croquis-app{flex-direction:column}
+  .template-card img,.template-card svg{height:50px}
+}
+</style>
+</head>
+<body>
+<div class="croquis-app">
+  <!-- SIDEBAR: plantillas y opciones -->
+  <aside class="croquis-sidebar">
+    <div>
+      <div class="section-title">Plantilla</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem">
+        <div class="template-card active" onclick="selectTemplate('face-front')" id="tpl-face-front">
+          <svg viewBox="0 0 100 130" fill="none" stroke="#666" stroke-width="1.5"><ellipse cx="50" cy="55" rx="35" ry="45"/><circle cx="36" cy="48" r="4"/><circle cx="64" cy="48" r="4"/><path d="M42 72 Q50 78 58 72"/><path d="M50 55 V65"/><path d="M15 50 Q10 55 15 60"/><path d="M85 50 Q90 55 85 60"/></svg>
+          <span>Cara frontal</span>
+        </div>
+        <div class="template-card" onclick="selectTemplate('face-side')" id="tpl-face-side">
+          <svg viewBox="0 0 100 130" fill="none" stroke="#666" stroke-width="1.5"><path d="M60 15 Q80 20 82 50 Q83 70 70 85 Q60 95 55 100 L45 100 Q40 90 42 80 Q35 75 33 65 Q30 50 35 35 Q40 20 60 15Z"/><circle cx="65" cy="48" r="3.5"/><path d="M72 65 Q68 68 70 72"/><path d="M60 78 Q55 80 58 83"/></svg>
+          <span>Cara lateral</span>
+        </div>
+        <div class="template-card" onclick="selectTemplate('lips')" id="tpl-lips">
+          <svg viewBox="0 0 120 80" fill="none" stroke="#666" stroke-width="1.5"><path d="M20 40 Q35 25 60 28 Q85 25 100 40 Q85 55 60 58 Q35 55 20 40Z"/><path d="M20 40 Q40 38 60 40 Q80 38 100 40"/><path d="M50 28 Q55 22 60 28 Q65 22 70 28"/></svg>
+          <span>Labios</span>
+        </div>
+        <div class="template-card" onclick="selectTemplate('body-front')" id="tpl-body-front">
+          <svg viewBox="0 0 80 160" fill="none" stroke="#666" stroke-width="1.5"><circle cx="40" cy="18" r="12"/><path d="M28 30 L22 70 L18 130 M52 30 L58 70 L62 130"/><path d="M28 30 Q40 32 52 30 L52 75 Q40 78 28 75Z"/><path d="M28 35 L12 65 M52 35 L68 65"/></svg>
+          <span>Cuerpo</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="section-title">Color del marcador</div>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+        <div class="color-btn active" style="background:#EF4444" onclick="setColor('#EF4444')" title="Botox / Tóxina"></div>
+        <div class="color-btn" style="background:#3B82F6" onclick="setColor('#3B82F6')" title="Ácido Hialurónico"></div>
+        <div class="color-btn" style="background:#10B981" onclick="setColor('#10B981')" title="Vitaminas / Mesoterapia"></div>
+        <div class="color-btn" style="background:#F59E0B" onclick="setColor('#F59E0B')" title="Hilos tensores"></div>
+        <div class="color-btn" style="background:#8B5CF6" onclick="setColor('#8B5CF6')" title="Plasma / PRP"></div>
+        <div class="color-btn" style="background:#1A1D26" onclick="setColor('#1A1D26')" title="Negro (notas)"></div>
+      </div>
+      <div class="croquis-info" style="margin-top:.4rem">🔴 Botox &nbsp; 🔵 AH &nbsp; 🟢 Meso &nbsp; 🟡 Hilos &nbsp; 🟣 PRP</div>
+    </div>
+    <div>
+      <div class="section-title">Grosor</div>
+      <input type="range" min="1" max="12" value="3" class="size-slider" id="sizeSlider" oninput="brushSize=+this.value"/>
+    </div>
+    <div style="margin-top:auto;display:flex;flex-direction:column;gap:.5rem">
+      <button class="btn-save" onclick="saveCroquis()">💾 Guardar croquis</button>
+      <button class="btn-save" style="background:var(--bg);color:var(--ink);border:1px solid var(--line)" onclick="clearCanvas()">🗑️ Limpiar todo</button>
+    </div>
+  </aside>
+
+  <!-- ÁREA DE DIBUJO -->
+  <div class="croquis-canvas-area">
+    <div class="croquis-topbar">
+      <div class="tool-group">
+        <button class="tool-btn active" onclick="setTool('pen')" id="tool-pen" title="Pincel libre">✏️</button>
+        <button class="tool-btn" onclick="setTool('marker')" id="tool-marker" title="Marcador de inyección">💉</button>
+        <button class="tool-btn" onclick="setTool('arrow')" id="tool-arrow" title="Flecha de tensión">↗️</button>
+        <button class="tool-btn" onclick="setTool('text')" id="tool-text" title="Texto">T</button>
+        <button class="tool-btn" onclick="setTool('eraser')" id="tool-eraser" title="Borrador">🧹</button>
+      </div>
+      <div class="undo-redo">
+        <button onclick="undo()" title="Deshacer">↩</button>
+        <button onclick="redo()" title="Rehacer">↪</button>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:.6rem">
+        <span style="font-size:.78rem;color:var(--muted)" id="patientLabel">Paciente: —</span>
+        <button class="tool-btn" onclick="window.close()" title="Cerrar" style="font-size:1.3rem">✕</button>
+      </div>
+    </div>
+    <canvas id="drawCanvas" width="600" height="700"></canvas>
+  </div>
+</div>
+
+<script>
+const canvas=document.getElementById('drawCanvas');
+const ctx=canvas.getContext('2d');
+let currentTool='pen';
+let currentColor='#EF4444';
+let brushSize=3;
+let isDrawing=false;
+let lastX=0,lastY=0;
+let history=[];
+let historyIdx=-1;
+let arrowStart=null;
+
+// Parámetros de URL
+const params=new URLSearchParams(location.search);
+const TENANT=params.get('tenant')||'';
+const LEAD=params.get('lead')||'';
+const VISIT=params.get('visit')||'';
+if(params.get('name'))document.getElementById('patientLabel').textContent='Paciente: '+decodeURIComponent(params.get('name'));
+
+// Plantillas SVG como imágenes de fondo
+const templates={
+  'face-front':`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 700" fill="none" stroke="#D1D5DB" stroke-width="2"><ellipse cx="300" cy="320" rx="180" ry="230"/><circle cx="230" cy="280" r="22" stroke-width="1.5"/><circle cx="370" cy="280" r="22" stroke-width="1.5"/><path d="M270 420 Q300 450 330 420" stroke-width="1.5"/><path d="M300 320 V390" stroke-width="1"/><path d="M120 300 Q105 320 120 340" stroke-width="1.5"/><path d="M480 300 Q495 320 480 340" stroke-width="1.5"/><path d="M250 200 Q300 180 350 200" stroke-width="1" stroke-dasharray="4"/><line x1="200" y1="270" x2="260" y2="270" stroke-width="1" stroke-dasharray="3"/><line x1="340" y1="270" x2="400" y2="270" stroke-width="1" stroke-dasharray="3"/><text x="300" y="680" text-anchor="middle" font-size="14" fill="#9CA3AF" font-family="Inter">Cara frontal</text></svg>`,
+  'face-side':`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 700" fill="none" stroke="#D1D5DB" stroke-width="2"><path d="M350 80 Q450 100 460 280 Q465 400 380 480 Q330 530 310 580 L250 580 Q230 520 240 460 Q200 430 190 370 Q170 280 200 180 Q230 100 350 80Z"/><circle cx="380" cy="270" r="18" stroke-width="1.5"/><path d="M400 370 Q385 390 390 410" stroke-width="1.5"/><path d="M340 450 Q320 460 330 480" stroke-width="1.5"/><path d="M350 80 Q330 60 350 50 Q380 55 370 80" stroke-width="1"/><text x="300" y="680" text-anchor="middle" font-size="14" fill="#9CA3AF" font-family="Inter">Cara lateral</text></svg>`,
+  'lips':`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 700" fill="none" stroke="#D1D5DB" stroke-width="2"><path d="M100 350 Q200 250 300 270 Q400 250 500 350 Q400 450 300 460 Q200 450 100 350Z"/><path d="M100 350 Q200 340 300 350 Q400 340 500 350" stroke-width="1.5"/><path d="M265 270 Q280 240 300 270 Q320 240 335 270" stroke-width="1.5"/><circle cx="200" cy="330" r="3" fill="#D1D5DB"/><circle cx="250" cy="310" r="3" fill="#D1D5DB"/><circle cx="350" cy="310" r="3" fill="#D1D5DB"/><circle cx="400" cy="330" r="3" fill="#D1D5DB"/><text x="300" y="680" text-anchor="middle" font-size="14" fill="#9CA3AF" font-family="Inter">Labios — zonas de inyección</text></svg>`,
+  'body-front':`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 700" fill="none" stroke="#D1D5DB" stroke-width="2"><circle cx="300" cy="80" r="45"/><path d="M255 125 Q300 135 345 125 L355 350 Q300 360 245 350Z" stroke-width="1.5"/><path d="M255 130 L180 280 M345 130 L420 280"/><path d="M245 350 L225 600 M355 350 L375 600"/><path d="M225 600 L210 650 L240 650 M375 600 L390 650 L360 650"/><line x1="300" y1="350" x2="300" y2="250" stroke-width="1" stroke-dasharray="4"/><text x="300" y="680" text-anchor="middle" font-size="14" fill="#9CA3AF" font-family="Inter">Cuerpo frontal</text></svg>`
+};
+
+function selectTemplate(id){
+  document.querySelectorAll('.template-card').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tpl-'+id).classList.add('active');
+  loadTemplate(id);
+}
+
+function loadTemplate(id){
+  const svg=templates[id];
+  if(!svg)return;
+  const img=new Image();
+  const blob=new Blob([svg],{type:'image/svg+xml'});
+  const url=URL.createObjectURL(blob);
+  img.onload=function(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#FFFFFF';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    URL.revokeObjectURL(url);
+    saveState();
+  };
+  img.src=url;
+}
+
+function setTool(t){
+  currentTool=t;
+  document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tool-'+t).classList.add('active');
+  canvas.style.cursor=t==='eraser'?'cell':t==='text'?'text':'crosshair';
+}
+
+function setColor(c){
+  currentColor=c;
+  document.querySelectorAll('.color-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function getPos(e){
+  const rect=canvas.getBoundingClientRect();
+  const scaleX=canvas.width/rect.width;
+  const scaleY=canvas.height/rect.height;
+  const clientX=e.touches?e.touches[0].clientX:e.clientX;
+  const clientY=e.touches?e.touches[0].clientY:e.clientY;
+  return{x:(clientX-rect.left)*scaleX,y:(clientY-rect.top)*scaleY};
+}
+
+canvas.addEventListener('pointerdown',function(e){
+  e.preventDefault();
+  const pos=getPos(e);
+  if(currentTool==='marker'){
+    drawMarker(pos.x,pos.y);
+    saveState();
+    return;
+  }
+  if(currentTool==='text'){
+    const txt=prompt('Texto (ej: 2U Botox):');
+    if(txt){
+      ctx.font='bold 16px Inter';
+      ctx.fillStyle=currentColor;
+      ctx.fillText(txt,pos.x,pos.y);
+      saveState();
+    }
+    return;
+  }
+  if(currentTool==='arrow'){
+    arrowStart=pos;
+    return;
+  }
+  isDrawing=true;
+  lastX=pos.x;lastY=pos.y;
+});
+
+canvas.addEventListener('pointermove',function(e){
+  if(!isDrawing)return;
+  e.preventDefault();
+  const pos=getPos(e);
+  if(currentTool==='pen'){
+    ctx.beginPath();
+    ctx.moveTo(lastX,lastY);
+    ctx.lineTo(pos.x,pos.y);
+    ctx.strokeStyle=currentColor;
+    ctx.lineWidth=brushSize;
+    ctx.lineCap='round';
+    ctx.lineJoin='round';
+    ctx.stroke();
+  }else if(currentTool==='eraser'){
+    ctx.beginPath();
+    ctx.moveTo(lastX,lastY);
+    ctx.lineTo(pos.x,pos.y);
+    ctx.strokeStyle='#FFFFFF';
+    ctx.lineWidth=brushSize*4;
+    ctx.lineCap='round';
+    ctx.stroke();
+  }
+  lastX=pos.x;lastY=pos.y;
+});
+
+canvas.addEventListener('pointerup',function(e){
+  if(currentTool==='arrow'&&arrowStart){
+    const pos=getPos(e);
+    drawArrow(arrowStart.x,arrowStart.y,pos.x,pos.y);
+    arrowStart=null;
+    saveState();
+    return;
+  }
+  if(isDrawing){isDrawing=false;saveState();}
+});
+
+canvas.addEventListener('pointerleave',function(){
+  if(isDrawing){isDrawing=false;saveState();}
+});
+
+function drawMarker(x,y){
+  // Cruz de inyección
+  ctx.beginPath();
+  ctx.arc(x,y,8,0,Math.PI*2);
+  ctx.fillStyle=currentColor+'33';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x-6,y);ctx.lineTo(x+6,y);
+  ctx.moveTo(x,y-6);ctx.lineTo(x,y+6);
+  ctx.strokeStyle=currentColor;
+  ctx.lineWidth=2.5;
+  ctx.lineCap='round';
+  ctx.stroke();
+  // Punto central
+  ctx.beginPath();
+  ctx.arc(x,y,2.5,0,Math.PI*2);
+  ctx.fillStyle=currentColor;
+  ctx.fill();
+}
+
+function drawArrow(x1,y1,x2,y2){
+  const headLen=14;
+  const angle=Math.atan2(y2-y1,x2-x1);
+  ctx.beginPath();
+  ctx.moveTo(x1,y1);
+  ctx.lineTo(x2,y2);
+  ctx.strokeStyle=currentColor;
+  ctx.lineWidth=brushSize;
+  ctx.lineCap='round';
+  ctx.stroke();
+  // Punta
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-headLen*Math.cos(angle-Math.PI/6),y2-headLen*Math.sin(angle-Math.PI/6));
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-headLen*Math.cos(angle+Math.PI/6),y2-headLen*Math.sin(angle+Math.PI/6));
+  ctx.stroke();
+}
+
+function saveState(){
+  historyIdx++;
+  history=history.slice(0,historyIdx);
+  history.push(canvas.toDataURL());
+}
+
+function undo(){
+  if(historyIdx<=0)return;
+  historyIdx--;
+  restoreState();
+}
+
+function redo(){
+  if(historyIdx>=history.length-1)return;
+  historyIdx++;
+  restoreState();
+}
+
+function restoreState(){
+  const img=new Image();
+  img.onload=function(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0);};
+  img.src=history[historyIdx];
+}
+
+function clearCanvas(){
+  if(!confirm('¿Limpiar todo el croquis?'))return;
+  selectTemplate(document.querySelector('.template-card.active').id.replace('tpl-',''));
+}
+
+async function saveCroquis(){
+  const dataUrl=canvas.toDataURL('image/png');
+  const WORKER=localStorage.getItem('aura_worker')||'https://aura-chat-worker.adrian-7b9.workers.dev';
+  const TOKEN=localStorage.getItem('aura_token')||'';
+  try{
+    const res=await fetch(WORKER+'/api/patient-media',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},
+      body:JSON.stringify({tenant_id:TENANT,lead_id:LEAD,type:'croquis',visit_id:VISIT,data_url:dataUrl,template:document.querySelector('.template-card.active').id.replace('tpl-','')})
+    });
+    const j=await res.json();
+    if(j.ok){
+      alert('✅ Croquis guardado correctamente');
+      if(window.opener){window.opener.postMessage({type:'croquis-saved',lead:LEAD},'*');}
+    }else{alert('Error: '+(j.error||'desconocido'));}
+  }catch(e){alert('Error de conexión: '+e.message);}
+}
+
+// Atajos de teclado
+document.addEventListener('keydown',function(e){
+  if(e.ctrlKey&&e.key==='z'){e.preventDefault();undo();}
+  if(e.ctrlKey&&e.key==='y'){e.preventDefault();redo();}
+  if(e.key==='1')setTool('pen');
+  if(e.key==='2')setTool('marker');
+  if(e.key==='3')setTool('arrow');
+  if(e.key==='4')setTool('text');
+  if(e.key==='5')setTool('eraser');
+});
+
+// Responsive canvas
+function resizeCanvas(){
+  const area=document.querySelector('.croquis-canvas-area');
+  const maxW=area.clientWidth-40;
+  const maxH=area.clientHeight-80;
+  const ratio=canvas.width/canvas.height;
+  let w=maxW,h=maxW/ratio;
+  if(h>maxH){h=maxH;w=maxH*ratio;}
+  canvas.style.width=w+'px';
+  canvas.style.height=h+'px';
+}
+window.addEventListener('resize',resizeCanvas);
+
+// Inicializar
+loadTemplate('face-front');
+setTimeout(resizeCanvas,100);
+</script>
+</body>
+</html>
