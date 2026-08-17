@@ -1451,9 +1451,10 @@ function renderAgendaCal(){
         const height = dur * pxPerMin;
         const shortClass = dur <= 15 ? 'short-appt' : '';
         const sty=apptStyle(a);
-        h+='<div class="agenda-appt '+shortClass+'" draggable="true" ondragstart="agDragStart(event,\''+a.id+'\')" onclick="event.stopPropagation();openApptCard(\''+a.id+'\')" style="top:'+top+'px; height:'+height+'px;background:'+sty.bg+';opacity:'+sty.op+';'+sty.dash+'" title="'+(a.lead_name||'Cita')+' - '+(a.treatment||'')+'">';
-        h+='<div class="agenda-appt-title"><span style="opacity:.85;margin-right:3px">'+sty.icon+'</span>'+(a.lead_name||'Cita')+'</div>';
-        if(dur > 15 || interval === 30) h+='<div class="agenda-appt-sub">'+(a.treatment||'')+(a.status==='attended'?' · <b>✓ Cobrado</b>':'')+'</div>';
+        const timeStr = String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
+        h+='<div class="agenda-appt '+shortClass+'" draggable="true" ondragstart="agDragStart(event,\''+a.id+'\')" onclick="event.stopPropagation();openApptCard(\''+a.id+'\')" style="top:'+top+'px; height:'+height+'px;background:'+sty.bg+';opacity:'+sty.op+';'+sty.dash+'" title="'+(a.lead_name||'Cita')+' · '+(a.treatment||'')+' · '+timeStr+' ('+dur+'min)">';
+        h+='<div class="agenda-appt-title"><span style="opacity:.85;margin-right:3px">'+sty.icon+'</span><span style="font-weight:800;margin-right:4px;font-size:.68rem;opacity:.85">'+timeStr+'</span>'+(a.lead_name||'Cita')+'</div>';
+        if(dur > 15 || interval === 30) h+='<div class="agenda-appt-sub">'+(a.treatment||'')+(a.status==='attended'?' · <b>✓ Cobrado</b>':'')+(a.status==='completed'?' · <b>✓ Completada</b>':'')+'</div>';
         h+='</div>';
       });
       

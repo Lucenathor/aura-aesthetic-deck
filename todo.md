@@ -17,3 +17,6 @@
 - [x] Investigar mejores prácticas de navegación y ajustes en CRMs líderes del sector.
 - [x] Reorganizar la sección de Ajustes con subcategorías claras y menú lateral fijo.
 - [ ] Aplicar la misma lógica de navegación organizada a todas las secciones del panel.
+- [ ] Investigar los mejores calendarios de CRMs del sector (Mangomint, Pabau, Fresha, Boulevard).
+- [ ] Rediseñar la agenda de AURA: siempre visible, interactiva, creación de cita al clic en hueco vacío.
+- [ ] Implementar vista semanal con columnas por profesional y franjas horarias.
