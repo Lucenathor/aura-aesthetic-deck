@@ -5420,6 +5420,7 @@ async function handleChat(req: Request, env: Env) {
   const isDemo = (t?.status === 'demo' || t?.plan === 'trial') && context.mode === 'sales_demo';
   let prompt;
   let brain:any = null;
+  let brainMemory: SetterMemory | null = null;
   if (isDemo) {
     prompt = SALES_DEMO_PROMPT +
       `\nNombre de la clínica que está probando: ${t?.name || 'tu clínica'}.`;
@@ -5452,6 +5453,7 @@ async function handleChat(req: Request, env: Env) {
       resourceHistory: Array.from(new Set([...(savedHistory || []), ...deriveResourceHistory(chatMessages, treatRes as SetterResource | null)])),
       messageCount: chatMessages.filter((m:any)=>m.role==='user').length
     };
+    brainMemory = memory;
     const assessment = assessSetterConversation(chatMessages, memory);
     brain = { stage:assessment.stage, next_action:assessment.nextAction, needs_human:assessment.needsHuman, flags:assessment.flags, conversation_id:conversationId };
     const brainPrompt = buildSetterBrainInstructions({ assessment, memory, resource:treatRes as SetterResource | null, assistantName:cfg?.assistant_name || 'la asistente de la clínica', bookingUrl:t?.booking_url || '', tone:cfg?.tone || 'cálido, claro y profesional', maxSentences:cfg?.max_sentences || 3 });
@@ -5469,7 +5471,7 @@ async function handleChat(req: Request, env: Env) {
         .bind(brain.conversation_id,tenantId,(context.lead_id||body.lead_id||null),context.treatment||null,brain.stage,context.goal||context.motivo||null,context.plazo||null,context.objecion||null,JSON.stringify(memory.resourceHistory||[]),brain.needs_human?1:0,now).run();
     } catch(e) {}
   }
-  return json({ content, brain, brain_state: brain ? { stage:brain.stage, objective:context.goal || context.motivo || '', timeframe:context.plazo || '', objection:context.objecion || '', resourceHistory:memory?.resourceHistory || [], messageCount:chatMessages.filter((m:any)=>m.role==='user').length } : null, source: env.OPENAI_KEY ? 'openai' : 'workers-ai' });
+  return json({ content, brain, brain_state: brain ? { stage:brain.stage, objective:context.goal || context.motivo || '', timeframe:context.plazo || '', objection:context.objecion || '', resourceHistory:brainMemory?.resourceHistory || [], messageCount:chatMessages.filter((m:any)=>m.role==='user').length } : null, source: env.OPENAI_KEY ? 'openai' : 'workers-ai' });
 }
 
 // ─── Handler: Generador IA desde URL ──────────────────────────────

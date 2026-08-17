@@ -41,3 +41,8 @@ El Setter Brain debe **conversar antes de cerrar**, no limitarse a repetir una l
 - El chat no diagnostica, no confirma la idoneidad de un tratamiento, no da garantías de resultado ni sustituye el consentimiento informado.
 - Solicitudes de profesional humano, información clínica sensible o señales de riesgo se encaminan a una persona de la clínica.
 - No se repite el mismo enlace ni la misma llamada a la acción en cada turno. La naturalidad exige recordar lo ya enviado y elegir la siguiente acción más útil.
+
+## Verificación de interfaz
+
+- El panel de producción muestra la nueva entrada **Setter IA** entre Comunicaciones y Reservas dentro de Ajustes. La navegación lateral mantiene su comportamiento fijo en escritorio y no altera las demás categorías.
+- La interfaz permite configurar nombre, tono, longitud, momento de reserva, seguimiento y derivación humana. La biblioteca de tratamiento muestra los cinco recursos de demo existentes como **Borrador / bloqueado**, por lo que no se presentan al paciente como material real hasta que la clínica confirme su autenticidad y autorización.
