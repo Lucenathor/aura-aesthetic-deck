@@ -98,6 +98,8 @@ a{color:inherit;text-decoration:none}
 .agenda-appt.status-noshow { background: linear-gradient(135deg, #c0392b, #a33024); }
 .agenda-appt.status-cancelled { background: linear-gradient(135deg, #7f8c8d, #6c7a7d); }
 .agenda-appt.status-attended { background: linear-gradient(135deg, #2980b9, #2471a3); }
+.agenda-appt.status-arrived { background: linear-gradient(135deg, #00b894, #00a381); border: 2px solid #fff; box-shadow: 0 0 8px rgba(0,184,148,0.4); }
+.agenda-appt.status-completed { background: linear-gradient(135deg, #3730a3, #4338ca); border: 2px solid #e0e7ff; }
 .agenda-appt-title { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
 .agenda-appt-sub { font-size: 0.65rem; opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .agenda-appt.short-appt { flex-direction: row; align-items: center; gap: 6px; padding: 2px 6px; }
@@ -6527,7 +6529,3 @@ if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded
 <button id="copilotFab" onclick="openCopilot()" title="Copiloto IA" style="display:none;position:fixed;right:18px;bottom:18px;z-index:9990;width:58px;height:58px;border:none;border-radius:50%;background:linear-gradient(135deg,var(--terra),#8a4533);color:#fff;font-size:1.5rem;box-shadow:0 6px 20px rgba(176,93,68,.45);cursor:pointer;transition:transform .15s ease" onmousedown="this.style.transform='scale(.94)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'">✦</button>
 </body>
 </html>
-  if(v==='ajustes'){try{loadBookingCfg();}catch(e){} try{loadPixelSlug();}catch(e){}}
-.agenda-appt.status-arrived { background: linear-gradient(135deg, #00b894, #00a381); border: 2px solid #fff; box-shadow: 0 0 8px rgba(0,184,148,0.4); }
-    +'<label style="display:flex;align-items:center;gap:.3rem;font-size:.78rem;cursor:pointer;margin-bottom:.4rem;padding:.3rem .5rem;background:#eef6ff;border-radius:8px;border:1px solid #c8dff5"><input type="checkbox" id="cvSplit" onchange="toggleCvSplit(this.checked)"/> 💳💶 <b>Pago dividido</b></label>'
-    +'<div id="cvSplitBox" style="display:none;background:#f8fbff;border:1px solid #d4e5f7;border-radius:9px;padding:.5rem;margin-bottom:.4rem"><div style="display:flex;gap:.3rem;margin-bottom:.3rem"><select id="cvSplit1M" style="flex:1;padding:.4rem;border:1px solid var(--line);border-radius:7px;font-size:.82rem">'+METODOS.map(m=>'<option value="'+m+'">'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>').join('')+'</select><input id="cvSplit1A" type="number" placeholder="€" style="width:70px;padding:.4rem;border:1px solid var(--line);border-radius:7px;font-size:.82rem"/></div><div style="display:flex;gap:.3rem"><select id="cvSplit2M" style="flex:1;padding:.4rem;border:1px solid var(--line);border-radius:7px;font-size:.82rem">'+METODOS.map((m,i)=>'<option value="'+m+'" '+(i===1?'selected':'')+'>'+m.charAt(0).toUpperCase()+m.slice(1)+'</option>').join('')+'</select><input id="cvSplit2A" type="number" placeholder="€" style="width:70px;padding:.4rem;border:1px solid var(--line);border-radius:7px;font-size:.82rem"/></div></div>'
