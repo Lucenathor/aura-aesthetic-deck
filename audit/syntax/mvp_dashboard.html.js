@@ -5224,6 +5224,31 @@ function toggleSidebar(){
 }
 function showNotifications(){toast("Sin notificaciones nuevas","ok");}
 
+// ═══ SETTER BRAIN: configuración por clínica + biblioteca por tratamiento ═══
+var _setterResources=[];
+function _setterHeaders(){return {'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')};}
+async function loadSetterBrain(){
+  try{
+    var c=await fetch(WORKER+'/api/setter-brain-config?tenant='+encodeURIComponent(T),{headers:_setterHeaders()}).then(r=>r.json()); var x=c.config||{};
+    var set=function(id,v){var el=document.getElementById(id);if(el&&v!==undefined&&v!==null)el.value=v;};
+    set('sbAssistantName',x.assistant_name||'');set('sbTone',x.tone||'cálido, claro y profesional');set('sbMaxSentences',x.max_sentences||3);set('sbBookingMode',x.booking_mode||'when_ready');set('sbFollowup',x.followup_policy||'value_first');set('sbHandoff',x.handoff_message||'');
+    var r=await fetch(WORKER+'/api/setter-resources?tenant='+encodeURIComponent(T),{headers:_setterHeaders()}).then(r=>r.json());_setterResources=r.resources||[];renderSetterResources();
+  }catch(e){var l=document.getElementById('srList');if(l)l.innerHTML='<div style="font-size:.82rem;color:var(--muted)">No se pudieron cargar todavía los recursos del setter.</div>';}
+}
+async function saveSetterBrain(){
+  var msg=document.getElementById('sbMsg'); if(msg)msg.textContent='Guardando…';
+  try{var r=await fetch(WORKER+'/api/setter-brain-config',{method:'POST',headers:_setterHeaders(),body:JSON.stringify({tenant_id:T,assistant_name:document.getElementById('sbAssistantName').value.trim(),tone:document.getElementById('sbTone').value,max_sentences:+document.getElementById('sbMaxSentences').value,booking_mode:document.getElementById('sbBookingMode').value,followup_policy:document.getElementById('sbFollowup').value,handoff_message:document.getElementById('sbHandoff').value.trim()})});if(!r.ok)throw new Error();if(msg)msg.textContent='✓ Estrategia guardada';}catch(e){if(msg)msg.textContent='No se pudo guardar';}
+}
+function clearSetterResource(){['srId','srTreatment','srPhotoUrl','srPhotoCaption','srVideoUrl','srPriceFrom','srPriceTo','srDuration','srRecovery','srFaq'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});document.getElementById('srStatus').value='draft';document.getElementById('srConsent').checked=false;}
+function editSetterResource(id){var r=_setterResources.find(function(x){return x.id===id;});if(!r)return;var set=function(k,v){var e=document.getElementById(k);if(e)e.value=v||'';};set('srId',r.id);set('srTreatment',r.treatment);set('srStatus',r.source_status||'draft');set('srPhotoUrl',r.before_after_url);set('srPhotoCaption',r.before_after_caption);set('srVideoUrl',r.video_url);set('srPriceFrom',r.price_from);set('srPriceTo',r.price_to);set('srDuration',r.duration_text);set('srRecovery',r.recovery_text);set('srFaq',r.faq_json);document.getElementById('srConsent').checked=!!r.consent_verified;document.getElementById('srTreatment').scrollIntoView({behavior:'smooth',block:'center'});}
+async function saveSetterResource(){
+  var treatment=document.getElementById('srTreatment').value.trim();var msg=document.getElementById('srMsg');if(!treatment){if(msg)msg.textContent='Indica el tratamiento';return;}if(msg)msg.textContent='Guardando…';
+  var payload={id:document.getElementById('srId').value||undefined,tenant_id:T,treatment:treatment,before_after_url:document.getElementById('srPhotoUrl').value.trim(),before_after_caption:document.getElementById('srPhotoCaption').value.trim(),video_url:document.getElementById('srVideoUrl').value.trim(),price_from:document.getElementById('srPriceFrom').value||null,price_to:document.getElementById('srPriceTo').value||null,duration_text:document.getElementById('srDuration').value.trim(),recovery_text:document.getElementById('srRecovery').value.trim(),faq_json:document.getElementById('srFaq').value.trim(),source_status:document.getElementById('srStatus').value,consent_verified:document.getElementById('srConsent').checked};
+  try{var r=await fetch(WORKER+'/api/setter-resources',{method:'POST',headers:_setterHeaders(),body:JSON.stringify(payload)});if(!r.ok)throw new Error();if(msg)msg.textContent='✓ Recurso guardado';clearSetterResource();await loadSetterBrain();}catch(e){if(msg)msg.textContent='No se pudo guardar';}
+}
+async function deleteSetterResource(id){if(!confirm('¿Eliminar este recurso?'))return;try{await fetch(WORKER+'/api/setter-resources',{method:'DELETE',headers:_setterHeaders(),body:JSON.stringify({id:id,tenant_id:T})});await loadSetterBrain();}catch(e){toast('No se pudo eliminar','err');}}
+function renderSetterResources(){var box=document.getElementById('srList');if(!box)return;if(!_setterResources.length){box.innerHTML='<div style="padding:.8rem;background:var(--bg2);border-radius:10px;color:var(--muted);font-size:.84rem">Aún no hay recursos. Crea un borrador durante el setup y actívalo solo al confirmar su autorización.</div>';return;}box.innerHTML='<div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:.4rem 0">Biblioteca cargada</div>'+_setterResources.map(function(r){var status=r.consent_verified&&r.source_status==='approved'?'<span style="color:#047857;background:#ecfdf5">✓ Enviable</span>':'<span style="color:#9a3412;background:#fff7ed">Borrador / bloqueado</span>';return '<div style="display:flex;justify-content:space-between;align-items:center;gap:.8rem;padding:.75rem;border:1px solid var(--line);border-radius:10px;margin:.45rem 0"><div><b>'+esc(r.treatment||'Tratamiento')+'</b><div style="font-size:.76rem;color:var(--muted);margin-top:.18rem">'+status+' · '+(r.before_after_url?'Foto':'')+(r.video_url?' · Vídeo':'')+(r.price_from?' · Precio':'')+'</div></div><div style="display:flex;gap:.35rem"><button class="btn" style="padding:.35rem .55rem;font-size:.76rem" onclick="editSetterResource(\''+r.id+'\')">Editar</button><button class="btn" style="padding:.35rem .55rem;font-size:.76rem;color:#b91c1c" onclick="deleteSetterResource(\''+r.id+'\')">Eliminar</button></div></div>';}).join('');}
+
 async function __auraInit(){
   const ok=await guard(); if(!ok)return;
   if(localStorage.getItem("aura_sidebar")==="1"){document.querySelector(".side").classList.add("collapsed");}
@@ -5235,6 +5260,7 @@ async function __auraInit(){
   try{ loadCal(); }catch(e){console.error('loadCal',e);}
   try{ restoreSection(); }catch(e){console.error('restoreSection',e);}
   try{ loadAll(); }catch(e){console.error('loadAll',e);}
+  try{ loadSetterBrain(); }catch(e){console.error('loadSetterBrain',e);}
 }
 if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded',__auraInit); } else { __auraInit(); }
 // ═══ SETTINGS NAV: menú lateral fijo con subcategorías ═══
@@ -5252,6 +5278,6 @@ if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded
     // Activar el seleccionado
     item.classList.add('active');
     const panel=document.querySelector('.settings-panel[data-spanel="'+tab+'"]');
-    if(panel){panel.classList.add('active');panel.scrollIntoView({behavior:'smooth',block:'start'});}
+    if(panel){panel.classList.add('active');if(tab==='setter')loadSetterBrain();panel.scrollIntoView({behavior:'smooth',block:'start'});}
   });
 })();

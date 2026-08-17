@@ -37,3 +37,9 @@
 - [ ] Sección en el dashboard para gestionar recursos del setter por tratamiento
 - [ ] Mejorar prompt para que SIEMPRE envíe recurso multimedia según tratamiento y momento
 - [ ] Probar 30+ conversaciones hasta 10/10
+- [ ] Investigar en profundidad estrategias de setting, closing, seguimiento y naturalidad en conversaciones clínicas.
+- [ ] Crear módulo independiente Setter Brain con estado conversacional, intención, objeciones y siguiente mejor acción.
+- [ ] Diseñar conversaciones multietapa que resuelvan dudas antes de proponer reserva, sin presión artificial.
+- [ ] Crear panel Setter IA para configurar personalidad, velocidad, tono y recursos globales por clínica.
+- [ ] Crear panel de recursos por tratamiento con fotos, vídeo, reseñas, rangos de precio, recuperación, FAQs y enlace de reserva.
+- [ ] Probar conversaciones largas de principio a cierre y refinar el Setter Brain.

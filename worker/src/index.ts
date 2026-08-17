@@ -9,6 +9,7 @@
  * - /api/appointments        POST/GET citas
  * - /api/dashboard/:tenantId GET overview
  */
+import { assessSetterConversation, buildSetterBrainInstructions, deriveResourceHistory, type SetterMemory, type SetterResource } from './setterBrain';
 
 interface Env {
   AI: any;
@@ -52,6 +53,41 @@ interface D1PreparedStatement {
   first<T = any>(colName?: string): Promise<T | null>;
   run(): Promise<any>;
   all<T = any>(): Promise<{ results: T[] }>;
+}
+
+let __setterBrainSchemaReady = false;
+async function ensureSetterBrainSchema(env: Env) {
+  if (__setterBrainSchemaReady) return;
+  await env.aura_db.exec(`CREATE TABLE IF NOT EXISTS setter_brain_config (
+    tenant_id TEXT PRIMARY KEY,
+    assistant_name TEXT,
+    tone TEXT DEFAULT 'cálido, claro y profesional',
+    max_sentences INTEGER DEFAULT 3,
+    booking_mode TEXT DEFAULT 'when_ready',
+    handoff_message TEXT,
+    followup_policy TEXT DEFAULT 'value_first',
+    updated_at INTEGER
+  )`).catch(()=>{});
+  await env.aura_db.exec(`CREATE TABLE IF NOT EXISTS setter_brain_sessions (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    lead_id TEXT,
+    treatment TEXT,
+    stage TEXT,
+    objective TEXT,
+    timeframe TEXT,
+    objection TEXT,
+    resource_history TEXT,
+    human_handoff INTEGER DEFAULT 0,
+    updated_at INTEGER
+  )`).catch(()=>{});
+  await env.aura_db.exec('CREATE INDEX IF NOT EXISTS idx_setter_brain_sessions ON setter_brain_sessions (tenant_id, lead_id, updated_at)').catch(()=>{});
+  for (const sql of [
+    'ALTER TABLE setter_resources ADD COLUMN consent_verified INTEGER DEFAULT 0',
+    "ALTER TABLE setter_resources ADD COLUMN source_status TEXT DEFAULT 'draft'",
+    'ALTER TABLE setter_resources ADD COLUMN faq_json TEXT'
+  ]) { try { await env.aura_db.exec(sql); } catch(e) {} }
+  __setterBrainSchemaReady = true;
 }
 
 const CORS = {
@@ -886,7 +922,7 @@ export default {
         '/api/loyalty-adjust','/api/loyalty-balance',
         '/api/clinical','/api/clinical-note','/api/viral-content','/api/viral-content-delete',
         '/api/viral-submit','/api/viral-fire','/api/viral-update-views',
-        '/api/clinical-audit'
+        '/api/clinical-audit','/api/setter-brain-config','/api/setter-resources'
       ]);
       // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
       const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar','/api/portal-clients']);
@@ -906,6 +942,44 @@ export default {
       if (FINANCE_ONLY.has(p)) {
         const role = await getSessionRole(env, req, url);
         if (!(role==='owner'||role==='finance'||role==='superadmin')) return json({ error:'forbidden', reason:'role' }, 403);
+      }
+
+      // ── SETTER BRAIN: configuración y recursos propios de cada clínica ──
+      if ((p === '/api/setter-brain-config' || p === '/api/setter-resources')) {
+        await ensureSetterBrainSchema(env);
+        const role = await getSessionRole(env, req, url);
+        if (!(role === 'owner' || role === 'superadmin')) return json({ error:'forbidden', reason:'role' }, 403);
+        const tenantId = url.searchParams.get('tenant') || url.searchParams.get('tenant_id') || '';
+        if (p === '/api/setter-brain-config' && req.method === 'GET') {
+          const config:any = await env.aura_db.prepare('SELECT * FROM setter_brain_config WHERE tenant_id=?').bind(tenantId).first();
+          return json({ ok:true, config: config || { tenant_id:tenantId, tone:'cálido, claro y profesional', max_sentences:3, booking_mode:'when_ready', followup_policy:'value_first' } });
+        }
+        if (p === '/api/setter-brain-config' && req.method === 'POST') {
+          const b:any = await req.json();
+          const now = Date.now();
+          await env.aura_db.prepare(`INSERT INTO setter_brain_config (tenant_id,assistant_name,tone,max_sentences,booking_mode,handoff_message,followup_policy,updated_at)
+            VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id) DO UPDATE SET assistant_name=excluded.assistant_name,tone=excluded.tone,max_sentences=excluded.max_sentences,booking_mode=excluded.booking_mode,handoff_message=excluded.handoff_message,followup_policy=excluded.followup_policy,updated_at=excluded.updated_at`)
+            .bind(b.tenant_id, b.assistant_name||'', b.tone||'cálido, claro y profesional', Math.min(6,Math.max(1,Number(b.max_sentences)||3)), b.booking_mode||'when_ready', b.handoff_message||'', b.followup_policy||'value_first', now).run();
+          return json({ ok:true });
+        }
+        if (p === '/api/setter-resources' && req.method === 'GET') {
+          const r:any = await env.aura_db.prepare('SELECT * FROM setter_resources WHERE tenant_id=? ORDER BY treatment, updated_at DESC').bind(tenantId).all();
+          return json({ ok:true, resources:r.results || [] });
+        }
+        if (p === '/api/setter-resources' && req.method === 'POST') {
+          const b:any = await req.json(); const now=Date.now();
+          if (!b.tenant_id || !b.treatment) return json({ error:'treatment_required' }, 400);
+          const id = b.id || ('sr_'+Math.random().toString(36).slice(2,12));
+          await env.aura_db.prepare(`INSERT INTO setter_resources (id,tenant_id,treatment,before_after_url,before_after_caption,video_url,video_caption,review_text,review_author,price_from,price_to,duration_text,recovery_text,tips,cta_text,consent_verified,source_status,faq_json,created_at,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET treatment=excluded.treatment,before_after_url=excluded.before_after_url,before_after_caption=excluded.before_after_caption,video_url=excluded.video_url,video_caption=excluded.video_caption,review_text=excluded.review_text,review_author=excluded.review_author,price_from=excluded.price_from,price_to=excluded.price_to,duration_text=excluded.duration_text,recovery_text=excluded.recovery_text,tips=excluded.tips,cta_text=excluded.cta_text,consent_verified=excluded.consent_verified,source_status=excluded.source_status,faq_json=excluded.faq_json,updated_at=excluded.updated_at`)
+            .bind(id,b.tenant_id,String(b.treatment).toLowerCase().trim(),b.before_after_url||null,b.before_after_caption||null,b.video_url||null,b.video_caption||null,b.review_text||null,b.review_author||null,b.price_from||null,b.price_to||null,b.duration_text||null,b.recovery_text||null,b.tips||null,b.cta_text||null,b.consent_verified?1:0,b.source_status||'draft',b.faq_json||null,b.created_at||now,now).run();
+          return json({ ok:true, id });
+        }
+        if (p === '/api/setter-resources' && req.method === 'DELETE') {
+          const b:any = await req.json();
+          await env.aura_db.prepare('DELETE FROM setter_resources WHERE id=? AND tenant_id=?').bind(b.id,b.tenant_id).run();
+          return json({ ok:true });
+        }
       }
 
       // Servir imágenes: primero R2, fallback a KV (compatibilidad con imágenes antiguas)
@@ -5340,14 +5414,18 @@ async function handleChat(req: Request, env: Env) {
     .prepare('SELECT * FROM tenants WHERE id=?')
     .bind(tenantId)
     .first<any>();
-  // Modo DEMO de ventas: el agente vende AURA a la dueña de la clínica (no asesora de labios)
-  const isDemo = (t?.status === 'demo' || t?.plan === 'trial');
+  const context:any = body.context || body.lead || {};
+  const chatMessages = Array.isArray(body.messages) ? body.messages.slice(-16) : [];
+  // La demo comercial se activa de forma explícita; un embudo de paciente de una clínica demo sigue usando el Setter Brain clínico.
+  const isDemo = (t?.status === 'demo' || t?.plan === 'trial') && context.mode === 'sales_demo';
   let prompt;
+  let brain:any = null;
   if (isDemo) {
     prompt = SALES_DEMO_PROMPT +
       `\nNombre de la clínica que está probando: ${t?.name || 'tu clínica'}.`;
   } else {
-    // === ARSENAL DEL SETTER: recursos globales + por tratamiento ===
+    await ensureSetterBrainSchema(env);
+    // === ARSENAL DEL SETTER: datos de clínica + recursos verificados por tratamiento ===
     const arsenal: string[] = [];
     if (t?.doctor_name) arsenal.push(`doctora: ${t.doctor_name}`);
     if (t?.doctor_specialty) arsenal.push(`especialidad: ${t.doctor_specialty}`);
@@ -5357,31 +5435,41 @@ async function handleChat(req: Request, env: Env) {
     if (t?.booking_url) arsenal.push(`[ENLACE RESERVA] ${t.booking_url}`);
     if (t?.doctor_video_url) arsenal.push(`[VIDEO DOCTORA] ${t.doctor_video_url}`);
     // Recursos específicos por tratamiento
-    const treatmentKey = (body.context?.treatment || '').toLowerCase().trim();
+    const treatmentKey = (context.treatment || '').toLowerCase().trim();
     let treatRes: any = null;
     if (treatmentKey) { try { treatRes = await env.aura_db.prepare('SELECT * FROM setter_resources WHERE tenant_id=? AND treatment=?').bind(tenantId, treatmentKey).first(); } catch(e) {} }
-    const treatBlock: string[] = [];
-    if (treatRes) {
-      if (treatRes.before_after_url) treatBlock.push(`[FOTO ANTES/DESPUES] ${treatRes.before_after_url} — "${treatRes.before_after_caption || 'Resultado real'}"`);
-      if (treatRes.video_url) treatBlock.push(`[VIDEO TRATAMIENTO] ${treatRes.video_url} — "${treatRes.video_caption || 'Video del procedimiento'}"`);
-      if (treatRes.review_text) treatBlock.push(`[RESENA REAL] "${treatRes.review_text}" — ${treatRes.review_author || 'Paciente verificada'}`);
-      if (treatRes.price_from) treatBlock.push(`[PRECIO] desde ${treatRes.price_from}E${treatRes.price_to ? ' hasta ' + treatRes.price_to + 'E' : ''}`);
-      if (treatRes.duration_text) treatBlock.push(`[DURACION] ${treatRes.duration_text}`);
-      if (treatRes.recovery_text) treatBlock.push(`[RECUPERACION] ${treatRes.recovery_text}`);
-      if (treatRes.tips) treatBlock.push(`[TIPS] ${treatRes.tips}`);
-    } else {
-      if (t?.before_after_url) treatBlock.push(`[FOTO ANTES/DESPUES] ${t.before_after_url}`);
-      if (t?.top_review) treatBlock.push(`[RESENA REAL] "${t.top_review}"`);
-      if (t?.price_range) treatBlock.push(`[PRECIO] ${t.price_range}`);
-    }
-    const fullArsenal = `\n\nARSENAL DEL SETTER:\nDATOS CLINICA: ${arsenal.join(' | ')}\nRECURSOS TRATAMIENTO (${treatmentKey || 'general'}): ${treatBlock.join(' | ')}\n\nREGLAS OBLIGATORIAS DE USO DE RECURSOS:\n1. DEBES incluir AL MENOS 1 recurso en CADA respuesta. Elige el mas relevante segun lo que diga el lead.\n2. Si pregunta precio → incluye el [PRECIO]\n3. Si pide ver resultados → pega la URL de [FOTO ANTES/DESPUES]\n4. Si desconfia/tiene miedo → pega URL de [VIDEO DOCTORA] o cita la [RESENA REAL]\n5. Si pregunta duracion/recuperacion → incluye [DURACION] o [RECUPERACION]\n6. Si esta lista → pega [ENLACE RESERVA]\n7. Si no encaja ninguno → cita la resena como social proof\n8. FORMATO: pega URLs directamente en el texto. Cita resenas entre comillas. Menciona precios de forma natural.\n9. NUNCA digas "te envio un recurso". Simplemente incluyelo.`;
-    prompt = (t?.ai_system_prompt || SYSTEM_BASE) + fullArsenal +
-      `\n\nContexto del lead: nombre=${body.context?.name || '-'}, tratamiento=${treatmentKey || '-'}, plazo=${body.context?.plazo || '-'}, objecion=${body.context?.objecion || '-'}`;
+    const cfg:any = await env.aura_db.prepare('SELECT * FROM setter_brain_config WHERE tenant_id=?').bind(tenantId).first().catch(()=>null);
+    const leadId = context.lead_id || body.lead_id || '';
+    const conversationId = context.conversation_id || (leadId ? `lead:${leadId}` : 'web:'+tenantId+':'+String(context.name || 'anon').toLowerCase().replace(/[^a-z0-9]/g,''));
+    const saved:any = await env.aura_db.prepare('SELECT * FROM setter_brain_sessions WHERE id=? AND tenant_id=?').bind(conversationId,tenantId).first().catch(()=>null);
+    let savedHistory:string[] = []; try { savedHistory = saved?.resource_history ? JSON.parse(saved.resource_history) : []; } catch(e) {}
+    const rawMemory:any = body.brain_state || {};
+    const memory: SetterMemory = {
+      ...saved,
+      ...rawMemory,
+      objective: context.goal || context.motivo || rawMemory.objective || saved?.objective || '',
+      timeframe: context.plazo || rawMemory.timeframe || saved?.timeframe || '',
+      resourceHistory: Array.from(new Set([...(savedHistory || []), ...deriveResourceHistory(chatMessages, treatRes as SetterResource | null)])),
+      messageCount: chatMessages.filter((m:any)=>m.role==='user').length
+    };
+    const assessment = assessSetterConversation(chatMessages, memory);
+    brain = { stage:assessment.stage, next_action:assessment.nextAction, needs_human:assessment.needsHuman, flags:assessment.flags, conversation_id:conversationId };
+    const brainPrompt = buildSetterBrainInstructions({ assessment, memory, resource:treatRes as SetterResource | null, assistantName:cfg?.assistant_name || 'la asistente de la clínica', bookingUrl:t?.booking_url || '', tone:cfg?.tone || 'cálido, claro y profesional', maxSentences:cfg?.max_sentences || 3 });
+    prompt = (t?.ai_system_prompt || SYSTEM_BASE) + brainPrompt +
+      `\n\nDATOS APROBADOS DE LA CLÍNICA: ${arsenal.join(' | ')}\nContexto del lead: nombre=${context.name || '-'}, tratamiento=${treatmentKey || '-'}, plazo=${context.plazo || '-'}, objeción=${context.objecion || '-'}`;
   }
 
-  const messages = [{ role: 'system', content: prompt }, ...(body.messages || []).slice(-12)];
+  const messages = [{ role: 'system', content: prompt }, ...chatMessages];
   const content = await runAI(env, messages, false);
-  return json({ content, source: env.OPENAI_KEY ? 'openai' : 'workers-ai' });
+  if (brain?.conversation_id) {
+    const now = Date.now();
+    try {
+      await env.aura_db.prepare(`INSERT INTO setter_brain_sessions (id,tenant_id,lead_id,treatment,stage,objective,timeframe,objection,resource_history,human_handoff,updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET treatment=excluded.treatment,stage=excluded.stage,objective=excluded.objective,timeframe=excluded.timeframe,objection=excluded.objection,resource_history=excluded.resource_history,human_handoff=excluded.human_handoff,updated_at=excluded.updated_at`)
+        .bind(brain.conversation_id,tenantId,(context.lead_id||body.lead_id||null),context.treatment||null,brain.stage,context.goal||context.motivo||null,context.plazo||null,context.objecion||null,JSON.stringify(memory.resourceHistory||[]),brain.needs_human?1:0,now).run();
+    } catch(e) {}
+  }
+  return json({ content, brain, brain_state: brain ? { stage:brain.stage, objective:context.goal || context.motivo || '', timeframe:context.plazo || '', objection:context.objecion || '', resourceHistory:memory?.resourceHistory || [], messageCount:chatMessages.filter((m:any)=>m.role==='user').length } : null, source: env.OPENAI_KEY ? 'openai' : 'workers-ai' });
 }
 
 // ─── Handler: Generador IA desde URL ──────────────────────────────

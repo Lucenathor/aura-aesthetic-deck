@@ -815,16 +815,20 @@ function showFixedCta(){
 function jumpCal(){ const c=document.querySelector('.cal'); if(c){ c.scrollIntoView({behavior:'smooth',block:'center'}); c.classList.add('flash'); setTimeout(()=>c.classList.remove('flash'),900);} }
 function playAud(){ const a=document.getElementById('aud'),b=document.getElementById('aBub'); if(!a)return; if(a.paused){a.play();b.classList.add('playing');}else{a.pause();b.classList.remove('playing');} a.onended=()=>b.classList.remove('playing'); }
 
+var SETTER_HISTORY=[];
+var SETTER_CONVERSATION_ID=sessionStorage.getItem('aura_setter_'+TENANT_ID+'_'+TREATMENT_ID);
+if(!SETTER_CONVERSATION_ID){SETTER_CONVERSATION_ID='web_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);sessionStorage.setItem('aura_setter_'+TENANT_ID+'_'+TREATMENT_ID,SETTER_CONVERSATION_ID);}
 async function sendMsg(){
   const inp=document.getElementById('cInput'); const v=inp.value.trim(); if(!v)return;
-  addMe(v); inp.value='';
+  addMe(v); SETTER_HISTORY.push({role:'user',content:v}); inp.value='';
   // marcar que conversó en el chat (prioridad de llamada punto B)
   if(!state._chatted){ state._chatted=true; try{ if(state.lead_id) fetch(WORKER+'/api/lead-chatted',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lead_id:state.lead_id})}); }catch(e){} }
   await wait(350); typing();
   try{
     const r=await fetch(WORKER+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({messages:[{role:'user',content:v}],tenant_id:TENANT_ID,lead:{name:state.name,treatment:CFG.treatment,answers:state.a}})});
+      body:JSON.stringify({messages:SETTER_HISTORY,tenant_id:TENANT_ID,lead_id:state.lead_id,context:{name:state.name,treatment:CFG.treatment,goal:state.a?.motivo||'',plazo:state.a?.plazo||'',objecion:state.a?.objecion||'',lead_id:state.lead_id,conversation_id:SETTER_CONVERSATION_ID,mode:window.DEMO_SALES?'sales_demo':'patient'},brain_state:state.setter_brain||{}})});
     const d=await r.json(); await wait(300); unType();
+    SETTER_HISTORY.push({role:'assistant',content:d.content||''}); state.setter_brain=d.brain_state||state.setter_brain||{};
     addThem((d.content||'perdona, dame un segundo').replace(/\n/g,'<br>'),true);
     if(!document.querySelector('.cal')){ await wait(500); showCal(); }
   }catch(e){ unType(); addThem('se me ha ido la conexión un momento, me lo repites?',true); }
