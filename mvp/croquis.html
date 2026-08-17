@@ -29,7 +29,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);over
 
 /* CENTER CANVAS AREA */
 .canvas-area{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#f0f0f0}
-#drawCanvas{background:#fff;box-shadow:var(--shadow);cursor:crosshair;touch-action:none;transition:transform .15s ease}
+#drawCanvas{background:#fff;box-shadow:var(--shadow);cursor:crosshair;touch-action:none;transform-origin:center center;will-change:transform;transition:transform .15s ease}
 
 /* BOTTOM TOOLBAR */
 .toolbar{grid-column:1/2;display:flex;align-items:center;justify-content:center;gap:.2rem;padding:0 1rem;background:var(--card);border-top:1px solid var(--border)}
@@ -108,7 +108,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);over
   <!-- BOTTOM TOOLBAR -->
   <div class="toolbar">
     <div class="tool-group">
-      <button class="t-btn" onclick="setTool('pointer')" id="tool-pointer" title="Puntero (1)"><span class="icon">&#128433;</span> Puntero</button>
+      <button class="t-btn" onclick="setTool('pointer')" id="tool-pointer" title="Mover lienzo ampliado (1)"><span class="icon">&#128433;</span> Mover</button>
       <button class="t-btn" onclick="setTool('eraser')" id="tool-eraser" title="Borrador (2)"><span class="icon">&#9671;</span> Borrador</button>
       <button class="t-btn active" onclick="setTool('pen')" id="tool-pen" title="Dibujar (3)"><span class="icon">&#9998;</span> Dibujar</button>
       <button class="t-btn" onclick="setTool('arrow')" id="tool-arrow" title="Flecha (4)"><span class="icon">&#8599;</span> Flecha</button>
@@ -206,6 +206,7 @@ let arrowStart=null;
 let injections=[];
 let currentZoom=1;
 let bgImage=null;
+let panX=0,panY=0,isPanning=false,panPointerId=null,panStartX=0,panStartY=0,panOriginX=0,panOriginY=0;
 
 const params=new URLSearchParams(location.search);
 const TENANT=params.get('tenant')||'';
@@ -312,7 +313,7 @@ function setTool(t){
   currentTool=t;
   document.querySelectorAll('.t-btn').forEach(function(b){b.classList.remove('active')});
   var el=document.getElementById('tool-'+t);if(el)el.classList.add('active');
-  canvas.style.cursor=t==='pointer'?'default':t==='eraser'?'cell':t==='text'?'text':'crosshair';
+  canvas.style.cursor=t==='pointer'?(currentZoom>1?'grab':'default'):t==='eraser'?'cell':t==='text'?'text':'crosshair';
 }
 function setColor(c,el){
   currentColor=c;
@@ -328,6 +329,10 @@ function getPos(e){
 }
 
 canvas.addEventListener('pointerdown',function(e){
+  if(currentTool==='pointer'&&currentZoom>1){
+    e.preventDefault();isPanning=true;panPointerId=e.pointerId;panStartX=e.clientX;panStartY=e.clientY;panOriginX=panX;panOriginY=panY;
+    canvas.setPointerCapture(e.pointerId);canvas.style.cursor='grabbing';return;
+  }
   e.preventDefault();var pos=getPos(e);
   if(currentTool==='pointer')return;
   if(currentTool==='marker'){placeMarker(pos.x,pos.y);return;}
@@ -336,6 +341,9 @@ canvas.addEventListener('pointerdown',function(e){
   isDrawing=true;lastX=pos.x;lastY=pos.y;
 });
 canvas.addEventListener('pointermove',function(e){
+  if(isPanning){
+    e.preventDefault();panX=panOriginX+(e.clientX-panStartX);panY=panOriginY+(e.clientY-panStartY);clampPan();applyCanvasTransform();return;
+  }
   if(!isDrawing)return;e.preventDefault();var pos=getPos(e);
   if(currentTool==='pen'){
     ctx.beginPath();ctx.moveTo(lastX,lastY);ctx.lineTo(pos.x,pos.y);
@@ -347,12 +355,17 @@ canvas.addEventListener('pointermove',function(e){
   lastX=pos.x;lastY=pos.y;
 });
 canvas.addEventListener('pointerup',function(e){
+  if(isPanning){
+    isPanning=false;if(panPointerId!==null&&canvas.hasPointerCapture(panPointerId))canvas.releasePointerCapture(panPointerId);panPointerId=null;
+    canvas.style.cursor=currentTool==='pointer'&&currentZoom>1?'grab':'default';return;
+  }
   if(currentTool==='arrow'&&arrowStart){
     var pos=getPos(e);drawArrow(arrowStart.x,arrowStart.y,pos.x,pos.y);arrowStart=null;saveState();return;
   }
   if(isDrawing){isDrawing=false;saveState();}
 });
 canvas.addEventListener('pointerleave',function(){if(isDrawing){isDrawing=false;saveState();}});
+canvas.addEventListener('pointercancel',function(){if(isPanning){isPanning=false;panPointerId=null;canvas.style.cursor=currentTool==='pointer'&&currentZoom>1?'grab':'default';}if(isDrawing){isDrawing=false;saveState();}});
 
 function placeMarker(x,y){
   var product=document.getElementById('productSelect').value;
@@ -421,9 +434,17 @@ function restoreState(){var img=new Image();img.onload=function(){ctx.clearRect(
 
 function zoomIn(){currentZoom=Math.min(currentZoom+0.15,2.5);applyZoom();}
 function zoomOut(){currentZoom=Math.max(currentZoom-0.15,0.4);applyZoom();}
-function zoomReset(){currentZoom=1;applyZoom();}
+function zoomReset(){currentZoom=1;panX=0;panY=0;applyZoom();}
+function clampPan(){
+  var area=document.getElementById('canvasArea');var baseW=canvas.offsetWidth||0,baseH=canvas.offsetHeight||0;
+  var maxX=Math.max(0,(baseW*currentZoom-area.clientWidth)/2+18),maxY=Math.max(0,(baseH*currentZoom-area.clientHeight)/2+18);
+  panX=Math.max(-maxX,Math.min(maxX,panX));panY=Math.max(-maxY,Math.min(maxY,panY));
+}
+function applyCanvasTransform(){canvas.style.transform='translate('+panX+'px,'+panY+'px) scale('+currentZoom+')';}
 function applyZoom(){
-  canvas.style.transform='scale('+currentZoom+')';
+  if(currentZoom<=1){panX=0;panY=0;}
+  clampPan();applyCanvasTransform();
+  if(currentTool==='pointer')canvas.style.cursor=currentZoom>1?'grab':'default';
   document.getElementById('zoomDisplay').textContent=Math.round(currentZoom*100)+'%';
 }
 
@@ -435,19 +456,27 @@ function resizeCanvas(){
   if(h>maxH){h=maxH;w=maxH*ratio;}
   canvas.style.width=Math.min(w,650)+'px';
   canvas.style.height=Math.min(h,780)+'px';
+  clampPan();applyCanvasTransform();
 }
 
 async function saveCroquis(){
+  if(!TENANT||!LEAD){alert('No se puede guardar: falta identificar al paciente o la clínica.');return;}
+  var saveButton=document.querySelector('.top-btn.primary');
   var dataUrl=canvas.toDataURL('image/png');
   var WORKER=localStorage.getItem('aura_worker')||'https://aura-chat-worker.adrian-7b9.workers.dev';
   var TOKEN=localStorage.getItem('aura_token')||'';
+  var STAFF_TOKEN=localStorage.getItem('staff_token')||'';
   try{
+    if(saveButton){saveButton.disabled=true;saveButton.textContent='Guardando…';}
     var templateMeta=document.querySelector('.tpl-card.active')?(templateFamily+'-'+document.querySelector('.tpl-card.active').id.replace('tpl-','')):'photo';
-    var res=await fetch(WORKER+'/api/patient-media',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify({tenant_id:TENANT,lead_id:LEAD,type:'croquis',visit_id:VISIT,data_url:dataUrl,template:templateMeta,injections:JSON.stringify(injections)})});
-    var j=await res.json();
+    var headers={'Content-Type':'application/json'};if(TOKEN)headers.Authorization='Bearer '+TOKEN;if(STAFF_TOKEN)headers['X-Staff-Token']=STAFF_TOKEN;
+    var res=await fetch(WORKER+'/api/patient-media',{method:'POST',headers:headers,body:JSON.stringify({tenant_id:TENANT,lead_id:LEAD,type:'croquis',visit_id:VISIT,data_url:dataUrl,template:templateMeta,injections:JSON.stringify(injections)})});
+    var raw=await res.text(),j=null;try{j=JSON.parse(raw);}catch(e){}
+    if(!res.ok)throw new Error((j&&j.error)?j.error:'servidor '+res.status);
     if(j.ok){alert('Croquis guardado correctamente');if(window.opener)window.opener.postMessage({type:'croquis-saved',lead:LEAD},'*');}
-    else alert('Error: '+(j.error||'desconocido'));
-  }catch(e){alert('Error de conexion: '+e.message);}
+    else throw new Error((j&&j.error)||'desconocido');
+  }catch(e){alert('No se ha podido guardar el croquis: '+e.message);}
+  finally{if(saveButton){saveButton.disabled=false;saveButton.innerHTML='&#128190; Guardar';}}
 }
 
 document.addEventListener('keydown',function(e){

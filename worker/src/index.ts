@@ -3370,6 +3370,35 @@ export default {
         return json({ ok: result.ok, stage:'done', message: result.msg });
       }
 
+      // Guardar croquis médico digital (base64 PNG). Esta ruta debe vivir fuera del bloque /api/wa-*.
+      if (p === '/api/patient-media' && req.method === 'POST') {
+        const b:any = await req.json();
+        if (!b.tenant_id || !b.lead_id) return json({ error:'missing_patient_or_tenant' },400);
+        const t2=String(b.tenant_id), leadId=String(b.lead_id), dataUrl=String(b.data_url||'');
+        const sessionIssue=await requireTenant(env, req, url, t2);
+        let staffAllowed=false;
+        if(sessionIssue){
+          const staffToken=req.headers.get('x-staff-token')||'';
+          if(staffToken){try{const raw=await env.AURA_IMG.get('staff_session_'+staffToken);const staff=raw?JSON.parse(raw):null;staffAllowed=!!(staff&&staff.exp>Date.now()&&staff.tenant_id===t2);}catch(e){staffAllowed=false;}}
+          if(!staffAllowed) return json({ error:'unauthorized' },403);
+        }
+        const match=dataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,(.+)$/);
+        if(!match) return json({ ok:false, error:'bad_image_data' },400);
+        try{
+          const ct=match[1],bin=atob(match[2]);
+          const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+          if(bytes.byteLength>18*1024*1024)return json({ok:false,error:'image_too_large'},413);
+          const key='croquis_'+t2+'_'+Math.random().toString(36).slice(2,12)+'.png';
+          if(env.aura_r2){try{await env.aura_r2.put('img/'+key,bytes.buffer,{httpMetadata:{contentType:ct}});}catch(e){await env.AURA_IMG.put(key,bytes.buffer,{metadata:{contentType:ct}});}}
+          else await env.AURA_IMG.put(key,bytes.buffer,{metadata:{contentType:ct}});
+          const id='pm_'+Math.random().toString(36).slice(2,12),mediaUrl='/img/'+key;
+          const caption='Croquis '+String(b.template||'face-front')+' — '+new Date().toLocaleDateString('es-ES');
+          await env.aura_db.prepare('INSERT INTO patient_media (id,tenant_id,lead_id,phone,url,mtype,caption,source,created_at) VALUES (?,?,?,?,?,?,?,?,?)').bind(id,t2,leadId,null,mediaUrl,'img',caption,'croquis',Date.now()).run();
+          try{await env.aura_db.prepare("INSERT INTO clinical_audit_log (id,tenant_id,lead_id,action,resource,actor,actor_role,data_before,ip,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind('au_'+uid(),t2,leadId,'create','croquis:'+id,staffAllowed?'professional':'user',staffAllowed?'medico':'owner',null,req.headers.get('cf-connecting-ip')||'',Date.now()).run();}catch(e){}
+          return json({ok:true,id,url:mediaUrl});
+        }catch(e){return json({ok:false,error:'save_failed'},500);}
+      }
+
       // ============ WHATSAPP (Unipile API) ============
       // Config por tenant: cada clínica tiene su account_id de Unipile. Tabla wa_config (campo instance = account_id).
       if (p.startsWith('/api/wa-')) {

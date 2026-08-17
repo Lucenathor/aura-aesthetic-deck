@@ -8,3 +8,5 @@
 - [x] Generar plantillas clínicas masculinas realistas: frontal, lateral y corporal.
 - [x] Seleccionar automáticamente la familia de plantilla según el sexo registrado del paciente y permitir cambiarla manualmente.
 - [x] Generar e integrar una plantilla clínica masculina de labios, mentón y mandíbula para completar la familia anatómica masculina.
+- [ ] Diagnosticar y corregir el error al guardar el croquis en la ficha del paciente.
+- [ ] Añadir paneo por arrastre tras ampliar el canvas, con soporte de ratón y gestos táctiles.
