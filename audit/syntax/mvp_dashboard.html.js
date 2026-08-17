@@ -1455,6 +1455,7 @@ function renderAgendaCal(){
         h+='<div class="agenda-appt '+shortClass+'" draggable="true" ondragstart="agDragStart(event,\''+a.id+'\')" onclick="event.stopPropagation();openApptCard(\''+a.id+'\')" style="top:'+top+'px; height:'+height+'px;background:'+sty.bg+';opacity:'+sty.op+';'+sty.dash+'" title="'+(a.lead_name||'Cita')+' · '+(a.treatment||'')+' · '+timeStr+' ('+dur+'min)">';
         h+='<div class="agenda-appt-title"><span style="opacity:.85;margin-right:3px">'+sty.icon+'</span><span style="font-weight:800;margin-right:4px;font-size:.68rem;opacity:.85">'+timeStr+'</span>'+(a.lead_name||'Cita')+'</div>';
         if(dur > 15 || interval === 30) h+='<div class="agenda-appt-sub">'+(a.treatment||'')+(a.status==='attended'?' · <b>✓ Cobrado</b>':'')+(a.status==='completed'?' · <b>✓ Completada</b>':'')+'</div>';
+        h+='<div class="appt-resize-handle" onmousedown="startApptResize(event,\''+a.id+'\','+dur+','+slotHeight+')" title="Arrastra para cambiar duración"></div>';
         h+='</div>';
       });
       
@@ -1848,6 +1849,38 @@ async function createAppt(){
 // Añadir profesional
 async function addProfessional(){ const n=prompt('Nombre del profesional:'); if(!n)return; await fetch(WORKER+'/api/professionals',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,name:n})}); loadAgendaCal(true); }
 // Bloquear horas
+// ===== RESIZE de citas (arrastrar borde inferior para cambiar duración) =====
+function startApptResize(e, apptId, origDur, slotH){
+  e.stopPropagation(); e.preventDefault();
+  const el = e.target.parentElement;
+  const startY = e.clientY;
+  const startH = el.offsetHeight;
+  const interval = parseInt(document.getElementById('calInterval')?.value || '15');
+  const pxPerMin = slotH / interval;
+  let newDur = origDur;
+  function onMove(ev){
+    const dy = ev.clientY - startY;
+    const rawH = startH + dy;
+    const minH = pxPerMin * 5; // mínimo 5 min
+    const h = Math.max(minH, rawH);
+    el.style.height = h + 'px';
+    newDur = Math.round((h / pxPerMin) / 5) * 5; // redondear a múltiplos de 5
+    if(newDur < 5) newDur = 5;
+    el.title = newDur + ' min';
+  }
+  function onUp(){
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    if(newDur !== origDur){
+      // Guardar la nueva duración en el servidor
+      fetch(WORKER+'/api/appt-resize',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,id:apptId,duration_min:newDur})})
+        .then(r=>r.json()).then(d=>{ if(d.ok){ loadAgendaCal(true); } else { el.style.height=startH+'px'; alert('Error al cambiar duración'); }})
+        .catch(()=>{ el.style.height=startH+'px'; });
+    }
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
 function openBlock(){
   const ov=document.createElement('div'); ov.id='blOverlay'; ov.style='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:grid;place-items:center;padding:1rem';
   ov.innerHTML='<div style="background:#fff;border-radius:16px;max-width:360px;width:100%;padding:1.4rem"><h3 class="serif" style="margin:0 0 .9rem">Bloquear horas</h3>'

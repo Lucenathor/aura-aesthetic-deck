@@ -4428,7 +4428,16 @@ export default {
         return json({ ok:true });
       }
 
-      // CANCELAR CITA desde el panel (staff auth)
+
+      // RESIZE CITA: cambiar duración arrastrando el borde inferior
+      if (p === '/api/appt-resize' && req.method === 'POST') {
+        const b:any = await req.json();
+        if (!b.id || !b.duration_min) return json({ error:'missing id or duration_min' }, 400);
+        await env.aura_db.prepare('UPDATE appointments SET duration_min=? WHERE id=? AND tenant_id=?').bind(Number(b.duration_min), b.id, b.tenant_id||tenant).run();
+        return json({ ok:true });
+      }
+
+      // CANCELAR CITA desde el panel (staff auth) - real
       if (p === '/api/appt-cancel-panel' && req.method === 'POST') {
         const b:any = await req.json();
         if (!b.appointment_id) return json({ error:'missing appointment_id' }, 400);
