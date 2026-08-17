@@ -5460,7 +5460,14 @@ async function handleChat(req: Request, env: Env) {
   }
 
   const messages = [{ role: 'system', content: prompt }, ...chatMessages];
-  const content = await runAI(env, messages, false);
+  let content = String(await runAI(env, messages, false) || '').trim();
+  // Un chat de captación no puede quedarse mudo: reintenta una vez y usa una respuesta segura si el proveedor devuelve vacío.
+  if (!content) content = String(await runAI(env, [{ role:'system', content:prompt+'\nResponde obligatoriamente ahora, con texto útil y conciso.' }, ...chatMessages.slice(-4)], false) || '').trim();
+  if (!content) {
+    if (brain?.needs_human) content = 'Gracias por contármelo. Para revisarlo con seguridad, te paso con el equipo de la clínica. ¿Prefieres que te contacten por llamada o por WhatsApp?';
+    else if (brain?.stage === 'reserva') content = 'Perfecto. Puedo ayudarte a dar el siguiente paso sin compromiso. ¿Prefieres reservar por aquí o que el equipo te contacte?';
+    else content = 'Gracias por explicármelo. Para orientarte sin prisas, ¿qué es lo que más te preocupa ahora?';
+  }
   if (brain?.conversation_id) {
     const now = Date.now();
     try {

@@ -60,7 +60,7 @@ export interface SetterAssessment {
   reason: string;
 }
 
-const MEDICAL_ESCALATION = /embaraz|lactan|amamant|alerg|contraindica|medicaci[oó]n|anticoagul|complicaci[oó]n|infecci[oó]n|dolor fuerte|urgencia|efecto secundario|reacci[oó]n|enfermedad|diagnostic/i;
+const MEDICAL_ESCALATION = /embaraz|lactan|amamant|alerg|contraindica|medicaci[oó]n|anticoagul|complicaci[oó]n|infecci[oó]n|dolor fuerte|urgencia|efecto secundario|reacci[oó]n|enfermedad|diagnostic|condici[oó]n.*piel|problema.*piel/i;
 const HUMAN_REQUEST = /hablar con (una )?(persona|doctora|doctor|recepci[oó]n|alguien)|humano|ll[aá]mame/i;
 const BOOKING_SIGNAL = /reserv|cita|hueco|disponib|cu[aá]ndo puedo|agenda|jueves|viernes|lunes|martes|mi[eé]rcoles|s[aá]bado/i;
 const PRICE_SIGNAL = /precio|cu[aá]nto cuesta|caro|barato|presupuesto|euros|€/i;
