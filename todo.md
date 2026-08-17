@@ -14,6 +14,6 @@
 - [x] Conservar en la ficha el metadato exacto de lateral izquierdo o derecho al guardar el croquis.
 - [x] Corregir el guardado del croquis desde la sesión de profesional iniciada con PIN, sin requerir sesión de propietario.
 - [x] Restaurar el favicon oficial de AURA en el panel, Staff, Croquis y rutas públicas.
-- [ ] Investigar mejores prácticas de navegación y ajustes en CRMs líderes del sector.
-- [ ] Reorganizar la sección de Ajustes con subcategorías claras y menú lateral fijo.
+- [x] Investigar mejores prácticas de navegación y ajustes en CRMs líderes del sector.
+- [x] Reorganizar la sección de Ajustes con subcategorías claras y menú lateral fijo.
 - [ ] Aplicar la misma lógica de navegación organizada a todas las secciones del panel.
