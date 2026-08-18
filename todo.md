@@ -50,3 +50,13 @@
 - [x] Crear y ejecutar una batería reproducible de 100 conversaciones multietapa con perfiles de paciente diversos.
 - [x] Analizar patrones de fallo y refinar el Setter Brain sin usar promesas o recursos no autorizados.
 - [x] Entregar un informe con métricas, segmentación de clientes y recomendaciones operativas.
+- [ ] Auditar los módulos de AURA y sus flujos críticos desde la perspectiva de clínica, recepción, profesional y paciente.
+- [ ] Contrastar los módulos con estándares de CRMs clínicos y SaaS líderes.
+- [ ] Elaborar una hoja de ruta priorizada por impacto comercial, riesgo operativo y complejidad.
+- [ ] Crear wizard de onboarding guiado con checklist de lanzamiento por clínica.
+- [ ] Implementar permisos granulares, auditoría de acceso clínico y consentimiento firmado con evidencia.
+- [ ] Crear presupuestos, plan de tratamiento, aceptación, anticipo y enlace de pago.
+- [ ] Conectar atribución de captación con cita, cobro y margen real por tratamiento.
+- [ ] Añadir agenda de gabinetes/aparatología y lista de espera automática.
+- [ ] Crear timeline 360º del paciente y automatizaciones de seguimiento por eventos.
+- [ ] Medir rentabilidad neta por tratamiento, profesional, canal y coste de captación.
