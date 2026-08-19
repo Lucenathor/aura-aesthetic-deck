@@ -5751,7 +5751,83 @@ async function saveSetterBrain(){
   try{var r=await fetch(WORKER+'/api/setter-brain-config',{method:'POST',headers:_setterHeaders(),body:JSON.stringify({tenant_id:T,assistant_name:document.getElementById('sbAssistantName').value.trim(),tone:document.getElementById('sbTone').value,max_sentences:+document.getElementById('sbMaxSentences').value,booking_mode:document.getElementById('sbBookingMode').value,followup_policy:document.getElementById('sbFollowup').value,handoff_message:document.getElementById('sbHandoff').value.trim()})});if(!r.ok)throw new Error();if(msg)msg.textContent='✓ Estrategia guardada';}catch(e){if(msg)msg.textContent='No se pudo guardar';}
 }
 function clearSetterResource(){['srId','srTreatment','srPhotoUrl','srPhotoCaption','srVideoUrl','srPriceFrom','srPriceTo','srDuration','srRecovery','srFaq'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});document.getElementById('srStatus').value='draft';document.getElementById('srConsent').checked=false;}
-function editSetterResource(id){var r=_setterResources.find(function(x){return x.id===id;});if(!r)return;var set=function(k,v){var e=document.getElementById(k);if(e)e.value=v||'';};set('srId',r.id);set('srTreatment',r.treatment);set('srStatus',r.source_status||'draft');set('srPhotoUrl',r.before_after_url);set('srPhotoCaption',r.before_after_caption);set('srVideoUrl',r.video_url);set('srPriceFrom',r.price_from);set('srPriceTo',r.price_to);set('srDuration',r.duration_text);set('srRecovery',r.recovery_text);set('srFaq',r.faq_json);document.getElementById('srConsent').checked=!!r.consent_verified;document.getElementById('srTreatment').scrollIntoView({behavior:'smooth',block:'center'});}
+function editSetterResource(id){var r=_setterResources.find(function(x){return x.id===id;});if(!r)return;var set=function(k,v){var e=document.getElementById(k);if(e)e.value=v||'';};set('srId',r.id);set('srTreatment',r.treatment);set('srStatus',r.source_status||'draft');set('srPhotoUrl',r.before_after_url);set('srPhotoCaption',r.before_after_caption);set('srVideoUrl',r.video_url);set('srPriceFrom',r.price_from);set('srPriceTo',r.price_to);set('srDuration',r.duration_text);set('srRecovery',r.recovery_text);set('srFaq',r.faq_json);document.getElementById('srConsent').checked=!!r.consent_verified;if(r.before_after_url)showDropzonePreview('srPhotoDropzone',r.before_after_url,'image');else clearDropzone('srPhotoDropzone');if(r.video_url)showDropzonePreview('srVideoDropzone',r.video_url,'video');else clearDropzone('srVideoDropzone');document.getElementById('srTreatment').scrollIntoView({behavior:'smooth',block:'center'});}
+// ═══ DRAG & DROP: Subida de archivos a R2 para recursos del setter ═══
+async function uploadSetterFile(file, slot, treatment){
+  const fd=new FormData();
+  fd.append('file',file);
+  fd.append('tenant_id',T);
+  fd.append('treatment',treatment||document.getElementById('srTreatment').value.trim()||'general');
+  fd.append('slot',slot);
+  const r=await fetch(WORKER+'/api/setter-upload',{method:'POST',headers:{'Authorization':'Bearer '+TOKEN},body:fd});
+  return await r.json();
+}
+function showDropzonePreview(dropzoneId, url, type){
+  const dz=document.getElementById(dropzoneId);
+  if(!dz)return;
+  const preview=dz.querySelector('[id$="Preview"]');
+  const placeholder=dz.querySelector('[id$="Placeholder"]');
+  if(!preview||!placeholder)return;
+  if(type==='image'){
+    preview.innerHTML='<img src="'+WORKER+url+'" style="max-width:100%;max-height:140px;border-radius:8px;object-fit:contain">'
+      +'<div style="margin-top:.3rem;font-size:.72rem;color:#1f8c69">Imagen subida</div>'
+      +'<button onclick="clearDropzone(\''+dropzoneId+'\')" style="margin-top:.2rem;font-size:.7rem;padding:.2rem .5rem;border:1px solid #ddd;border-radius:4px;cursor:pointer;background:#fff">Cambiar</button>';
+  }else if(type==='video'){
+    preview.innerHTML='<video src="'+WORKER+url+'" style="max-width:100%;max-height:140px;border-radius:8px" controls muted></video>'
+      +'<div style="margin-top:.3rem;font-size:.72rem;color:#1f8c69">Vídeo subido</div>'
+      +'<button onclick="clearDropzone(\''+dropzoneId+'\',\'video\')" style="margin-top:.2rem;font-size:.7rem;padding:.2rem .5rem;border:1px solid #ddd;border-radius:4px;cursor:pointer;background:#fff">Cambiar</button>';
+  }
+  preview.style.display='block';
+  placeholder.style.display='none';
+}
+function clearDropzone(dropzoneId, hiddenId){
+  const dz=document.getElementById(dropzoneId);
+  if(!dz)return;
+  const preview=dz.querySelector('[id$="Preview"]');
+  const placeholder=dz.querySelector('[id$="Placeholder"]');
+  if(preview){preview.style.display='none';preview.innerHTML='';}
+  if(placeholder)placeholder.style.display='block';
+}
+async function handleSetterFileDrop(event, slot, dropzoneId, hiddenId){
+  const files=event.dataTransfer.files;
+  if(!files.length)return;
+  const file=files[0];
+  const dz=document.getElementById(dropzoneId);
+  const placeholder=dz?dz.querySelector('[id$="Placeholder"]'):null;
+  if(placeholder)placeholder.innerHTML='<div style="font-size:.82rem;color:var(--terra);font-weight:600">Subiendo...</div>';
+  try{
+    const result=await uploadSetterFile(file, slot);
+    if(result.ok&&result.url){
+      document.getElementById(hiddenId).value=result.url;
+      showDropzonePreview(dropzoneId, result.url, result.type||'image');
+    }else{
+      if(placeholder)placeholder.innerHTML='<div style="color:#e74c3c;font-size:.82rem">'+(result.error||'Error al subir')+'</div>';
+      setTimeout(()=>{clearDropzone(dropzoneId);},2000);
+    }
+  }catch(e){
+    if(placeholder)placeholder.innerHTML='<div style="color:#e74c3c;font-size:.82rem">Error de conexión</div>';
+    setTimeout(()=>{clearDropzone(dropzoneId);},2000);
+  }
+}
+async function handleSetterFileSelect(input, slot, dropzoneId, hiddenId){
+  const file=input.files[0]; if(!file)return;
+  const dz=document.getElementById(dropzoneId);
+  const placeholder=dz?dz.querySelector('[id$="Placeholder"]'):null;
+  if(placeholder)placeholder.innerHTML='<div style="font-size:.82rem;color:var(--terra);font-weight:600">Subiendo...</div>';
+  try{
+    const result=await uploadSetterFile(file, slot);
+    if(result.ok&&result.url){
+      document.getElementById(hiddenId).value=result.url;
+      showDropzonePreview(dropzoneId, result.url, result.type||'image');
+    }else{
+      if(placeholder)placeholder.innerHTML='<div style="color:#e74c3c;font-size:.82rem">'+(result.error||'Error al subir')+'</div>';
+      setTimeout(()=>{clearDropzone(dropzoneId);},2000);
+    }
+  }catch(e){
+    if(placeholder)placeholder.innerHTML='<div style="color:#e74c3c;font-size:.82rem">Error de conexión</div>';
+    setTimeout(()=>{clearDropzone(dropzoneId);},2000);
+  }
+}
 async function saveSetterResource(){
   var treatment=document.getElementById('srTreatment').value.trim();var msg=document.getElementById('srMsg');if(!treatment){if(msg)msg.textContent='Indica el tratamiento';return;}if(msg)msg.textContent='Guardando…';
   var payload={id:document.getElementById('srId').value||undefined,tenant_id:T,treatment:treatment,before_after_url:document.getElementById('srPhotoUrl').value.trim(),before_after_caption:document.getElementById('srPhotoCaption').value.trim(),video_url:document.getElementById('srVideoUrl').value.trim(),price_from:document.getElementById('srPriceFrom').value||null,price_to:document.getElementById('srPriceTo').value||null,duration_text:document.getElementById('srDuration').value.trim(),recovery_text:document.getElementById('srRecovery').value.trim(),faq_json:document.getElementById('srFaq').value.trim(),source_status:document.getElementById('srStatus').value,consent_verified:document.getElementById('srConsent').checked};

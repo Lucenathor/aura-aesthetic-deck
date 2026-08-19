@@ -918,7 +918,7 @@ export default {
         '/api/loyalty-adjust','/api/loyalty-balance',
         '/api/clinical','/api/clinical-note','/api/viral-content','/api/viral-content-delete',
         '/api/viral-submit','/api/viral-fire','/api/viral-update-views',
-        '/api/clinical-audit','/api/setter-brain-config','/api/setter-resources','/api/setter-funnel-brain','/api/setter-funnel-brain/transcribe'
+        '/api/clinical-audit','/api/setter-brain-config','/api/setter-resources','/api/setter-funnel-brain','/api/setter-funnel-brain/transcribe','/api/setter-upload'
       ]);
       // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
       const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar','/api/portal-clients']);
@@ -1004,6 +1004,36 @@ export default {
           return json({ ok:true });
         }
         // ── Transcripción de audio para knowledge base ──
+        // ── Subida de archivos para recursos del setter (imágenes, vídeos, docs) ──
+        if (p === '/api/setter-upload' && req.method === 'POST') {
+          try {
+            const fd = await req.formData();
+            const file: any = fd.get('file');
+            const tenant = String(fd.get('tenant_id') || '');
+            const treatment = String(fd.get('treatment') || 'general');
+            const slot = String(fd.get('slot') || 'resource'); // before_after, video, document, resource
+            if (!file || !tenant) return json({ error: 'faltan datos' }, 400);
+            const ct = file.type || 'application/octet-stream';
+            const isImage = ct.startsWith('image/');
+            const isVideo = ct.startsWith('video/');
+            const isDoc = ct.includes('pdf') || ct.includes('word') || ct.includes('text');
+            const ext = isImage ? (ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : 'jpg')
+              : isVideo ? (ct.includes('mp4') ? 'mp4' : ct.includes('webm') ? 'webm' : 'mov')
+              : ct.includes('pdf') ? 'pdf' : 'bin';
+            // Clave organizada: setter/{tenant}/{treatment}/{slot}_{timestamp}.{ext}
+            const key = `setter/${tenant}/${treatment}/${slot}_${Date.now().toString(36)}${Math.random().toString(36).slice(2,6)}.${ext}`;
+            const buf = await file.arrayBuffer();
+            // Limitar tamaño: 25MB para vídeos, 10MB para imágenes, 5MB para docs
+            const maxSize = isVideo ? 25*1024*1024 : isImage ? 10*1024*1024 : 5*1024*1024;
+            if (buf.byteLength > maxSize) return json({ error: `Archivo demasiado grande. Máximo: ${Math.round(maxSize/1024/1024)}MB` }, 400);
+            if (env.aura_r2) {
+              await env.aura_r2.put('img/'+key, buf, { httpMetadata: { contentType: ct } });
+            } else {
+              await env.AURA_IMG.put(key, buf, { metadata: { contentType: ct } });
+            }
+            return json({ ok: true, url: '/img/' + key, key, type: isImage ? 'image' : isVideo ? 'video' : 'document', size: buf.byteLength });
+          } catch (e: any) { return json({ error: String(e) }, 400); }
+        }
         if (p === '/api/setter-funnel-brain/transcribe' && req.method === 'POST') {
           const formData = await req.formData();
           const audioFile = formData.get('audio') as File | null;
