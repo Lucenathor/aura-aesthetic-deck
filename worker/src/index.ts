@@ -918,7 +918,7 @@ export default {
         '/api/loyalty-adjust','/api/loyalty-balance',
         '/api/clinical','/api/clinical-note','/api/viral-content','/api/viral-content-delete',
         '/api/viral-submit','/api/viral-fire','/api/viral-update-views',
-        '/api/clinical-audit','/api/setter-brain-config','/api/setter-resources'
+        '/api/clinical-audit','/api/setter-brain-config','/api/setter-resources','/api/setter-funnel-brain','/api/setter-funnel-brain/transcribe'
       ]);
       // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
       const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar','/api/portal-clients']);
@@ -941,7 +941,7 @@ export default {
       }
 
       // ── SETTER BRAIN: configuración y recursos propios de cada clínica ──
-      if ((p === '/api/setter-brain-config' || p === '/api/setter-resources')) {
+      if ((p === '/api/setter-brain-config' || p === '/api/setter-resources' || p.startsWith('/api/setter-funnel-brain'))) {
         await ensureSetterBrainSchema(env);
         const role = await getSessionRole(env, req, url);
         if (!(role === 'owner' || role === 'superadmin')) return json({ error:'forbidden', reason:'role' }, 403);
@@ -975,6 +975,56 @@ export default {
           const b:any = await req.json();
           await env.aura_db.prepare('DELETE FROM setter_resources WHERE id=? AND tenant_id=?').bind(b.id,b.tenant_id).run();
           return json({ ok:true });
+        }
+        // ── Cerebro por embudo (setter_funnel_brain) ──
+        if (p === '/api/setter-funnel-brain' && req.method === 'GET') {
+          const tid = url.searchParams.get('tenant_id') || '';
+          const treat = url.searchParams.get('treatment') || '';
+          if (treat) {
+            const row = await env.aura_db.prepare('SELECT * FROM setter_funnel_brain WHERE tenant=? AND treatment=?').bind(tid, treat).first();
+            return json({ ok:true, brain: row || null });
+          }
+          const all:any = await env.aura_db.prepare('SELECT * FROM setter_funnel_brain WHERE tenant=? ORDER BY treatment').bind(tid).all();
+          return json({ ok:true, brains: all?.results || [] });
+        }
+        if (p === '/api/setter-funnel-brain' && req.method === 'POST') {
+          const b:any = await req.json();
+          const tid = b.tenant_id || b.tenant || '';
+          const treat = (b.treatment || '').toLowerCase().trim();
+          if (!tid || !treat) return json({ error:'tenant y treatment requeridos' }, 400);
+          await env.aura_db.prepare(`INSERT INTO setter_funnel_brain (tenant,treatment,custom_prompt,knowledge_base,promo_text,promo_active,promo_city,assistant_name,tone,booking_mode,max_sentences,files_json,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+            ON CONFLICT(tenant,treatment) DO UPDATE SET custom_prompt=excluded.custom_prompt,knowledge_base=excluded.knowledge_base,promo_text=excluded.promo_text,promo_active=excluded.promo_active,promo_city=excluded.promo_city,assistant_name=excluded.assistant_name,tone=excluded.tone,booking_mode=excluded.booking_mode,max_sentences=excluded.max_sentences,files_json=excluded.files_json,updated_at=excluded.updated_at`)
+            .bind(tid, treat, b.custom_prompt||'', b.knowledge_base||'', b.promo_text||'', b.promo_active?1:0, b.promo_city||'', b.assistant_name||'', b.tone||'cálido y profesional', b.booking_mode||'when_ready', b.max_sentences||3, b.files_json||'[]').run();
+          return json({ ok:true });
+        }
+        if (p === '/api/setter-funnel-brain' && req.method === 'DELETE') {
+          const b:any = await req.json();
+          await env.aura_db.prepare('DELETE FROM setter_funnel_brain WHERE tenant=? AND treatment=?').bind(b.tenant_id||b.tenant, b.treatment).run();
+          return json({ ok:true });
+        }
+        // ── Transcripción de audio para knowledge base ──
+        if (p === '/api/setter-funnel-brain/transcribe' && req.method === 'POST') {
+          const formData = await req.formData();
+          const audioFile = formData.get('audio') as File | null;
+          if (!audioFile) return json({ error:'audio file required' }, 400);
+          const buffer = await audioFile.arrayBuffer();
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+          // Usar Whisper para transcribir
+          const whisperResp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${env.OPENAI_KEY}` },
+            body: (() => {
+              const fd = new FormData();
+              fd.append('file', new Blob([buffer], { type: audioFile.type || 'audio/webm' }), 'audio.webm');
+              fd.append('model', 'whisper-1');
+              fd.append('language', 'es');
+              return fd;
+            })()
+          });
+          if (!whisperResp.ok) return json({ error:'transcription failed', status:whisperResp.status }, 500);
+          const result:any = await whisperResp.json();
+          return json({ ok:true, text: result.text || '' });
         }
       }
 
@@ -5600,6 +5650,9 @@ async function handleChat(req: Request, env: Env) {
     let treatRes: any = null;
     if (treatmentKey) { try { treatRes = await env.aura_db.prepare('SELECT * FROM setter_resources WHERE tenant_id=? AND treatment=?').bind(tenantId, treatmentKey).first(); } catch(e) {} }
     const cfg:any = await env.aura_db.prepare('SELECT * FROM setter_brain_config WHERE tenant_id=?').bind(tenantId).first().catch(()=>null);
+    // Cerebro independiente por embudo y por clínica
+    let funnelBrain:any = null;
+    if (treatmentKey) { try { funnelBrain = await env.aura_db.prepare('SELECT * FROM setter_funnel_brain WHERE tenant=? AND treatment=?').bind(tenantId, treatmentKey).first(); } catch(e) {} }
     const leadId = context.lead_id || body.lead_id || '';
     const conversationId = context.conversation_id || (leadId ? `lead:${leadId}` : 'web:'+tenantId+':'+String(context.name || 'anon').toLowerCase().replace(/[^a-z0-9]/g,''));
     const saved:any = await env.aura_db.prepare('SELECT * FROM setter_brain_sessions WHERE id=? AND tenant_id=?').bind(conversationId,tenantId).first().catch(()=>null);
@@ -5616,7 +5669,18 @@ async function handleChat(req: Request, env: Env) {
     brainMemory = memory;
     const assessment = assessSetterConversation(chatMessages, memory);
     brain = { stage:assessment.stage, next_action:assessment.nextAction, needs_human:assessment.needsHuman, flags:assessment.flags, conversation_id:conversationId };
-    const brainPrompt = buildSetterBrainInstructions({ assessment, memory, resource:treatRes as SetterResource | null, assistantName:cfg?.assistant_name || 'la asistente de la clínica', bookingUrl:t?.booking_url || '', bookingMode:cfg?.booking_mode || 'when_ready', tone:cfg?.tone || 'cálido, claro y profesional', maxSentences:cfg?.max_sentences || 3 });
+    const brainPrompt = buildSetterBrainInstructions({
+      assessment, memory,
+      resource: treatRes as SetterResource | null,
+      customBrainPrompt: funnelBrain?.custom_prompt || '',
+      knowledgeBase: funnelBrain?.knowledge_base || '',
+      clinicPromo: (funnelBrain?.promo_active ? funnelBrain?.promo_text : '') || '',
+      assistantName: funnelBrain?.assistant_name || cfg?.assistant_name || 'la asistente de la clínica',
+      bookingUrl: t?.booking_url || '',
+      bookingMode: funnelBrain?.booking_mode || cfg?.booking_mode || 'when_ready',
+      tone: funnelBrain?.tone || cfg?.tone || 'cálido, claro y profesional',
+      maxSentences: funnelBrain?.max_sentences || cfg?.max_sentences || 3
+    });
     prompt = (t?.ai_system_prompt || SYSTEM_BASE) + brainPrompt +
       `\n\nDATOS APROBADOS DE LA CLÍNICA: ${arsenal.join(' | ')}\nContexto del lead: nombre=${context.name || '-'}, tratamiento=${treatmentKey || '-'}, plazo=${context.plazo || '-'}, objeción=${context.objecion || '-'}`;
   }

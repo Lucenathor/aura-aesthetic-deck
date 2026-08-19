@@ -156,18 +156,21 @@ export function buildSetterBrainInstructions(input: {
   memory: SetterMemory;
   resource?: SetterResource | null;
   objectionResources?: Record<string, string[]>;
+  customBrainPrompt?: string;
+  knowledgeBase?: string;
+  clinicPromo?: string;
   assistantName?: string;
   bookingUrl?: string;
   bookingMode?: string;
   tone?: string;
   maxSentences?: number;
 }): string {
-  const { assessment, memory, resource, objectionResources, assistantName = 'la asistente de la clínica', bookingUrl, bookingMode = 'when_ready', tone = 'cálido y profesional', maxSentences = 3 } = input;
+  const { assessment, memory, resource, objectionResources, customBrainPrompt, knowledgeBase, clinicPromo, assistantName = 'la asistente de la clínica', bookingUrl, bookingMode = 'when_ready', tone = 'cálido y profesional', maxSentences = 3 } = input;
   const previous = (memory.resourceHistory || []).join(', ') || 'ninguno';
   const turnCount = memory.messageCount || 0;
   const verified = resource && Number(resource.consent_verified) === 1 && resource.source_status === 'approved' && Number(resource.is_demo) !== 1;
   const resourceRules = verified
-    ? `RECURSOS VERIFICADOS DISPONIBLES: foto=${resource?.before_after_url || '-'}; vídeo=${resource?.video_url || '-'}; reseña=${resource?.review_text ? 'sí' : '-'}; precio=${resource?.price_from ? `${resource.price_from}-${resource.price_to || ''}€` : '-'}; duración=${resource?.duration_text || '-'}; recuperación=${resource?.recovery_text || '-'}; FAQs aprobadas=${resource?.faq_json || '-'}.`
+    ? `RECURSOS VERIFICADOS DISPONIBLES: foto=${resource?.before_after_url || '-'}; vídeo=${resource?.video_url || '-'}; reseña=${resource?.review_text ? 'sí' : '-'}; duración=${resource?.duration_text || '-'}; recuperación=${resource?.recovery_text || '-'}; FAQs aprobadas=${resource?.faq_json || '-'}.`
     : 'No hay casos, reseñas o recursos clínicos verificados para enviar. No inventes testimonios, resultados, cifras, URLs ni opiniones de pacientes.';
 
   // Arsenal de argumentos por objeción (rotar según turno)
@@ -212,12 +215,33 @@ export function buildSetterBrainInstructions(input: {
     ? `\nRECURSOS POR OBJECIÓN DISPONIBLES:\n${Object.entries(objectionResources).map(([k,v]) => `  ${k}: ${v.join(' | ')}`).join('\n')}`
     : '';
 
+  // Cerebro personalizado de la clínica para este embudo
+  const customSection = customBrainPrompt
+    ? `\n═══ INSTRUCCIONES PERSONALIZADAS DE ESTA CLÍNICA PARA ESTE EMBUDO ═══\n${customBrainPrompt}\n(Estas instrucciones tienen PRIORIDAD sobre las genéricas cuando haya conflicto.)\n`
+    : '';
+
+  // Knowledge base de la clínica (documentos, notas, archivos subidos)
+  const kbSection = knowledgeBase
+    ? `\n═══ BASE DE CONOCIMIENTO DE LA CLÍNICA ═══\n${knowledgeBase}\n(Usa esta información para responder preguntas específicas sobre la clínica, la doctora, los tratamientos y el proceso.)\n`
+    : '';
+
+  // Promoción activa
+  const promoSection = clinicPromo
+    ? `\n═══ PROMOCIÓN ACTIVA ═══\n${clinicPromo}\n(Puedes mencionar esta promoción de forma natural cuando sea relevante, pero NO la fuerces en cada mensaje.)\n`
+    : '';
+
   return `\n\n══ SETTER BRAIN (NÚCLEO DE DECISIÓN) ══
 Identidad: eres ${assistantName}. Tono: ${tone}. Respondes rápido y con naturalidad, pero sin fingir ser una persona si te preguntan directamente.
 Etapa actual: ${assessment.stage}. Próxima mejor acción: ${assessment.nextAction}.
 Motivo: ${assessment.reason}
 Memoria: objetivo=${memory.objective || '-'}; plazo=${memory.timeframe || '-'}; objeción=${memory.objection || '-'}; recursos ya enviados=${previous}; turnos=${turnCount}.
-${resourceRules}${objResSection}
+${resourceRules}${objResSection}${customSection}${kbSection}${promoSection}
+
+═══ REGLA ABSOLUTA: NO DAR PRECIOS EXACTOS ═══
+NUNCA digas el precio exacto de un tratamiento. NUNCA digas "parte de X €", "cuesta X €", "desde X €" ni ninguna cifra concreta.
+En su lugar, redirige SIEMPRE a la valoración gratuita: "el precio depende de tu caso, por eso la valoración con la doctora es gratuita y sin compromiso: te explica todo, te da un presupuesto personalizado y decides con calma".
+Si insisten en saber el precio, responde: "cada caso es diferente y la doctora te da un presupuesto exacto en la valoración. es gratuita y sin compromiso, así sabes exactamente qué necesitas y cuánto cuesta".
+La razón: el precio exacto por chat asusta y no tiene contexto. En la valoración presencial, la doctora explica el valor, el proceso y el resultado esperado, y el precio se percibe de forma completamente diferente.
 
 ═══ REGLA ABSOLUTA: VARIEDAD ═══
 PROHIBIDO repetir la misma frase de apertura en turnos consecutivos. NUNCA empieces dos mensajes seguidos con "te entiendo", "lo entiendo", "entiendo perfectamente" ni ninguna variante. Usa aperturas DIFERENTES en cada turno. Ejemplos de aperturas variadas:

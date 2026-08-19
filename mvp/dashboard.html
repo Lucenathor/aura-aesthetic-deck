@@ -5008,9 +5008,11 @@ function renderGallery(){
         +'<div style="background:var(--bg);padding:.4rem .2rem;border-radius:8px"><div style="font-size:1.1rem;font-weight:700;color:'+(conv>=10?'#27ae60':'var(--ink)')+'">'+conv+'%</div><div style="font-size:.65rem;color:var(--muted)">Conv.</div></div>'
         +'</div>'
         +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.4rem">'
-        +'<button class="btn prim" style="padding:.5rem;font-size:.78rem" onclick="editFunnel(\''+f.treatment+'\')">Editar</button>'
-        +'<button class="btn" style="padding:.5rem;font-size:.78rem" onclick="openPlayground(\''+f.treatment+'\')">Probar IA</button>'
-        +'<button class="btn" style="padding:.5rem;font-size:.78rem" onclick="copyLink(\''+url+'\')">Enlace</button>'
+        +'<button class="btn prim" style="padding:.5rem;font-size:.72rem" onclick="editFunnel(\''+f.treatment+'\')">Editar</button>'
+        +'<button class="btn" style="padding:.5rem;font-size:.72rem" onclick="openPlayground(\''+f.treatment+'\')">Probar IA</button>'
+        +'<button class="btn" style="padding:.5rem;font-size:.72rem;background:var(--terra);color:#fff" onclick="openBrainConfig(\''+f.treatment+'\')">Cerebro IA</button>'
+        +'</div>'
+        +'<div style="margin-top:.4rem"><button class="btn" style="padding:.4rem;font-size:.72rem;width:100%" onclick="copyLink(\''+url+'\')">Copiar enlace</button>'
         +'</div>'
         +'</div></div>';
     }).join('')+'</div>';
@@ -7462,6 +7464,163 @@ function viewPgTest(idx){
   document.getElementById('pgTreatment').textContent=t.treatment;
   const box=document.getElementById('pgMessages'); box.innerHTML='';
   t.messages.forEach(m=>addPgMsg(m.role,m.text));
+}
+
+// ═══ CEREBRO IA POR EMBUDO ═══
+let _brainTreatment='';
+let _brainData={};
+async function openBrainConfig(treatment){
+  _brainTreatment=treatment;
+  // Cargar datos existentes
+  try{
+    const r=await fetch(WORKER+'/api/setter-funnel-brain?tenant_id='+T+'&treatment='+encodeURIComponent(treatment),{headers:{'Authorization':'Bearer '+TOKEN}});
+    const d=await r.json();
+    _brainData=d.brain||{};
+  }catch(e){_brainData={};}
+  renderBrainModal();
+}
+function renderBrainModal(){
+  let m=document.getElementById('brainModal');
+  if(!m){
+    m=document.createElement('div');m.id='brainModal';
+    m.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:1rem';
+    document.body.appendChild(m);
+  }
+  m.style.display='flex';
+  const d=_brainData;
+  m.innerHTML=`<div style="background:var(--card);border-radius:20px;width:100%;max-width:720px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+    <div style="padding:1.5rem 1.5rem 0;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:1rem">
+      <div><h3 style="margin:0;font-size:1.2rem;font-family:var(--serif)">Cerebro IA · ${esc(_brainTreatment)}</h3><p style="margin:.3rem 0 0;font-size:.8rem;color:var(--muted)">Instrucciones personalizadas para este embudo</p></div>
+      <button onclick="closeBrainModal()" style="border:none;background:none;font-size:1.5rem;cursor:pointer;color:var(--muted)">×</button>
+    </div>
+    <div style="padding:1.5rem;display:flex;flex-direction:column;gap:1.2rem">
+      <div>
+        <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Nombre del asistente</label>
+        <input id="brainName" value="${esc(d.assistant_name||'')}" placeholder="Ej: María, la asistente de Clínica Elvira" style="width:100%;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;font-size:.88rem">
+      </div>
+      <div>
+        <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Instrucciones personalizadas <span style="font-weight:400;color:var(--muted)">(cómo debe hablar, qué debe decir, qué NO debe decir)</span></label>
+        <textarea id="brainPrompt" rows="6" placeholder="Escribe aquí las instrucciones para el setter de este embudo. Ej: 'Siempre menciona que la doctora tiene 15 años de experiencia. No hables de financiación. Si preguntan por botox, redirige a labios.'" style="width:100%;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;font-size:.85rem;resize:vertical;font-family:inherit">${esc(d.custom_prompt||'')}</textarea>
+      </div>
+      <div>
+        <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Base de conocimiento <span style="font-weight:400;color:var(--muted)">(información que el setter debe saber)</span></label>
+        <textarea id="brainKB" rows="4" placeholder="Pega aquí información sobre la clínica, la doctora, los tratamientos, preguntas frecuentes, argumentos de venta..." style="width:100%;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;font-size:.85rem;resize:vertical;font-family:inherit">${esc(d.knowledge_base||'')}</textarea>
+        <div style="display:flex;gap:.5rem;margin-top:.5rem;flex-wrap:wrap">
+          <label style="padding:.4rem .8rem;border:1px solid var(--line);border-radius:8px;font-size:.78rem;cursor:pointer;display:inline-flex;align-items:center;gap:.3rem;background:var(--bg)">
+            <input type="file" id="brainFile" accept=".txt,.pdf,.doc,.docx" style="display:none" onchange="handleBrainFile(this)">
+            Subir archivo
+          </label>
+          <button onclick="startBrainAudio()" id="brainAudioBtn" style="padding:.4rem .8rem;border:1px solid var(--line);border-radius:8px;font-size:.78rem;cursor:pointer;background:var(--bg);display:inline-flex;align-items:center;gap:.3rem">
+            Grabar audio
+          </button>
+          <span id="brainAudioStatus" style="font-size:.75rem;color:var(--muted);align-self:center"></span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div>
+          <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Promoción activa</label>
+          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem">
+            <input type="checkbox" id="brainPromoActive" ${d.promo_active?'checked':''}>
+            <span style="font-size:.82rem">Activar promoción</span>
+          </div>
+          <input id="brainPromoText" value="${esc(d.promo_text||'')}" placeholder="Ej: 20% en labios hasta el 30 de agosto" style="width:100%;padding:.5rem .7rem;border:1px solid var(--line);border-radius:8px;font-size:.82rem">
+        </div>
+        <div>
+          <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Ciudad objetivo</label>
+          <input id="brainCity" value="${esc(d.promo_city||'')}" placeholder="Ej: Madrid, Barcelona" style="width:100%;padding:.5rem .7rem;border:1px solid var(--line);border-radius:8px;font-size:.82rem;margin-top:1.6rem">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div>
+          <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Tono</label>
+          <select id="brainTone" style="width:100%;padding:.5rem .7rem;border:1px solid var(--line);border-radius:8px;font-size:.82rem">
+            <option value="cálido y profesional" ${(d.tone||'')==='cálido y profesional'?'selected':''}>Cálido y profesional</option>
+            <option value="cercano y amigable" ${(d.tone||'')==='cercano y amigable'?'selected':''}>Cercano y amigable</option>
+            <option value="formal y médico" ${(d.tone||'')==='formal y médico'?'selected':''}>Formal y médico</option>
+            <option value="directo y conciso" ${(d.tone||'')==='directo y conciso'?'selected':''}>Directo y conciso</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Política de reserva</label>
+          <select id="brainBooking" style="width:100%;padding:.5rem .7rem;border:1px solid var(--line);border-radius:8px;font-size:.82rem">
+            <option value="when_ready" ${(d.booking_mode||'')==='when_ready'?'selected':''}>Cuando el paciente esté listo</option>
+            <option value="direct" ${(d.booking_mode||'')==='direct'?'selected':''}>Proponer desde el inicio</option>
+            <option value="after_resolution" ${(d.booking_mode||'')==='after_resolution'?'selected':''}>Después de resolver dudas</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:.6rem;justify-content:flex-end;padding-top:.5rem;border-top:1px solid var(--line)">
+        <button class="btn" onclick="closeBrainModal()">Cancelar</button>
+        <button class="btn prim" onclick="saveBrainConfig()" style="min-width:140px">Guardar cerebro</button>
+      </div>
+    </div>
+  </div>`;
+}
+function closeBrainModal(){const m=document.getElementById('brainModal');if(m)m.style.display='none';}
+async function saveBrainConfig(){
+  const data={
+    tenant_id:T, treatment:_brainTreatment,
+    custom_prompt:document.getElementById('brainPrompt').value,
+    knowledge_base:document.getElementById('brainKB').value,
+    assistant_name:document.getElementById('brainName').value,
+    promo_text:document.getElementById('brainPromoText').value,
+    promo_active:document.getElementById('brainPromoActive').checked?1:0,
+    promo_city:document.getElementById('brainCity').value,
+    tone:document.getElementById('brainTone').value,
+    booking_mode:document.getElementById('brainBooking').value,
+    max_sentences:3
+  };
+  try{
+    const r=await fetch(WORKER+'/api/setter-funnel-brain',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify(data)});
+    const d=await r.json();
+    if(d.ok){if(typeof toast==='function')toast('Cerebro guardado para '+_brainTreatment);closeBrainModal();}
+    else{if(typeof toast==='function')toast('Error al guardar','error');}
+  }catch(e){if(typeof toast==='function')toast('Error de conexión','error');}
+}
+async function handleBrainFile(input){
+  const file=input.files[0]; if(!file)return;
+  const status=document.getElementById('brainAudioStatus');
+  status.textContent='Leyendo archivo...';
+  try{
+    const text=await file.text();
+    const kb=document.getElementById('brainKB');
+    kb.value=(kb.value?kb.value+'\n\n---\n\n':'')+text;
+    status.textContent='Archivo añadido a la base de conocimiento';
+  }catch(e){status.textContent='Error al leer el archivo';}
+}
+let _brainRecorder=null;
+let _brainAudioChunks=[];
+async function startBrainAudio(){
+  const btn=document.getElementById('brainAudioBtn');
+  const status=document.getElementById('brainAudioStatus');
+  if(_brainRecorder&&_brainRecorder.state==='recording'){
+    _brainRecorder.stop(); btn.textContent='Grabar audio'; btn.style.background='var(--bg)';
+    return;
+  }
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    _brainRecorder=new MediaRecorder(stream);
+    _brainAudioChunks=[];
+    _brainRecorder.ondataavailable=e=>{if(e.data.size>0)_brainAudioChunks.push(e.data);};
+    _brainRecorder.onstop=async()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      status.textContent='Transcribiendo audio...';
+      const blob=new Blob(_brainAudioChunks,{type:'audio/webm'});
+      const fd=new FormData(); fd.append('audio',blob,'audio.webm');
+      try{
+        const r=await fetch(WORKER+'/api/setter-funnel-brain/transcribe',{method:'POST',headers:{'Authorization':'Bearer '+TOKEN},body:fd});
+        const d=await r.json();
+        if(d.text){
+          const kb=document.getElementById('brainKB');
+          kb.value=(kb.value?kb.value+'\n\n---\n\n':'')+d.text;
+          status.textContent='Audio transcrito y añadido';
+        }else{status.textContent='No se pudo transcribir';}
+      }catch(e){status.textContent='Error al transcribir';}
+    };
+    _brainRecorder.start();
+    btn.textContent='Parar grabación'; btn.style.background='#e74c3c'; btn.style.color='#fff';
+    status.textContent='Grabando...';
+  }catch(e){status.textContent='No se pudo acceder al micrófono';}
 }
 </script>
 <button id="copilotFab" onclick="openCopilot()" title="Copiloto IA" style="display:none;position:fixed;right:18px;bottom:18px;z-index:9990;width:58px;height:58px;border:none;border-radius:50%;background:linear-gradient(135deg,var(--terra),#8a4533);color:#fff;font-size:1.5rem;box-shadow:0 6px 20px rgba(176,93,68,.45);cursor:pointer;transition:transform .15s ease" onmousedown="this.style.transform='scale(.94)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'">✦</button>
