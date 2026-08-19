@@ -1,5 +1,112 @@
 
 const WORKER='https://aura-chat-worker.adrian-7b9.workers.dev';
+
+// ===== INFRAESTRUCTURA DE NIVEL ENTERPRISE =====
+// Utilidades de robustez: fetch wrapper, debounce, throttle, error boundary.
+// Basado en: Cloudflare Workers Best Practices, Grizzly Peak "Vanilla JS Patterns" (2026),
+// ResearchGate "Best Practices for Scalable SPAs" (Karka, 2025).
+
+// --- Debounce & Throttle ---
+function debounce(fn, delay){
+  var timer=null;
+  return function(){
+    var ctx=this, args=arguments;
+    clearTimeout(timer);
+    timer=setTimeout(function(){ fn.apply(ctx,args); }, delay);
+  };
+}
+function throttle(fn, interval){
+  var last=0, timer=null;
+  return function(){
+    var ctx=this, args=arguments, now=Date.now(), rem=interval-(now-last);
+    if(rem<=0){ clearTimeout(timer); timer=null; last=now; fn.apply(ctx,args); }
+    else if(!timer){ timer=setTimeout(function(){ last=Date.now(); timer=null; fn.apply(ctx,args); }, rem); }
+  };
+}
+
+// --- AuraHttp: fetch wrapper con retry, timeout, caché en memoria y deduplicación ---
+var AuraHttp = (function(){
+  var _cache = {};          // { url: { data, ts } }
+  var _inflight = {};       // { url: Promise }
+  var CACHE_TTL = 30000;    // 30 s por defecto
+  var TIMEOUT   = 12000;    // 12 s
+  var MAX_RETRY = 2;        // 2 reintentos (3 intentos total)
+
+  function _fetchTimeout(url, opts, ms){
+    return new Promise(function(resolve, reject){
+      var t = setTimeout(function(){ reject(new Error('Timeout: '+url)); }, ms);
+      fetch(url, opts).then(function(r){ clearTimeout(t); resolve(r); }).catch(function(e){ clearTimeout(t); reject(e); });
+    });
+  }
+
+  function _request(url, opts, retries){
+    retries = (typeof retries==='number') ? retries : MAX_RETRY;
+    return _fetchTimeout(url, opts, TIMEOUT).then(function(r){
+      if(!r.ok && r.status>=500 && retries>0){
+        return new Promise(function(res){ setTimeout(res, 1000*Math.pow(2, MAX_RETRY-retries)); }).then(function(){ return _request(url, opts, retries-1); });
+      }
+      return r;
+    }).catch(function(err){
+      if(retries>0){
+        return new Promise(function(res){ setTimeout(res, 1000*Math.pow(2, MAX_RETRY-retries)); }).then(function(){ return _request(url, opts, retries-1); });
+      }
+      throw err;
+    });
+  }
+
+  return {
+    // GET con caché y deduplicación
+    get: function(url, opts){
+      opts = opts || {};
+      var ttl = (typeof opts.cacheTTL==='number') ? opts.cacheTTL : CACHE_TTL;
+      // Caché válida
+      if(ttl>0 && _cache[url] && (Date.now()-_cache[url].ts < ttl)){
+        return Promise.resolve(_cache[url].data);
+      }
+      // Deduplicar peticiones idénticas en vuelo
+      if(_inflight[url]) return _inflight[url];
+      _inflight[url] = _request(url, opts).then(function(r){ return r.json(); }).then(function(data){
+        if(ttl>0) _cache[url] = { data:data, ts:Date.now() };
+        delete _inflight[url];
+        return data;
+      }).catch(function(err){
+        delete _inflight[url];
+        throw err;
+      });
+      return _inflight[url];
+    },
+    // POST sin caché
+    post: function(url, body, opts){
+      opts = Object.assign({}, opts, { method:'POST', headers:Object.assign({'Content-Type':'application/json'}, (opts||{}).headers||{}), body: typeof body==='string'?body:JSON.stringify(body) });
+      return _request(url, opts).then(function(r){ return r.json(); });
+    },
+    // Invalidar caché de una URL o patrón
+    invalidate: function(pattern){
+      if(!pattern){ _cache={}; return; }
+      Object.keys(_cache).forEach(function(k){ if(k.indexOf(pattern)!==-1) delete _cache[k]; });
+    },
+    // Configurar TTL global
+    setTTL: function(ms){ CACHE_TTL=ms; }
+  };
+})();
+
+// --- Error Boundary Global ---
+(function(){
+  var _errCount=0;
+  function logErr(msg, src, line, col, err){
+    _errCount++;
+    if(_errCount>20) return; // evitar flood
+    console.error('[AURA Error]', msg, src, line, col, err);
+    // En producción se podría enviar a un endpoint de telemetría
+  }
+  window.onerror = logErr;
+  window.addEventListener('unhandledrejection', function(e){
+    _errCount++;
+    if(_errCount>20) return;
+    console.error('[AURA Unhandled Promise]', e.reason);
+  });
+})();
+
 const params=new URLSearchParams(location.search);
 // Acceso por enlace: si llega ?token= en la URL, lo guardamos como sesion activa
 try{ var _urlTok=params.get('token'); if(_urlTok){ localStorage.setItem('aura_token',_urlTok); } }catch(e){}
@@ -112,11 +219,69 @@ async function submitLegal(){
     else { btn.disabled=false; btn.textContent='Aceptar y activar mi panel'; err.style.display='block'; err.textContent='No se pudo registrar. Inténtalo de nuevo.'; }
   }catch(e){ btn.disabled=false; btn.textContent='Aceptar y activar mi panel'; err.style.display='block'; err.textContent='Error de conexión. Inténtalo de nuevo.'; }
 }
-function switchTenant(newT){
-  if(!newT) return;
-  const url = new URL(location.href);
-  url.searchParams.set('t', newT);
-  location.href = url.toString();
+// ===== NAVEGACIÓN INTERNA Y ESTADO PERSISTENTE =====
+// Evita los saltos a la home: el dashboard conserva sección, embudo, subpestaña y scroll
+// aunque se cambie de clínica desde Super Admin o desde el Wizard.
+const AURA_NAV_KEY='aura_nav_context_v1';
+function activeAuraSection(){
+  const current=document.querySelector('.view.on');
+  return current?(current.id||'').replace(/^v-/,''):'resumen';
+}
+function readNavContext(){
+  try{return JSON.parse(sessionStorage.getItem(AURA_NAV_KEY)||'{}')||{};}catch(e){return {};}
+}
+function saveNavContext(section){
+  try{
+    const all=readNavContext(); const current=all[T]||{};
+    current.section=section||activeAuraSection();
+    current.scrollY=window.scrollY||0;
+    current.updatedAt=Date.now();
+    if(current.section==='embudo'){
+      current.funnel=typeof EDFUNNEL!=='undefined'?EDFUNNEL:'';
+      current.editor=!!(document.getElementById('funnelEditorView')&&document.getElementById('funnelEditorView').style.display!=='none');
+      current.screen=typeof EDSCREEN!=='undefined'?EDSCREEN:'hero';
+    }
+    if(current.section==='ajustes'){
+      const tab=document.querySelector('.settings-nav-item.active');
+      current.settingsTab=tab?tab.dataset.stab:'';
+    }
+    all[T]=current; sessionStorage.setItem(AURA_NAV_KEY,JSON.stringify(all));
+  }catch(e){}
+}
+function routeFor(section){
+  const url=new URL(location.href);
+  url.searchParams.set('t',T);
+  url.hash=section||activeAuraSection();
+  return url.pathname+url.search+url.hash;
+}
+function writeRoute(section,mode){
+  try{ history[mode||'replaceState'](null,'',routeFor(section)); }catch(e){}
+}
+let _tenantSwitchEpoch=0;
+async function switchTenant(newT,options){
+  if(!newT)return;
+  options=options||{};
+  const target=options.section||activeAuraSection()||'resumen';
+  // Misma clínica: solo se navega a la sección solicitada, sin reiniciar la página.
+  if(newT===T){ goSection(target,false); return; }
+  saveNavContext(activeAuraSection());
+  const epoch=++_tenantSwitchEpoch;
+  T=newT;
+  try{localStorage.setItem('aura_tenant',T);}catch(e){}
+  const sel=document.getElementById('saTenant'); if(sel)sel.value=T;
+  // Cambia URL sin disparar una carga de documento.
+  writeRoute(target,'replaceState');
+  // Vacía únicamente el estado visual dependiente del tenant; la shell no se desmonta.
+  try{ EDDATA={tenant:{},funnels:[],content:{}}; _galleryFunnels=[]; _funnelStatsCache={}; }catch(e){}
+  try{ await loadTenant(); }catch(e){}
+  // Si el usuario eligió otra clínica mientras se cargaba la anterior, ignoramos la respuesta obsoleta.
+  if(epoch!==_tenantSwitchEpoch)return;
+  goSection(target,false);
+  // En la siguiente pintura recupera posición del tenant si existe.
+  const saved=(readNavContext()[T]||{});
+  if(options.restoreScroll!==false && saved.section===target && Number.isFinite(saved.scrollY)){
+    requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo({top:saved.scrollY,behavior:'instant'})));
+  }else{ window.scrollTo({top:0,behavior:'instant'}); }
 }
 let ROLE='owner';
 // permisos: qué pestañas ve cada rol
@@ -256,12 +421,15 @@ async function removeMember(id){
 // nav con memoria de sección
 const AURA_SECTIONS=['resumen','pacientes','pipeline','agenda','caja','embudo','contenido','equipo','ajustes','whatsapp','inventario','portal','facturacion','admin'];
 function goSection(v,push){
+  const previous=activeAuraSection();
+  if(previous&&previous!==v)saveNavContext(previous);
   const item=document.querySelector('.nav-item[data-v="'+v+'"]'); if(!item||item.style.display==='none')v='resumen';
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.toggle('on',x.dataset.v===v));
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
   const sec=document.getElementById('v-'+v); if(sec)sec.classList.add('on');
   try{ localStorage.setItem('aura_section',v); }catch(e){}
-  if(push!==false){ try{ history.replaceState(null,'', '?t='+T+'#'+v); }catch(e){} }
+  if(push!==false){ writeRoute(v,'replaceState'); }
+  saveNavContext(v);
   if(v==='resumen')loadKPIs();
   if(v==='pacientes')loadLeads();
   if(v==='pipeline')loadPipeline();
@@ -310,10 +478,19 @@ document.addEventListener('click',(e)=>{
   else { const mm=document.getElementById('moreMenu'); if(mm&&mm.style.display==='block'&&!e.target.closest('#moreMenu')&&e.target.id!=='moreBtn')mm.style.display='none'; }
 });
 function restoreSection(){
-  let v=(location.hash||'').replace('#',''); 
+  const saved=readNavContext()[T]||{};
+  let v=(location.hash||'').replace('#','');
+  if(!v){ v=saved.section||''; }
   if(!v){ try{ v=localStorage.getItem('aura_section')||'resumen'; }catch(e){ v='resumen'; } }
   if(!AURA_SECTIONS.includes(v))v='resumen';
+  if(v==='embudo'){
+    if(saved.funnel)EDFUNNEL=saved.funnel;
+    if(saved.screen)EDSCREEN=saved.screen;
+  }
   goSection(v,false);
+  if(Number.isFinite(saved.scrollY)&&saved.section===v){
+    requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo({top:saved.scrollY,behavior:'instant'})));
+  }
 }
 window.addEventListener('hashchange',()=>{
   const v=(location.hash||'').replace('#','');
@@ -4469,7 +4646,7 @@ async function wizardOpenClinic(id){
   }catch(e){w.innerHTML='<div style="color:#b0432e">Error. <a href="#" onclick="adminOpenOnboardingWizard();return false">Volver</a></div>';}
 }
 
-function wizardGoToConfig(nav){
+async function wizardGoToConfig(nav){
   var id=_wizardClinicId||T;
   var dest={
     'settings-clinica':{section:'ajustes',tab:'clinica'},
@@ -4489,10 +4666,10 @@ function wizardGoToConfig(nav){
   if(dest.fiscal) localStorage.setItem('aura_onboarding_open_fiscal','1');
 
   if(ROLE==='superadmin' && T!==id){
-    var u=new URL(location.href); u.searchParams.set('t',id); u.hash=dest.section; location.href=u.toString();
-    return;
+    await switchTenant(id,{section:dest.section,restoreScroll:false});
+  }else{
+    goSection(dest.section);
   }
-  goSection(dest.section);
 }
 
 async function wizardMarkNoImport(id){
@@ -4752,7 +4929,11 @@ function renderAdminList(){
       +'</div></div>';
   }).join('');
 }
-function adminOpenClinic(id){ try{ if(typeof switchTenant==='function'){ switchTenant(id); } else { T=id; } }catch(e){ T=id; } goSection('resumen'); if(typeof toast==='function')toast('Entrando en la clínica…'); }
+async function adminOpenClinic(id){
+  try{ await switchTenant(id,{section:'resumen',restoreScroll:false}); }
+  catch(e){ T=id; goSection('resumen'); }
+  if(typeof toast==='function')toast('Entrando en la clínica…');
+}
 function openNewClinic(){
   waModal('Nueva clínica',
     '<div style="display:grid;gap:.6rem">'
@@ -4981,7 +5162,10 @@ function adminRenderTab(){
   }
   adminSyncTabBtns();
 }
-function adminOpenClinicSection(id,sec){ try{ if(typeof switchTenant==='function'){ switchTenant(id); } else { T=id; } }catch(e){ T=id; } goSection(sec||'resumen'); }
+async function adminOpenClinicSection(id,sec){
+  try{ await switchTenant(id,{section:sec||'resumen',restoreScroll:false}); }
+  catch(e){ T=id; goSection(sec||'resumen'); }
+}
 async function adminSaveDatos(){
   var g=function(id){var e=document.getElementById(id);return e?e.value:undefined;};
   var body={ id:_adminDetail.id, name:g('afName'), city:g('afCity'), address:g('afAddress'), whatsapp:g('afWhats'), email:g('afEmail'), website:g('afWebsite'), owner_name:g('afOwner'), doctor_name:g('afDoctor'), logo_url:g('afLogo'), brand_primary:g('afPrimary'), brand_accent:g('afAccent'), google_rating:parseFloat(g('afRating'))||0, google_reviews:parseInt(g('afReviews'),10)||0, google_review_url:g('afReviewUrl'), doctor_specialty:g('afDoctorSpec'), doctor_experience:g('afDoctorExp'), clinic_usp:g('afClinicUsp'), price_range:g('afPriceRange'), booking_url:g('afBookingUrl'), before_after_url:g('afBeforeAfter'), doctor_video_url:g('afDoctorVideo'), top_review:g('afTopReview') };
@@ -5055,7 +5239,25 @@ async function loadRetention(){
     }
   }catch(e){console.error("retention",e);}
 }
-function loadAll(){loadRetention();loadKPIs();loadLeads();loadAppts();loadPipeline();loadSmsCredits();loadAdvancedMetrics();}
+// La navegación carga al instante solo la sección activa. El resto se precalienta
+// cuando el navegador queda libre para evitar siete peticiones simultáneas por sesión.
+const _auraWarmups=new Set();
+function runWhenBrowserIsIdle(fn){
+  if('requestIdleCallback' in window){ window.requestIdleCallback(fn,{timeout:1800}); }
+  else { setTimeout(fn,350); }
+}
+function loadAll(){
+  const key=T+':dashboard-warmup-v1';
+  if(_auraWarmups.has(key))return;
+  _auraWarmups.add(key);
+  runWhenBrowserIsIdle(function(){
+    Promise.allSettled([
+      Promise.resolve().then(loadRetention),
+      Promise.resolve().then(loadSmsCredits),
+      Promise.resolve().then(loadAdvancedMetrics)
+    ]);
+  });
+}
 
 // ===== MÉTRICAS AVANZADAS (gráficas Chart.js) =====
 async function loadAdvancedMetrics(){
@@ -5506,6 +5708,7 @@ async function executeImport(){
 }
 /* === BÚSQUEDA GLOBAL === */
 let _searchTimeout;
+var _debouncedGlobalSearch = debounce(doGlobalSearch, 280);
 function doGlobalSearch(q){
   clearTimeout(_searchTimeout);
   const box=document.getElementById("searchResults");
