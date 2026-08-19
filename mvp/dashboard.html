@@ -7180,10 +7180,6 @@ if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded
     if(panel){panel.classList.add('active');if(tab==='setter')loadSetterBrain();panel.scrollIntoView({behavior:'smooth',block:'start'});}
   });
 })();
-</script>
-<button id="copilotFab" onclick="openCopilot()" title="Copiloto IA" style="display:none;position:fixed;right:18px;bottom:18px;z-index:9990;width:58px;height:58px;border:none;border-radius:50%;background:linear-gradient(135deg,var(--terra),#8a4533);color:#fff;font-size:1.5rem;box-shadow:0 6px 20px rgba(176,93,68,.45);cursor:pointer;transition:transform .15s ease" onmousedown="this.style.transform='scale(.94)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'">✦</button>
-</body>
-</html>
 // ===== PLAYGROUND DEL SETTER BRAIN =====
 var _pgTreatment=''; var _pgMessages=[]; var _pgSessionId='';
 function openPlayground(treatment){
@@ -7214,13 +7210,12 @@ function addPgMsg(role,text){
   _pgMessages.push({role,text});
   const box=document.getElementById('pgMessages');
   const isUser=role==='user';
-  box.innerHTML+=`<div style="display:flex;justify-content:${isUser?'flex-end':'flex-start'}"><div style="max-width:80%;padding:.6rem .9rem;border-radius:${isUser?'14px 14px 4px 14px':'14px 14px 14px 4px'};background:${isUser?'var(--terra)':'#fff'};color:${isUser?'#fff':'var(--ink)'};font-size:.88rem;line-height:1.4;box-shadow:0 2px 6px rgba(0,0,0,.06)">${esc(text)}</div></div>`;
+  box.innerHTML+='<div style="display:flex;justify-content:'+(isUser?'flex-end':'flex-start')+'"><div style="max-width:80%;padding:.6rem .9rem;border-radius:'+(isUser?'14px 14px 4px 14px':'14px 14px 14px 4px')+';background:'+(isUser?'var(--terra)':'#fff')+';color:'+(isUser?'#fff':'var(--ink)')+';font-size:.88rem;line-height:1.4;box-shadow:0 2px 6px rgba(0,0,0,.06)">'+esc(text)+'</div></div>';
   box.scrollTop=box.scrollHeight;
 }
 async function sendPlayground(){
   const inp=document.getElementById('pgInput'); const msg=inp.value.trim(); if(!msg)return;
   inp.value=''; addPgMsg('user',msg);
-  // Indicador de escritura
   const box=document.getElementById('pgMessages');
   box.innerHTML+='<div id="pgTyping" style="display:flex;justify-content:flex-start"><div style="padding:.5rem .8rem;border-radius:14px;background:#fff;color:var(--muted);font-size:.82rem">Escribiendo…</div></div>';
   box.scrollTop=box.scrollHeight;
@@ -7231,7 +7226,6 @@ async function sendPlayground(){
     const d=await r.json();
     const typing=document.getElementById('pgTyping'); if(typing)typing.remove();
     addPgMsg('assistant',d.reply||d.message||'(sin respuesta)');
-    // Actualizar diagnóstico
     if(d.setter_diag){
       document.getElementById('pgStage').textContent=d.setter_diag.stage||'—';
       document.getElementById('pgSignals').textContent=(d.setter_diag.signals||[]).join(', ')||'—';
@@ -7266,4 +7260,7 @@ function viewPgTest(idx){
   const box=document.getElementById('pgMessages'); box.innerHTML='';
   t.messages.forEach(m=>addPgMsg(m.role,m.text));
 }
-// ===== FIN PLAYGROUND =====
+</script>
+<button id="copilotFab" onclick="openCopilot()" title="Copiloto IA" style="display:none;position:fixed;right:18px;bottom:18px;z-index:9990;width:58px;height:58px;border:none;border-radius:50%;background:linear-gradient(135deg,var(--terra),#8a4533);color:#fff;font-size:1.5rem;box-shadow:0 6px 20px rgba(176,93,68,.45);cursor:pointer;transition:transform .15s ease" onmousedown="this.style.transform='scale(.94)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'">✦</button>
+</body>
+</html>

@@ -5587,3 +5587,83 @@ if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded
     if(panel){panel.classList.add('active');if(tab==='setter')loadSetterBrain();panel.scrollIntoView({behavior:'smooth',block:'start'});}
   });
 })();
+// ===== PLAYGROUND DEL SETTER BRAIN =====
+var _pgTreatment=''; var _pgMessages=[]; var _pgSessionId='';
+function openPlayground(treatment){
+  _pgTreatment=treatment||'labios'; _pgMessages=[]; _pgSessionId='pg_'+Date.now();
+  document.getElementById('pgTitle').textContent='Playground IA';
+  document.getElementById('pgTreatment').textContent=_pgTreatment;
+  document.getElementById('pgMessages').innerHTML='<div style="text-align:center;color:var(--muted);font-size:.82rem;padding:2rem 0">Escribe un mensaje como si fueras un paciente interesado en <b>'+esc(_pgTreatment)+'</b>.<br>El Setter Brain responderá exactamente como lo haría en el embudo real.</div>';
+  document.getElementById('pgStage').textContent='—';
+  document.getElementById('pgSignals').textContent='—';
+  document.getElementById('pgResource').textContent='—';
+  document.getElementById('pgAction').textContent='—';
+  loadPlaygroundConfig();
+  document.getElementById('playgroundModal').style.display='block';
+  setTimeout(()=>document.getElementById('pgInput').focus(),100);
+}
+function closePlayground(){ document.getElementById('playgroundModal').style.display='none'; }
+function resetPlayground(){ openPlayground(_pgTreatment); }
+async function loadPlaygroundConfig(){
+  const cfg=document.getElementById('pgConfig');
+  try{
+    const r=await fetch(WORKER+'/api/admin-setter-resources?tenant='+T); const d=await r.json();
+    const resources=(d.resources||[]).filter(x=>x.treatment===_pgTreatment);
+    cfg.innerHTML='<b>Recursos para '+esc(_pgTreatment)+':</b> '+resources.length+' cargados<br>'
+      +resources.map(x=>'<span style="display:inline-block;margin:.2rem .3rem .2rem 0;padding:.15rem .4rem;background:var(--bg);border-radius:6px;font-size:.7rem">'+esc(x.resource_type)+'</span>').join('');
+  }catch(e){ cfg.textContent='No se pudo cargar la configuración.'; }
+}
+function addPgMsg(role,text){
+  _pgMessages.push({role,text});
+  const box=document.getElementById('pgMessages');
+  const isUser=role==='user';
+  box.innerHTML+='<div style="display:flex;justify-content:'+(isUser?'flex-end':'flex-start')+'"><div style="max-width:80%;padding:.6rem .9rem;border-radius:'+(isUser?'14px 14px 4px 14px':'14px 14px 14px 4px')+';background:'+(isUser?'var(--terra)':'#fff')+';color:'+(isUser?'#fff':'var(--ink)')+';font-size:.88rem;line-height:1.4;box-shadow:0 2px 6px rgba(0,0,0,.06)">'+esc(text)+'</div></div>';
+  box.scrollTop=box.scrollHeight;
+}
+async function sendPlayground(){
+  const inp=document.getElementById('pgInput'); const msg=inp.value.trim(); if(!msg)return;
+  inp.value=''; addPgMsg('user',msg);
+  const box=document.getElementById('pgMessages');
+  box.innerHTML+='<div id="pgTyping" style="display:flex;justify-content:flex-start"><div style="padding:.5rem .8rem;border-radius:14px;background:#fff;color:var(--muted);font-size:.82rem">Escribiendo…</div></div>';
+  box.scrollTop=box.scrollHeight;
+  try{
+    const r=await fetch(WORKER+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      tenant_id:T, treatment:_pgTreatment, message:msg, session_id:_pgSessionId, playground:true
+    })});
+    const d=await r.json();
+    const typing=document.getElementById('pgTyping'); if(typing)typing.remove();
+    addPgMsg('assistant',d.reply||d.message||'(sin respuesta)');
+    if(d.setter_diag){
+      document.getElementById('pgStage').textContent=d.setter_diag.stage||'—';
+      document.getElementById('pgSignals').textContent=(d.setter_diag.signals||[]).join(', ')||'—';
+      document.getElementById('pgResource').textContent=d.setter_diag.resource_sent||'Ninguno';
+      document.getElementById('pgAction').textContent=d.setter_diag.action||'—';
+    }
+  }catch(e){
+    const typing=document.getElementById('pgTyping'); if(typing)typing.remove();
+    addPgMsg('assistant','Error al conectar con el Setter Brain.');
+  }
+}
+function savePlaygroundTest(){
+  if(!_pgMessages.length){if(typeof toast==='function')toast('No hay conversación que guardar','error');return;}
+  const tests=JSON.parse(localStorage.getItem('aura_pg_tests_'+T)||'[]');
+  tests.unshift({treatment:_pgTreatment,date:new Date().toISOString(),messages:_pgMessages});
+  if(tests.length>20)tests.length=20;
+  localStorage.setItem('aura_pg_tests_'+T,JSON.stringify(tests));
+  renderPgHistory();
+  if(typeof toast==='function')toast('Conversación guardada ✓');
+}
+function renderPgHistory(){
+  const tests=JSON.parse(localStorage.getItem('aura_pg_tests_'+T)||'[]');
+  const el=document.getElementById('pgHistory');
+  if(!tests.length){el.textContent='Sin pruebas guardadas.';return;}
+  el.innerHTML=tests.slice(0,10).map((t,i)=>'<div style="padding:.3rem 0;border-bottom:1px solid var(--line);cursor:pointer" onclick="viewPgTest('+i+')"><b>'+esc(t.treatment)+'</b> · '+new Date(t.date).toLocaleDateString('es-ES')+'<span style="float:right;color:var(--muted)">'+t.messages.length+' msgs</span></div>').join('');
+}
+function viewPgTest(idx){
+  const tests=JSON.parse(localStorage.getItem('aura_pg_tests_'+T)||'[]');
+  const t=tests[idx]; if(!t)return;
+  _pgMessages=t.messages; _pgTreatment=t.treatment;
+  document.getElementById('pgTreatment').textContent=t.treatment;
+  const box=document.getElementById('pgMessages'); box.innerHTML='';
+  t.messages.forEach(m=>addPgMsg(m.role,m.text));
+}
