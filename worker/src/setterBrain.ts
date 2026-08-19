@@ -170,7 +170,7 @@ export function buildSetterBrainInstructions(input: {
   const turnCount = memory.messageCount || 0;
   const verified = resource && Number(resource.consent_verified) === 1 && resource.source_status === 'approved' && Number(resource.is_demo) !== 1;
   const resourceRules = verified
-    ? `RECURSOS VERIFICADOS DISPONIBLES: foto=${resource?.before_after_url || '-'}; vídeo=${resource?.video_url || '-'}; reseña=${resource?.review_text ? 'sí' : '-'}; duración=${resource?.duration_text || '-'}; recuperación=${resource?.recovery_text || '-'}; FAQs aprobadas=${resource?.faq_json || '-'}.`
+    ? `RECURSO APROBADO ELEGIDO PARA ESTE TURNO: nombre=${(resource as any)?.resource_title || 'Caso autorizado'}; tipo=${(resource as any)?.resource_type || 'caso'}; objeción que ayuda a resolver=${(resource as any)?.target_objection || 'general'}; finalidad del vídeo=${(resource as any)?.video_purpose || '-'}; foto antes=${(resource as any)?.before_image_url || resource?.before_after_url || '-'}; foto después=${(resource as any)?.after_image_url || '-'}; vídeo=${resource?.video_url || '-'}; reseña=${resource?.review_text ? 'sí' : '-'}; duración=${resource?.duration_text || '-'}; recuperación=${resource?.recovery_text || '-'}; FAQs aprobadas=${resource?.faq_json || '-'}.`
     : 'No hay casos, reseñas o recursos clínicos verificados para enviar. No inventes testimonios, resultados, cifras, URLs ni opiniones de pacientes.';
 
   // Arsenal de argumentos por objeción (rotar según turno)

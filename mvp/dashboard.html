@@ -241,6 +241,9 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 .field input,.field select{width:100%;padding:.7rem .85rem;border-radius:11px;border:1px solid var(--line);font-size:.95rem;font-family:inherit;outline:none}
 .field input:focus,.field select:focus{border-color:var(--terra)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+.aura-dropzone{position:relative;border:2px dashed var(--line);border-radius:12px;background:var(--bg);min-height:120px;display:flex;align-items:center;justify-content:center;transition:border-color .2s,background .2s;cursor:pointer}
+.aura-dropzone.drag-over{border-color:var(--terra);background:#fef3ee}
+.aura-dropzone:hover{border-color:var(--terra);background:#fef9f6}
 @media(max-width:640px){.grid4{grid-template-columns:1fr 1fr !important}}
 
 /* editor v2 */
@@ -999,40 +1002,33 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
           <div style="padding:.7rem .85rem;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;font-size:.8rem;color:#9a3412;margin-bottom:.9rem"><b>Control de confianza:</b> nada se envía al paciente hasta que confirmes que el contenido es real, autorizado y apto para uso comercial. Los borradores se guardan para el setup, pero el chat no los utiliza.</div>
           <input type="hidden" id="srId"/>
           <div class="row2">
-            <div class="field"><label>Tratamiento</label><input id="srTreatment" placeholder="Aumento de labios"/></div>
-            <div class="field"><label>Estado del recurso</label><select id="srStatus"><option value="draft">Borrador · no enviar</option><option value="review">Pendiente de revisar</option><option value="approved">Aprobado</option></select></div>
+            <div class="field"><label>Tratamiento del caso</label><input id="srTreatment" placeholder="Ej. Aumento de labios"/><div class="sub">Indícalo antes de subir: cada archivo se guarda dentro de la biblioteca de ese tratamiento.</div></div>
+            <div class="field"><label>Nombre del recurso</label><input id="srTitle" placeholder="Ej: Caso natural · definición de arco"/></div>
+            <div class="field"><label>Estado del recurso</label><select id="srStatus"><option value="draft">Borrador · no enviar</option><option value="review">Pendiente de revisar</option><option value="approved">Aprobado · el Setter puede usarlo</option></select></div>
+            <div class="field"><label>Cuándo debería usarlo el Setter</label><select id="srObjection"><option value="general">Presentación / duda general</option><option value="precio">Objeción de precio</option><option value="miedo">Miedo, dolor o seguridad</option><option value="resultado natural">Miedo a un resultado artificial</option><option value="primera vez">Primera vez</option><option value="recuperación">Recuperación / tiempo</option><option value="indecisión">Indecisión</option></select></div>
           </div>
+          <div style="padding:.75rem .9rem;background:var(--bg);border:1px solid var(--line);border-radius:10px;margin:.9rem 0;font-size:.8rem;color:var(--muted)"><b style="color:var(--ink)">Caso antes / después.</b> Sube las dos fotos del mismo caso. El Setter solo podrá compartirlo tras tu confirmación de autorización. Puedes crear tantos casos como necesites para el mismo tratamiento.</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:.8rem 0">
             <div>
-              <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Foto antes/después</label>
-              <div id="srPhotoDropzone" class="aura-dropzone" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="event.preventDefault();this.classList.remove('drag-over');handleSetterFileDrop(event,'before_after','srPhotoDropzone','srPhotoUrl')">
-                <div id="srPhotoPreview" style="display:none;width:100%;text-align:center"></div>
-                <div id="srPhotoPlaceholder" style="text-align:center;padding:1.5rem .5rem;color:var(--muted)">
-                  <div style="font-size:2rem;margin-bottom:.3rem">📷</div>
-                  <div style="font-size:.82rem;font-weight:600">Arrastra una imagen aquí</div>
-                  <div style="font-size:.72rem;margin-top:.2rem">o haz clic para seleccionar</div>
-                  <div style="font-size:.68rem;margin-top:.3rem;color:#aaa">JPG, PNG, WebP · máx 10MB</div>
-                </div>
-                <input type="file" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="handleSetterFileSelect(this,'before_after','srPhotoDropzone','srPhotoUrl')">
-              </div>
-              <input type="hidden" id="srPhotoUrl"/>
-              <input id="srPhotoCaption" placeholder="Pie del caso: resultado real autorizado" style="width:100%;margin-top:.4rem;padding:.4rem .6rem;border:1px solid var(--line);border-radius:8px;font-size:.82rem"/>
+              <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">1. Foto ANTES</label>
+              <div id="srBeforeDropzone" class="aura-dropzone" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="event.preventDefault();this.classList.remove('drag-over');handleSetterFileDrop(event,'before','srBeforeDropzone','srBeforeUrl')">
+                <div id="srBeforePreview" style="display:none;width:100%;text-align:center"></div><div id="srBeforePlaceholder" style="text-align:center;padding:1.5rem .5rem;color:var(--muted)"><div style="font-size:2rem">📷</div><div style="font-size:.82rem;font-weight:600">Arrastra la foto previa</div><div style="font-size:.7rem;margin-top:.2rem">JPG, PNG, WebP · máx. 10 MB</div></div>
+                <input type="file" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="handleSetterFileSelect(this,'before','srBeforeDropzone','srBeforeUrl')">
+              </div><input type="hidden" id="srBeforeUrl"/>
             </div>
             <div>
-              <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Vídeo de la doctora</label>
-              <div id="srVideoDropzone" class="aura-dropzone" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="event.preventDefault();this.classList.remove('drag-over');handleSetterFileDrop(event,'video','srVideoDropzone','srVideoUrl')">
-                <div id="srVideoPreview" style="display:none;width:100%;text-align:center"></div>
-                <div id="srVideoPlaceholder" style="text-align:center;padding:1.5rem .5rem;color:var(--muted)">
-                  <div style="font-size:2rem;margin-bottom:.3rem">🎬</div>
-                  <div style="font-size:.82rem;font-weight:600">Arrastra un vídeo aquí</div>
-                  <div style="font-size:.72rem;margin-top:.2rem">o haz clic para seleccionar</div>
-                  <div style="font-size:.68rem;margin-top:.3rem;color:#aaa">MP4, WebM, MOV · máx 25MB</div>
-                </div>
-                <input type="file" accept="video/*" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="handleSetterFileSelect(this,'video','srVideoDropzone','srVideoUrl')">
-              </div>
-              <input type="hidden" id="srVideoUrl"/>
-              <input id="srVideoCaption" placeholder="Descripción del vídeo" style="width:100%;margin-top:.4rem;padding:.4rem .6rem;border:1px solid var(--line);border-radius:8px;font-size:.82rem"/>
+              <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">2. Foto DESPUÉS</label>
+              <div id="srAfterDropzone" class="aura-dropzone" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="event.preventDefault();this.classList.remove('drag-over');handleSetterFileDrop(event,'after','srAfterDropzone','srAfterUrl')">
+                <div id="srAfterPreview" style="display:none;width:100%;text-align:center"></div><div id="srAfterPlaceholder" style="text-align:center;padding:1.5rem .5rem;color:var(--muted)"><div style="font-size:2rem">✨</div><div style="font-size:.82rem;font-weight:600">Arrastra la foto de resultado</div><div style="font-size:.7rem;margin-top:.2rem">JPG, PNG, WebP · máx. 10 MB</div></div>
+                <input type="file" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="handleSetterFileSelect(this,'after','srAfterDropzone','srAfterUrl')">
+              </div><input type="hidden" id="srAfterUrl"/><input type="hidden" id="srPhotoUrl"/>
             </div>
+          </div>
+          <div class="field"><label>Contexto del caso <span style="font-weight:400;color:var(--muted)">(qué buscaba, resultado real autorizado, información orientativa)</span></label><input id="srPhotoCaption" placeholder="Ej: definición natural de labios · resultado individual autorizado"/></div>
+          <div style="padding:.75rem .9rem;background:#fef9f6;border:1px solid #f0d5c8;border-radius:10px;margin:1rem 0 .6rem;font-size:.8rem;color:var(--muted)"><b style="color:var(--ink)">Vídeo de la doctora o del equipo.</b> Explica un solo tema por vídeo: qué ocurre en la valoración, cómo es el procedimiento, por qué el enfoque es natural o qué esperar de la recuperación. Así el Setter sabe cuándo enviarlo.</div>
+          <div style="display:grid;grid-template-columns:1.25fr .75fr;gap:1rem">
+            <div><label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Vídeo explicativo</label><div id="srVideoDropzone" class="aura-dropzone" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="event.preventDefault();this.classList.remove('drag-over');handleSetterFileDrop(event,'video','srVideoDropzone','srVideoUrl')"><div id="srVideoPreview" style="display:none;width:100%;text-align:center"></div><div id="srVideoPlaceholder" style="text-align:center;padding:1.5rem .5rem;color:var(--muted)"><div style="font-size:2rem">🎬</div><div style="font-size:.82rem;font-weight:600">Arrastra el vídeo aquí</div><div style="font-size:.7rem;margin-top:.2rem">MP4, WebM, MOV · máx. 25 MB</div></div><input type="file" accept="video/*" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="handleSetterFileSelect(this,'video','srVideoDropzone','srVideoUrl')"></div><input type="hidden" id="srVideoUrl"/></div>
+            <div><div class="field"><label>Qué explica el vídeo</label><select id="srVideoPurpose"><option value="">Sin vídeo</option><option value="valoración">Cómo es la valoración</option><option value="proceso">Cómo es el procedimiento</option><option value="seguridad">Seguridad y enfoque médico</option><option value="resultado natural">Resultados naturales</option><option value="recuperación">Recuperación y cuidados</option><option value="doctora">Presentación de la doctora</option></select></div><div class="field"><label>Descripción breve</label><input id="srVideoCaption" placeholder="Ej: Dra. Elena explica la valoración"/></div></div>
           </div>
           <div class="row2">
             <div class="field"><label>Rango orientativo (€)</label><div style="display:flex;gap:.5rem"><input type="number" id="srPriceFrom" min="0" placeholder="Desde"/><input type="number" id="srPriceTo" min="0" placeholder="Hasta"/></div></div>
@@ -7363,23 +7359,25 @@ async function loadSetterBrain(){
     var c=await fetch(WORKER+'/api/setter-brain-config?tenant='+encodeURIComponent(T),{headers:_setterHeaders()}).then(r=>r.json()); var x=c.config||{};
     var set=function(id,v){var el=document.getElementById(id);if(el&&v!==undefined&&v!==null)el.value=v;};
     set('sbAssistantName',x.assistant_name||'');set('sbTone',x.tone||'cálido, claro y profesional');set('sbMaxSentences',x.max_sentences||3);set('sbBookingMode',x.booking_mode||'when_ready');set('sbFollowup',x.followup_policy||'value_first');set('sbHandoff',x.handoff_message||'');
-    var r=await fetch(WORKER+'/api/setter-resources?tenant='+encodeURIComponent(T),{headers:_setterHeaders()}).then(r=>r.json());_setterResources=r.resources||[];renderSetterResources();
+    var r=await fetch(WORKER+'/api/setter-resources?tenant='+encodeURIComponent(T),{headers:_setterHeaders()}).then(r=>r.json());_setterResources=r.resources||[];renderSetterResources();normalizeSetterGalleryUrls();
   }catch(e){var l=document.getElementById('srList');if(l)l.innerHTML='<div style="font-size:.82rem;color:var(--muted)">No se pudieron cargar todavía los recursos del setter.</div>';}
 }
 async function saveSetterBrain(){
   var msg=document.getElementById('sbMsg'); if(msg)msg.textContent='Guardando…';
   try{var r=await fetch(WORKER+'/api/setter-brain-config',{method:'POST',headers:_setterHeaders(),body:JSON.stringify({tenant_id:T,assistant_name:document.getElementById('sbAssistantName').value.trim(),tone:document.getElementById('sbTone').value,max_sentences:+document.getElementById('sbMaxSentences').value,booking_mode:document.getElementById('sbBookingMode').value,followup_policy:document.getElementById('sbFollowup').value,handoff_message:document.getElementById('sbHandoff').value.trim()})});if(!r.ok)throw new Error();if(msg)msg.textContent='✓ Estrategia guardada';}catch(e){if(msg)msg.textContent='No se pudo guardar';}
 }
-function clearSetterResource(){['srId','srTreatment','srPhotoUrl','srPhotoCaption','srVideoUrl','srPriceFrom','srPriceTo','srDuration','srRecovery','srFaq'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});document.getElementById('srStatus').value='draft';document.getElementById('srConsent').checked=false;}
-function editSetterResource(id){var r=_setterResources.find(function(x){return x.id===id;});if(!r)return;var set=function(k,v){var e=document.getElementById(k);if(e)e.value=v||'';};set('srId',r.id);set('srTreatment',r.treatment);set('srStatus',r.source_status||'draft');set('srPhotoUrl',r.before_after_url);set('srPhotoCaption',r.before_after_caption);set('srVideoUrl',r.video_url);set('srPriceFrom',r.price_from);set('srPriceTo',r.price_to);set('srDuration',r.duration_text);set('srRecovery',r.recovery_text);set('srFaq',r.faq_json);document.getElementById('srConsent').checked=!!r.consent_verified;if(r.before_after_url)showDropzonePreview('srPhotoDropzone',r.before_after_url,'image');else clearDropzone('srPhotoDropzone');if(r.video_url)showDropzonePreview('srVideoDropzone',r.video_url,'video');else clearDropzone('srVideoDropzone');document.getElementById('srTreatment').scrollIntoView({behavior:'smooth',block:'center'});}
+function clearSetterResource(){['srId','srTreatment','srTitle','srBeforeUrl','srAfterUrl','srPhotoUrl','srPhotoCaption','srVideoUrl','srVideoCaption','srPriceFrom','srPriceTo','srDuration','srRecovery','srFaq'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});document.getElementById('srStatus').value='draft';document.getElementById('srObjection').value='general';document.getElementById('srVideoPurpose').value='';document.getElementById('srConsent').checked=false;clearDropzone('srBeforeDropzone');clearDropzone('srAfterDropzone');clearDropzone('srVideoDropzone');}
+function editSetterResource(id){var r=_setterResources.find(function(x){return x.id===id;});if(!r)return;var set=function(k,v){var e=document.getElementById(k);if(e)e.value=v||'';};set('srId',r.id);set('srTreatment',r.treatment);set('srTitle',r.resource_title);set('srStatus',r.source_status||'draft');set('srObjection',r.target_objection||'general');set('srVideoPurpose',r.video_purpose||'');set('srBeforeUrl',r.before_image_url);set('srAfterUrl',r.after_image_url);set('srPhotoUrl',r.before_after_url);set('srPhotoCaption',r.before_after_caption);set('srVideoUrl',r.video_url);set('srVideoCaption',r.video_caption);set('srPriceFrom',r.price_from);set('srPriceTo',r.price_to);set('srDuration',r.duration_text);set('srRecovery',r.recovery_text);set('srFaq',r.faq_json);document.getElementById('srConsent').checked=!!r.consent_verified;if(r.before_image_url)showDropzonePreview('srBeforeDropzone',r.before_image_url,'image');else clearDropzone('srBeforeDropzone');if(r.after_image_url||r.before_after_url)showDropzonePreview('srAfterDropzone',r.after_image_url||r.before_after_url,'image');else clearDropzone('srAfterDropzone');if(r.video_url)showDropzonePreview('srVideoDropzone',r.video_url,'video');else clearDropzone('srVideoDropzone');document.getElementById('srTreatment').scrollIntoView({behavior:'smooth',block:'center'});}
 // ═══ DRAG & DROP: Subida de archivos a R2 para recursos del setter ═══
 async function uploadSetterFile(file, slot, treatment){
+  const currentTreatment=(treatment||document.getElementById('srTreatment').value.trim());
+  if(!currentTreatment)throw new Error('Primero indica el tratamiento del caso');
   const fd=new FormData();
   fd.append('file',file);
   fd.append('tenant_id',T);
-  fd.append('treatment',treatment||document.getElementById('srTreatment').value.trim()||'general');
+  fd.append('treatment',currentTreatment);
   fd.append('slot',slot);
-  const r=await fetch(WORKER+'/api/setter-upload',{method:'POST',headers:{'Authorization':'Bearer '+TOKEN},body:fd});
+  const r=await fetch(WORKER+'/api/setter-upload',{method:'POST',headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:fd});
   return await r.json();
 }
 function showDropzonePreview(dropzoneId, url, type){
@@ -7389,17 +7387,19 @@ function showDropzonePreview(dropzoneId, url, type){
   const placeholder=dz.querySelector('[id$="Placeholder"]');
   if(!preview||!placeholder)return;
   if(type==='image'){
-    preview.innerHTML='<img src="'+WORKER+url+'" style="max-width:100%;max-height:140px;border-radius:8px;object-fit:contain">'
+    preview.innerHTML='<img src="'+setterAssetSrc(url)+'" style="max-width:100%;max-height:140px;border-radius:8px;object-fit:contain">'
       +'<div style="margin-top:.3rem;font-size:.72rem;color:#1f8c69">Imagen subida</div>'
       +'<button onclick="clearDropzone(\''+dropzoneId+'\')" style="margin-top:.2rem;font-size:.7rem;padding:.2rem .5rem;border:1px solid #ddd;border-radius:4px;cursor:pointer;background:#fff">Cambiar</button>';
   }else if(type==='video'){
-    preview.innerHTML='<video src="'+WORKER+url+'" style="max-width:100%;max-height:140px;border-radius:8px" controls muted></video>'
+    preview.innerHTML='<video src="'+setterAssetSrc(url)+'" style="max-width:100%;max-height:140px;border-radius:8px" controls muted></video>'
       +'<div style="margin-top:.3rem;font-size:.72rem;color:#1f8c69">Vídeo subido</div>'
       +'<button onclick="clearDropzone(\''+dropzoneId+'\',\'video\')" style="margin-top:.2rem;font-size:.7rem;padding:.2rem .5rem;border:1px solid #ddd;border-radius:4px;cursor:pointer;background:#fff">Cambiar</button>';
   }
   preview.style.display='block';
   placeholder.style.display='none';
 }
+function setterAssetSrc(url){return /^https?:\/\//i.test(String(url||''))?String(url):WORKER+String(url||'');}
+function normalizeSetterGalleryUrls(){document.querySelectorAll('#srList img[src]').forEach(function(img){var externalPrefix=WORKER+'https://',sanitizedPrefix=WORKER+'https//';if(img.src.indexOf(externalPrefix)===0)img.src=img.src.slice(WORKER.length);else if(img.src.indexOf(sanitizedPrefix)===0)img.src='https://'+img.src.slice(sanitizedPrefix.length);});}
 function clearDropzone(dropzoneId, hiddenId){
   const dz=document.getElementById(dropzoneId);
   if(!dz)return;
@@ -7425,7 +7425,7 @@ async function handleSetterFileDrop(event, slot, dropzoneId, hiddenId){
       setTimeout(()=>{clearDropzone(dropzoneId);},2000);
     }
   }catch(e){
-    if(placeholder)placeholder.innerHTML='<div style="color:#e74c3c;font-size:.82rem">Error de conexión</div>';
+    if(placeholder)placeholder.innerHTML='<div style="color:#e74c3c;font-size:.82rem">'+esc(e.message||'Error de conexión')+'</div>';
     setTimeout(()=>{clearDropzone(dropzoneId);},2000);
   }
 }
@@ -7444,17 +7444,23 @@ async function handleSetterFileSelect(input, slot, dropzoneId, hiddenId){
       setTimeout(()=>{clearDropzone(dropzoneId);},2000);
     }
   }catch(e){
-    if(placeholder)placeholder.innerHTML='<div style="color:#e74c3c;font-size:.82rem">Error de conexión</div>';
+    if(placeholder)placeholder.innerHTML='<div style="color:#e74c3c;font-size:.82rem">'+esc(e.message||'Error de conexión')+'</div>';
     setTimeout(()=>{clearDropzone(dropzoneId);},2000);
   }
 }
 async function saveSetterResource(){
   var treatment=document.getElementById('srTreatment').value.trim();var msg=document.getElementById('srMsg');if(!treatment){if(msg)msg.textContent='Indica el tratamiento';return;}if(msg)msg.textContent='Guardando…';
-  var payload={id:document.getElementById('srId').value||undefined,tenant_id:T,treatment:treatment,before_after_url:document.getElementById('srPhotoUrl').value.trim(),before_after_caption:document.getElementById('srPhotoCaption').value.trim(),video_url:document.getElementById('srVideoUrl').value.trim(),price_from:document.getElementById('srPriceFrom').value||null,price_to:document.getElementById('srPriceTo').value||null,duration_text:document.getElementById('srDuration').value.trim(),recovery_text:document.getElementById('srRecovery').value.trim(),faq_json:document.getElementById('srFaq').value.trim(),source_status:document.getElementById('srStatus').value,consent_verified:document.getElementById('srConsent').checked};
+  var beforeUrl=document.getElementById('srBeforeUrl').value.trim();var afterUrl=document.getElementById('srAfterUrl').value.trim();
+  var payload={id:document.getElementById('srId').value||undefined,tenant_id:T,treatment:treatment,resource_title:document.getElementById('srTitle').value.trim(),resource_type:'case',target_objection:document.getElementById('srObjection').value,video_purpose:document.getElementById('srVideoPurpose').value,before_image_url:beforeUrl,after_image_url:afterUrl,before_after_url:afterUrl||beforeUrl||document.getElementById('srPhotoUrl').value.trim(),before_after_caption:document.getElementById('srPhotoCaption').value.trim(),video_url:document.getElementById('srVideoUrl').value.trim(),video_caption:document.getElementById('srVideoCaption').value.trim(),price_from:document.getElementById('srPriceFrom').value||null,price_to:document.getElementById('srPriceTo').value||null,duration_text:document.getElementById('srDuration').value.trim(),recovery_text:document.getElementById('srRecovery').value.trim(),faq_json:document.getElementById('srFaq').value.trim(),source_status:document.getElementById('srStatus').value,consent_verified:document.getElementById('srConsent').checked};
   try{var r=await fetch(WORKER+'/api/setter-resources',{method:'POST',headers:_setterHeaders(),body:JSON.stringify(payload)});if(!r.ok)throw new Error();if(msg)msg.textContent='✓ Recurso guardado';clearSetterResource();await loadSetterBrain();}catch(e){if(msg)msg.textContent='No se pudo guardar';}
 }
 async function deleteSetterResource(id){if(!confirm('¿Eliminar este recurso?'))return;try{await fetch(WORKER+'/api/setter-resources',{method:'DELETE',headers:_setterHeaders(),body:JSON.stringify({id:id,tenant_id:T})});await loadSetterBrain();}catch(e){toast('No se pudo eliminar','err');}}
-function renderSetterResources(){var box=document.getElementById('srList');if(!box)return;if(!_setterResources.length){box.innerHTML='<div style="padding:.8rem;background:var(--bg2);border-radius:10px;color:var(--muted);font-size:.84rem">Aún no hay recursos. Crea un borrador durante el setup y actívalo solo al confirmar su autorización.</div>';return;}box.innerHTML='<div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:.4rem 0">Biblioteca cargada</div>'+_setterResources.map(function(r){var status=r.consent_verified&&r.source_status==='approved'?'<span style="color:#047857;background:#ecfdf5">✓ Enviable</span>':'<span style="color:#9a3412;background:#fff7ed">Borrador / bloqueado</span>';return '<div style="display:flex;justify-content:space-between;align-items:center;gap:.8rem;padding:.75rem;border:1px solid var(--line);border-radius:10px;margin:.45rem 0"><div><b>'+esc(r.treatment||'Tratamiento')+'</b><div style="font-size:.76rem;color:var(--muted);margin-top:.18rem">'+status+' · '+(r.before_after_url?'Foto':'')+(r.video_url?' · Vídeo':'')+(r.price_from?' · Precio':'')+'</div></div><div style="display:flex;gap:.35rem"><button class="btn" style="padding:.35rem .55rem;font-size:.76rem" onclick="editSetterResource(\''+r.id+'\')">Editar</button><button class="btn" style="padding:.35rem .55rem;font-size:.76rem;color:#b91c1c" onclick="deleteSetterResource(\''+r.id+'\')">Eliminar</button></div></div>';}).join('');}
+function renderSetterResources(){
+  var box=document.getElementById('srList');if(!box)return;
+  if(!_setterResources.length){box.innerHTML='<div style="padding:1rem;background:var(--bg2);border-radius:10px;color:var(--muted);font-size:.84rem">Aún no hay casos ni vídeos. Crea el primer recurso arriba: un caso antes/después o un vídeo de la doctora que ayude a resolver una duda concreta.</div>';return;}
+  var groups={};_setterResources.forEach(function(r){var k=r.treatment||'Sin tratamiento';(groups[k]=groups[k]||[]).push(r);});
+  box.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin:1.3rem 0 .65rem"><div><b style="font-size:.95rem">Biblioteca del Setter</b><div style="font-size:.76rem;color:var(--muted);margin-top:.15rem">El chat usa solo recursos aprobados y autorizados.</div></div><span style="font-size:.75rem;color:var(--muted)">'+_setterResources.length+' recurso'+(_setterResources.length!==1?'s':'')+'</span></div>'+Object.keys(groups).sort().map(function(treatment){var rows=groups[treatment], approved=rows.filter(function(r){return r.consent_verified&&r.source_status==='approved';}).length;return '<section style="margin:.9rem 0 1.3rem"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.55rem"><b>'+esc(treatment)+'</b><span style="font-size:.72rem;padding:.2rem .5rem;border-radius:99px;background:'+(approved?'#ecfdf5':'#fff7ed')+';color:'+(approved?'#047857':'#9a3412')+'">'+approved+' enviable'+(approved!==1?'s':'')+' de '+rows.length+'</span></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(235px,1fr));gap:.7rem">'+rows.map(function(r){var ok=r.consent_verified&&r.source_status==='approved',before=r.before_image_url||'',after=r.after_image_url||r.before_after_url||'',video=r.video_url||'',status=ok?'<span style="color:#047857;background:#ecfdf5">✓ Aprobado</span>':'<span style="color:#9a3412;background:#fff7ed">Borrador / revisión</span>',visual='';if(before||after){visual='<div style="display:grid;grid-template-columns:1fr 1fr;height:100px;background:var(--bg)">'+(before?'<img src="'+WORKER+esc(before)+'" style="width:100%;height:100%;object-fit:cover" alt="Antes">':'<div style="display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--muted)">Sin antes</div>')+(after?'<img src="'+WORKER+esc(after)+'" style="width:100%;height:100%;object-fit:cover" alt="Después">':'<div style="display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--muted)">Sin después</div>')+'</div>';}else if(video){visual='<div style="height:100px;background:#171717;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.8rem">▶ Vídeo · '+esc(r.video_purpose||'explicativo')+'</div>';}else{visual='<div style="height:100px;background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.8rem">Sin archivo visual</div>';}return '<article style="border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)">'+visual+'<div style="padding:.7rem"><div style="display:flex;justify-content:space-between;gap:.4rem;align-items:start"><b style="font-size:.84rem">'+esc(r.resource_title||'Caso sin título')+'</b><span style="font-size:.66rem;white-space:nowrap;padding:.15rem .35rem;border-radius:5px">'+status+'</span></div><div style="font-size:.72rem;color:var(--muted);margin:.35rem 0">Para: '+esc(r.target_objection||'duda general')+(video?' · Vídeo: '+esc(r.video_purpose||'explicativo'):'')+'</div><div style="display:flex;gap:.35rem;margin-top:.55rem"><button class="btn" style="padding:.32rem .5rem;font-size:.72rem" onclick="editSetterResource(\''+r.id+'\')">Editar</button><button class="btn" style="padding:.32rem .5rem;font-size:.72rem;color:#b91c1c" onclick="deleteSetterResource(\''+r.id+'\')">Eliminar</button></div></div></article>';}).join('')+'</div></section>';}).join('');
+}
 
 async function __auraInit(){
   const ok=await guard(); if(!ok)return;
@@ -7729,6 +7735,3 @@ async function startBrainAudio(){
 <button id="copilotFab" onclick="openCopilot()" title="Copiloto IA" style="display:none;position:fixed;right:18px;bottom:18px;z-index:9990;width:58px;height:58px;border:none;border-radius:50%;background:linear-gradient(135deg,var(--terra),#8a4533);color:#fff;font-size:1.5rem;box-shadow:0 6px 20px rgba(176,93,68,.45);cursor:pointer;transition:transform .15s ease" onmousedown="this.style.transform='scale(.94)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'">✦</button>
 </body>
 </html>
-.aura-dropzone{position:relative;border:2px dashed var(--line);border-radius:12px;background:var(--bg);min-height:120px;display:flex;align-items:center;justify-content:center;transition:border-color .2s,background .2s;cursor:pointer}
-.aura-dropzone.drag-over{border-color:var(--terra);background:#fef3ee}
-.aura-dropzone:hover{border-color:var(--terra);background:#fef9f6}

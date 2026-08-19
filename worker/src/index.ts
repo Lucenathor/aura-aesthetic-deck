@@ -927,7 +927,16 @@ export default {
         // tenant solicitado: de query (?tenant=) o del body para POST
         let tenantReq = url.searchParams.get('tenant') || url.searchParams.get('tenant_id');
         if (!tenantReq && (req.method==='POST'||req.method==='PUT'||req.method==='DELETE')) {
-          try { const cloned = req.clone(); const body:any = await cloned.json(); tenantReq = body.tenant_id || body.tenant || null; } catch(e){}
+          try {
+            const cloned = req.clone();
+            if ((req.headers.get('content-type') || '').includes('multipart/form-data')) {
+              const form = await cloned.formData();
+              tenantReq = String(form.get('tenant_id') || form.get('tenant') || '') || null;
+            } else {
+              const body:any = await cloned.json();
+              tenantReq = body.tenant_id || body.tenant || null;
+            }
+          } catch(e){}
         }
         const err = await requireTenant(env, req, url, tenantReq);
         if (err) return json({ error:'forbidden', reason: err }, 403);
@@ -941,7 +950,7 @@ export default {
       }
 
       // ── SETTER BRAIN: configuración y recursos propios de cada clínica ──
-      if ((p === '/api/setter-brain-config' || p === '/api/setter-resources' || p.startsWith('/api/setter-funnel-brain'))) {
+      if ((p === '/api/setter-brain-config' || p === '/api/setter-resources' || p === '/api/setter-upload' || p.startsWith('/api/setter-funnel-brain'))) {
         await ensureSetterBrainSchema(env);
         const role = await getSessionRole(env, req, url);
         if (!(role === 'owner' || role === 'superadmin')) return json({ error:'forbidden', reason:'role' }, 403);
@@ -966,9 +975,9 @@ export default {
           const b:any = await req.json(); const now=Date.now();
           if (!b.tenant_id || !b.treatment) return json({ error:'treatment_required' }, 400);
           const id = b.id || ('sr_'+Math.random().toString(36).slice(2,12));
-          await env.aura_db.prepare(`INSERT INTO setter_resources (id,tenant_id,treatment,before_after_url,before_after_caption,video_url,video_caption,review_text,review_author,price_from,price_to,duration_text,recovery_text,tips,cta_text,consent_verified,source_status,faq_json,created_at,updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET treatment=excluded.treatment,before_after_url=excluded.before_after_url,before_after_caption=excluded.before_after_caption,video_url=excluded.video_url,video_caption=excluded.video_caption,review_text=excluded.review_text,review_author=excluded.review_author,price_from=excluded.price_from,price_to=excluded.price_to,duration_text=excluded.duration_text,recovery_text=excluded.recovery_text,tips=excluded.tips,cta_text=excluded.cta_text,consent_verified=excluded.consent_verified,source_status=excluded.source_status,faq_json=excluded.faq_json,updated_at=excluded.updated_at`)
-            .bind(id,b.tenant_id,String(b.treatment).toLowerCase().trim(),b.before_after_url||null,b.before_after_caption||null,b.video_url||null,b.video_caption||null,b.review_text||null,b.review_author||null,b.price_from||null,b.price_to||null,b.duration_text||null,b.recovery_text||null,b.tips||null,b.cta_text||null,b.consent_verified?1:0,b.source_status||'draft',b.faq_json||null,b.created_at||now,now).run();
+          await env.aura_db.prepare(`INSERT INTO setter_resources (id,tenant_id,treatment,resource_title,resource_type,target_objection,video_purpose,tags_json,sort_order,before_image_url,after_image_url,before_after_url,before_after_caption,video_url,video_caption,review_text,review_author,price_from,price_to,duration_text,recovery_text,tips,cta_text,consent_verified,source_status,faq_json,created_at,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET treatment=excluded.treatment,resource_title=excluded.resource_title,resource_type=excluded.resource_type,target_objection=excluded.target_objection,video_purpose=excluded.video_purpose,tags_json=excluded.tags_json,sort_order=excluded.sort_order,before_image_url=excluded.before_image_url,after_image_url=excluded.after_image_url,before_after_url=excluded.before_after_url,before_after_caption=excluded.before_after_caption,video_url=excluded.video_url,video_caption=excluded.video_caption,review_text=excluded.review_text,review_author=excluded.review_author,price_from=excluded.price_from,price_to=excluded.price_to,duration_text=excluded.duration_text,recovery_text=excluded.recovery_text,tips=excluded.tips,cta_text=excluded.cta_text,consent_verified=excluded.consent_verified,source_status=excluded.source_status,faq_json=excluded.faq_json,updated_at=excluded.updated_at`)
+            .bind(id,b.tenant_id,String(b.treatment).toLowerCase().trim(),b.resource_title||'',b.resource_type||'case',b.target_objection||'',b.video_purpose||'',b.tags_json||'[]',Number(b.sort_order)||0,b.before_image_url||null,b.after_image_url||null,b.before_after_url||null,b.before_after_caption||null,b.video_url||null,b.video_caption||null,b.review_text||null,b.review_author||null,b.price_from||null,b.price_to||null,b.duration_text||null,b.recovery_text||null,b.tips||null,b.cta_text||null,b.consent_verified?1:0,b.source_status||'draft',b.faq_json||null,b.created_at||now,now).run();
           return json({ ok:true, id });
         }
         if (p === '/api/setter-resources' && req.method === 'DELETE') {
@@ -5677,8 +5686,15 @@ async function handleChat(req: Request, env: Env) {
     if (t?.booking_url) arsenal.push(`[ENLACE RESERVA] ${t.booking_url}`);
     // Recursos específicos por tratamiento
     const treatmentKey = (context.treatment || '').toLowerCase().trim();
-    let treatRes: any = null;
-    if (treatmentKey) { try { treatRes = await env.aura_db.prepare('SELECT * FROM setter_resources WHERE tenant_id=? AND treatment=?').bind(tenantId, treatmentKey).first(); } catch(e) {} }
+    let treatmentResources: any[] = [];
+    if (treatmentKey) {
+      try {
+        const rows:any = await env.aura_db.prepare(`SELECT * FROM setter_resources
+          WHERE tenant_id=? AND treatment=? AND consent_verified=1 AND source_status='approved'
+          ORDER BY sort_order ASC, updated_at DESC`).bind(tenantId, treatmentKey).all();
+        treatmentResources = rows?.results || [];
+      } catch(e) {}
+    }
     const cfg:any = await env.aura_db.prepare('SELECT * FROM setter_brain_config WHERE tenant_id=?').bind(tenantId).first().catch(()=>null);
     // Cerebro independiente por embudo y por clínica
     let funnelBrain:any = null;
@@ -5693,12 +5709,18 @@ async function handleChat(req: Request, env: Env) {
       ...rawMemory,
       objective: context.goal || context.motivo || rawMemory.objective || saved?.objective || '',
       timeframe: context.plazo || rawMemory.timeframe || saved?.timeframe || '',
-      resourceHistory: Array.from(new Set([...(savedHistory || []), ...deriveResourceHistory(chatMessages, treatRes as SetterResource | null)])),
+      resourceHistory: Array.from(new Set([...(savedHistory || []), ...treatmentResources.flatMap((r:any) => deriveResourceHistory(chatMessages, r as SetterResource | null))])),
       messageCount: chatMessages.filter((m:any)=>m.role==='user').length
     };
     brainMemory = memory;
     const assessment = assessSetterConversation(chatMessages, memory);
     brain = { stage:assessment.stage, next_action:assessment.nextAction, needs_human:assessment.needsHuman, flags:assessment.flags, conversation_id:conversationId };
+    // El cerebro escoge un activo apropiado al motivo de la conversación. Si hay varios,
+    // rota entre ellos según el turno para no enviar siempre el mismo caso.
+    const objectionText = [context.objecion||'', memory.objection||'', ...(assessment.flags||[])].join(' ').toLowerCase();
+    const targeted = treatmentResources.filter((r:any) => r.target_objection && objectionText.includes(String(r.target_objection).toLowerCase()));
+    const candidates = targeted.length ? targeted : treatmentResources;
+    const treatRes:any = candidates.length ? candidates[(memory.messageCount || 0) % candidates.length] : null;
     const brainPrompt = buildSetterBrainInstructions({
       assessment, memory,
       resource: treatRes as SetterResource | null,
@@ -6103,3 +6125,12 @@ async function scrapeTiktokViews(url: string): Promise<number> {
     return 0;
   } catch(e) { return 0; }
 }
+  // Biblioteca visual: múltiples activos por tratamiento, organizados por finalidad comercial.
+  try { await env.aura_db.exec("ALTER TABLE setter_resources ADD COLUMN resource_title TEXT DEFAULT ''"); } catch(e){}
+  try { await env.aura_db.exec("ALTER TABLE setter_resources ADD COLUMN resource_type TEXT DEFAULT 'case'"); } catch(e){}
+  try { await env.aura_db.exec("ALTER TABLE setter_resources ADD COLUMN target_objection TEXT DEFAULT ''"); } catch(e){}
+  try { await env.aura_db.exec("ALTER TABLE setter_resources ADD COLUMN video_purpose TEXT DEFAULT ''"); } catch(e){}
+  try { await env.aura_db.exec("ALTER TABLE setter_resources ADD COLUMN tags_json TEXT DEFAULT '[]'"); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE setter_resources ADD COLUMN sort_order INTEGER DEFAULT 0'); } catch(e){}
+  try { await env.aura_db.exec("ALTER TABLE setter_resources ADD COLUMN before_image_url TEXT DEFAULT ''"); } catch(e){}
+  try { await env.aura_db.exec("ALTER TABLE setter_resources ADD COLUMN after_image_url TEXT DEFAULT ''"); } catch(e){}

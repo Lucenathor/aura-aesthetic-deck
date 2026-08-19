@@ -73,3 +73,6 @@
 - [ ] Duplicar embudo y crear variantes por ciudad/promo.
 - [x] Refactorizar la navegación y carga del dashboard para preservar sección, subvista, embudo y posición sin saltos a la home.
 - [x] Optimizar patrones de carga, cache y concurrencia del dashboard para una operación estable a gran escala.
+- [x] Rediseñar la biblioteca del Setter IA con múltiples casos antes/después, vídeos explicados, galería por tratamiento y estados claros de autorización.
+- [x] Probar la subida real de imagen y vídeo a R2, sus previews y el aislamiento de archivos por clínica.
+- [x] Corregir la regla CSS de la dropzone que se está mostrando como texto dentro de la pantalla.
