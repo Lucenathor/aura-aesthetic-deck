@@ -1705,11 +1705,69 @@ async function submitLegal(){
     else { btn.disabled=false; btn.textContent='Aceptar y activar mi panel'; err.style.display='block'; err.textContent='No se pudo registrar. Inténtalo de nuevo.'; }
   }catch(e){ btn.disabled=false; btn.textContent='Aceptar y activar mi panel'; err.style.display='block'; err.textContent='Error de conexión. Inténtalo de nuevo.'; }
 }
-function switchTenant(newT){
-  if(!newT) return;
-  const url = new URL(location.href);
-  url.searchParams.set('t', newT);
-  location.href = url.toString();
+// ===== NAVEGACIÓN INTERNA Y ESTADO PERSISTENTE =====
+// Evita los saltos a la home: el dashboard conserva sección, embudo, subpestaña y scroll
+// aunque se cambie de clínica desde Super Admin o desde el Wizard.
+const AURA_NAV_KEY='aura_nav_context_v1';
+function activeAuraSection(){
+  const current=document.querySelector('.view.on');
+  return current?(current.id||'').replace(/^v-/,''):'resumen';
+}
+function readNavContext(){
+  try{return JSON.parse(sessionStorage.getItem(AURA_NAV_KEY)||'{}')||{};}catch(e){return {};}
+}
+function saveNavContext(section){
+  try{
+    const all=readNavContext(); const current=all[T]||{};
+    current.section=section||activeAuraSection();
+    current.scrollY=window.scrollY||0;
+    current.updatedAt=Date.now();
+    if(current.section==='embudo'){
+      current.funnel=typeof EDFUNNEL!=='undefined'?EDFUNNEL:'';
+      current.editor=!!(document.getElementById('funnelEditorView')&&document.getElementById('funnelEditorView').style.display!=='none');
+      current.screen=typeof EDSCREEN!=='undefined'?EDSCREEN:'hero';
+    }
+    if(current.section==='ajustes'){
+      const tab=document.querySelector('.settings-nav-item.active');
+      current.settingsTab=tab?tab.dataset.stab:'';
+    }
+    all[T]=current; sessionStorage.setItem(AURA_NAV_KEY,JSON.stringify(all));
+  }catch(e){}
+}
+function routeFor(section){
+  const url=new URL(location.href);
+  url.searchParams.set('t',T);
+  url.hash=section||activeAuraSection();
+  return url.pathname+url.search+url.hash;
+}
+function writeRoute(section,mode){
+  try{ history[mode||'replaceState'](null,'',routeFor(section)); }catch(e){}
+}
+let _tenantSwitchEpoch=0;
+async function switchTenant(newT,options){
+  if(!newT)return;
+  options=options||{};
+  const target=options.section||activeAuraSection()||'resumen';
+  // Misma clínica: solo se navega a la sección solicitada, sin reiniciar la página.
+  if(newT===T){ goSection(target,false); return; }
+  saveNavContext(activeAuraSection());
+  const epoch=++_tenantSwitchEpoch;
+  T=newT;
+  try{localStorage.setItem('aura_tenant',T);}catch(e){}
+  const sel=document.getElementById('saTenant'); if(sel)sel.value=T;
+  // Cambia URL sin disparar una carga de documento.
+  writeRoute(target,'replaceState');
+  // Vacía únicamente el estado visual dependiente del tenant; la shell no se desmonta.
+  try{ EDDATA={tenant:{},funnels:[],content:{}}; _galleryFunnels=[]; _funnelStatsCache={}; }catch(e){}
+  try{ await loadTenant(); }catch(e){}
+  // Si el usuario eligió otra clínica mientras se cargaba la anterior, ignoramos la respuesta obsoleta.
+  if(epoch!==_tenantSwitchEpoch)return;
+  goSection(target,false);
+  // En la siguiente pintura recupera posición del tenant si existe.
+  const saved=(readNavContext()[T]||{});
+  if(options.restoreScroll!==false && saved.section===target && Number.isFinite(saved.scrollY)){
+    requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo({top:saved.scrollY,behavior:'instant'})));
+  }else{ window.scrollTo({top:0,behavior:'instant'}); }
 }
 let ROLE='owner';
 // permisos: qué pestañas ve cada rol
@@ -1849,12 +1907,15 @@ async function removeMember(id){
 // nav con memoria de sección
 const AURA_SECTIONS=['resumen','pacientes','pipeline','agenda','caja','embudo','contenido','equipo','ajustes','whatsapp','inventario','portal','facturacion','admin'];
 function goSection(v,push){
+  const previous=activeAuraSection();
+  if(previous&&previous!==v)saveNavContext(previous);
   const item=document.querySelector('.nav-item[data-v="'+v+'"]'); if(!item||item.style.display==='none')v='resumen';
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.toggle('on',x.dataset.v===v));
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
   const sec=document.getElementById('v-'+v); if(sec)sec.classList.add('on');
   try{ localStorage.setItem('aura_section',v); }catch(e){}
-  if(push!==false){ try{ history.replaceState(null,'', '?t='+T+'#'+v); }catch(e){} }
+  if(push!==false){ writeRoute(v,'replaceState'); }
+  saveNavContext(v);
   if(v==='resumen')loadKPIs();
   if(v==='pacientes')loadLeads();
   if(v==='pipeline')loadPipeline();
@@ -1903,10 +1964,19 @@ document.addEventListener('click',(e)=>{
   else { const mm=document.getElementById('moreMenu'); if(mm&&mm.style.display==='block'&&!e.target.closest('#moreMenu')&&e.target.id!=='moreBtn')mm.style.display='none'; }
 });
 function restoreSection(){
-  let v=(location.hash||'').replace('#',''); 
+  const saved=readNavContext()[T]||{};
+  let v=(location.hash||'').replace('#','');
+  if(!v){ v=saved.section||''; }
   if(!v){ try{ v=localStorage.getItem('aura_section')||'resumen'; }catch(e){ v='resumen'; } }
   if(!AURA_SECTIONS.includes(v))v='resumen';
+  if(v==='embudo'){
+    if(saved.funnel)EDFUNNEL=saved.funnel;
+    if(saved.screen)EDSCREEN=saved.screen;
+  }
   goSection(v,false);
+  if(Number.isFinite(saved.scrollY)&&saved.section===v){
+    requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo({top:saved.scrollY,behavior:'instant'})));
+  }
 }
 window.addEventListener('hashchange',()=>{
   const v=(location.hash||'').replace('#','');
@@ -6062,7 +6132,7 @@ async function wizardOpenClinic(id){
   }catch(e){w.innerHTML='<div style="color:#b0432e">Error. <a href="#" onclick="adminOpenOnboardingWizard();return false">Volver</a></div>';}
 }
 
-function wizardGoToConfig(nav){
+async function wizardGoToConfig(nav){
   var id=_wizardClinicId||T;
   var dest={
     'settings-clinica':{section:'ajustes',tab:'clinica'},
@@ -6082,10 +6152,10 @@ function wizardGoToConfig(nav){
   if(dest.fiscal) localStorage.setItem('aura_onboarding_open_fiscal','1');
 
   if(ROLE==='superadmin' && T!==id){
-    var u=new URL(location.href); u.searchParams.set('t',id); u.hash=dest.section; location.href=u.toString();
-    return;
+    await switchTenant(id,{section:dest.section,restoreScroll:false});
+  }else{
+    goSection(dest.section);
   }
-  goSection(dest.section);
 }
 
 async function wizardMarkNoImport(id){
@@ -6345,7 +6415,11 @@ function renderAdminList(){
       +'</div></div>';
   }).join('');
 }
-function adminOpenClinic(id){ try{ if(typeof switchTenant==='function'){ switchTenant(id); } else { T=id; } }catch(e){ T=id; } goSection('resumen'); if(typeof toast==='function')toast('Entrando en la clínica…'); }
+async function adminOpenClinic(id){
+  try{ await switchTenant(id,{section:'resumen',restoreScroll:false}); }
+  catch(e){ T=id; goSection('resumen'); }
+  if(typeof toast==='function')toast('Entrando en la clínica…');
+}
 function openNewClinic(){
   waModal('Nueva clínica',
     '<div style="display:grid;gap:.6rem">'
@@ -6574,7 +6648,10 @@ function adminRenderTab(){
   }
   adminSyncTabBtns();
 }
-function adminOpenClinicSection(id,sec){ try{ if(typeof switchTenant==='function'){ switchTenant(id); } else { T=id; } }catch(e){ T=id; } goSection(sec||'resumen'); }
+async function adminOpenClinicSection(id,sec){
+  try{ await switchTenant(id,{section:sec||'resumen',restoreScroll:false}); }
+  catch(e){ T=id; goSection(sec||'resumen'); }
+}
 async function adminSaveDatos(){
   var g=function(id){var e=document.getElementById(id);return e?e.value:undefined;};
   var body={ id:_adminDetail.id, name:g('afName'), city:g('afCity'), address:g('afAddress'), whatsapp:g('afWhats'), email:g('afEmail'), website:g('afWebsite'), owner_name:g('afOwner'), doctor_name:g('afDoctor'), logo_url:g('afLogo'), brand_primary:g('afPrimary'), brand_accent:g('afAccent'), google_rating:parseFloat(g('afRating'))||0, google_reviews:parseInt(g('afReviews'),10)||0, google_review_url:g('afReviewUrl'), doctor_specialty:g('afDoctorSpec'), doctor_experience:g('afDoctorExp'), clinic_usp:g('afClinicUsp'), price_range:g('afPriceRange'), booking_url:g('afBookingUrl'), before_after_url:g('afBeforeAfter'), doctor_video_url:g('afDoctorVideo'), top_review:g('afTopReview') };
@@ -6648,7 +6725,25 @@ async function loadRetention(){
     }
   }catch(e){console.error("retention",e);}
 }
-function loadAll(){loadRetention();loadKPIs();loadLeads();loadAppts();loadPipeline();loadSmsCredits();loadAdvancedMetrics();}
+// La navegación carga al instante solo la sección activa. El resto se precalienta
+// cuando el navegador queda libre para evitar siete peticiones simultáneas por sesión.
+const _auraWarmups=new Set();
+function runWhenBrowserIsIdle(fn){
+  if('requestIdleCallback' in window){ window.requestIdleCallback(fn,{timeout:1800}); }
+  else { setTimeout(fn,350); }
+}
+function loadAll(){
+  const key=T+':dashboard-warmup-v1';
+  if(_auraWarmups.has(key))return;
+  _auraWarmups.add(key);
+  runWhenBrowserIsIdle(function(){
+    Promise.allSettled([
+      Promise.resolve().then(loadRetention),
+      Promise.resolve().then(loadSmsCredits),
+      Promise.resolve().then(loadAdvancedMetrics)
+    ]);
+  });
+}
 
 // ===== MÉTRICAS AVANZADAS (gráficas Chart.js) =====
 async function loadAdvancedMetrics(){

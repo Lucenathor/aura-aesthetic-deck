@@ -71,3 +71,5 @@
 - [ ] Configuración visible del cerebro IA: personalidad, tono, recursos, derivación, velocidad.
 - [ ] Segmentación por ciudad y promociones temporales por embudo.
 - [ ] Duplicar embudo y crear variantes por ciudad/promo.
+- [x] Refactorizar la navegación y carga del dashboard para preservar sección, subvista, embudo y posición sin saltos a la home.
+- [x] Optimizar patrones de carga, cache y concurrencia del dashboard para una operación estable a gran escala.
