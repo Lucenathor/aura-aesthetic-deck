@@ -82,6 +82,21 @@ async function ensureSetterBrainSchema(env: Env) {
     updated_at INTEGER
   )`).catch(()=>{});
   await env.aura_db.exec('CREATE INDEX IF NOT EXISTS idx_setter_brain_sessions ON setter_brain_sessions (tenant_id, lead_id, updated_at)').catch(()=>{});
+  await env.aura_db.exec(`CREATE TABLE IF NOT EXISTS setter_upload_sessions (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    treatment TEXT NOT NULL,
+    slot TEXT NOT NULL,
+    filename TEXT NOT NULL,
+    object_key TEXT NOT NULL,
+    content_type TEXT NOT NULL,
+    upload_id TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    parts_json TEXT DEFAULT '[]',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`).catch(()=>{});
+  await env.aura_db.exec('CREATE INDEX IF NOT EXISTS idx_setter_upload_sessions_tenant ON setter_upload_sessions (tenant_id, updated_at)').catch(()=>{});
   for (const sql of [
     'ALTER TABLE setter_resources ADD COLUMN consent_verified INTEGER DEFAULT 0',
     "ALTER TABLE setter_resources ADD COLUMN source_status TEXT DEFAULT 'draft'",
@@ -114,6 +129,15 @@ function slugify(s: string) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '')
     .slice(0, 48) || 'clinica-' + Math.random().toString(36).slice(2, 8);
+}
+function safeStorageSegment(value: any, fallback = 'general') {
+  return String(value || fallback)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 70) || fallback;
 }
 // Sanitize user input: strip HTML tags and trim
 function sanitize(s: any): string | null {
@@ -918,7 +942,7 @@ export default {
         '/api/loyalty-adjust','/api/loyalty-balance',
         '/api/clinical','/api/clinical-note','/api/viral-content','/api/viral-content-delete',
         '/api/viral-submit','/api/viral-fire','/api/viral-update-views',
-        '/api/clinical-audit','/api/setter-brain-config','/api/setter-resources','/api/setter-funnel-brain','/api/setter-funnel-brain/transcribe','/api/setter-upload'
+        '/api/clinical-audit','/api/setter-brain-config','/api/setter-resources','/api/setter-funnel-brain','/api/setter-funnel-brain/transcribe','/api/setter-upload','/api/setter-upload-multipart/start','/api/setter-upload-multipart/part','/api/setter-upload-multipart/complete','/api/setter-upload-multipart/abort'
       ]);
       // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
       const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar','/api/portal-clients']);
@@ -950,7 +974,7 @@ export default {
       }
 
       // ── SETTER BRAIN: configuración y recursos propios de cada clínica ──
-      if ((p === '/api/setter-brain-config' || p === '/api/setter-resources' || p === '/api/setter-upload' || p.startsWith('/api/setter-funnel-brain'))) {
+      if ((p === '/api/setter-brain-config' || p === '/api/setter-resources' || p === '/api/setter-upload' || p.startsWith('/api/setter-upload-multipart/') || p.startsWith('/api/setter-funnel-brain'))) {
         await ensureSetterBrainSchema(env);
         const role = await getSessionRole(env, req, url);
         if (!(role === 'owner' || role === 'superadmin')) return json({ error:'forbidden', reason:'role' }, 403);
@@ -1001,10 +1025,10 @@ export default {
           const tid = b.tenant_id || b.tenant || '';
           const treat = (b.treatment || '').toLowerCase().trim();
           if (!tid || !treat) return json({ error:'tenant y treatment requeridos' }, 400);
-          await env.aura_db.prepare(`INSERT INTO setter_funnel_brain (tenant,treatment,custom_prompt,knowledge_base,promo_text,promo_active,promo_city,assistant_name,tone,booking_mode,max_sentences,files_json,updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
-            ON CONFLICT(tenant,treatment) DO UPDATE SET custom_prompt=excluded.custom_prompt,knowledge_base=excluded.knowledge_base,promo_text=excluded.promo_text,promo_active=excluded.promo_active,promo_city=excluded.promo_city,assistant_name=excluded.assistant_name,tone=excluded.tone,booking_mode=excluded.booking_mode,max_sentences=excluded.max_sentences,files_json=excluded.files_json,updated_at=excluded.updated_at`)
-            .bind(tid, treat, b.custom_prompt||'', b.knowledge_base||'', b.promo_text||'', b.promo_active?1:0, b.promo_city||'', b.assistant_name||'', b.tone||'cálido y profesional', b.booking_mode||'when_ready', b.max_sentences||3, b.files_json||'[]').run();
+          await env.aura_db.prepare(`INSERT INTO setter_funnel_brain (tenant,treatment,custom_prompt,knowledge_base,promo_text,promo_active,promo_city,assistant_name,tone,booking_mode,max_sentences,files_json,funnel_goal,qualification_rules,clinical_limits,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+            ON CONFLICT(tenant,treatment) DO UPDATE SET custom_prompt=excluded.custom_prompt,knowledge_base=excluded.knowledge_base,promo_text=excluded.promo_text,promo_active=excluded.promo_active,promo_city=excluded.promo_city,assistant_name=excluded.assistant_name,tone=excluded.tone,booking_mode=excluded.booking_mode,max_sentences=excluded.max_sentences,files_json=excluded.files_json,funnel_goal=excluded.funnel_goal,qualification_rules=excluded.qualification_rules,clinical_limits=excluded.clinical_limits,updated_at=excluded.updated_at`)
+            .bind(tid, treat, b.custom_prompt||'', b.knowledge_base||'', b.promo_text||'', b.promo_active?1:0, b.promo_city||'', b.assistant_name||'', b.tone||'cálido y profesional', b.booking_mode||'when_ready', b.max_sentences||3, b.files_json||'[]', b.funnel_goal||'', b.qualification_rules||'', b.clinical_limits||'').run();
           return json({ ok:true });
         }
         if (p === '/api/setter-funnel-brain' && req.method === 'DELETE') {
@@ -1012,8 +1036,69 @@ export default {
           await env.aura_db.prepare('DELETE FROM setter_funnel_brain WHERE tenant=? AND treatment=?').bind(b.tenant_id||b.tenant, b.treatment).run();
           return json({ ok:true });
         }
+        // ── Carga multipart a R2 para vídeos grandes ──
+        if (p === '/api/setter-upload-multipart/start' && req.method === 'POST') {
+          const b:any = await req.json();
+          const tenant = String(b.tenant_id || '');
+          const treatment = safeStorageSegment(b.treatment, 'general');
+          const slot = safeStorageSegment(b.slot, 'video');
+          const filename = String(b.filename || 'video.mp4').slice(0, 180);
+          const contentType = String(b.content_type || 'video/mp4');
+          const size = Number(b.size_bytes || 0);
+          if (!tenant || !contentType.startsWith('video/') || !size) return json({ error:'video_required' }, 400);
+          if (size > 500 * 1024 * 1024) return json({ error:'El vídeo supera el máximo de 500 MB' }, 400);
+          if (!env.aura_r2) return json({ error:'storage_unavailable' }, 503);
+          const ext = contentType.includes('webm') ? 'webm' : contentType.includes('quicktime') ? 'mov' : 'mp4';
+          const resourceKey = `setter/${safeStorageSegment(tenant, 'tenant')}/${treatment}/${slot}_${Date.now().toString(36)}${Math.random().toString(36).slice(2,7)}.${ext}`;
+          const objectKey = 'img/' + resourceKey;
+          const upload:any = await env.aura_r2.createMultipartUpload(objectKey, { httpMetadata: { contentType } });
+          const sessionId = 'su_' + Date.now().toString(36) + Math.random().toString(36).slice(2,10);
+          const now = Date.now();
+          await env.aura_db.prepare(`INSERT INTO setter_upload_sessions (id,tenant_id,treatment,slot,filename,object_key,content_type,upload_id,size_bytes,parts_json,created_at,updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`).bind(sessionId,tenant,treatment,slot,filename,objectKey,contentType,upload.uploadId,size,'[]',now,now).run();
+          return json({ ok:true, session_id:sessionId, chunk_size:5*1024*1024, max_size:500*1024*1024 });
+        }
+        if (p === '/api/setter-upload-multipart/part' && req.method === 'POST') {
+          const fd = await req.formData();
+          const sessionId = String(fd.get('session_id') || '');
+          const partNumber = Number(fd.get('part_number') || 0);
+          const chunk:any = fd.get('chunk');
+          const tenant = String(fd.get('tenant_id') || '');
+          if (!sessionId || !chunk || !partNumber || partNumber < 1) return json({ error:'part_required' }, 400);
+          const session:any = await env.aura_db.prepare('SELECT * FROM setter_upload_sessions WHERE id=? AND tenant_id=?').bind(sessionId,tenant).first();
+          if (!session || !env.aura_r2) return json({ error:'upload_not_found' }, 404);
+          const upload:any = env.aura_r2.resumeMultipartUpload(session.object_key, session.upload_id);
+          const result:any = await upload.uploadPart(partNumber, await chunk.arrayBuffer());
+          let parts:any[] = []; try { parts = JSON.parse(session.parts_json || '[]'); } catch(e) {}
+          parts = parts.filter((part:any) => Number(part.partNumber) !== partNumber);
+          parts.push({ partNumber, etag: result.etag });
+          parts.sort((a:any,b:any) => Number(a.partNumber)-Number(b.partNumber));
+          await env.aura_db.prepare('UPDATE setter_upload_sessions SET parts_json=?, updated_at=? WHERE id=?').bind(JSON.stringify(parts),Date.now(),sessionId).run();
+          return json({ ok:true, part_number:partNumber });
+        }
+        if (p === '/api/setter-upload-multipart/complete' && req.method === 'POST') {
+          const b:any = await req.json();
+          const sessionId = String(b.session_id || '');
+          const tenant = String(b.tenant_id || '');
+          const session:any = await env.aura_db.prepare('SELECT * FROM setter_upload_sessions WHERE id=? AND tenant_id=?').bind(sessionId,tenant).first();
+          if (!session || !env.aura_r2) return json({ error:'upload_not_found' }, 404);
+          let parts:any[] = []; try { parts = JSON.parse(session.parts_json || '[]'); } catch(e) {}
+          if (!parts.length) return json({ error:'no_parts_uploaded' }, 400);
+          const upload:any = env.aura_r2.resumeMultipartUpload(session.object_key, session.upload_id);
+          await upload.complete(parts);
+          await env.aura_db.prepare('DELETE FROM setter_upload_sessions WHERE id=? AND tenant_id=?').bind(sessionId,tenant).run();
+          const resourceKey = String(session.object_key).replace(/^img\//,'');
+          return json({ ok:true, url:'/img/'+resourceKey, key:resourceKey, type:'video', size:session.size_bytes });
+        }
+        if (p === '/api/setter-upload-multipart/abort' && req.method === 'POST') {
+          const b:any = await req.json();
+          const session:any = await env.aura_db.prepare('SELECT * FROM setter_upload_sessions WHERE id=? AND tenant_id=?').bind(b.session_id,b.tenant_id).first();
+          if (session && env.aura_r2) { try { await env.aura_r2.resumeMultipartUpload(session.object_key, session.upload_id).abort(); } catch(e) {} }
+          await env.aura_db.prepare('DELETE FROM setter_upload_sessions WHERE id=? AND tenant_id=?').bind(b.session_id,b.tenant_id).run();
+          return json({ ok:true });
+        }
         // ── Transcripción de audio para knowledge base ──
-        // ── Subida de archivos para recursos del setter (imágenes, vídeos, docs) ──
+        // ── Subida simple de imágenes, vídeos pequeños y documentos ──
         if (p === '/api/setter-upload' && req.method === 'POST') {
           try {
             const fd = await req.formData();
@@ -1095,8 +1180,27 @@ export default {
         }
         if (env.aura_r2) {
           try {
-            const obj: any = await env.aura_r2.get('img/'+k);
-            if (obj) { const ct = obj.httpMetadata?.contentType || 'image/png'; return new Response(obj.body, { headers: { ...CORS, 'Content-Type': ct, 'Cache-Control': 'public, max-age=31536000, immutable' } }); }
+            const objectKey = 'img/'+k;
+            const rangeHeader = req.headers.get('Range') || '';
+            if (rangeHeader) {
+              const head: any = await env.aura_r2.head(objectKey);
+              if (!head) return new Response('not found', { status: 404, headers: CORS });
+              const match = /^bytes=(\d*)-(\d*)$/i.exec(rangeHeader.trim());
+              const total = Number(head.size || 0);
+              if (!match || !total) return new Response('range not satisfiable', { status: 416, headers: { ...CORS, 'Content-Range': `bytes */${total}` } });
+              const start = match[1] ? Number(match[1]) : Math.max(0, total - Number(match[2] || 0));
+              const end = match[2] ? Math.min(Number(match[2]), total - 1) : total - 1;
+              if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end < start || start >= total) {
+                return new Response('range not satisfiable', { status: 416, headers: { ...CORS, 'Content-Range': `bytes */${total}` } });
+              }
+              const obj: any = await env.aura_r2.get(objectKey, { range: { offset: start, length: end - start + 1 } });
+              if (obj) {
+                const ct = obj.httpMetadata?.contentType || head.httpMetadata?.contentType || 'application/octet-stream';
+                return new Response(obj.body, { status: 206, headers: { ...CORS, 'Content-Type': ct, 'Content-Length': String(end - start + 1), 'Content-Range': `bytes ${start}-${end}/${total}`, 'Accept-Ranges': 'bytes', 'Cache-Control': 'public, max-age=31536000, immutable' } });
+              }
+            }
+            const obj: any = await env.aura_r2.get(objectKey);
+            if (obj) { const ct = obj.httpMetadata?.contentType || 'image/png'; return new Response(obj.body, { headers: { ...CORS, 'Content-Type': ct, 'Content-Length': String(obj.size || ''), 'Accept-Ranges': 'bytes', 'Cache-Control': 'public, max-age=31536000, immutable' } }); }
           } catch(e) {}
         }
         const res: any = (env.AURA_IMG as any).getWithMetadata ? await (env.AURA_IMG as any).getWithMetadata(k, 'arrayBuffer') : { value: await env.AURA_IMG.get(k, 'arrayBuffer'), metadata: null };
@@ -5726,6 +5830,9 @@ async function handleChat(req: Request, env: Env) {
       resource: treatRes as SetterResource | null,
       customBrainPrompt: funnelBrain?.custom_prompt || '',
       knowledgeBase: funnelBrain?.knowledge_base || '',
+      funnelGoal: funnelBrain?.funnel_goal || '',
+      qualificationRules: funnelBrain?.qualification_rules || '',
+      clinicalLimits: funnelBrain?.clinical_limits || '',
       clinicPromo: (funnelBrain?.promo_active ? funnelBrain?.promo_text : '') || '',
       assistantName: funnelBrain?.assistant_name || cfg?.assistant_name || 'la asistente de la clínica',
       bookingUrl: t?.booking_url || '',

@@ -1027,7 +1027,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
           <div class="field"><label>Contexto del caso <span style="font-weight:400;color:var(--muted)">(qué buscaba, resultado real autorizado, información orientativa)</span></label><input id="srPhotoCaption" placeholder="Ej: definición natural de labios · resultado individual autorizado"/></div>
           <div style="padding:.75rem .9rem;background:#fef9f6;border:1px solid #f0d5c8;border-radius:10px;margin:1rem 0 .6rem;font-size:.8rem;color:var(--muted)"><b style="color:var(--ink)">Vídeo de la doctora o del equipo.</b> Explica un solo tema por vídeo: qué ocurre en la valoración, cómo es el procedimiento, por qué el enfoque es natural o qué esperar de la recuperación. Así el Setter sabe cuándo enviarlo.</div>
           <div style="display:grid;grid-template-columns:1.25fr .75fr;gap:1rem">
-            <div><label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Vídeo explicativo</label><div id="srVideoDropzone" class="aura-dropzone" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="event.preventDefault();this.classList.remove('drag-over');handleSetterFileDrop(event,'video','srVideoDropzone','srVideoUrl')"><div id="srVideoPreview" style="display:none;width:100%;text-align:center"></div><div id="srVideoPlaceholder" style="text-align:center;padding:1.5rem .5rem;color:var(--muted)"><div style="font-size:2rem">🎬</div><div style="font-size:.82rem;font-weight:600">Arrastra el vídeo aquí</div><div style="font-size:.7rem;margin-top:.2rem">MP4, WebM, MOV · máx. 25 MB</div></div><input type="file" accept="video/*" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="handleSetterFileSelect(this,'video','srVideoDropzone','srVideoUrl')"></div><input type="hidden" id="srVideoUrl"/></div>
+            <div><label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Vídeo explicativo</label><div id="srVideoDropzone" class="aura-dropzone" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="event.preventDefault();this.classList.remove('drag-over');handleSetterFileDrop(event,'video','srVideoDropzone','srVideoUrl')"><div id="srVideoPreview" style="display:none;width:100%;text-align:center"></div><div id="srVideoPlaceholder" style="text-align:center;padding:1.5rem .5rem;color:var(--muted)"><div style="font-size:2rem">🎬</div><div style="font-size:.82rem;font-weight:600">Arrastra el vídeo aquí</div><div style="font-size:.7rem;margin-top:.2rem">MP4, WebM, MOV · hasta 500 MB</div><div style="font-size:.68rem;margin-top:.25rem">Los vídeos grandes se suben por partes con progreso y reintentos.</div></div><input type="file" accept="video/*" style="position:absolute;inset:0;opacity:0;cursor:pointer" onchange="handleSetterFileSelect(this,'video','srVideoDropzone','srVideoUrl')"></div><input type="hidden" id="srVideoUrl"/></div>
             <div><div class="field"><label>Qué explica el vídeo</label><select id="srVideoPurpose"><option value="">Sin vídeo</option><option value="valoración">Cómo es la valoración</option><option value="proceso">Cómo es el procedimiento</option><option value="seguridad">Seguridad y enfoque médico</option><option value="resultado natural">Resultados naturales</option><option value="recuperación">Recuperación y cuidados</option><option value="doctora">Presentación de la doctora</option></select></div><div class="field"><label>Descripción breve</label><input id="srVideoCaption" placeholder="Ej: Dra. Elena explica la valoración"/></div></div>
           </div>
           <div class="row2">
@@ -7369,16 +7369,50 @@ async function saveSetterBrain(){
 function clearSetterResource(){['srId','srTreatment','srTitle','srBeforeUrl','srAfterUrl','srPhotoUrl','srPhotoCaption','srVideoUrl','srVideoCaption','srPriceFrom','srPriceTo','srDuration','srRecovery','srFaq'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});document.getElementById('srStatus').value='draft';document.getElementById('srObjection').value='general';document.getElementById('srVideoPurpose').value='';document.getElementById('srConsent').checked=false;clearDropzone('srBeforeDropzone');clearDropzone('srAfterDropzone');clearDropzone('srVideoDropzone');}
 function editSetterResource(id){var r=_setterResources.find(function(x){return x.id===id;});if(!r)return;var set=function(k,v){var e=document.getElementById(k);if(e)e.value=v||'';};set('srId',r.id);set('srTreatment',r.treatment);set('srTitle',r.resource_title);set('srStatus',r.source_status||'draft');set('srObjection',r.target_objection||'general');set('srVideoPurpose',r.video_purpose||'');set('srBeforeUrl',r.before_image_url);set('srAfterUrl',r.after_image_url);set('srPhotoUrl',r.before_after_url);set('srPhotoCaption',r.before_after_caption);set('srVideoUrl',r.video_url);set('srVideoCaption',r.video_caption);set('srPriceFrom',r.price_from);set('srPriceTo',r.price_to);set('srDuration',r.duration_text);set('srRecovery',r.recovery_text);set('srFaq',r.faq_json);document.getElementById('srConsent').checked=!!r.consent_verified;if(r.before_image_url)showDropzonePreview('srBeforeDropzone',r.before_image_url,'image');else clearDropzone('srBeforeDropzone');if(r.after_image_url||r.before_after_url)showDropzonePreview('srAfterDropzone',r.after_image_url||r.before_after_url,'image');else clearDropzone('srAfterDropzone');if(r.video_url)showDropzonePreview('srVideoDropzone',r.video_url,'video');else clearDropzone('srVideoDropzone');document.getElementById('srTreatment').scrollIntoView({behavior:'smooth',block:'center'});}
 // ═══ DRAG & DROP: Subida de archivos a R2 para recursos del setter ═══
-async function uploadSetterFile(file, slot, treatment){
+async function uploadSetterFile(file, slot, treatment, onProgress){
   const currentTreatment=(treatment||document.getElementById('srTreatment').value.trim());
   if(!currentTreatment)throw new Error('Primero indica el tratamiento del caso');
+  if(file.type.startsWith('video/') && file.size>20*1024*1024){
+    return uploadSetterVideoMultipart(file,slot,currentTreatment,onProgress);
+  }
   const fd=new FormData();
   fd.append('file',file);
   fd.append('tenant_id',T);
   fd.append('treatment',currentTreatment);
   fd.append('slot',slot);
+  onProgress&&onProgress(0,file.size);
   const r=await fetch(WORKER+'/api/setter-upload',{method:'POST',headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:fd});
-  return await r.json();
+  const out=await r.json();
+  if(!r.ok)throw new Error(out.error||'No se pudo subir el archivo');
+  onProgress&&onProgress(file.size,file.size);
+  return out;
+}
+async function uploadSetterVideoMultipart(file,slot,treatment,onProgress){
+  const auth={'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')};
+  const started=await fetch(WORKER+'/api/setter-upload-multipart/start',{method:'POST',headers:auth,body:JSON.stringify({tenant_id:T,treatment:treatment,slot:slot,filename:file.name,content_type:file.type||'video/mp4',size_bytes:file.size})});
+  const start=await started.json();
+  if(!started.ok||!start.ok)throw new Error(start.error||'No se pudo iniciar la subida grande');
+  const chunkSize=Number(start.chunk_size)||5*1024*1024;
+  let uploaded=0;
+  try{
+    for(let offset=0,part=1;offset<file.size;offset+=chunkSize,part++){
+      const fd=new FormData();fd.append('tenant_id',T);fd.append('session_id',start.session_id);fd.append('part_number',String(part));fd.append('chunk',file.slice(offset,Math.min(offset+chunkSize,file.size)),file.name+'.part'+part);
+      let lastError='';let uploadedPart=false;
+      for(let attempt=0;attempt<3;attempt++){
+        const controller=new AbortController();const timeout=setTimeout(function(){controller.abort();},45000);
+        try{const response=await fetch(WORKER+'/api/setter-upload-multipart/part',{method:'POST',headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:fd,signal:controller.signal});const body=await response.json();if(response.ok&&body.ok){uploadedPart=true;clearTimeout(timeout);break;}lastError=body.error||'No se pudo subir una parte';}catch(e){lastError=attempt<2?'Reintentando la conexión…':'La conexión ha tardado demasiado';}finally{clearTimeout(timeout);}
+        await new Promise(function(resolve){setTimeout(resolve,700*(attempt+1));});
+      }
+      if(!uploadedPart)throw new Error(lastError||'No se pudo completar una parte del vídeo');
+      uploaded=Math.min(offset+chunkSize,file.size);onProgress&&onProgress(uploaded,file.size);
+    }
+    const finished=await fetch(WORKER+'/api/setter-upload-multipart/complete',{method:'POST',headers:auth,body:JSON.stringify({tenant_id:T,session_id:start.session_id})});
+    const result=await finished.json();if(!finished.ok||!result.ok)throw new Error(result.error||'No se pudo finalizar el vídeo');
+    return result;
+  }catch(error){
+    fetch(WORKER+'/api/setter-upload-multipart/abort',{method:'POST',headers:auth,body:JSON.stringify({tenant_id:T,session_id:start.session_id})}).catch(function(){});
+    throw error;
+  }
 }
 function showDropzonePreview(dropzoneId, url, type){
   const dz=document.getElementById(dropzoneId);
@@ -7414,9 +7448,10 @@ async function handleSetterFileDrop(event, slot, dropzoneId, hiddenId){
   const file=files[0];
   const dz=document.getElementById(dropzoneId);
   const placeholder=dz?dz.querySelector('[id$="Placeholder"]'):null;
-  if(placeholder)placeholder.innerHTML='<div style="font-size:.82rem;color:var(--terra);font-weight:600">Subiendo...</div>';
+  const progress=function(done,total){if(placeholder){const pct=total?Math.round(done/total*100):0;placeholder.innerHTML='<div style="font-size:.82rem;color:var(--terra);font-weight:600">Subiendo '+(file.type.startsWith('video/')?'vídeo':'archivo')+'… '+pct+'%</div><div style="height:5px;background:#f1e5dd;border-radius:9px;margin-top:.45rem;overflow:hidden"><span style="display:block;height:100%;width:'+pct+'%;background:var(--terra)"></span></div>';}};
+  progress(0,file.size);
   try{
-    const result=await uploadSetterFile(file, slot);
+    const result=await uploadSetterFile(file, slot, null, progress);
     if(result.ok&&result.url){
       document.getElementById(hiddenId).value=result.url;
       showDropzonePreview(dropzoneId, result.url, result.type||'image');
@@ -7433,9 +7468,10 @@ async function handleSetterFileSelect(input, slot, dropzoneId, hiddenId){
   const file=input.files[0]; if(!file)return;
   const dz=document.getElementById(dropzoneId);
   const placeholder=dz?dz.querySelector('[id$="Placeholder"]'):null;
-  if(placeholder)placeholder.innerHTML='<div style="font-size:.82rem;color:var(--terra);font-weight:600">Subiendo...</div>';
+  const progress=function(done,total){if(placeholder){const pct=total?Math.round(done/total*100):0;placeholder.innerHTML='<div style="font-size:.82rem;color:var(--terra);font-weight:600">Subiendo '+(file.type.startsWith('video/')?'vídeo':'archivo')+'… '+pct+'%</div><div style="height:5px;background:#f1e5dd;border-radius:9px;margin-top:.45rem;overflow:hidden"><span style="display:block;height:100%;width:'+pct+'%;background:var(--terra)"></span></div>';}};
+  progress(0,file.size);
   try{
-    const result=await uploadSetterFile(file, slot);
+    const result=await uploadSetterFile(file, slot, null, progress);
     if(result.ok&&result.url){
       document.getElementById(hiddenId).value=result.url;
       showDropzonePreview(dropzoneId, result.url, result.type||'image');
@@ -7611,6 +7647,22 @@ function renderBrainModal(){
         <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Instrucciones personalizadas <span style="font-weight:400;color:var(--muted)">(cómo debe hablar, qué debe decir, qué NO debe decir)</span></label>
         <textarea id="brainPrompt" rows="6" placeholder="Escribe aquí las instrucciones para el setter de este embudo. Ej: 'Siempre menciona que la doctora tiene 15 años de experiencia. No hables de financiación. Si preguntan por botox, redirige a labios.'" style="width:100%;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;font-size:.85rem;resize:vertical;font-family:inherit">${esc(d.custom_prompt||'')}</textarea>
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div>
+          <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Objetivo del embudo</label>
+          <textarea id="brainGoal" rows="4" placeholder="Ej: que entienda su caso, conozca a la doctora y reserve una valoración gratuita; nunca cerrar por chat." style="width:100%;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;font-size:.84rem;resize:vertical;font-family:inherit">${esc(d.funnel_goal||'')}</textarea>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:.25rem">Guía el siguiente paso, sin convertir la conversación en presión.</div>
+        </div>
+        <div>
+          <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Qué debe cualificar</label>
+          <textarea id="brainQualification" rows="4" placeholder="Ej: tratamiento de interés, objetivo estético, plazo, ciudad y preferencia de cita. Preguntar solo cuando sea natural." style="width:100%;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;font-size:.84rem;resize:vertical;font-family:inherit">${esc(d.qualification_rules||'')}</textarea>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:.25rem">El contexto útil para que el equipo atienda mejor, no un interrogatorio.</div>
+        </div>
+      </div>
+      <div>
+        <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Límites clínicos y cuándo derivar</label>
+        <textarea id="brainClinicalLimits" rows="3" placeholder="Ej: embarazo/lactancia, alergias, efectos adversos o dudas médicas: no responder clínicamente; pasar con la doctora o el equipo." style="width:100%;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;font-size:.84rem;resize:vertical;font-family:inherit">${esc(d.clinical_limits||'')}</textarea>
+      </div>
       <div>
         <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Base de conocimiento <span style="font-weight:400;color:var(--muted)">(información que el setter debe saber)</span></label>
         <textarea id="brainKB" rows="4" placeholder="Pega aquí información sobre la clínica, la doctora, los tratamientos, preguntas frecuentes, argumentos de venta..." style="width:100%;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;font-size:.85rem;resize:vertical;font-family:inherit">${esc(d.knowledge_base||'')}</textarea>
@@ -7671,6 +7723,9 @@ async function saveBrainConfig(){
     tenant_id:T, treatment:_brainTreatment,
     custom_prompt:document.getElementById('brainPrompt').value,
     knowledge_base:document.getElementById('brainKB').value,
+    funnel_goal:document.getElementById('brainGoal').value,
+    qualification_rules:document.getElementById('brainQualification').value,
+    clinical_limits:document.getElementById('brainClinicalLimits').value,
     assistant_name:document.getElementById('brainName').value,
     promo_text:document.getElementById('brainPromoText').value,
     promo_active:document.getElementById('brainPromoActive').checked?1:0,

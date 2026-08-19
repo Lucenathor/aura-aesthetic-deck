@@ -76,3 +76,8 @@
 - [x] Rediseñar la biblioteca del Setter IA con múltiples casos antes/después, vídeos explicados, galería por tratamiento y estados claros de autorización.
 - [x] Probar la subida real de imagen y vídeo a R2, sus previews y el aislamiento de archivos por clínica.
 - [x] Corregir la regla CSS de la dropzone que se está mostrando como texto dentro de la pantalla.
+- [x] Investigar configuraciones de conocimiento, recursos y evaluación en Setter IA líderes para reforzar la biblioteca de AURA.
+- [x] Someter la subida de recursos del Setter IA a una prueba de carga con vídeo de aproximadamente 100 MB y múltiples imágenes.
+- [x] Implementar soporte de carga robusta para vídeos grandes y múltiples recursos por clínica/tratamiento.
+- [x] Añadir soporte HTTP Range al servicio de recursos R2 para que los vídeos largos se reproduzcan de forma progresiva.
+- [x] Ampliar el cerebro Setter por embudo con objetivo comercial, criterios de cualificación y límites específicos de cada clínica.

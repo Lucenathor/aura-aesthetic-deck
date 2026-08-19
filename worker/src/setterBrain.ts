@@ -158,6 +158,9 @@ export function buildSetterBrainInstructions(input: {
   objectionResources?: Record<string, string[]>;
   customBrainPrompt?: string;
   knowledgeBase?: string;
+  funnelGoal?: string;
+  qualificationRules?: string;
+  clinicalLimits?: string;
   clinicPromo?: string;
   assistantName?: string;
   bookingUrl?: string;
@@ -165,7 +168,7 @@ export function buildSetterBrainInstructions(input: {
   tone?: string;
   maxSentences?: number;
 }): string {
-  const { assessment, memory, resource, objectionResources, customBrainPrompt, knowledgeBase, clinicPromo, assistantName = 'la asistente de la clínica', bookingUrl, bookingMode = 'when_ready', tone = 'cálido y profesional', maxSentences = 3 } = input;
+  const { assessment, memory, resource, objectionResources, customBrainPrompt, knowledgeBase, funnelGoal, qualificationRules, clinicalLimits, clinicPromo, assistantName = 'la asistente de la clínica', bookingUrl, bookingMode = 'when_ready', tone = 'cálido y profesional', maxSentences = 3 } = input;
   const previous = (memory.resourceHistory || []).join(', ') || 'ninguno';
   const turnCount = memory.messageCount || 0;
   const verified = resource && Number(resource.consent_verified) === 1 && resource.source_status === 'approved' && Number(resource.is_demo) !== 1;
@@ -225,6 +228,18 @@ export function buildSetterBrainInstructions(input: {
     ? `\n═══ BASE DE CONOCIMIENTO DE LA CLÍNICA ═══\n${knowledgeBase}\n(Usa esta información para responder preguntas específicas sobre la clínica, la doctora, los tratamientos y el proceso.)\n`
     : '';
 
+  const goalSection = funnelGoal
+    ? `\n═══ OBJETIVO DE ESTE EMBUDO ═══\n${funnelGoal}\n(No fuerces una reserva: utiliza este objetivo para decidir qué información obtener y cuándo proponer el siguiente paso.)\n`
+    : '';
+
+  const qualificationSection = qualificationRules
+    ? `\n═══ CUALIFICACIÓN APROBADA POR LA CLÍNICA ═══\n${qualificationRules}\n(Haz solo preguntas que sean útiles y naturales. Guarda contexto para el equipo, no conviertas la conversación en un formulario.)\n`
+    : '';
+
+  const clinicalLimitsSection = clinicalLimits
+    ? `\n═══ LÍMITES Y DERIVACIÓN CLÍNICA ═══\n${clinicalLimits}\n(Si se activa alguno, no diagnostiques ni prometas un resultado: deriva al equipo con calma.)\n`
+    : '';
+
   // Promoción activa
   const promoSection = clinicPromo
     ? `\n═══ PROMOCIÓN ACTIVA ═══\n${clinicPromo}\n(Puedes mencionar esta promoción de forma natural cuando sea relevante, pero NO la fuerces en cada mensaje.)\n`
@@ -235,7 +250,7 @@ Identidad: eres ${assistantName}. Tono: ${tone}. Respondes rápido y con natural
 Etapa actual: ${assessment.stage}. Próxima mejor acción: ${assessment.nextAction}.
 Motivo: ${assessment.reason}
 Memoria: objetivo=${memory.objective || '-'}; plazo=${memory.timeframe || '-'}; objeción=${memory.objection || '-'}; recursos ya enviados=${previous}; turnos=${turnCount}.
-${resourceRules}${objResSection}${customSection}${kbSection}${promoSection}
+${resourceRules}${objResSection}${customSection}${kbSection}${goalSection}${qualificationSection}${clinicalLimitsSection}${promoSection}
 
 ═══ REGLA ABSOLUTA: NO DAR PRECIOS EXACTOS ═══
 NUNCA digas el precio exacto de un tratamiento. NUNCA digas "parte de X €", "cuesta X €", "desde X €" ni ninguna cifra concreta.
