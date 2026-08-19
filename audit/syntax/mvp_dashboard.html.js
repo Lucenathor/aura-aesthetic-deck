@@ -3210,21 +3210,40 @@ function renderGallery(){
   if(!_galleryFunnels.length){ list.innerHTML=''; empty.style.display=''; }
   else{
     empty.style.display='none';
-    list.innerHTML=_galleryFunnels.map(f=>{
+    list.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.2rem">'+_galleryFunnels.map(f=>{
       const tpl=FUNNEL_TEMPLATES.find(t=>t.id===f.treatment);
       const name=f.headline||f.treatment_name||(tpl?tpl.name:f.treatment);
       const img=tpl?tpl.img:'assets/funnel-labios.png';
-      const url=location.origin.replace('aura-mvp.pages.dev','aura-mvp.pages.dev')+'/c/'+T+'?t='+f.treatment;
-      return '<div style="display:flex;align-items:center;gap:1rem;padding:.8rem;border:1px solid var(--line);border-radius:12px;margin-bottom:.6rem">'
-        +'<img src="'+img+'" style="width:80px;height:50px;object-fit:cover;border-radius:8px"/>'
-        +'<div style="flex:1;min-width:0"><b style="font-size:.95rem">'+esc(name)+'</b>'
-        +'<div style="font-size:.8rem;color:var(--muted);margin-top:.15rem">'+esc(f.treatment)+' · '+(f.price_from?f.price_from+'€':'—')+'</div></div>'
-        +'<div style="display:flex;gap:.4rem;flex-shrink:0">'
-        +'<button class="btn" style="padding:.4rem .7rem;font-size:.8rem" onclick="editFunnel(\''+f.treatment+'\')">✎ Editar</button>'
-        +'<button class="btn" style="padding:.4rem .7rem;font-size:.8rem" onclick="copyLink(\''+url+'\')">🔗</button>'
-        +'<button class="btn" style="padding:.4rem .7rem;font-size:.8rem;color:#c0392b" onclick="deleteFunnel(\''+f.treatment+'\')">✕</button>'
+      const url=location.origin+'/c/'+T+'?t='+f.treatment;
+      const stats=_funnelStatsCache&&_funnelStatsCache[f.treatment]||{visits:0,leads:0,appts:0};
+      const conv=stats.visits>0?Math.round(stats.appts/stats.visits*100):0;
+      const city=f.city||'';
+      const promo=f.promo_text||'';
+      return '<div style="border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--card);transition:box-shadow .2s,transform .2s" onmouseenter="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 12px 32px rgba(0,0,0,.08)\'" onmouseleave="this.style.transform=\'\';this.style.boxShadow=\'\'">'
+        +'<div style="position:relative;height:160px;overflow:hidden;background:var(--bg2)">'
+        +'<iframe src="'+esc(url)+'&preview=1" style="width:375px;height:667px;border:none;transform:scale(.43);transform-origin:top left;pointer-events:none;position:absolute;top:0;left:50%;margin-left:-80px" loading="lazy" tabindex="-1"></iframe>'
+        +'<div style="position:absolute;top:.6rem;right:.6rem;display:flex;gap:.3rem">'
+        +(promo?'<span style="background:#e74c3c;color:#fff;font-size:.65rem;padding:.2rem .5rem;border-radius:99px;font-weight:700">PROMO</span>':'')
+        +(city?'<span style="background:var(--terra);color:#fff;font-size:.65rem;padding:.2rem .5rem;border-radius:99px;font-weight:700">'+esc(city)+'</span>':'')
+        +'</div>'
+        +'<div style="position:absolute;bottom:0;left:0;right:0;height:40px;background:linear-gradient(transparent,var(--card))"></div>'
+        +'</div>'
+        +'<div style="padding:1rem">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem"><b style="font-size:1rem">'+esc(name)+'</b><span style="font-size:.75rem;padding:.2rem .5rem;border-radius:99px;background:#d4edda;color:#155724;font-weight:600">Activo</span></div>'
+        +(promo?'<div style="font-size:.78rem;color:#e74c3c;font-weight:600;margin-bottom:.4rem">'+esc(promo)+'</div>':'')
+        +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin-bottom:.8rem;text-align:center">'
+        +'<div style="background:var(--bg);padding:.4rem .2rem;border-radius:8px"><div style="font-size:1.1rem;font-weight:700;color:var(--ink)">'+stats.visits+'</div><div style="font-size:.65rem;color:var(--muted)">Visitas</div></div>'
+        +'<div style="background:var(--bg);padding:.4rem .2rem;border-radius:8px"><div style="font-size:1.1rem;font-weight:700;color:var(--ink)">'+stats.leads+'</div><div style="font-size:.65rem;color:var(--muted)">Leads</div></div>'
+        +'<div style="background:var(--bg);padding:.4rem .2rem;border-radius:8px"><div style="font-size:1.1rem;font-weight:700;color:var(--ink)">'+stats.appts+'</div><div style="font-size:.65rem;color:var(--muted)">Reservas</div></div>'
+        +'<div style="background:var(--bg);padding:.4rem .2rem;border-radius:8px"><div style="font-size:1.1rem;font-weight:700;color:'+(conv>=10?'#27ae60':'var(--ink)')+'">'+conv+'%</div><div style="font-size:.65rem;color:var(--muted)">Conv.</div></div>'
+        +'</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.4rem">'
+        +'<button class="btn prim" style="padding:.5rem;font-size:.78rem" onclick="editFunnel(\''+f.treatment+'\')">Editar</button>'
+        +'<button class="btn" style="padding:.5rem;font-size:.78rem" onclick="openPlayground(\''+f.treatment+'\')">Probar IA</button>'
+        +'<button class="btn" style="padding:.5rem;font-size:.78rem" onclick="copyLink(\''+url+'\')">Enlace</button>'
+        +'</div>'
         +'</div></div>';
-    }).join('');
+    }).join('')+'</div>';
   }
   // Plantillas
   const tpl=document.getElementById('funnelTemplates');
@@ -3334,6 +3353,7 @@ function updateFunnelLinks(){
   try{ document.getElementById('funnelLink').href=url; }catch(e){}
 }
 // ===== PANEL DE STATS POR EMBUDO =====
+var _funnelStatsCache={};
 async function loadFunnelStatsPanel(){
   const sel=document.getElementById('fStatsSel');
   const treatment=sel?sel.value:'';
@@ -3341,6 +3361,19 @@ async function loadFunnelStatsPanel(){
   const days=parseInt((document.getElementById('fStatsPeriod')||{}).value)||30;
   const fromDate=new Date(Date.now()-days*86400000).toISOString().slice(0,10);
   try{ const r=await fetch(WORKER+'/api/funnel-stats?tenant='+T+'&from='+fromDate+(treatment?'&treatment='+encodeURIComponent(treatment):'')); data=await r.json(); }catch(e){}
+  // Cachear stats por tratamiento para las tarjetas
+  try{
+    const allR=await fetch(WORKER+'/api/funnel-stats?tenant='+T+'&from='+fromDate);
+    const allD=await allR.json();
+    _funnelStatsCache={};
+    (allD.stats||[]).forEach(s=>{
+      const t2=s.treatment||'_all';
+      if(!_funnelStatsCache[t2])_funnelStatsCache[t2]={visits:0,leads:0,appts:0};
+      if(s.event==='pageview')_funnelStatsCache[t2].visits+=s.count;
+      if(s.event==='lead')_funnelStatsCache[t2].leads+=s.count;
+      if(s.event==='schedule')_funnelStatsCache[t2].appts+=s.count;
+    });
+  }catch(e){}
   // Poblar selector con embudos disponibles (una vez)
   if(sel&&sel.options.length<=1){
     try{ const r2=await fetch(WORKER+'/api/funnels?tenant='+T); const d2=await r2.json(); (d2.funnels||[]).forEach(f=>{ if(f.treatment){const o=document.createElement('option');o.value=f.treatment;o.textContent=f.treatment_name||f.treatment;sel.appendChild(o);} }); }catch(e){}

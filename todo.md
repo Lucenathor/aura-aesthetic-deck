@@ -63,3 +63,11 @@
 - [ ] Añadir agenda de gabinetes/aparatología y lista de espera automática.
 - [ ] Crear timeline 360º del paciente y automatizaciones de seguimiento por eventos.
 - [ ] Medir rentabilidad neta por tratamiento, profesional, canal y coste de captación.
+- [ ] Rediseñar sección de Embudos como motor de ventas profesional: preview real, editor sin código, stats por embudo, playground IA, config cerebro, segmentación ciudad/promo.
+- [ ] Preview funcional del embudo (iframe real en vez de código roto).
+- [ ] Editor sin código: campos editables (título, promo, ciudad, imagen, Meta Pixel, slug) con preview en vivo.
+- [ ] Stats por embudo: visitas → quiz → chat IA → reserva con tasas de conversión.
+- [ ] Playground del Setter Brain: chat en tiempo real con panel de diagnóstico (etapa, señales, recurso).
+- [ ] Configuración visible del cerebro IA: personalidad, tono, recursos, derivación, velocidad.
+- [ ] Segmentación por ciudad y promociones temporales por embudo.
+- [ ] Duplicar embudo y crear variantes por ciudad/promo.

@@ -1285,6 +1285,43 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
       </div>
 
       <!-- MODAL CREAR EMBUDO PERSONALIZADO -->
+      <!-- PLAYGROUND DEL SETTER BRAIN -->
+      <div id="playgroundModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);padding:1rem;overflow-y:auto">
+        <div style="max-width:900px;margin:2rem auto;background:#fff;border-radius:20px;overflow:hidden;display:grid;grid-template-columns:1fr 340px;min-height:70vh" id="playgroundInner">
+          <!-- Chat -->
+          <div style="display:flex;flex-direction:column;border-right:1px solid var(--line)">
+            <div style="padding:1rem 1.2rem;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between">
+              <div><b style="font-size:1.05rem" id="pgTitle">Playground IA</b><span style="font-size:.78rem;color:var(--muted);margin-left:.5rem" id="pgTreatment"></span></div>
+              <div style="display:flex;gap:.4rem">
+                <button class="btn" style="padding:.4rem .7rem;font-size:.78rem" onclick="resetPlayground()">Reiniciar</button>
+                <button class="btn" style="padding:.4rem .7rem;font-size:.78rem" onclick="closePlayground()">Cerrar</button>
+              </div>
+            </div>
+            <div id="pgMessages" style="flex:1;overflow-y:auto;padding:1rem 1.2rem;display:flex;flex-direction:column;gap:.6rem;background:var(--bg)"></div>
+            <div style="padding:.8rem 1rem;border-top:1px solid var(--line);display:flex;gap:.4rem">
+              <input id="pgInput" placeholder="Escribe como si fueras un paciente…" style="flex:1;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;font-size:.88rem" onkeydown="if(event.key==='Enter')sendPlayground()"/>
+              <button class="btn prim" style="padding:.6rem 1rem" onclick="sendPlayground()">Enviar</button>
+            </div>
+          </div>
+          <!-- Panel de diagnóstico -->
+          <div style="padding:1rem;overflow-y:auto;background:var(--bg2)">
+            <h4 style="margin:0 0 .8rem;font-size:.88rem;color:var(--ink-soft)">Diagnóstico del cerebro</h4>
+            <div id="pgDiag" style="font-size:.8rem;color:var(--ink-soft)">
+              <div style="margin-bottom:.6rem"><b>Etapa:</b> <span id="pgStage">—</span></div>
+              <div style="margin-bottom:.6rem"><b>Señales:</b> <span id="pgSignals">—</span></div>
+              <div style="margin-bottom:.6rem"><b>Recurso enviado:</b> <span id="pgResource">—</span></div>
+              <div style="margin-bottom:.6rem"><b>Acción sugerida:</b> <span id="pgAction">—</span></div>
+            </div>
+            <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0"/>
+            <h4 style="margin:0 0 .6rem;font-size:.88rem;color:var(--ink-soft)">Configuración activa</h4>
+            <div id="pgConfig" style="font-size:.78rem;color:var(--muted)">Cargando…</div>
+            <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0"/>
+            <h4 style="margin:0 0 .6rem;font-size:.88rem;color:var(--ink-soft)">Historial de pruebas</h4>
+            <div id="pgHistory" style="font-size:.78rem;color:var(--muted);max-height:180px;overflow-y:auto">Sin pruebas guardadas.</div>
+            <button class="btn" style="width:100%;margin-top:.8rem;padding:.5rem;font-size:.78rem" onclick="savePlaygroundTest()">Guardar esta conversación</button>
+          </div>
+        </div>
+      </div>
       <div id="createFunnelModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:1rem">
         <div style="background:#fff;border-radius:16px;max-width:520px;width:100%;padding:2rem;position:relative;max-height:90vh;overflow-y:auto">
           <button onclick="closeCreateFunnel()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--muted)">✕</button>
@@ -4766,21 +4803,40 @@ function renderGallery(){
   if(!_galleryFunnels.length){ list.innerHTML=''; empty.style.display=''; }
   else{
     empty.style.display='none';
-    list.innerHTML=_galleryFunnels.map(f=>{
+    list.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.2rem">'+_galleryFunnels.map(f=>{
       const tpl=FUNNEL_TEMPLATES.find(t=>t.id===f.treatment);
       const name=f.headline||f.treatment_name||(tpl?tpl.name:f.treatment);
       const img=tpl?tpl.img:'assets/funnel-labios.png';
-      const url=location.origin.replace('aura-mvp.pages.dev','aura-mvp.pages.dev')+'/c/'+T+'?t='+f.treatment;
-      return '<div style="display:flex;align-items:center;gap:1rem;padding:.8rem;border:1px solid var(--line);border-radius:12px;margin-bottom:.6rem">'
-        +'<img src="'+img+'" style="width:80px;height:50px;object-fit:cover;border-radius:8px"/>'
-        +'<div style="flex:1;min-width:0"><b style="font-size:.95rem">'+esc(name)+'</b>'
-        +'<div style="font-size:.8rem;color:var(--muted);margin-top:.15rem">'+esc(f.treatment)+' · '+(f.price_from?f.price_from+'€':'—')+'</div></div>'
-        +'<div style="display:flex;gap:.4rem;flex-shrink:0">'
-        +'<button class="btn" style="padding:.4rem .7rem;font-size:.8rem" onclick="editFunnel(\''+f.treatment+'\')">✎ Editar</button>'
-        +'<button class="btn" style="padding:.4rem .7rem;font-size:.8rem" onclick="copyLink(\''+url+'\')">🔗</button>'
-        +'<button class="btn" style="padding:.4rem .7rem;font-size:.8rem;color:#c0392b" onclick="deleteFunnel(\''+f.treatment+'\')">✕</button>'
+      const url=location.origin+'/c/'+T+'?t='+f.treatment;
+      const stats=_funnelStatsCache&&_funnelStatsCache[f.treatment]||{visits:0,leads:0,appts:0};
+      const conv=stats.visits>0?Math.round(stats.appts/stats.visits*100):0;
+      const city=f.city||'';
+      const promo=f.promo_text||'';
+      return '<div style="border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--card);transition:box-shadow .2s,transform .2s" onmouseenter="this.style.transform=\'translateY(-3px)\';this.style.boxShadow=\'0 12px 32px rgba(0,0,0,.08)\'" onmouseleave="this.style.transform=\'\';this.style.boxShadow=\'\'">'
+        +'<div style="position:relative;height:160px;overflow:hidden;background:var(--bg2)">'
+        +'<iframe src="'+esc(url)+'&preview=1" style="width:375px;height:667px;border:none;transform:scale(.43);transform-origin:top left;pointer-events:none;position:absolute;top:0;left:50%;margin-left:-80px" loading="lazy" tabindex="-1"></iframe>'
+        +'<div style="position:absolute;top:.6rem;right:.6rem;display:flex;gap:.3rem">'
+        +(promo?'<span style="background:#e74c3c;color:#fff;font-size:.65rem;padding:.2rem .5rem;border-radius:99px;font-weight:700">PROMO</span>':'')
+        +(city?'<span style="background:var(--terra);color:#fff;font-size:.65rem;padding:.2rem .5rem;border-radius:99px;font-weight:700">'+esc(city)+'</span>':'')
+        +'</div>'
+        +'<div style="position:absolute;bottom:0;left:0;right:0;height:40px;background:linear-gradient(transparent,var(--card))"></div>'
+        +'</div>'
+        +'<div style="padding:1rem">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem"><b style="font-size:1rem">'+esc(name)+'</b><span style="font-size:.75rem;padding:.2rem .5rem;border-radius:99px;background:#d4edda;color:#155724;font-weight:600">Activo</span></div>'
+        +(promo?'<div style="font-size:.78rem;color:#e74c3c;font-weight:600;margin-bottom:.4rem">'+esc(promo)+'</div>':'')
+        +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin-bottom:.8rem;text-align:center">'
+        +'<div style="background:var(--bg);padding:.4rem .2rem;border-radius:8px"><div style="font-size:1.1rem;font-weight:700;color:var(--ink)">'+stats.visits+'</div><div style="font-size:.65rem;color:var(--muted)">Visitas</div></div>'
+        +'<div style="background:var(--bg);padding:.4rem .2rem;border-radius:8px"><div style="font-size:1.1rem;font-weight:700;color:var(--ink)">'+stats.leads+'</div><div style="font-size:.65rem;color:var(--muted)">Leads</div></div>'
+        +'<div style="background:var(--bg);padding:.4rem .2rem;border-radius:8px"><div style="font-size:1.1rem;font-weight:700;color:var(--ink)">'+stats.appts+'</div><div style="font-size:.65rem;color:var(--muted)">Reservas</div></div>'
+        +'<div style="background:var(--bg);padding:.4rem .2rem;border-radius:8px"><div style="font-size:1.1rem;font-weight:700;color:'+(conv>=10?'#27ae60':'var(--ink)')+'">'+conv+'%</div><div style="font-size:.65rem;color:var(--muted)">Conv.</div></div>'
+        +'</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.4rem">'
+        +'<button class="btn prim" style="padding:.5rem;font-size:.78rem" onclick="editFunnel(\''+f.treatment+'\')">Editar</button>'
+        +'<button class="btn" style="padding:.5rem;font-size:.78rem" onclick="openPlayground(\''+f.treatment+'\')">Probar IA</button>'
+        +'<button class="btn" style="padding:.5rem;font-size:.78rem" onclick="copyLink(\''+url+'\')">Enlace</button>'
+        +'</div>'
         +'</div></div>';
-    }).join('');
+    }).join('')+'</div>';
   }
   // Plantillas
   const tpl=document.getElementById('funnelTemplates');
@@ -4890,6 +4946,7 @@ function updateFunnelLinks(){
   try{ document.getElementById('funnelLink').href=url; }catch(e){}
 }
 // ===== PANEL DE STATS POR EMBUDO =====
+var _funnelStatsCache={};
 async function loadFunnelStatsPanel(){
   const sel=document.getElementById('fStatsSel');
   const treatment=sel?sel.value:'';
@@ -4897,6 +4954,19 @@ async function loadFunnelStatsPanel(){
   const days=parseInt((document.getElementById('fStatsPeriod')||{}).value)||30;
   const fromDate=new Date(Date.now()-days*86400000).toISOString().slice(0,10);
   try{ const r=await fetch(WORKER+'/api/funnel-stats?tenant='+T+'&from='+fromDate+(treatment?'&treatment='+encodeURIComponent(treatment):'')); data=await r.json(); }catch(e){}
+  // Cachear stats por tratamiento para las tarjetas
+  try{
+    const allR=await fetch(WORKER+'/api/funnel-stats?tenant='+T+'&from='+fromDate);
+    const allD=await allR.json();
+    _funnelStatsCache={};
+    (allD.stats||[]).forEach(s=>{
+      const t2=s.treatment||'_all';
+      if(!_funnelStatsCache[t2])_funnelStatsCache[t2]={visits:0,leads:0,appts:0};
+      if(s.event==='pageview')_funnelStatsCache[t2].visits+=s.count;
+      if(s.event==='lead')_funnelStatsCache[t2].leads+=s.count;
+      if(s.event==='schedule')_funnelStatsCache[t2].appts+=s.count;
+    });
+  }catch(e){}
   // Poblar selector con embudos disponibles (una vez)
   if(sel&&sel.options.length<=1){
     try{ const r2=await fetch(WORKER+'/api/funnels?tenant='+T); const d2=await r2.json(); (d2.funnels||[]).forEach(f=>{ if(f.treatment){const o=document.createElement('option');o.value=f.treatment;o.textContent=f.treatment_name||f.treatment;sel.appendChild(o);} }); }catch(e){}
@@ -7114,3 +7184,86 @@ if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded
 <button id="copilotFab" onclick="openCopilot()" title="Copiloto IA" style="display:none;position:fixed;right:18px;bottom:18px;z-index:9990;width:58px;height:58px;border:none;border-radius:50%;background:linear-gradient(135deg,var(--terra),#8a4533);color:#fff;font-size:1.5rem;box-shadow:0 6px 20px rgba(176,93,68,.45);cursor:pointer;transition:transform .15s ease" onmousedown="this.style.transform='scale(.94)'" onmouseup="this.style.transform='scale(1)'" onmouseleave="this.style.transform='scale(1)'">✦</button>
 </body>
 </html>
+// ===== PLAYGROUND DEL SETTER BRAIN =====
+var _pgTreatment=''; var _pgMessages=[]; var _pgSessionId='';
+function openPlayground(treatment){
+  _pgTreatment=treatment||'labios'; _pgMessages=[]; _pgSessionId='pg_'+Date.now();
+  document.getElementById('pgTitle').textContent='Playground IA';
+  document.getElementById('pgTreatment').textContent=_pgTreatment;
+  document.getElementById('pgMessages').innerHTML='<div style="text-align:center;color:var(--muted);font-size:.82rem;padding:2rem 0">Escribe un mensaje como si fueras un paciente interesado en <b>'+esc(_pgTreatment)+'</b>.<br>El Setter Brain responderá exactamente como lo haría en el embudo real.</div>';
+  document.getElementById('pgStage').textContent='—';
+  document.getElementById('pgSignals').textContent='—';
+  document.getElementById('pgResource').textContent='—';
+  document.getElementById('pgAction').textContent='—';
+  loadPlaygroundConfig();
+  document.getElementById('playgroundModal').style.display='block';
+  setTimeout(()=>document.getElementById('pgInput').focus(),100);
+}
+function closePlayground(){ document.getElementById('playgroundModal').style.display='none'; }
+function resetPlayground(){ openPlayground(_pgTreatment); }
+async function loadPlaygroundConfig(){
+  const cfg=document.getElementById('pgConfig');
+  try{
+    const r=await fetch(WORKER+'/api/admin-setter-resources?tenant='+T); const d=await r.json();
+    const resources=(d.resources||[]).filter(x=>x.treatment===_pgTreatment);
+    cfg.innerHTML='<b>Recursos para '+esc(_pgTreatment)+':</b> '+resources.length+' cargados<br>'
+      +resources.map(x=>'<span style="display:inline-block;margin:.2rem .3rem .2rem 0;padding:.15rem .4rem;background:var(--bg);border-radius:6px;font-size:.7rem">'+esc(x.resource_type)+'</span>').join('');
+  }catch(e){ cfg.textContent='No se pudo cargar la configuración.'; }
+}
+function addPgMsg(role,text){
+  _pgMessages.push({role,text});
+  const box=document.getElementById('pgMessages');
+  const isUser=role==='user';
+  box.innerHTML+=`<div style="display:flex;justify-content:${isUser?'flex-end':'flex-start'}"><div style="max-width:80%;padding:.6rem .9rem;border-radius:${isUser?'14px 14px 4px 14px':'14px 14px 14px 4px'};background:${isUser?'var(--terra)':'#fff'};color:${isUser?'#fff':'var(--ink)'};font-size:.88rem;line-height:1.4;box-shadow:0 2px 6px rgba(0,0,0,.06)">${esc(text)}</div></div>`;
+  box.scrollTop=box.scrollHeight;
+}
+async function sendPlayground(){
+  const inp=document.getElementById('pgInput'); const msg=inp.value.trim(); if(!msg)return;
+  inp.value=''; addPgMsg('user',msg);
+  // Indicador de escritura
+  const box=document.getElementById('pgMessages');
+  box.innerHTML+='<div id="pgTyping" style="display:flex;justify-content:flex-start"><div style="padding:.5rem .8rem;border-radius:14px;background:#fff;color:var(--muted);font-size:.82rem">Escribiendo…</div></div>';
+  box.scrollTop=box.scrollHeight;
+  try{
+    const r=await fetch(WORKER+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      tenant_id:T, treatment:_pgTreatment, message:msg, session_id:_pgSessionId, playground:true
+    })});
+    const d=await r.json();
+    const typing=document.getElementById('pgTyping'); if(typing)typing.remove();
+    addPgMsg('assistant',d.reply||d.message||'(sin respuesta)');
+    // Actualizar diagnóstico
+    if(d.setter_diag){
+      document.getElementById('pgStage').textContent=d.setter_diag.stage||'—';
+      document.getElementById('pgSignals').textContent=(d.setter_diag.signals||[]).join(', ')||'—';
+      document.getElementById('pgResource').textContent=d.setter_diag.resource_sent||'Ninguno';
+      document.getElementById('pgAction').textContent=d.setter_diag.action||'—';
+    }
+  }catch(e){
+    const typing=document.getElementById('pgTyping'); if(typing)typing.remove();
+    addPgMsg('assistant','Error al conectar con el Setter Brain.');
+  }
+}
+function savePlaygroundTest(){
+  if(!_pgMessages.length){if(typeof toast==='function')toast('No hay conversación que guardar','error');return;}
+  const tests=JSON.parse(localStorage.getItem('aura_pg_tests_'+T)||'[]');
+  tests.unshift({treatment:_pgTreatment,date:new Date().toISOString(),messages:_pgMessages});
+  if(tests.length>20)tests.length=20;
+  localStorage.setItem('aura_pg_tests_'+T,JSON.stringify(tests));
+  renderPgHistory();
+  if(typeof toast==='function')toast('Conversación guardada ✓');
+}
+function renderPgHistory(){
+  const tests=JSON.parse(localStorage.getItem('aura_pg_tests_'+T)||'[]');
+  const el=document.getElementById('pgHistory');
+  if(!tests.length){el.textContent='Sin pruebas guardadas.';return;}
+  el.innerHTML=tests.slice(0,10).map((t,i)=>'<div style="padding:.3rem 0;border-bottom:1px solid var(--line);cursor:pointer" onclick="viewPgTest('+i+')"><b>'+esc(t.treatment)+'</b> · '+new Date(t.date).toLocaleDateString('es-ES')+'<span style="float:right;color:var(--muted)">'+t.messages.length+' msgs</span></div>').join('');
+}
+function viewPgTest(idx){
+  const tests=JSON.parse(localStorage.getItem('aura_pg_tests_'+T)||'[]');
+  const t=tests[idx]; if(!t)return;
+  _pgMessages=t.messages; _pgTreatment=t.treatment;
+  document.getElementById('pgTreatment').textContent=t.treatment;
+  const box=document.getElementById('pgMessages'); box.innerHTML='';
+  t.messages.forEach(m=>addPgMsg(m.role,m.text));
+}
+// ===== FIN PLAYGROUND =====

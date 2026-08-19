@@ -93,6 +93,7 @@ function applyQuizContent(){
     Object.keys(idxByQ).forEach(k=>{ const c=cq[k]; const i=idxByQ[k]; if(c&&QUIZ[i]){ if(c.pregunta)QUIZ[i].q=c.pregunta; if(c.opciones&&c.opciones.length)QUIZ[i].opts=c.opciones.map(t=>({em:'',t})); } });
   }catch(e){}
 }
+function startQuiz(){ applyQuizContent(); qi=0; renderQ(); trackFunnelEvent('quiz_start'); }
 /* ============ preview: navegar pantallas desde el editor ============ */
 window.addEventListener('message',function(ev){ try{ const d=ev.data||{}; if(d.aura==='goto'){ if(d.screen==='hero')go('vHero'); else if(d.screen==='quiz'){go('vQuiz');startQuiz();} else if(d.screen==='result')go('vResult'); else if(d.screen==='chat')go('vChat'); } }catch(e){} });
 /* ============ NAV ============ */
