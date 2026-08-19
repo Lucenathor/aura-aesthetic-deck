@@ -138,7 +138,7 @@ function applyRolePerms(){
   const pc=document.getElementById('profitCard'); if(pc) pc.style.display=CAN_FINANCE?'':'none';
   const ec=document.getElementById('empCard'); if(ec) ec.style.display=CAN_FINANCE?'':'none';
   // Administración: solo Super Admin
-  const na=document.getElementById('navAdmin'); if(na) na.style.display = (ROLE==='superadmin') ? 'flex' : 'none';
+  const na=document.getElementById('navAdmin'); if(na) na.style.display = (ROLE==='superadmin'||ROLE==='owner') ? 'flex' : 'none';
   // Copiloto IA global: visible para propietario, finanzas, recepción y super admin
   const canCopilot = (ROLE==='owner'||ROLE==='finance'||ROLE==='reception'||ROLE==='superadmin');
   const fab=document.getElementById('copilotFab'); if(fab) fab.style.display=canCopilot?'flex':'none';
@@ -4334,6 +4334,233 @@ async function coToggleVoice(){
 
 // ===== ADMINISTRACIÓN (Super Admin): onboarding de clínicas =====
 async function adminApi(path, opts){ opts=opts||{}; opts.headers=Object.assign({'Authorization':'Bearer '+(localStorage.getItem('aura_token')||''),'Content-Type':'application/json'}, opts.headers||{}); const r=await fetch(WORKER+path, opts); return r.json(); }
+
+// ===== WIZARD DE ONBOARDING (Super Admin + Admin) =====
+var _wizardData = null;
+var _wizardClinicId = null;
+var _wizardTimer = null;
+var _wizardTimerStart = null;
+
+function adminCloseOnboardingWizard(){
+  var w=document.getElementById('adminOnboardingWizard'); if(w){w.style.display='none';w.innerHTML='';}
+  var lw=document.getElementById('adminListWrap'); if(lw)lw.style.display='';
+  var dt=document.getElementById('adminDetail'); if(dt)dt.style.display='none';
+  if(_wizardTimer){clearInterval(_wizardTimer);_wizardTimer=null;}
+}
+
+async function adminOpenOnboardingWizard(){
+  var w=document.getElementById('adminOnboardingWizard'); if(!w)return;
+  var lw=document.getElementById('adminListWrap'); if(lw)lw.style.display='none';
+  var dt=document.getElementById('adminDetail'); if(dt)dt.style.display='none';
+  var ct=document.getElementById('adminContracts'); if(ct)ct.style.display='none';
+  var vc=document.getElementById('adminViralCenter'); if(vc)vc.style.display='none';
+  w.style.display=''; w.innerHTML='<div style="color:var(--muted);font-size:.9rem;padding:2rem">Cargando wizard de onboarding…</div>';
+  try{
+    var d=await adminApi('/api/admin-onboarding-overview');
+    if(!d||!d.ok){w.innerHTML='<div style="color:#b0432e">No se pudo cargar.</div>';return;}
+    _wizardData=d;
+    renderWizardOverview();
+  }catch(e){w.innerHTML='<div style="color:#b0432e">Error cargando el wizard.</div>';}
+}
+
+function wizardStatusBadge(st){
+  var map={en_setup:{bg:'#fff3ed',color:'#b0432e',label:'En setup'},casi_lista:{bg:'#fef9e7',color:'#b8860b',label:'Casi lista'},lista_para_operar:{bg:'#eaf7f0',color:'#1f8c69',label:'Lista'}};
+  var s=map[st]||map.en_setup;
+  return '<span style="display:inline-block;padding:.2rem .55rem;border-radius:6px;font-size:.72rem;font-weight:700;background:'+s.bg+';color:'+s.color+'">'+s.label+'</span>';
+}
+
+function wizardFormatMin(m){
+  if(m<60) return m+'min';
+  var h=Math.floor(m/60); var r=m%60;
+  return h+'h'+(r>0?' '+r+'min':'');
+}
+
+function renderWizardOverview(){
+  var w=document.getElementById('adminOnboardingWizard'); if(!w||!_wizardData)return;
+  var clinics=_wizardData.clinics||[];
+  var cap=_wizardData.capacity||{};
+
+  var enSetup=clinics.filter(function(c){return c.onboarding_status==='en_setup';}).length;
+  var casiLista=clinics.filter(function(c){return c.onboarding_status==='casi_lista';}).length;
+  var listas=clinics.filter(function(c){return c.onboarding_status==='lista_para_operar';}).length;
+
+  var head='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem">'
+    +'<div>'
+    +'<button class="btn" style="font-size:.8rem;margin-bottom:.65rem" onclick="adminCloseOnboardingWizard()">← Volver a clínicas</button>'
+    +'<h2 style="font-family:\'Playfair Display\',serif;font-size:1.45rem;margin:0">Wizard de Onboarding</h2>'
+    +'<p style="font-size:.84rem;color:var(--muted);margin:.3rem 0 0;max-width:680px">Configura cada clínica paso a paso. Objetivo: <b>3 clínicas por jornada</b> (≈2h 20min por clínica). Cada paso auto-detecta si ya está completado.</p>'
+    +'</div>'
+    +'<div style="text-align:right;padding-top:2rem">'
+    +'<div style="font-size:.78rem;color:var(--muted);font-weight:600">Capacidad: '+cap.max_per_day+' clínicas/día · '+wizardFormatMin(cap.target_min)+' por clínica</div>'
+    +'</div>'
+    +'</div>';
+
+  // KPIs
+  var kpis='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.7rem;margin-bottom:1.2rem">'
+    +'<div style="border:1px solid var(--line);border-radius:12px;padding:.9rem 1rem;background:#fff"><div style="font-size:1.6rem;font-weight:800;color:#b0432e">'+enSetup+'</div><div style="font-size:.78rem;color:var(--muted)">En setup</div></div>'
+    +'<div style="border:1px solid var(--line);border-radius:12px;padding:.9rem 1rem;background:#fff"><div style="font-size:1.6rem;font-weight:800;color:#b8860b">'+casiLista+'</div><div style="font-size:.78rem;color:var(--muted)">Casi listas</div></div>'
+    +'<div style="border:1px solid var(--line);border-radius:12px;padding:.9rem 1rem;background:#fff"><div style="font-size:1.6rem;font-weight:800;color:#1f8c69">'+listas+'</div><div style="font-size:.78rem;color:var(--muted)">Operativas</div></div>'
+    +'<div style="border:1px solid var(--line);border-radius:12px;padding:.9rem 1rem;background:#fff"><div style="font-size:1.6rem;font-weight:800;color:var(--terra)">'+clinics.length+'</div><div style="font-size:.78rem;color:var(--muted)">Total clínicas</div></div>'
+    +'</div>';
+
+  // Lista de clínicas
+  var list=clinics.map(function(c){
+    var idJs=c.id.replace(/\x27/g,"\\x27");
+    return '<div style="border:1px solid var(--line);border-radius:14px;padding:1rem 1.1rem;background:#fff;display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;cursor:pointer;transition:box-shadow .18s cubic-bezier(.23,1,.32,1)" onmouseover="this.style.boxShadow=\'0 8px 22px -12px rgba(0,0,0,.25)\'" onmouseout="this.style.boxShadow=\'none\'" onclick="wizardOpenClinic(\''+idJs+'\')">'
+      +'<div style="min-width:220px;flex:1">'
+      +'<div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap"><span style="font-weight:700;font-size:1rem">'+escapeHtml(c.name||c.id)+'</span>'+wizardStatusBadge(c.onboarding_status)+'</div>'
+      +'<div style="font-size:.78rem;color:var(--muted);margin-top:.2rem">'+escapeHtml(c.city||'')+' · '+escapeHtml(c.owner_name||'')+(c.email?(' · '+escapeHtml(c.email)):'')+'</div>'
+      +'<div style="display:flex;align-items:center;gap:.5rem;margin-top:.55rem"><div style="flex:1;height:8px;background:var(--line);border-radius:6px;overflow:hidden;max-width:240px"><div style="height:100%;width:'+c.pct+'%;background:linear-gradient(90deg,#C8745A,#A85942);border-radius:6px;transition:width .3s"></div></div><span style="font-size:.74rem;color:var(--muted);font-weight:600">'+c.pct+'% · '+c.completed+'/'+c.total+'</span></div>'
+      +(c.remaining_min>0?'<div style="font-size:.72rem;color:var(--muted);margin-top:.25rem">Tiempo estimado restante: <b>'+wizardFormatMin(c.remaining_min)+'</b></div>':'')
+      +'</div>'
+      +'<div onclick="event.stopPropagation()"><button class="btn prim" style="font-size:.8rem" onclick="wizardOpenClinic(\''+idJs+'\')">Configurar →</button></div>'
+    +'</div>';
+  }).join('');
+
+  w.innerHTML=head+kpis+'<div style="display:grid;gap:.7rem">'+list+'</div>';
+}
+
+async function wizardOpenClinic(id){
+  var w=document.getElementById('adminOnboardingWizard'); if(!w)return;
+  _wizardClinicId=id;
+  w.innerHTML='<div style="color:var(--muted);font-size:.9rem;padding:2rem">Cargando checklist…</div>';
+  try{
+    var d=await adminApi('/api/admin-onboarding-wizard?id='+encodeURIComponent(id));
+    if(!d||!d.ok){w.innerHTML='<div style="color:#b0432e">No se pudo cargar. <a href="#" onclick="adminOpenOnboardingWizard();return false">Volver</a></div>';return;}
+    renderWizardChecklist(d);
+  }catch(e){w.innerHTML='<div style="color:#b0432e">Error. <a href="#" onclick="adminOpenOnboardingWizard();return false">Volver</a></div>';}
+}
+
+function wizardStartTimer(){
+  _wizardTimerStart=Date.now();
+  if(_wizardTimer)clearInterval(_wizardTimer);
+  _wizardTimer=setInterval(function(){
+    var el=document.getElementById('wizardChrono');
+    if(!el){clearInterval(_wizardTimer);return;}
+    var elapsed=Math.floor((Date.now()-_wizardTimerStart)/1000);
+    var m=Math.floor(elapsed/60); var s=elapsed%60;
+    el.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+    // Alerta visual si pasa del tiempo estimado
+    var maxEl=document.getElementById('wizardMaxMin');
+    if(maxEl){
+      var maxSec=parseInt(maxEl.dataset.max||'140')*60;
+      if(elapsed>maxSec) el.style.color='#b0432e';
+      else if(elapsed>maxSec*0.8) el.style.color='#b8860b';
+      else el.style.color='#1f8c69';
+    }
+  },1000);
+}
+
+function renderWizardChecklist(d){
+  var w=document.getElementById('adminOnboardingWizard'); if(!w)return;
+  var steps=d.steps||[];
+  var pct=d.pct||0;
+  var ready=pct>=100;
+
+  // Encontrar el primer paso no completado
+  var currentStep=steps.findIndex(function(s){return !s.done;});
+  if(currentStep<0) currentStep=steps.length-1;
+
+  var head='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem">'
+    +'<div>'
+    +'<button class="btn" style="font-size:.8rem;margin-bottom:.5rem" onclick="adminOpenOnboardingWizard()">← Volver a todas</button>'
+    +'<h2 style="font-family:\'Playfair Display\',serif;font-size:1.35rem;margin:0">'+escapeHtml(d.clinic_name||d.tenant_id)+'</h2>'
+    +'<div style="display:flex;align-items:center;gap:.5rem;margin-top:.3rem">'+wizardStatusBadge(d.status)+'<span style="font-size:.82rem;color:var(--muted)">'+d.completed+'/'+d.total+' pasos completados</span></div>'
+    +'</div>'
+    +'<div style="text-align:right">'
+    +'<div style="font-size:.72rem;color:var(--muted);margin-bottom:.3rem">Cronómetro de sesión</div>'
+    +'<div id="wizardChrono" style="font-size:2rem;font-weight:800;font-family:\'DM Sans\',monospace;color:#1f8c69;letter-spacing:.05em">00:00</div>'
+    +'<div id="wizardMaxMin" data-max="'+d.total_est_min+'" style="font-size:.72rem;color:var(--muted)">Objetivo: '+wizardFormatMin(d.total_est_min)+' · Restante: '+wizardFormatMin(d.remaining_min)+'</div>'
+    +'<button class="btn" style="font-size:.72rem;margin-top:.3rem" onclick="wizardStartTimer()">Iniciar cronómetro</button>'
+    +'</div>'
+  +'</div>';
+
+  // Barra de progreso
+  var bar='<div style="margin-bottom:1.2rem"><div style="height:12px;background:var(--line);border-radius:8px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#C8745A,#A85942);border-radius:8px;transition:width .4s cubic-bezier(.23,1,.32,1)"></div></div>'
+    +'<div style="display:flex;justify-content:space-between;margin-top:.3rem"><span style="font-size:.74rem;color:var(--muted);font-weight:600">Progreso: '+pct+'%</span><span style="font-size:.74rem;color:var(--muted)">'+d.daily_capacity_note+'</span></div></div>';
+
+  // Steps
+  var stepsHtml=steps.map(function(s,i){
+    var isCurrent=(i===currentStep);
+    var icon=s.done?'<span style="font-size:1.1rem;color:#1f8c69">✓</span>':'<span style="font-size:1.1rem;color:'+(isCurrent?'var(--terra)':'var(--muted)')+'">'+String(i+1)+'</span>';
+    var bg=s.done?'#f3faf6':(isCurrent?'#fff8f5':'#fff');
+    var border=s.done?'#c8e6d8':(isCurrent?'#e8c4b4':'var(--line)');
+
+    // Detalles del paso
+    var detailsHtml='';
+    if(s.details){
+      var dkeys=Object.keys(s.details);
+      if(dkeys.length>0){
+        var chips=dkeys.map(function(k){
+          var v=s.details[k];
+          var label=k.replace(/([A-Z])/g,' $1').replace(/^./,function(c){return c.toUpperCase();}).replace(/_/g,' ');
+          var chipColor=(v===true||v>0)?'#1f8c69':'#b0432e';
+          var chipBg=(v===true||v>0)?'#eaf7f0':'#fdf2f0';
+          var chipText=(typeof v==='boolean')?(v?'Sí':'No'):(typeof v==='number'?v:'—');
+          return '<span style="display:inline-block;padding:.15rem .45rem;border-radius:5px;font-size:.68rem;background:'+chipBg+';color:'+chipColor+';font-weight:600">'+label+': '+chipText+'</span>';
+        }).join(' ');
+        detailsHtml='<div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.4rem">'+chips+'</div>';
+      }
+    }
+
+    // Navegación
+    var navBtn='';
+    if(s.nav && !s.done){
+      var navMap={
+        'settings-general':"goSection('ajustes');setTimeout(function(){var b=document.querySelector('[data-stab=\\'general\\']');if(b)b.click();},200)",
+        'settings-team':"goSection('equipo')",
+        'settings-horario':"goSection('ajustes');setTimeout(function(){var b=document.querySelector('[data-stab=\\'horario\\']');if(b)b.click();},200)",
+        'settings-tratamientos':"goSection('ajustes');setTimeout(function(){var b=document.querySelector('[data-stab=\\'tratamientos\\']');if(b)b.click();},200)",
+        'settings-comunicaciones':"goSection('ajustes');setTimeout(function(){var b=document.querySelector('[data-stab=\\'comunicaciones\\']');if(b)b.click();},200)",
+        'settings-setter':"goSection('ajustes');setTimeout(function(){var b=document.querySelector('[data-stab=\\'setter\\']');if(b)b.click();},200)",
+        'settings-importar':"goSection('ajustes');setTimeout(function(){var b=document.querySelector('[data-stab=\\'importar\\']');if(b)b.click();},200)",
+        'embudos':"goSection('embudo')"
+      };
+      var action=navMap[s.nav]||"goSection('ajustes')";
+      navBtn='<button class="btn prim" style="font-size:.76rem;white-space:nowrap" onclick="adminOpenClinic(\''+(_wizardClinicId||'').replace(/\x27/g,"\\x27")+'\');setTimeout(function(){'+action+'},300)">Ir a configurar →</button>';
+    } else if(s.id==='verification' && !s.done){
+      navBtn='<button class="btn prim" style="font-size:.76rem" onclick="wizardMarkVerification(\''+(_wizardClinicId||'').replace(/\x27/g,"\\x27")+'\')">Marcar como verificado ✓</button>';
+    }
+
+    return '<div style="border:1px solid '+border+';border-radius:14px;padding:1rem 1.1rem;background:'+bg+';display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap;transition:all .2s">'
+      +'<div style="min-width:32px;text-align:center;padding-top:.1rem">'+icon+'</div>'
+      +'<div style="flex:1;min-width:200px">'
+      +'<div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap"><span style="font-weight:700;font-size:.92rem">'+s.title+'</span><span style="font-size:.68rem;color:var(--muted);background:var(--bg2);padding:.1rem .4rem;border-radius:4px">~'+s.est_min+' min</span></div>'
+      +'<div style="font-size:.8rem;color:var(--muted);margin-top:.2rem">'+s.desc+'</div>'
+      +detailsHtml
+      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:.4rem">'+navBtn+'</div>'
+    +'</div>';
+  }).join('');
+
+  // Resumen de capacidad
+  var capacityNote='<div style="border:1px solid var(--line);border-radius:12px;padding:1rem;background:var(--bg2);margin-top:1.2rem">'
+    +'<div style="font-weight:700;font-size:.88rem;margin-bottom:.4rem">Capacidad de onboarding diaria</div>'
+    +'<div style="font-size:.82rem;color:var(--muted);line-height:1.6">'
+    +'<b>Objetivo:</b> '+d.max_per_day+' clínicas por jornada de 8 horas.<br>'
+    +'<b>Tiempo por clínica:</b> '+wizardFormatMin(d.target_min_per_clinic)+' (incluye los 10 pasos).<br>'
+    +'<b>Distribución:</b> Clínica 1 (09:00-11:20) · Clínica 2 (11:40-14:00) · Descanso (14:00-15:00) · Clínica 3 (15:00-17:20) · Margen (17:20-18:00).<br>'
+    +'<b>Nota:</b> El cronómetro te ayuda a controlar el tiempo real. Si un paso se complica, anota en las notas internas y sigue con el siguiente.'
+    +'</div></div>';
+
+  w.innerHTML=head+bar+'<div style="display:grid;gap:.6rem">'+stepsHtml+'</div>'+capacityNote;
+
+  // Auto-iniciar cronómetro si no está corriendo
+  if(!_wizardTimer) wizardStartTimer();
+}
+
+async function wizardMarkVerification(id){
+  if(!confirm('¿Confirmas que has completado la verificación final (test de embudo, reserva y cobro)?')) return;
+  try{
+    var d=await adminApi('/api/admin-onboarding-wizard?id='+encodeURIComponent(id));
+    var manual=d&&d.manual?d.manual:{};
+    manual.verificacion_final=true;
+    manual.verificacion_fecha=new Date().toISOString();
+    await adminApi('/api/admin-onboarding-wizard',{method:'POST',body:JSON.stringify({id:id,manual:manual})});
+    if(typeof toast==='function')toast('Verificación completada ✓');
+    wizardOpenClinic(id);
+  }catch(e){if(typeof toast==='function')toast('Error al guardar','error');}
+}
 
 // ===== CONTRATOS FIRMADOS (Super Admin) =====
 function adminContractsBack(){ var c=document.getElementById('adminContracts'); if(c){ c.style.display='none'; c.innerHTML=''; } var lw=document.getElementById('adminListWrap'); if(lw)lw.style.display=''; var dt=document.getElementById('adminDetail'); }

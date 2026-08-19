@@ -2123,6 +2123,164 @@ export default {
           return json({ok:true,removed});
         }
 
+
+        // ============ WIZARD DE ONBOARDING — Auto-detección de estado por tenant ============
+        if (p === '/api/admin-onboarding-wizard' && req.method === 'GET') {
+          const id = url.searchParams.get('id') || '';
+          if (!id) return json({ ok:false, error:'id_required' });
+          const t:any = await env.aura_db.prepare('SELECT * FROM tenants WHERE id=?').bind(id).first();
+          if (!t) return json({ ok:false, error:'not_found' });
+
+          const cnt = async (sql:string) => { try { const r:any = await env.aura_db.prepare(sql).bind(id).first(); return r ? (r.c||0) : 0; } catch(e) { return 0; } };
+          const exists = async (sql:string) => { try { const r:any = await env.aura_db.prepare(sql).bind(id).first(); return !!r; } catch(e) { return false; } };
+
+          // 1. Identidad
+          const hasName = !!(t.name && t.name.trim());
+          const hasCity = !!(t.city && t.city.trim());
+          const hasPhone = !!(t.whatsapp && t.whatsapp.trim());
+          const hasLogo = !!(t.logo_url && t.logo_url.trim());
+          const hasColors = !!(t.brand_primary && t.brand_primary.trim());
+          const identityDone = hasName && hasCity && hasPhone && hasLogo;
+
+          // 2. Equipo y PINs
+          const teamCount = await cnt('SELECT COUNT(*) c FROM professionals WHERE tenant_id=?');
+          const teamDone = teamCount >= 1;
+
+          // 3. Horario
+          const scheduleCount = await cnt('SELECT COUNT(*) c FROM schedule_by_day WHERE tenant_id=?');
+          const scheduleDone = scheduleCount >= 1;
+
+          // 4. Catálogo de tratamientos
+          const catalogCount = await cnt('SELECT COUNT(*) c FROM treatment_catalog WHERE tenant_id=?');
+          const catalogDone = catalogCount >= 1;
+
+          // 5. Comunicaciones (WhatsApp + SMS)
+          const wa:any = await env.aura_db.prepare('SELECT connected FROM wa_config WHERE tenant_id=?').bind(id).first().catch(()=>null);
+          const waConnected = wa ? !!wa.connected : false;
+          const commsDone = waConnected;
+
+          // 6. Facturación
+          const hasNif = !!(t.nif_cif && t.nif_cif.trim());
+          const hasInvoiceSeries = !!(t.invoice_series && t.invoice_series.trim());
+          const billingDone = hasNif || hasInvoiceSeries || !!(t.legal_name && t.legal_name.trim());
+
+          // 7. Embudos
+          const funnelCount = await cnt("SELECT COUNT(*) c FROM funnels WHERE tenant_id=? AND status='active'");
+          const funnelDone = funnelCount >= 1;
+
+          // 8. Setter Brain (IA)
+          const setterConfigured = await exists('SELECT tenant_id FROM setter_brain_config WHERE tenant_id=?');
+          const setterResources = await cnt('SELECT COUNT(*) c FROM setter_resources WHERE tenant_id=?');
+          const setterDone = setterConfigured && setterResources >= 1;
+
+          // 9. Importación de datos
+          const patientCount = await cnt('SELECT COUNT(*) c FROM leads WHERE tenant_id=?');
+          const importDone = patientCount >= 1;
+
+          // 10. Verificación final (manual)
+          const ob:any = await env.aura_db.prepare('SELECT manual_json FROM admin_onboarding WHERE tenant_id=?').bind(id).first().catch(()=>null);
+          let manual:any = {}; try { if (ob?.manual_json) manual = JSON.parse(ob.manual_json); } catch(e) {}
+          const verificationDone = !!manual.verificacion_final;
+
+          // Tiempos estimados por paso (minutos)
+          const steps = [
+            { id:'identity',     title:'Identidad de la clínica',     desc:'Nombre, dirección, teléfono, logo, colores y zona horaria',  done: identityDone,     est_min: 10, details: { hasName, hasCity, hasPhone, hasLogo, hasColors }, nav:'settings-general' },
+            { id:'team',         title:'Equipo y accesos',            desc:'Profesionales, PINs y roles',                                 done: teamDone,         est_min: 15, details: { teamCount }, nav:'settings-team' },
+            { id:'schedule',     title:'Horario de trabajo',          desc:'Horario semanal y días festivos',                              done: scheduleDone,     est_min: 10, details: { scheduleCount }, nav:'settings-horario' },
+            { id:'catalog',      title:'Catálogo de tratamientos',    desc:'Tratamientos con precio, duración y buffer',                   done: catalogDone,      est_min: 20, details: { catalogCount }, nav:'settings-tratamientos' },
+            { id:'comms',        title:'Comunicaciones',              desc:'WhatsApp conectado y plantillas SMS',                          done: commsDone,        est_min: 15, details: { waConnected }, nav:'settings-comunicaciones' },
+            { id:'billing',      title:'Facturación',                 desc:'Logo factura, serie, NIF/CIF, IVA',                           done: billingDone,      est_min: 10, details: { hasNif, hasInvoiceSeries }, nav:'settings-general' },
+            { id:'funnels',      title:'Embudos de captación',        desc:'Al menos 1 embudo activo con slug y Meta Pixel',               done: funnelDone,       est_min: 15, details: { funnelCount }, nav:'embudos' },
+            { id:'setter',       title:'Setter Brain (IA)',           desc:'Configuración del setter y recursos por tratamiento',           done: setterDone,       est_min: 20, details: { setterConfigured, setterResources }, nav:'settings-setter' },
+            { id:'import',       title:'Importación de datos',        desc:'Pacientes existentes importados',                              done: importDone,       est_min: 15, details: { patientCount }, nav:'settings-importar' },
+            { id:'verification', title:'Verificación final',          desc:'Test embudo, reserva y cobro completo',                        done: verificationDone, est_min: 10, details: {}, nav:'' },
+          ];
+
+          const completedSteps = steps.filter(s => s.done).length;
+          const totalSteps = steps.length;
+          const pct = Math.round((completedSteps / totalSteps) * 100);
+          const totalEstMin = steps.reduce((a, s) => a + s.est_min, 0); // 140 min total
+          const remainingMin = steps.filter(s => !s.done).reduce((a, s) => a + s.est_min, 0);
+
+          // Estado automático
+          let status = 'en_setup';
+          if (pct === 100) status = 'lista_para_operar';
+          else if (pct >= 70) status = 'casi_lista';
+
+          return json({
+            ok: true,
+            tenant_id: id,
+            clinic_name: t.name || id,
+            status,
+            pct,
+            completed: completedSteps,
+            total: totalSteps,
+            total_est_min: totalEstMin,
+            remaining_min: remainingMin,
+            max_per_day: 3,
+            target_min_per_clinic: 140,
+            daily_capacity_note: 'Jornada 8h: 3 clínicas × 2h20min + descansos = jornada completa',
+            steps,
+            manual
+          });
+        }
+
+        // Guardar paso manual de verificación final
+        if (p === '/api/admin-onboarding-wizard' && req.method === 'POST') {
+          const b:any = await req.json();
+          const id = b.id;
+          if (!id) return json({ ok:false, error:'id_required' });
+          const manual = JSON.stringify(b.manual || {});
+          const now = Date.now();
+          const exist:any = await env.aura_db.prepare('SELECT tenant_id FROM admin_onboarding WHERE tenant_id=?').bind(id).first().catch(()=>null);
+          if (exist) {
+            await env.aura_db.prepare('UPDATE admin_onboarding SET manual_json=?, updated_at=? WHERE tenant_id=?').bind(manual, now, id).run();
+          } else {
+            await env.aura_db.prepare('INSERT INTO admin_onboarding (tenant_id,manual_json,owner_resp,updated_at) VALUES (?,?,?,?)').bind(id, manual, '', now).run();
+          }
+          return json({ ok:true });
+        }
+
+        // Lista resumen de onboarding de TODAS las clínicas (para vista de superadmin)
+        if (p === '/api/admin-onboarding-overview' && req.method === 'GET') {
+          const ts:any = await env.aura_db.prepare("SELECT id,name,city,owner_name,email,status,created_at FROM tenants WHERE status!='archived' ORDER BY created_at DESC").all();
+          const clinics:any[] = [];
+          for (const t of (ts.results || [])) {
+            const cnt2 = async (sql:string) => { try { const r:any = await env.aura_db.prepare(sql).bind(t.id).first(); return r ? (r.c||0) : 0; } catch(e) { return 0; } };
+            const exists2 = async (sql:string) => { try { const r:any = await env.aura_db.prepare(sql).bind(t.id).first(); return !!r; } catch(e) { return false; } };
+
+            let done = 0;
+            if (t.name && t.city && t.whatsapp && t.logo_url) done++;
+            if ((await cnt2('SELECT COUNT(*) c FROM professionals WHERE tenant_id=?')) >= 1) done++;
+            if ((await cnt2('SELECT COUNT(*) c FROM schedule_by_day WHERE tenant_id=?')) >= 1) done++;
+            if ((await cnt2('SELECT COUNT(*) c FROM treatment_catalog WHERE tenant_id=?')) >= 1) done++;
+            const wa2:any = await env.aura_db.prepare('SELECT connected FROM wa_config WHERE tenant_id=?').bind(t.id).first().catch(()=>null);
+            if (wa2 && wa2.connected) done++;
+            if (t.nif_cif || t.invoice_series || t.legal_name) done++;
+            if ((await cnt2("SELECT COUNT(*) c FROM funnels WHERE tenant_id=? AND status='active'")) >= 1) done++;
+            const sc = await exists2('SELECT tenant_id FROM setter_brain_config WHERE tenant_id=?');
+            const sr = await cnt2('SELECT COUNT(*) c FROM setter_resources WHERE tenant_id=?');
+            if (sc && sr >= 1) done++;
+            if ((await cnt2('SELECT COUNT(*) c FROM leads WHERE tenant_id=?')) >= 1) done++;
+            const ob2:any = await env.aura_db.prepare('SELECT manual_json FROM admin_onboarding WHERE tenant_id=?').bind(t.id).first().catch(()=>null);
+            let m2:any = {}; try { if (ob2?.manual_json) m2 = JSON.parse(ob2.manual_json); } catch(e) {}
+            if (m2.verificacion_final) done++;
+
+            const pct2 = Math.round((done / 10) * 100);
+            let st = 'en_setup';
+            if (pct2 === 100) st = 'lista_para_operar';
+            else if (pct2 >= 70) st = 'casi_lista';
+
+            clinics.push({
+              id: t.id, name: t.name, city: t.city, owner_name: t.owner_name, email: t.email,
+              tenant_status: t.status, created_at: t.created_at,
+              onboarding_status: st, pct: pct2, completed: done, total: 10,
+              remaining_min: (10 - done) * 14
+            });
+          }
+          return json({ ok:true, clinics, capacity: { max_per_day:3, target_min:140, daily_note:'Jornada 8h: 3 clínicas × 2h20min + descansos' } });
+        }
+
         return json({ ok:false, error:'unknown_admin_endpoint' });
       }
 
