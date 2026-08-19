@@ -53,7 +53,10 @@
 - [ ] Auditar los módulos de AURA y sus flujos críticos desde la perspectiva de clínica, recepción, profesional y paciente.
 - [ ] Contrastar los módulos con estándares de CRMs clínicos y SaaS líderes.
 - [ ] Elaborar una hoja de ruta priorizada por impacto comercial, riesgo operativo y complejidad.
-- [ ] Crear wizard de onboarding guiado con checklist de lanzamiento por clínica.
+- [x] Elaborar una hoja de ruta priorizada por impacto comercial, riesgo operativo y complejidad.
+- [x] Crear wizard de onboarding guiado con checklist de lanzamiento por clínica.
+- [x] Auditar y optimizar el wizard de onboarding con pruebas completas de flujo, tiempos, permisos y enlaces de configuración.
+- [x] Optimizar el wizard de onboarding con pruebas completas de flujo, tiempos, permisos y enlaces de configuración.
 - [ ] Implementar permisos granulares, auditoría de acceso clínico y consentimiento firmado con evidencia.
 - [ ] Crear presupuestos, plan de tratamiento, aceptación, anticipo y enlace de pago.
 - [ ] Conectar atribución de captación con cita, cobro y margen real por tratamiento.

@@ -1830,14 +1830,21 @@ export default {
         return json({ tenants: r.results || [] });
       }
 
-      // ============ ADMINISTRACIÓN (solo Super Admin) — onboarding de clínicas ============
+      // ============ ADMINISTRACIÓN — panel global superadmin + wizard propio para administradores ============
       if (p.startsWith('/api/admin-')) {
-        // Verificar Super Admin por sesión
+        // El superadmin puede ver todas las clínicas. Un propietario/administrador
+        // solo puede abrir y actualizar el wizard de su propia clínica.
         let tk = (req.headers.get('authorization')||'').replace(/^Bearer\s+/i,''); if(!tk) tk = url.searchParams.get('token')||'';
         if(!tk){ try{ const c=req.headers.get('cookie')||''; const m=c.match(/aura_token=([^;]+)/); if(m) tk=decodeURIComponent(m[1]); }catch(e){} }
-        const sess:any = tk ? await env.aura_db.prepare('SELECT email FROM sessions WHERE token=?').bind(tk).first() : null;
+        const sess:any = tk ? await env.aura_db.prepare('SELECT email,tenant_id FROM sessions WHERE token=?').bind(tk).first() : null;
         const ow:any = sess ? await env.aura_db.prepare('SELECT role FROM owners WHERE email=?').bind(sess.email).first() : null;
-        if (!ow || ow.role !== 'superadmin') return json({ error:'forbidden' }, 403);
+        const isSuperAdmin = !!(ow && ow.role === 'superadmin');
+        const isTenantOwner:any = sess ? await env.aura_db.prepare('SELECT 1 FROM owners WHERE email=? AND tenant_id=?').bind(sess.email, sess.tenant_id).first().catch(()=>null) : null;
+        const member:any = sess ? await env.aura_db.prepare('SELECT role FROM team_members WHERE email=? AND tenant_id=?').bind(sess.email, sess.tenant_id).first().catch(()=>null) : null;
+        const isOnboardingAdmin = !!isTenantOwner || member?.role === 'admin';
+        const isOwnWizard = p === '/api/admin-onboarding-wizard';
+        if (!isSuperAdmin && (!isOnboardingAdmin || !isOwnWizard)) return json({ error:'forbidden' }, 403);
+        if (!isSuperAdmin && req.method === 'GET' && (url.searchParams.get('id')||'') !== sess.tenant_id) return json({ error:'tenant_mismatch' }, 403);
 
         // LISTAR clínicas con estado (pacientes, SMS, WhatsApp, plan)
         if (p === '/api/admin-clinics' && req.method === 'GET') {
@@ -2160,9 +2167,10 @@ export default {
           const commsDone = waConnected;
 
           // 6. Facturación
-          const hasNif = !!(t.nif_cif && t.nif_cif.trim());
-          const hasInvoiceSeries = !!(t.invoice_series && t.invoice_series.trim());
-          const billingDone = hasNif || hasInvoiceSeries || !!(t.legal_name && t.legal_name.trim());
+          const hasNif = !!(t.nif && t.nif.trim());
+          const hasFiscalAddress = !!(t.address && t.address.trim());
+          const hasFiscalEmail = !!(t.email && t.email.trim());
+          const billingDone = hasNif && hasFiscalAddress && hasFiscalEmail;
 
           // 7. Embudos
           const funnelCount = await cnt("SELECT COUNT(*) c FROM funnels WHERE tenant_id=? AND status='active'");
@@ -2173,33 +2181,35 @@ export default {
           const setterResources = await cnt('SELECT COUNT(*) c FROM setter_resources WHERE tenant_id=?');
           const setterDone = setterConfigured && setterResources >= 1;
 
-          // 9. Importación de datos
-          const patientCount = await cnt('SELECT COUNT(*) c FROM leads WHERE tenant_id=?');
-          const importDone = patientCount >= 1;
-
-          // 10. Verificación final (manual)
+          // Estado manual compartido por importación y verificación final.
           const ob:any = await env.aura_db.prepare('SELECT manual_json FROM admin_onboarding WHERE tenant_id=?').bind(id).first().catch(()=>null);
           let manual:any = {}; try { if (ob?.manual_json) manual = JSON.parse(ob.manual_json); } catch(e) {}
+
+          // 9. Importación de datos
+          const patientCount = await cnt('SELECT COUNT(*) c FROM leads WHERE tenant_id=?');
+          const importDone = patientCount >= 1 || !!manual.no_import_needed;
+
+          // 10. Verificación final (manual)
           const verificationDone = !!manual.verificacion_final;
 
           // Tiempos estimados por paso (minutos)
           const steps = [
-            { id:'identity',     title:'Identidad de la clínica',     desc:'Nombre, dirección, teléfono, logo, colores y zona horaria',  done: identityDone,     est_min: 10, details: { hasName, hasCity, hasPhone, hasLogo, hasColors }, nav:'settings-general' },
-            { id:'team',         title:'Equipo y accesos',            desc:'Profesionales, PINs y roles',                                 done: teamDone,         est_min: 15, details: { teamCount }, nav:'settings-team' },
-            { id:'schedule',     title:'Horario de trabajo',          desc:'Horario semanal y días festivos',                              done: scheduleDone,     est_min: 10, details: { scheduleCount }, nav:'settings-horario' },
-            { id:'catalog',      title:'Catálogo de tratamientos',    desc:'Tratamientos con precio, duración y buffer',                   done: catalogDone,      est_min: 20, details: { catalogCount }, nav:'settings-tratamientos' },
-            { id:'comms',        title:'Comunicaciones',              desc:'WhatsApp conectado y plantillas SMS',                          done: commsDone,        est_min: 15, details: { waConnected }, nav:'settings-comunicaciones' },
-            { id:'billing',      title:'Facturación',                 desc:'Logo factura, serie, NIF/CIF, IVA',                           done: billingDone,      est_min: 10, details: { hasNif, hasInvoiceSeries }, nav:'settings-general' },
-            { id:'funnels',      title:'Embudos de captación',        desc:'Al menos 1 embudo activo con slug y Meta Pixel',               done: funnelDone,       est_min: 15, details: { funnelCount }, nav:'embudos' },
-            { id:'setter',       title:'Setter Brain (IA)',           desc:'Configuración del setter y recursos por tratamiento',           done: setterDone,       est_min: 20, details: { setterConfigured, setterResources }, nav:'settings-setter' },
-            { id:'import',       title:'Importación de datos',        desc:'Pacientes existentes importados',                              done: importDone,       est_min: 15, details: { patientCount }, nav:'settings-importar' },
+            { id:'identity',     title:'Identidad de la clínica',     desc:'Nombre, dirección, teléfono, logo, colores y zona horaria',  done: identityDone,     est_min: 8,  details: { hasName, hasCity, hasPhone, hasLogo, hasColors }, nav:'settings-clinica' },
+            { id:'team',         title:'Equipo y accesos',            desc:'Profesionales, PINs y roles',                                 done: teamDone,         est_min: 12, details: { teamCount }, nav:'settings-team' },
+            { id:'schedule',     title:'Horario de trabajo',          desc:'Horario semanal y días festivos',                              done: scheduleDone,     est_min: 8,  details: { scheduleCount }, nav:'settings-horario' },
+            { id:'catalog',      title:'Catálogo de tratamientos',    desc:'Tratamientos con precio, duración y buffer',                   done: catalogDone,      est_min: 18, details: { catalogCount }, nav:'settings-tratamientos' },
+            { id:'comms',        title:'Comunicaciones',              desc:'WhatsApp conectado y plantillas SMS',                          done: commsDone,        est_min: 12, details: { waConnected }, nav:'settings-comunicaciones' },
+            { id:'billing',      title:'Facturación',                 desc:'Datos fiscales, NIF/CIF, domicilio e IVA',                     done: billingDone,      est_min: 8,  details: { hasNif, hasFiscalAddress, hasFiscalEmail }, nav:'fiscal' },
+            { id:'funnels',      title:'Embudos de captación',        desc:'Al menos 1 embudo activo con slug y Meta Pixel',               done: funnelDone,       est_min: 12, details: { funnelCount }, nav:'embudos' },
+            { id:'setter',       title:'Setter Brain (IA)',           desc:'Configuración del setter y recursos por tratamiento',           done: setterDone,       est_min: 12, details: { setterConfigured, setterResources }, nav:'settings-setter' },
+            { id:'import',       title:'Importación de datos',        desc:'Sube pacientes existentes o confirma que empiezas desde cero', done: importDone,       est_min: 20, details: { patientCount, noImportNeeded:!!manual.no_import_needed }, nav:'settings-datos' },
             { id:'verification', title:'Verificación final',          desc:'Test embudo, reserva y cobro completo',                        done: verificationDone, est_min: 10, details: {}, nav:'' },
           ];
 
           const completedSteps = steps.filter(s => s.done).length;
           const totalSteps = steps.length;
           const pct = Math.round((completedSteps / totalSteps) * 100);
-          const totalEstMin = steps.reduce((a, s) => a + s.est_min, 0); // 140 min total
+          const totalEstMin = steps.reduce((a, s) => a + s.est_min, 0); // 120 min total
           const remainingMin = steps.filter(s => !s.done).reduce((a, s) => a + s.est_min, 0);
 
           // Estado automático
@@ -2218,8 +2228,8 @@ export default {
             total_est_min: totalEstMin,
             remaining_min: remainingMin,
             max_per_day: 3,
-            target_min_per_clinic: 140,
-            daily_capacity_note: 'Jornada 8h: 3 clínicas × 2h20min + descansos = jornada completa',
+            target_min_per_clinic: 120,
+            daily_capacity_note: 'Jornada 8h: 3 clínicas × 2h + comida + margen operativo',
             steps,
             manual
           });
@@ -2230,6 +2240,7 @@ export default {
           const b:any = await req.json();
           const id = b.id;
           if (!id) return json({ ok:false, error:'id_required' });
+          if (!isSuperAdmin && id !== sess.tenant_id) return json({ ok:false, error:'tenant_mismatch' }, 403);
           const manual = JSON.stringify(b.manual || {});
           const now = Date.now();
           const exist:any = await env.aura_db.prepare('SELECT tenant_id FROM admin_onboarding WHERE tenant_id=?').bind(id).first().catch(()=>null);
@@ -2256,14 +2267,15 @@ export default {
             if ((await cnt2('SELECT COUNT(*) c FROM treatment_catalog WHERE tenant_id=?')) >= 1) done++;
             const wa2:any = await env.aura_db.prepare('SELECT connected FROM wa_config WHERE tenant_id=?').bind(t.id).first().catch(()=>null);
             if (wa2 && wa2.connected) done++;
-            if (t.nif_cif || t.invoice_series || t.legal_name) done++;
+            if (t.nif && t.address && t.email) done++;
             if ((await cnt2("SELECT COUNT(*) c FROM funnels WHERE tenant_id=? AND status='active'")) >= 1) done++;
             const sc = await exists2('SELECT tenant_id FROM setter_brain_config WHERE tenant_id=?');
             const sr = await cnt2('SELECT COUNT(*) c FROM setter_resources WHERE tenant_id=?');
             if (sc && sr >= 1) done++;
-            if ((await cnt2('SELECT COUNT(*) c FROM leads WHERE tenant_id=?')) >= 1) done++;
+            const imported = (await cnt2('SELECT COUNT(*) c FROM leads WHERE tenant_id=?')) >= 1;
             const ob2:any = await env.aura_db.prepare('SELECT manual_json FROM admin_onboarding WHERE tenant_id=?').bind(t.id).first().catch(()=>null);
             let m2:any = {}; try { if (ob2?.manual_json) m2 = JSON.parse(ob2.manual_json); } catch(e) {}
+            if (imported || m2.no_import_needed) done++;
             if (m2.verificacion_final) done++;
 
             const pct2 = Math.round((done / 10) * 100);
@@ -2275,10 +2287,10 @@ export default {
               id: t.id, name: t.name, city: t.city, owner_name: t.owner_name, email: t.email,
               tenant_status: t.status, created_at: t.created_at,
               onboarding_status: st, pct: pct2, completed: done, total: 10,
-              remaining_min: (10 - done) * 14
+              remaining_min: (10 - done) * 12
             });
           }
-          return json({ ok:true, clinics, capacity: { max_per_day:3, target_min:140, daily_note:'Jornada 8h: 3 clínicas × 2h20min + descansos' } });
+          return json({ ok:true, clinics, capacity: { max_per_day:3, target_min:120, daily_note:'Jornada 8h: 3 clínicas × 2h + comida + margen operativo' } });
         }
 
         return json({ ok:false, error:'unknown_admin_endpoint' });

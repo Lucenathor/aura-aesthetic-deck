@@ -1169,8 +1169,8 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 
     <!-- ADMINISTRACIÓN (solo super admin): onboarding de clínicas -->
     <section class="view" id="v-admin">
-      <div class="top"><div><h1>Administración</h1><div class="sub2">Da de alta y configura clínicas llave en mano. Solo tú (Super Admin) ves esta sección. Cada clínica nace vacía y aislada.</div></div>
-        <div class="actions"><button class="btn" onclick="adminOpenOnboardingWizard()">Wizard onboarding</button><button class="btn" onclick="adminOpenContracts()">Contratos firmados</button><button class="btn" onclick="adminOpenViralCenter()">Centro de contenido</button><button class="btn prim" onclick="openNewClinic()">+ Nueva clínica</button></div></div>
+      <div class="top"><div><h1>Administración</h1><div class="sub2">Activa cada clínica con una checklist guiada, enlaces directos y verificaciones antes de ponerla en marcha.</div></div>
+        <div class="actions"><button class="btn" onclick="adminOpenOnboardingWizard()">Wizard onboarding</button><span id="adminGlobalActions" style="display:flex;gap:.5rem;flex-wrap:wrap"><button class="btn" onclick="adminOpenContracts()">Contratos firmados</button><button class="btn" onclick="adminOpenViralCenter()">Centro de contenido</button><button class="btn prim" onclick="openNewClinic()">+ Nueva clínica</button></span></div></div>
       <div id="adminContracts" style="display:none"></div>
       <div id="adminOnboardingWizard" style="display:none"></div>
       <div id="adminListWrap">
@@ -1404,6 +1404,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
         <div class="field" style="margin-top:.6rem"><label>Rol</label>
           <select id="tmRole">
             <option value="reception">Recepción — leads, pipeline y agenda</option>
+            <option value="admin">Administrador de onboarding — configura y pone en marcha la clínica</option>
             <option value="pro">Profesional — agenda y sus pacientes</option>
             <option value="finance">Finanzas — facturación y métricas</option>
             <option value="owner">Propietario — acceso total</option>
@@ -1677,6 +1678,7 @@ let ROLE='owner';
 // permisos: qué pestañas ve cada rol
 const PERMS={
   owner:    ['resumen','pacientes','pipeline','agenda','caja','embudo','contenido','portal','equipo','ajustes','facturacion','whatsapp','inventario'],
+  admin:    ['resumen','pacientes','pipeline','agenda','caja','embudo','equipo','ajustes','facturacion','whatsapp','inventario','admin'],
   reception:['resumen','pacientes','pipeline','agenda','caja','portal','whatsapp','inventario'],
   pro:      ['agenda','pacientes','inventario'],
   finance:  ['resumen','caja','facturacion','agenda','ajustes','inventario']
@@ -1686,14 +1688,15 @@ function applyRolePerms(){
   const allow=PERMS[ROLE]||PERMS.owner;
   document.querySelectorAll('.nav-item').forEach(n=>{ if(!allow.includes(n.dataset.v)) n.style.display='none'; });
   // etiqueta de rol en el sidebar
-  const lbl={owner:'Propietario',reception:'Recepción',pro:'Profesional',finance:'Finanzas',superadmin:'Super Admin'}[ROLE]||'Propietario';
+  const lbl={owner:'Propietario',admin:'Administrador de onboarding',reception:'Recepción',pro:'Profesional',finance:'Finanzas',superadmin:'Super Admin'}[ROLE]||'Propietario';
   const rb=document.getElementById('roleBadge'); if(rb) rb.textContent=lbl;
   // Datos financieros sensibles: solo owner / finance / superadmin
   CAN_FINANCE = (ROLE==='owner'||ROLE==='finance'||ROLE==='superadmin');
   const pc=document.getElementById('profitCard'); if(pc) pc.style.display=CAN_FINANCE?'':'none';
   const ec=document.getElementById('empCard'); if(ec) ec.style.display=CAN_FINANCE?'':'none';
-  // Administración: solo Super Admin
-  const na=document.getElementById('navAdmin'); if(na) na.style.display = (ROLE==='superadmin'||ROLE==='owner') ? 'flex' : 'none';
+  // Administración: el superadmin gestiona el conjunto; propietario/admin ve su propio onboarding.
+  const na=document.getElementById('navAdmin'); if(na) na.style.display = (ROLE==='superadmin'||ROLE==='owner'||ROLE==='admin') ? 'flex' : 'none';
+  const ga=document.getElementById('adminGlobalActions'); if(ga) ga.style.display=(ROLE==='superadmin')?'flex':'none';
   // Copiloto IA global: visible para propietario, finanzas, recepción y super admin
   const canCopilot = (ROLE==='owner'||ROLE==='finance'||ROLE==='reception'||ROLE==='superadmin');
   const fab=document.getElementById('copilotFab'); if(fab) fab.style.display=canCopilot?'flex':'none';
@@ -1702,7 +1705,7 @@ function applyRolePerms(){
 function logout(){ localStorage.removeItem('aura_token'); localStorage.removeItem('aura_tenant'); location.href='/login'; }
 
 // ===== EQUIPO =====
-const ROLE_LBL={owner:'Propietario',reception:'Recepción',pro:'Profesional',finance:'Finanzas'};
+const ROLE_LBL={owner:'Propietario',admin:'Administrador de onboarding',reception:'Recepción',pro:'Profesional',finance:'Finanzas'};
 async function loadTeam(){
   const c=document.getElementById('teamList'); if(!c)return; c.innerHTML='<div style="color:var(--muted);font-size:.85rem">Cargando…</div>';
   try{
@@ -1828,6 +1831,8 @@ function goSection(v,push){
   if(v==='whatsapp'){ try{ loadWhatsApp(); }catch(e){} }
   if(v==='inventario'){ try{ loadInventory(); }catch(e){} }
   if(v==='admin'){ try{ loadAdmin(); }catch(e){} }
+  if(v==='ajustes'){ setTimeout(function(){ var target=localStorage.getItem('aura_onboarding_target_tab'); if(target){ localStorage.removeItem('aura_onboarding_target_tab'); var tab=document.querySelector('[data-stab="'+target+'"]'); if(tab)tab.click(); } },250); }
+  if(v==='facturas'){ setTimeout(function(){ if(localStorage.getItem('aura_onboarding_open_fiscal')==='1'){ localStorage.removeItem('aura_onboarding_open_fiscal'); if(typeof openFiscalConfig==='function')openFiscalConfig(); } },350); }
   if(v==='portal'){ mountPortalCards(); loadPortalClients(); try{ loadClinicMeta(); if(typeof loadLoyalty==='function')loadLoyalty(); if(typeof loadPacks==='function')loadPacks(); if(typeof renderPortalQR==='function')renderPortalQR(); }catch(e){} }
 }
 // Mueve las cards de puntos y packs (definidas en Ajustes) a la seccion Portal del cliente
@@ -5910,6 +5915,7 @@ async function adminOpenOnboardingWizard(){
   var ct=document.getElementById('adminContracts'); if(ct)ct.style.display='none';
   var vc=document.getElementById('adminViralCenter'); if(vc)vc.style.display='none';
   w.style.display=''; w.innerHTML='<div style="color:var(--muted);font-size:.9rem;padding:2rem">Cargando wizard de onboarding…</div>';
+  if(ROLE!=='superadmin'){ wizardOpenClinic(T); return; }
   try{
     var d=await adminApi('/api/admin-onboarding-overview');
     if(!d||!d.ok){w.innerHTML='<div style="color:#b0432e">No se pudo cargar.</div>';return;}
@@ -5943,7 +5949,7 @@ function renderWizardOverview(){
     +'<div>'
     +'<button class="btn" style="font-size:.8rem;margin-bottom:.65rem" onclick="adminCloseOnboardingWizard()">← Volver a clínicas</button>'
     +'<h2 style="font-family:\'Playfair Display\',serif;font-size:1.45rem;margin:0">Wizard de Onboarding</h2>'
-    +'<p style="font-size:.84rem;color:var(--muted);margin:.3rem 0 0;max-width:680px">Configura cada clínica paso a paso. Objetivo: <b>3 clínicas por jornada</b> (≈2h 20min por clínica). Cada paso auto-detecta si ya está completado.</p>'
+    +'<p style="font-size:.84rem;color:var(--muted);margin:.3rem 0 0;max-width:680px">Configura cada clínica paso a paso. Objetivo: <b>3 clínicas por jornada</b> (2h por clínica). Cada paso detecta qué falta y evita trabajo duplicado.</p>'
     +'</div>'
     +'<div style="text-align:right;padding-top:2rem">'
     +'<div style="font-size:.78rem;color:var(--muted);font-weight:600">Capacidad: '+cap.max_per_day+' clínicas/día · '+wizardFormatMin(cap.target_min)+' por clínica</div>'
@@ -5986,6 +5992,46 @@ async function wizardOpenClinic(id){
   }catch(e){w.innerHTML='<div style="color:#b0432e">Error. <a href="#" onclick="adminOpenOnboardingWizard();return false">Volver</a></div>';}
 }
 
+function wizardGoToConfig(nav){
+  var id=_wizardClinicId||T;
+  var dest={
+    'settings-clinica':{section:'ajustes',tab:'clinica'},
+    'settings-team':{section:'equipo'},
+    'settings-horario':{section:'ajustes',tab:'horario'},
+    'settings-tratamientos':{section:'ajustes',tab:'tratamientos'},
+    'settings-comunicaciones':{section:'ajustes',tab:'comunicaciones'},
+    'settings-setter':{section:'ajustes',tab:'setter'},
+    'settings-datos':{section:'ajustes',tab:'datos'},
+    'embudos':{section:'embudo'},
+    'fiscal':{section:'facturas',fiscal:true}
+  }[nav]||{section:'ajustes'};
+
+  // Conserva el punto exacto del checklist para que el implementador vuelva en un clic.
+  localStorage.setItem('aura_onboarding_focus',id);
+  if(dest.tab) localStorage.setItem('aura_onboarding_target_tab',dest.tab);
+  if(dest.fiscal) localStorage.setItem('aura_onboarding_open_fiscal','1');
+
+  if(ROLE==='superadmin' && T!==id){
+    var u=new URL(location.href); u.searchParams.set('t',id); u.hash=dest.section; location.href=u.toString();
+    return;
+  }
+  goSection(dest.section);
+}
+
+async function wizardMarkNoImport(id){
+  if(!confirm('¿Confirmas que esta clínica empieza desde cero y no hay pacientes que importar?'))return;
+  try{
+    var d=await adminApi('/api/admin-onboarding-wizard?id='+encodeURIComponent(id));
+    var manual=d&&d.manual?d.manual:{};
+    manual.no_import_needed=true;
+    manual.no_import_needed_at=new Date().toISOString();
+    var r=await adminApi('/api/admin-onboarding-wizard',{method:'POST',body:JSON.stringify({id:id,manual:manual})});
+    if(!r||!r.ok)throw new Error('save_failed');
+    if(typeof toast==='function')toast('Importación no necesaria ✓');
+    wizardOpenClinic(id);
+  }catch(e){if(typeof toast==='function')toast('No se pudo guardar','error');}
+}
+
 function wizardStartTimer(){
   _wizardTimerStart=Date.now();
   if(_wizardTimer)clearInterval(_wizardTimer);
@@ -6018,7 +6064,7 @@ function renderWizardChecklist(d){
 
   var head='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem">'
     +'<div>'
-    +'<button class="btn" style="font-size:.8rem;margin-bottom:.5rem" onclick="adminOpenOnboardingWizard()">← Volver a todas</button>'
+    +'<button class="btn" style="font-size:.8rem;margin-bottom:.5rem" onclick="'+(ROLE==='superadmin'?'adminOpenOnboardingWizard()':'goSection(\'resumen\')')+'">'+(ROLE==='superadmin'?'← Volver a todas':'← Volver al resumen')+'</button>'
     +'<h2 style="font-family:\'Playfair Display\',serif;font-size:1.35rem;margin:0">'+escapeHtml(d.clinic_name||d.tenant_id)+'</h2>'
     +'<div style="display:flex;align-items:center;gap:.5rem;margin-top:.3rem">'+wizardStatusBadge(d.status)+'<span style="font-size:.82rem;color:var(--muted)">'+d.completed+'/'+d.total+' pasos completados</span></div>'
     +'</div>'
@@ -6061,18 +6107,8 @@ function renderWizardChecklist(d){
     // Navegación
     var navBtn='';
     if(s.nav && !s.done){
-      var navMap={
-        'settings-general':"goSection('ajustes');setTimeout(function(){var b=document.querySelector('[data-stab=\\'general\\']');if(b)b.click();},200)",
-        'settings-team':"goSection('equipo')",
-        'settings-horario':"goSection('ajustes');setTimeout(function(){var b=document.querySelector('[data-stab=\\'horario\\']');if(b)b.click();},200)",
-        'settings-tratamientos':"goSection('ajustes');setTimeout(function(){var b=document.querySelector('[data-stab=\\'tratamientos\\']');if(b)b.click();},200)",
-        'settings-comunicaciones':"goSection('ajustes');setTimeout(function(){var b=document.querySelector('[data-stab=\\'comunicaciones\\']');if(b)b.click();},200)",
-        'settings-setter':"goSection('ajustes');setTimeout(function(){var b=document.querySelector('[data-stab=\\'setter\\']');if(b)b.click();},200)",
-        'settings-importar':"goSection('ajustes');setTimeout(function(){var b=document.querySelector('[data-stab=\\'importar\\']');if(b)b.click();},200)",
-        'embudos':"goSection('embudo')"
-      };
-      var action=navMap[s.nav]||"goSection('ajustes')";
-      navBtn='<button class="btn prim" style="font-size:.76rem;white-space:nowrap" onclick="adminOpenClinic(\''+(_wizardClinicId||'').replace(/\x27/g,"\\x27")+'\');setTimeout(function(){'+action+'},300)">Ir a configurar →</button>';
+      navBtn='<button class="btn prim" style="font-size:.76rem;white-space:nowrap" onclick="wizardGoToConfig(\''+s.nav+'\')">Ir a configurar →</button>';
+      if(s.id==='import') navBtn+='<button class="btn" style="font-size:.72rem" onclick="wizardMarkNoImport(\''+(_wizardClinicId||'').replace(/\x27/g,"\\x27")+'\')">Empieza desde cero</button>';
     } else if(s.id==='verification' && !s.done){
       navBtn='<button class="btn prim" style="font-size:.76rem" onclick="wizardMarkVerification(\''+(_wizardClinicId||'').replace(/\x27/g,"\\x27")+'\')">Marcar como verificado ✓</button>';
     }
@@ -6094,7 +6130,7 @@ function renderWizardChecklist(d){
     +'<div style="font-size:.82rem;color:var(--muted);line-height:1.6">'
     +'<b>Objetivo:</b> '+d.max_per_day+' clínicas por jornada de 8 horas.<br>'
     +'<b>Tiempo por clínica:</b> '+wizardFormatMin(d.target_min_per_clinic)+' (incluye los 10 pasos).<br>'
-    +'<b>Distribución:</b> Clínica 1 (09:00-11:20) · Clínica 2 (11:40-14:00) · Descanso (14:00-15:00) · Clínica 3 (15:00-17:20) · Margen (17:20-18:00).<br>'
+    +'<b>Distribución:</b> Clínica 1 (09:00-11:00) · Clínica 2 (11:00-13:00) · Descanso (13:00-14:00) · Clínica 3 (14:00-16:00) · Margen (16:00-18:00).<br>'
     +'<b>Nota:</b> El cronómetro te ayuda a controlar el tiempo real. Si un paso se complica, anota en las notas internas y sigue con el siguiente.'
     +'</div></div>';
 
@@ -6105,9 +6141,14 @@ function renderWizardChecklist(d){
 }
 
 async function wizardMarkVerification(id){
-  if(!confirm('¿Confirmas que has completado la verificación final (test de embudo, reserva y cobro)?')) return;
   try{
     var d=await adminApi('/api/admin-onboarding-wizard?id='+encodeURIComponent(id));
+    var blockers=(d.steps||[]).filter(function(s){return s.id!=='verification'&&!s.done;});
+    if(blockers.length){
+      if(typeof toast==='function')toast('Antes completa: '+blockers.map(function(s){return s.title;}).join(', '),'error');
+      return;
+    }
+    if(!confirm('¿Confirmas que has probado el embudo, una reserva y un cobro de prueba?')) return;
     var manual=d&&d.manual?d.manual:{};
     manual.verificacion_final=true;
     manual.verificacion_fecha=new Date().toISOString();
@@ -6188,6 +6229,11 @@ function adminProgress(cl){ // estimación rápida solo con datos del listado
   return Math.round(done/total*100);
 }
 async function loadAdmin(){
+  // Los propietarios y administradores nunca cargan la lista global: van directamente
+  // a la checklist de su clínica, sin exposición de datos de otros tenants.
+  if(ROLE!=='superadmin'){ adminOpenOnboardingWizard(); return; }
+  var resume=localStorage.getItem('aura_onboarding_focus');
+  if(resume && resume===T){ localStorage.removeItem('aura_onboarding_focus'); adminOpenOnboardingWizard(); setTimeout(function(){wizardOpenClinic(T);},80); return; }
   const c=document.getElementById('adminList'); if(!c)return;
   document.getElementById('adminDetail').style.display='none';
   document.getElementById('adminListWrap').style.display='';
@@ -6250,7 +6296,8 @@ function openNewClinic(){
       if(!r||!r.ok){ if(typeof toast==='function')toast('No se pudo crear','error'); return false; }
       if(document.getElementById('ncSend').checked && email.includes('@')){ try{ await adminApi('/api/admin-send-access',{method:'POST',body:JSON.stringify({email:email,clinic_name:name})}); }catch(e){} }
       if(typeof toast==='function')toast('Clínica creada ✓');
-      loadAdmin();
+      adminOpenOnboardingWizard();
+      setTimeout(function(){ wizardOpenClinic(r.id); },120);
     });
 }
 async function adminSendAccess(id,email,name){ if(!confirm('¿Enviar email de acceso a '+email+'?'))return; var r=await adminApi('/api/admin-send-access',{method:'POST',body:JSON.stringify({email:email,clinic_name:name})}); if(typeof toast==='function')toast(r&&r.ok?'Acceso enviado ✓':'No se pudo enviar', r&&r.ok?'':'error'); if(r&&r.ok && _adminDetail && _adminDetail.id===id){ adminToggleCheck('acceso', true); } }
