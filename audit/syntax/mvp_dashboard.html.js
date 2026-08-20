@@ -5852,7 +5852,7 @@ async function loadFunnelBrainForSelector(treatment){
       indicator.innerHTML='✓ Este embudo tiene cerebro personalizado'+(brain.promo_active?' · <b>Promo activa</b>':'');
     }else{
       indicator.style.background='#eff6ff';indicator.style.color='#1d4ed8';
-      indicator.innerHTML='✓ Cerebro creado para este embudo · todavía usa la base común hasta que añadas sus instrucciones y recursos. <a href="#" onclick="openBrainModal(\''+escapeHtml(treatment)+'\');return false" style="color:var(--terra);font-weight:700">Personalizar →</a>';
+      indicator.innerHTML='✓ Cerebro creado para este embudo · todavía usa la base común hasta que añadas sus instrucciones y recursos. <a href="#" onclick="openBrainConfig(\''+escapeHtml(treatment)+'\');return false" style="color:var(--terra);font-weight:700">Personalizar →</a>';
     }
   }catch(e){}
 }
