@@ -81,3 +81,4 @@
 - [x] Implementar soporte de carga robusta para vídeos grandes y múltiples recursos por clínica/tratamiento.
 - [x] Añadir soporte HTTP Range al servicio de recursos R2 para que los vídeos largos se reproduzcan de forma progresiva.
 - [x] Ampliar el cerebro Setter por embudo con objetivo comercial, criterios de cualificación y límites específicos de cada clínica.
+- [x] Eliminar el parpadeo de la vista Resumen al recargar rutas directas del dashboard y restaurar la sección antes del primer render visible.

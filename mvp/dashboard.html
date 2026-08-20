@@ -7,6 +7,22 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <title>AURA · Panel de tu clínica</title>
+<script>
+/* Evita que la vista Resumen aparezca un instante al abrir directamente otra sección. */
+(function(){
+  try{
+    var allowed=['resumen','pacientes','pipeline','agenda','caja','embudo','contenido','equipo','ajustes','whatsapp','inventario','portal','facturacion','admin'];
+    var hash=(location.hash||'').slice(1);
+    var saved=localStorage.getItem('aura_section')||'';
+    var target=allowed.indexOf(hash)>=0?hash:saved;
+    if(target&&target!=='resumen'){
+      document.documentElement.classList.add('aura-route-pending');
+      window.__auraReleaseRoute=function(){ document.documentElement.classList.remove('aura-route-pending'); };
+      window.setTimeout(window.__auraReleaseRoute,1500);
+    }
+  }catch(e){}
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png"/><link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png"/><link rel="icon" href="/favicon.ico"/><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -27,6 +43,7 @@
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+html.aura-route-pending .app{visibility:hidden}
 ::selection{background:rgba(168,89,66,.15);color:var(--ink)}
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -2104,6 +2121,8 @@ function restoreSection(){
     if(saved.screen)EDSCREEN=saved.screen;
   }
   goSection(v,false);
+  // La app estuvo oculta solo si se cargó una ruta distinta a Resumen: mostramos la vista ya restaurada.
+  requestAnimationFrame(()=>{ try{ if(typeof window.__auraReleaseRoute==='function')window.__auraReleaseRoute(); }catch(e){} });
   if(Number.isFinite(saved.scrollY)&&saved.section===v){
     requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo({top:saved.scrollY,behavior:'instant'})));
   }
