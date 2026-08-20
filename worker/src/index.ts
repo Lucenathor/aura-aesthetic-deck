@@ -5242,7 +5242,9 @@ export default {
         return json({ ok: true });
       }
       if (p === '/api/consultations' && req.method === 'GET') {
-        const r = await env.aura_db.prepare('SELECT * FROM consultations ORDER BY created_at DESC LIMIT 200').all();
+        const tid = url.searchParams.get('tenant') || url.searchParams.get('tenant_id') || '';
+        if (!tid) return json({ error: 'missing tenant' }, 400);
+        const r = await env.aura_db.prepare('SELECT * FROM consultations WHERE tenant_id=? ORDER BY created_at DESC LIMIT 200').bind(tid).all();
         return json({ consultations: r.results });
       }
 
