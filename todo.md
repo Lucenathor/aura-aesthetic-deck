@@ -82,3 +82,5 @@
 - [x] Añadir soporte HTTP Range al servicio de recursos R2 para que los vídeos largos se reproduzcan de forma progresiva.
 - [x] Ampliar el cerebro Setter por embudo con objetivo comercial, criterios de cualificación y límites específicos de cada clínica.
 - [x] Eliminar el parpadeo de la vista Resumen al recargar rutas directas del dashboard y restaurar la sección antes del primer render visible.
+- [x] Limitar Setter IA a embudos existentes y crear automáticamente su espacio de cerebro al crear cada embudo.
+- [x] Recargar y limpiar correctamente los recursos y el selector Setter IA al cambiar de clínica para evitar cualquier contenido residual entre tenants.

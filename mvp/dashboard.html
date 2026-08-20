@@ -1912,9 +1912,18 @@ async function switchTenant(newT,options){
   // Cambia URL sin disparar una carga de documento.
   writeRoute(target,'replaceState');
   // Vacía únicamente el estado visual dependiente del tenant; la shell no se desmonta.
-  try{ EDDATA={tenant:{},funnels:[],content:{}}; _galleryFunnels=[]; _funnelStatsCache={}; }catch(e){}
+  try{
+    EDDATA={tenant:{},funnels:[],content:{}}; _galleryFunnels=[]; _funnelStatsCache={};
+    // Nunca conservar en memoria ni en pantalla recursos Setter de otra clínica.
+    _setterResources=[]; _currentSetterFunnel='';
+    var srList=document.getElementById('srList');if(srList)srList.innerHTML='<div style="padding:1rem;background:var(--bg2);border-radius:10px;color:var(--muted);font-size:.84rem">Cargando biblioteca de la clínica…</div>';
+    var srSel=document.getElementById('setterFunnelSelector');if(srSel)srSel.innerHTML='<option value="">Cargando embudos de la clínica…</option>';
+  }catch(e){}
   try{ await loadTenant(); }catch(e){}
   // Si el usuario eligió otra clínica mientras se cargaba la anterior, ignoramos la respuesta obsoleta.
+  if(epoch!==_tenantSwitchEpoch)return;
+  // Refrescar el estado aislado del Setter también si el usuario no ha abierto aún esta pestaña.
+  try{ await loadSetterBrain(T); }catch(e){}
   if(epoch!==_tenantSwitchEpoch)return;
   goSection(target,false);
   // En la siguiente pintura recupera posición del tenant si existe.
@@ -5094,6 +5103,9 @@ async function activateTemplate(id){
     content.treatment_name=tpl.name;
     if(tpl.q1)content.q1=tpl.q1; if(tpl.q3)content.q3=tpl.q3; if(tpl.q4)content.q4=tpl.q4; if(tpl.q5)content.q5=tpl.q5;
     await fetch(WORKER+'/api/content',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,treatment:tpl.id,content})});
+    // La activación de una plantilla también crea su cerebro Setter aislado.
+    // Da igual si el embudo viene de plantilla o es personalizado: la relación es 1:1.
+    await fetch(WORKER+'/api/setter-funnel-brain',{method:'POST',headers:_setterHeaders(),body:JSON.stringify({tenant_id:T,treatment:tpl.id,assistant_name:'',tone:'cálido y profesional',booking_mode:'when_ready',max_sentences:3,custom_prompt:'',knowledge_base:'',funnel_goal:'Guiar a una valoración personalizada',qualification_rules:'',clinical_limits:''})});
   }catch(e){}
   await loadFunnelGallery();
 }
@@ -5136,6 +5148,9 @@ async function createCustomFunnel(){
     if(q2p) content.q3={pregunta:q2p,opciones:q2o?q2o.split(',').map(s=>s.trim()):[]};
     if(q3p) content.q4={pregunta:q3p,opciones:q3o?q3o.split(',').map(s=>s.trim()):[]};
     await fetch(WORKER+'/api/content',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,treatment:slug,content})});
+    // Un embudo siempre nace con su espacio Setter IA aislado, aunque esté vacío.
+    // Así no existe ningún cerebro sin embudo y la relación es 1 embudo → 1 cerebro.
+    await fetch(WORKER+'/api/setter-funnel-brain',{method:'POST',headers:_setterHeaders(),body:JSON.stringify({tenant_id:T,treatment:slug,assistant_name:'',tone:'cálido y profesional',booking_mode:'when_ready',max_sentences:3,custom_prompt:'',knowledge_base:'',funnel_goal:'Guiar a una valoración personalizada',qualification_rules:'',clinical_limits:''})});
   }catch(e){}
   closeCreateFunnel();
   await loadFunnelGallery();
@@ -7382,69 +7397,45 @@ function showNotifications(){toast("Sin notificaciones nuevas","ok");}
 // ═══ SETTER BRAIN: configuración por clínica + biblioteca por tratamiento ═══
 var _setterResources=[];
 function _setterHeaders(){return {'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')};}
-async function loadSetterBrain(){
+async function loadSetterBrain(expectedTenant){
+  var tenant=expectedTenant||T;
   try{
-    var c=await fetch(WORKER+'/api/setter-brain-config?tenant='+encodeURIComponent(T),{headers:_setterHeaders()}).then(r=>r.json()); var x=c.config||{};
+    var c=await fetch(WORKER+'/api/setter-brain-config?tenant='+encodeURIComponent(tenant),{headers:_setterHeaders()}).then(r=>r.json());
+    // Una respuesta que llegue tarde no puede pintar datos de una clínica anterior.
+    if(tenant!==T)return;
+    var x=c.config||{};
     var set=function(id,v){var el=document.getElementById(id);if(el&&v!==undefined&&v!==null)el.value=v;};
     set('sbAssistantName',x.assistant_name||'');set('sbTone',x.tone||'cálido, claro y profesional');set('sbMaxSentences',x.max_sentences||3);set('sbBookingMode',x.booking_mode||'when_ready');set('sbFollowup',x.followup_policy||'value_first');set('sbHandoff',x.handoff_message||'');
-    var r=await fetch(WORKER+'/api/setter-resources?tenant='+encodeURIComponent(T),{headers:_setterHeaders()}).then(r=>r.json());_setterResources=r.resources||[];renderSetterResources();normalizeSetterGalleryUrls();
+    var r=await fetch(WORKER+'/api/setter-resources?tenant='+encodeURIComponent(tenant),{headers:_setterHeaders()}).then(r=>r.json());
+    if(tenant!==T)return;
+    _setterResources=r.resources||[];renderSetterResources();normalizeSetterGalleryUrls();
     populateSetterFunnelSelector();
   }catch(e){var l=document.getElementById('srList');if(l)l.innerHTML='<div style="font-size:.82rem;color:var(--muted)">No se pudieron cargar todavía los recursos del setter.</div>';}
 }
 // Poblar el selector de embudos/tratamientos con los del catálogo + los que ya tienen recursos
 function populateSetterFunnelSelector(){
   var sel=document.getElementById('setterFunnelSelector');if(!sel)return;
-  // Obtener tratamientos del catálogo local (si ya se cargaron)
-  var catalogTreatments=[];
-  try{
-    var catRows=document.querySelectorAll('#treatBody tr');
-    catRows.forEach(function(tr){var td=tr.querySelector('td');if(td)catalogTreatments.push(td.textContent.trim());});
-  }catch(e){}
-  // Obtener tratamientos que ya tienen recursos
-  var resourceTreatments=_setterResources.map(function(r){return r.treatment||'';}).filter(Boolean);
-  // Obtener embudos activos de la galería
-  var funnelTreatments=[];
-  try{
-    if(typeof EDFUNNELS!=='undefined'&&Array.isArray(EDFUNNELS)){
-      EDFUNNELS.forEach(function(f){if(f.treatment)funnelTreatments.push(f.treatment);});
-    }
-  }catch(e){}
-  // Unir y deduplicar: catálogo + recursos + embudos activos
-  var all=Array.from(new Set([].concat(catalogTreatments,resourceTreatments,funnelTreatments))).filter(Boolean).sort();
-  // Si no hay ninguno, intentar cargar del catálogo y embudos vía API
-  if(!all.length){
-    Promise.all([
-      fetch(WORKER+'/api/treatments?tenant='+encodeURIComponent(T),{headers:_setterHeaders()}).then(function(r){return r.json();}).catch(function(){return {};}),
-      fetch(WORKER+'/api/tenant/'+encodeURIComponent(T),{headers:_setterHeaders()}).then(function(r){return r.json();}).catch(function(){return {};})
-    ]).then(function(results){
-      var ts=(results[0].treatments||results[0].catalog||[]).map(function(x){return x.name||x.treatment||'';}).filter(Boolean);
-      var fs=(results[1].funnels||[]).map(function(x){return x.treatment||'';}).filter(Boolean);
-      var merged=Array.from(new Set([].concat(ts,fs))).filter(Boolean).sort();
-      if(merged.length){buildSetterFunnelOptions(sel,merged);}else{sel.innerHTML='<option value="">Sin tratamientos configurados — crea un embudo primero</option>';}
-    });
-    return;
-  }
-  buildSetterFunnelOptions(sel,all);
+  // REGLA: Setter IA solo puede existir para un embudo ya creado. El catálogo o
+  // recursos sueltos no generan opciones aquí, porque no tendrían chat que configurar.
+  fetch(WORKER+'/api/tenant/'+encodeURIComponent(T),{headers:_setterHeaders()})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var funnels=(d.funnels||[]).filter(function(f){return f.treatment&&f.treatment!=='generic';});
+      if(typeof EDFUNNELS!=='undefined')EDFUNNELS=funnels;
+      var treatments=Array.from(new Set(funnels.map(function(f){return f.treatment;}))).sort();
+      if(treatments.length){buildSetterFunnelOptions(sel,treatments);}
+      else{sel.innerHTML='<option value="">Primero crea un embudo en la sección Embudos</option>';}
+    }).catch(function(){sel.innerHTML='<option value="">No se pudieron cargar los embudos</option>';});
 }
 function buildSetterFunnelOptions(sel,treatments){
   var current=sel.value||'';
   sel.innerHTML='<option value="">— Selecciona un embudo/tratamiento —</option>'+treatments.map(function(t){
     var hasResources=_setterResources.some(function(r){return r.treatment===t;});
     return '<option value="'+escapeHtml(t)+'"'+(t===current?' selected':'')+'>'+escapeHtml(t)+(hasResources?' ✓':'')+'</option>';
-  }).join('')+'<option value="__custom__">+ Otro tratamiento…</option>';
+  }).join('');
 }
 var _currentSetterFunnel='';
 function onSetterFunnelChange(val){
-  if(val==='__custom__'){
-    var custom=prompt('Nombre del tratamiento/embudo:');
-    if(!custom){document.getElementById('setterFunnelSelector').value=_currentSetterFunnel;return;}
-    val=custom.trim();
-    // Añadir al selector
-    var sel=document.getElementById('setterFunnelSelector');
-    var opt=document.createElement('option');opt.value=val;opt.textContent=val;
-    sel.insertBefore(opt,sel.querySelector('[value="__custom__"]'));
-    sel.value=val;
-  }
   _currentSetterFunnel=val;
   // Actualizar el campo de tratamiento del formulario de recursos
   var srTreat=document.getElementById('srTreatment');
@@ -7457,7 +7448,7 @@ function onSetterFunnelChange(val){
 async function loadFunnelBrainForSelector(treatment){
   if(!treatment)return;
   try{
-    var r=await fetch(WORKER+'/api/setter-funnel-brain?tenant='+encodeURIComponent(T)+'&treatment='+encodeURIComponent(treatment),{headers:_setterHeaders()});
+    var r=await fetch(WORKER+'/api/setter-funnel-brain?tenant_id='+encodeURIComponent(T)+'&treatment='+encodeURIComponent(treatment),{headers:_setterHeaders()});
     var d=await r.json();var brain=d.brain||{};
     // Mostrar indicador de que este embudo tiene cerebro configurado
     var indicator=document.getElementById('setterFunnelBrainStatus');
@@ -7470,8 +7461,8 @@ async function loadFunnelBrainForSelector(treatment){
       indicator.style.background='#ecfdf5';indicator.style.color='#047857';
       indicator.innerHTML='✓ Este embudo tiene cerebro personalizado'+(brain.promo_active?' · <b>Promo activa</b>':'');
     }else{
-      indicator.style.background='#fff7ed';indicator.style.color='#9a3412';
-      indicator.innerHTML='⚠ Sin cerebro personalizado — usa la configuración general. <a href="#" onclick="openBrainModal(\''+escapeHtml(treatment)+'\');return false" style="color:var(--terra);font-weight:700">Configurar →</a>';
+      indicator.style.background='#eff6ff';indicator.style.color='#1d4ed8';
+      indicator.innerHTML='✓ Cerebro creado para este embudo · todavía usa la base común hasta que añadas sus instrucciones y recursos. <a href="#" onclick="openBrainModal(\''+escapeHtml(treatment)+'\');return false" style="color:var(--terra);font-weight:700">Personalizar →</a>';
     }
   }catch(e){}
 }
