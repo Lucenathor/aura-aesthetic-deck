@@ -7396,7 +7396,19 @@ function showNotifications(){toast("Sin notificaciones nuevas","ok");}
 
 // ═══ SETTER BRAIN: configuración por clínica + biblioteca por tratamiento ═══
 var _setterResources=[];
+var _setterGlobalSaveTimer=null,_setterGlobalSaving=false,_setterGlobalQueued=false,_setterGlobalRevision=0;
+var _setterBrainSaveTimer=null,_setterBrainSaving=false,_setterBrainQueued=false,_setterBrainRevision=0;
 function _setterHeaders(){return {'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')};}
+function _setterDraftKey(scope,treatment){return 'aura:setter-draft:v1:'+T+':'+scope+':'+(treatment||'');}
+function _setterDraftGet(scope,treatment){try{var d=JSON.parse(localStorage.getItem(_setterDraftKey(scope,treatment))||'null');return d&&d.payload?d:null;}catch(e){return null;}}
+function _setterDraftSet(scope,treatment,payload){try{localStorage.setItem(_setterDraftKey(scope,treatment),JSON.stringify({updated_at:Date.now(),payload:payload}));}catch(e){}}
+function _setterDraftClear(scope,treatment){try{localStorage.removeItem(_setterDraftKey(scope,treatment));}catch(e){}}
+function _setterStatus(id,text,color){var el=document.getElementById(id);if(!el)return;el.textContent=text;el.style.color=color||'var(--muted)';}
+function _setterGlobalPayload(){return {tenant_id:T,assistant_name:document.getElementById('sbAssistantName').value.trim(),tone:document.getElementById('sbTone').value,max_sentences:+document.getElementById('sbMaxSentences').value,booking_mode:document.getElementById('sbBookingMode').value,followup_policy:document.getElementById('sbFollowup').value,handoff_message:document.getElementById('sbHandoff').value.trim()};}
+function _applySetterGlobalPayload(p){if(!p)return;var set=function(id,v){var el=document.getElementById(id);if(el&&v!==undefined&&v!==null)el.value=v;};set('sbAssistantName',p.assistant_name);set('sbTone',p.tone);set('sbMaxSentences',p.max_sentences);set('sbBookingMode',p.booking_mode);set('sbFollowup',p.followup_policy);set('sbHandoff',p.handoff_message);}
+function queueSetterGlobalAutosave(){var p=_setterGlobalPayload();_setterGlobalRevision++;_setterDraftSet('global','',p);_setterStatus('sbMsg','Cambios guardados localmente · sincronizando…','var(--muted)');clearTimeout(_setterGlobalSaveTimer);_setterGlobalSaveTimer=setTimeout(function(){persistSetterGlobal(true);},850);}
+async function persistSetterGlobal(automatic){if(_setterGlobalSaving){_setterGlobalQueued=true;return;}var payload=_setterGlobalPayload(),revision=_setterGlobalRevision;_setterGlobalSaving=true;_setterStatus('sbMsg',automatic?'Guardando automáticamente…':'Guardando…','var(--muted)');try{var r=await fetch(WORKER+'/api/setter-brain-config',{method:'POST',headers:_setterHeaders(),body:JSON.stringify(payload)});if(!r.ok)throw new Error();if(revision===_setterGlobalRevision)_setterDraftClear('global','');_setterStatus('sbMsg','✓ Guardado '+new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),'#1f8c69');}catch(e){_setterDraftSet('global','',payload);_setterStatus('sbMsg','Sin conexión: borrador protegido en este dispositivo','#b45309');}finally{_setterGlobalSaving=false;if(_setterGlobalQueued){_setterGlobalQueued=false;setTimeout(function(){persistSetterGlobal(true);},40);}}}
+function bindSetterGlobalAutosave(){['sbAssistantName','sbTone','sbMaxSentences','sbBookingMode','sbFollowup','sbHandoff'].forEach(function(id){var el=document.getElementById(id);if(el&&!el.dataset.setterAutosave){el.dataset.setterAutosave='1';el.addEventListener('input',queueSetterGlobalAutosave);el.addEventListener('change',queueSetterGlobalAutosave);}});}
 async function loadSetterBrain(expectedTenant){
   var tenant=expectedTenant||T;
   try{
@@ -7406,6 +7418,7 @@ async function loadSetterBrain(expectedTenant){
     var x=c.config||{};
     var set=function(id,v){var el=document.getElementById(id);if(el&&v!==undefined&&v!==null)el.value=v;};
     set('sbAssistantName',x.assistant_name||'');set('sbTone',x.tone||'cálido, claro y profesional');set('sbMaxSentences',x.max_sentences||3);set('sbBookingMode',x.booking_mode||'when_ready');set('sbFollowup',x.followup_policy||'value_first');set('sbHandoff',x.handoff_message||'');
+    var localDraft=_setterDraftGet('global','');if(localDraft){_applySetterGlobalPayload(localDraft.payload);_setterStatus('sbMsg','Borrador local recuperado · sincronizando…','#b45309');setTimeout(function(){persistSetterGlobal(true);},80);}bindSetterGlobalAutosave();
     var r=await fetch(WORKER+'/api/setter-resources?tenant='+encodeURIComponent(tenant),{headers:_setterHeaders()}).then(r=>r.json());
     if(tenant!==T)return;
     _setterResources=r.resources||[];renderSetterResources();normalizeSetterGalleryUrls();
@@ -7481,8 +7494,7 @@ function renderSetterResourcesFiltered(treatment){
   _setterResources=backup;
 }
 async function saveSetterBrain(){
-  var msg=document.getElementById('sbMsg'); if(msg)msg.textContent='Guardando…';
-  try{var r=await fetch(WORKER+'/api/setter-brain-config',{method:'POST',headers:_setterHeaders(),body:JSON.stringify({tenant_id:T,assistant_name:document.getElementById('sbAssistantName').value.trim(),tone:document.getElementById('sbTone').value,max_sentences:+document.getElementById('sbMaxSentences').value,booking_mode:document.getElementById('sbBookingMode').value,followup_policy:document.getElementById('sbFollowup').value,handoff_message:document.getElementById('sbHandoff').value.trim()})});if(!r.ok)throw new Error();if(msg)msg.textContent='✓ Estrategia guardada';}catch(e){if(msg)msg.textContent='No se pudo guardar';}
+  await persistSetterGlobal(false);
 }
 function clearSetterResource(){['srId','srTreatment','srTitle','srBeforeUrl','srAfterUrl','srPhotoUrl','srPhotoCaption','srVideoUrl','srVideoCaption','srPriceFrom','srPriceTo','srDuration','srRecovery','srFaq'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});document.getElementById('srStatus').value='draft';document.getElementById('srObjection').value='general';document.getElementById('srVideoPurpose').value='';document.getElementById('srConsent').checked=false;clearDropzone('srBeforeDropzone');clearDropzone('srAfterDropzone');clearDropzone('srVideoDropzone');}
 function editSetterResource(id){var r=_setterResources.find(function(x){return x.id===id;});if(!r)return;var set=function(k,v){var e=document.getElementById(k);if(e)e.value=v||'';};set('srId',r.id);set('srTreatment',r.treatment);set('srTitle',r.resource_title);set('srStatus',r.source_status||'draft');set('srObjection',r.target_objection||'general');set('srVideoPurpose',r.video_purpose||'');set('srBeforeUrl',r.before_image_url);set('srAfterUrl',r.after_image_url);set('srPhotoUrl',r.before_after_url);set('srPhotoCaption',r.before_after_caption);set('srVideoUrl',r.video_url);set('srVideoCaption',r.video_caption);set('srPriceFrom',r.price_from);set('srPriceTo',r.price_to);set('srDuration',r.duration_text);set('srRecovery',r.recovery_text);set('srFaq',r.faq_json);document.getElementById('srConsent').checked=!!r.consent_verified;if(r.before_image_url)showDropzonePreview('srBeforeDropzone',r.before_image_url,'image');else clearDropzone('srBeforeDropzone');if(r.after_image_url||r.before_after_url)showDropzonePreview('srAfterDropzone',r.after_image_url||r.before_after_url,'image');else clearDropzone('srAfterDropzone');if(r.video_url)showDropzonePreview('srVideoDropzone',r.video_url,'video');else clearDropzone('srVideoDropzone');document.getElementById('srTreatment').scrollIntoView({behavior:'smooth',block:'center'});}
@@ -7740,6 +7752,7 @@ async function openBrainConfig(treatment){
     const d=await r.json();
     _brainData=d.brain||{};
   }catch(e){_brainData={};}
+  var localDraft=_setterDraftGet('funnel',treatment);if(localDraft)_brainData=Object.assign({},_brainData,localDraft.payload);
   renderBrainModal();
 }
 function renderBrainModal(){
@@ -7753,7 +7766,7 @@ function renderBrainModal(){
   const d=_brainData;
   m.innerHTML=`<div style="background:var(--card);border-radius:20px;width:100%;max-width:720px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)">
     <div style="padding:1.5rem 1.5rem 0;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:1rem">
-      <div><h3 style="margin:0;font-size:1.2rem;font-family:var(--serif)">Cerebro IA · ${esc(_brainTreatment)}</h3><p style="margin:.3rem 0 0;font-size:.8rem;color:var(--muted)">Instrucciones personalizadas para este embudo</p></div>
+      <div><h3 style="margin:0;font-size:1.2rem;font-family:var(--serif)">Cerebro IA · ${esc(_brainTreatment)}</h3><p style="margin:.3rem 0 0;font-size:.8rem;color:var(--muted)">Instrucciones personalizadas para este embudo · <span id="brainSaveStatus">${_setterDraftGet('funnel',_brainTreatment)?'Borrador recuperado · sincronizando…':'Guardado automáticamente'}</span></p></div>
       <button onclick="closeBrainModal()" style="border:none;background:none;font-size:1.5rem;cursor:pointer;color:var(--muted)">×</button>
     </div>
     <div style="padding:1.5rem;display:flex;flex-direction:column;gap:1.2rem">
@@ -7830,14 +7843,14 @@ function renderBrainModal(){
       </div>
       <div style="display:flex;gap:.6rem;justify-content:flex-end;padding-top:.5rem;border-top:1px solid var(--line)">
         <button class="btn" onclick="closeBrainModal()">Cancelar</button>
-        <button class="btn prim" onclick="saveBrainConfig()" style="min-width:140px">Guardar cerebro</button>
+        <button class="btn prim" onclick="saveBrainConfig()" style="min-width:140px">Guardar ahora</button>
       </div>
     </div>
   </div>`;
+  bindBrainAutosave();
 }
 function closeBrainModal(){const m=document.getElementById('brainModal');if(m)m.style.display='none';}
-async function saveBrainConfig(){
-  const data={
+function _brainConfigPayload(){return {
     tenant_id:T, treatment:_brainTreatment,
     custom_prompt:document.getElementById('brainPrompt').value,
     knowledge_base:document.getElementById('brainKB').value,
@@ -7851,13 +7864,21 @@ async function saveBrainConfig(){
     tone:document.getElementById('brainTone').value,
     booking_mode:document.getElementById('brainBooking').value,
     max_sentences:3
-  };
+  };}
+function _brainSaveStatus(text,color){_setterStatus('brainSaveStatus',text,color);}
+function queueBrainAutosave(){if(!_brainTreatment)return;var p=_brainConfigPayload();_setterBrainRevision++;_setterDraftSet('funnel',_brainTreatment,p);_brainSaveStatus('Cambios guardados localmente · sincronizando…','var(--muted)');clearTimeout(_setterBrainSaveTimer);_setterBrainSaveTimer=setTimeout(function(){saveBrainConfig({auto:true});},900);}
+function bindBrainAutosave(){['brainName','brainPrompt','brainGoal','brainQualification','brainClinicalLimits','brainKB','brainPromoActive','brainPromoText','brainCity','brainTone','brainBooking'].forEach(function(id){var el=document.getElementById(id);if(el&&!el.dataset.brainAutosave){el.dataset.brainAutosave='1';el.addEventListener('input',queueBrainAutosave);el.addEventListener('change',queueBrainAutosave);}});}
+async function saveBrainConfig(options){
+  var automatic=!!(options&&options.auto);if(_setterBrainSaving){_setterBrainQueued=true;return;}
+  const data=_brainConfigPayload(),revision=_setterBrainRevision;
+  _setterBrainSaving=true;_brainSaveStatus(automatic?'Guardando automáticamente…':'Guardando…','var(--muted)');
   try{
     const r=await fetch(WORKER+'/api/setter-funnel-brain',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify(data)});
     const d=await r.json();
-    if(d.ok){if(typeof toast==='function')toast('Cerebro guardado para '+_brainTreatment);closeBrainModal();}
-    else{if(typeof toast==='function')toast('Error al guardar','error');}
-  }catch(e){if(typeof toast==='function')toast('Error de conexión','error');}
+    if(d.ok){if(revision===_setterBrainRevision)_setterDraftClear('funnel',_brainTreatment);_brainSaveStatus('✓ Guardado '+new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),'#1f8c69');if(!automatic&&typeof toast==='function')toast('Cerebro guardado para '+_brainTreatment);}
+    else{throw new Error(d.error||'Error al guardar');}
+  }catch(e){_setterDraftSet('funnel',_brainTreatment,data);_brainSaveStatus('Sin conexión: borrador protegido en este dispositivo','#b45309');if(!automatic&&typeof toast==='function')toast('No se pudo sincronizar: borrador protegido','error');
+  }finally{_setterBrainSaving=false;if(_setterBrainQueued){_setterBrainQueued=false;setTimeout(function(){saveBrainConfig({auto:true});},40);}}
 }
 async function handleBrainFile(input){
   const file=input.files[0]; if(!file)return;
@@ -7865,9 +7886,10 @@ async function handleBrainFile(input){
   status.textContent='Leyendo archivo...';
   try{
     const text=await file.text();
-    const kb=document.getElementById('brainKB');
-    kb.value=(kb.value?kb.value+'\n\n---\n\n':'')+text;
-    status.textContent='Archivo añadido a la base de conocimiento';
+        const kb=document.getElementById('brainKB');
+        kb.value=(kb.value?kb.value+'\n\n---\n\n':'')+text;
+        status.textContent='Archivo añadido a la base de conocimiento';
+        queueBrainAutosave();
   }catch(e){status.textContent='Error al leer el archivo';}
 }
 let _brainRecorder=null;
@@ -7896,6 +7918,7 @@ async function startBrainAudio(){
           const kb=document.getElementById('brainKB');
           kb.value=(kb.value?kb.value+'\n\n---\n\n':'')+d.text;
           status.textContent='Audio transcrito y añadido';
+          queueBrainAutosave();
         }else{status.textContent='No se pudo transcribir';}
       }catch(e){status.textContent='Error al transcribir';}
     };

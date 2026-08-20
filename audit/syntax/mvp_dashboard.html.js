@@ -289,9 +289,18 @@ async function switchTenant(newT,options){
   // Cambia URL sin disparar una carga de documento.
   writeRoute(target,'replaceState');
   // Vacía únicamente el estado visual dependiente del tenant; la shell no se desmonta.
-  try{ EDDATA={tenant:{},funnels:[],content:{}}; _galleryFunnels=[]; _funnelStatsCache={}; }catch(e){}
+  try{
+    EDDATA={tenant:{},funnels:[],content:{}}; _galleryFunnels=[]; _funnelStatsCache={};
+    // Nunca conservar en memoria ni en pantalla recursos Setter de otra clínica.
+    _setterResources=[]; _currentSetterFunnel='';
+    var srList=document.getElementById('srList');if(srList)srList.innerHTML='<div style="padding:1rem;background:var(--bg2);border-radius:10px;color:var(--muted);font-size:.84rem">Cargando biblioteca de la clínica…</div>';
+    var srSel=document.getElementById('setterFunnelSelector');if(srSel)srSel.innerHTML='<option value="">Cargando embudos de la clínica…</option>';
+  }catch(e){}
   try{ await loadTenant(); }catch(e){}
   // Si el usuario eligió otra clínica mientras se cargaba la anterior, ignoramos la respuesta obsoleta.
+  if(epoch!==_tenantSwitchEpoch)return;
+  // Refrescar el estado aislado del Setter también si el usuario no ha abierto aún esta pestaña.
+  try{ await loadSetterBrain(T); }catch(e){}
   if(epoch!==_tenantSwitchEpoch)return;
   goSection(target,false);
   // En la siguiente pintura recupera posición del tenant si existe.
@@ -3471,6 +3480,9 @@ async function activateTemplate(id){
     content.treatment_name=tpl.name;
     if(tpl.q1)content.q1=tpl.q1; if(tpl.q3)content.q3=tpl.q3; if(tpl.q4)content.q4=tpl.q4; if(tpl.q5)content.q5=tpl.q5;
     await fetch(WORKER+'/api/content',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,treatment:tpl.id,content})});
+    // La activación de una plantilla también crea su cerebro Setter aislado.
+    // Da igual si el embudo viene de plantilla o es personalizado: la relación es 1:1.
+    await fetch(WORKER+'/api/setter-funnel-brain',{method:'POST',headers:_setterHeaders(),body:JSON.stringify({tenant_id:T,treatment:tpl.id,assistant_name:'',tone:'cálido y profesional',booking_mode:'when_ready',max_sentences:3,custom_prompt:'',knowledge_base:'',funnel_goal:'Guiar a una valoración personalizada',qualification_rules:'',clinical_limits:''})});
   }catch(e){}
   await loadFunnelGallery();
 }
@@ -3513,6 +3525,9 @@ async function createCustomFunnel(){
     if(q2p) content.q3={pregunta:q2p,opciones:q2o?q2o.split(',').map(s=>s.trim()):[]};
     if(q3p) content.q4={pregunta:q3p,opciones:q3o?q3o.split(',').map(s=>s.trim()):[]};
     await fetch(WORKER+'/api/content',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,treatment:slug,content})});
+    // Un embudo siempre nace con su espacio Setter IA aislado, aunque esté vacío.
+    // Así no existe ningún cerebro sin embudo y la relación es 1 embudo → 1 cerebro.
+    await fetch(WORKER+'/api/setter-funnel-brain',{method:'POST',headers:_setterHeaders(),body:JSON.stringify({tenant_id:T,treatment:slug,assistant_name:'',tone:'cálido y profesional',booking_mode:'when_ready',max_sentences:3,custom_prompt:'',knowledge_base:'',funnel_goal:'Guiar a una valoración personalizada',qualification_rules:'',clinical_limits:''})});
   }catch(e){}
   closeCreateFunnel();
   await loadFunnelGallery();
@@ -5758,70 +5773,59 @@ function showNotifications(){toast("Sin notificaciones nuevas","ok");}
 
 // ═══ SETTER BRAIN: configuración por clínica + biblioteca por tratamiento ═══
 var _setterResources=[];
+var _setterGlobalSaveTimer=null,_setterGlobalSaving=false,_setterGlobalQueued=false,_setterGlobalRevision=0;
+var _setterBrainSaveTimer=null,_setterBrainSaving=false,_setterBrainQueued=false,_setterBrainRevision=0;
 function _setterHeaders(){return {'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')};}
-async function loadSetterBrain(){
+function _setterDraftKey(scope,treatment){return 'aura:setter-draft:v1:'+T+':'+scope+':'+(treatment||'');}
+function _setterDraftGet(scope,treatment){try{var d=JSON.parse(localStorage.getItem(_setterDraftKey(scope,treatment))||'null');return d&&d.payload?d:null;}catch(e){return null;}}
+function _setterDraftSet(scope,treatment,payload){try{localStorage.setItem(_setterDraftKey(scope,treatment),JSON.stringify({updated_at:Date.now(),payload:payload}));}catch(e){}}
+function _setterDraftClear(scope,treatment){try{localStorage.removeItem(_setterDraftKey(scope,treatment));}catch(e){}}
+function _setterStatus(id,text,color){var el=document.getElementById(id);if(!el)return;el.textContent=text;el.style.color=color||'var(--muted)';}
+function _setterGlobalPayload(){return {tenant_id:T,assistant_name:document.getElementById('sbAssistantName').value.trim(),tone:document.getElementById('sbTone').value,max_sentences:+document.getElementById('sbMaxSentences').value,booking_mode:document.getElementById('sbBookingMode').value,followup_policy:document.getElementById('sbFollowup').value,handoff_message:document.getElementById('sbHandoff').value.trim()};}
+function _applySetterGlobalPayload(p){if(!p)return;var set=function(id,v){var el=document.getElementById(id);if(el&&v!==undefined&&v!==null)el.value=v;};set('sbAssistantName',p.assistant_name);set('sbTone',p.tone);set('sbMaxSentences',p.max_sentences);set('sbBookingMode',p.booking_mode);set('sbFollowup',p.followup_policy);set('sbHandoff',p.handoff_message);}
+function queueSetterGlobalAutosave(){var p=_setterGlobalPayload();_setterGlobalRevision++;_setterDraftSet('global','',p);_setterStatus('sbMsg','Cambios guardados localmente · sincronizando…','var(--muted)');clearTimeout(_setterGlobalSaveTimer);_setterGlobalSaveTimer=setTimeout(function(){persistSetterGlobal(true);},850);}
+async function persistSetterGlobal(automatic){if(_setterGlobalSaving){_setterGlobalQueued=true;return;}var payload=_setterGlobalPayload(),revision=_setterGlobalRevision;_setterGlobalSaving=true;_setterStatus('sbMsg',automatic?'Guardando automáticamente…':'Guardando…','var(--muted)');try{var r=await fetch(WORKER+'/api/setter-brain-config',{method:'POST',headers:_setterHeaders(),body:JSON.stringify(payload)});if(!r.ok)throw new Error();if(revision===_setterGlobalRevision)_setterDraftClear('global','');_setterStatus('sbMsg','✓ Guardado '+new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),'#1f8c69');}catch(e){_setterDraftSet('global','',payload);_setterStatus('sbMsg','Sin conexión: borrador protegido en este dispositivo','#b45309');}finally{_setterGlobalSaving=false;if(_setterGlobalQueued){_setterGlobalQueued=false;setTimeout(function(){persistSetterGlobal(true);},40);}}}
+function bindSetterGlobalAutosave(){['sbAssistantName','sbTone','sbMaxSentences','sbBookingMode','sbFollowup','sbHandoff'].forEach(function(id){var el=document.getElementById(id);if(el&&!el.dataset.setterAutosave){el.dataset.setterAutosave='1';el.addEventListener('input',queueSetterGlobalAutosave);el.addEventListener('change',queueSetterGlobalAutosave);}});}
+async function loadSetterBrain(expectedTenant){
+  var tenant=expectedTenant||T;
   try{
-    var c=await fetch(WORKER+'/api/setter-brain-config?tenant='+encodeURIComponent(T),{headers:_setterHeaders()}).then(r=>r.json()); var x=c.config||{};
+    var c=await fetch(WORKER+'/api/setter-brain-config?tenant='+encodeURIComponent(tenant),{headers:_setterHeaders()}).then(r=>r.json());
+    // Una respuesta que llegue tarde no puede pintar datos de una clínica anterior.
+    if(tenant!==T)return;
+    var x=c.config||{};
     var set=function(id,v){var el=document.getElementById(id);if(el&&v!==undefined&&v!==null)el.value=v;};
     set('sbAssistantName',x.assistant_name||'');set('sbTone',x.tone||'cálido, claro y profesional');set('sbMaxSentences',x.max_sentences||3);set('sbBookingMode',x.booking_mode||'when_ready');set('sbFollowup',x.followup_policy||'value_first');set('sbHandoff',x.handoff_message||'');
-    var r=await fetch(WORKER+'/api/setter-resources?tenant='+encodeURIComponent(T),{headers:_setterHeaders()}).then(r=>r.json());_setterResources=r.resources||[];renderSetterResources();normalizeSetterGalleryUrls();
+    var localDraft=_setterDraftGet('global','');if(localDraft){_applySetterGlobalPayload(localDraft.payload);_setterStatus('sbMsg','Borrador local recuperado · sincronizando…','#b45309');setTimeout(function(){persistSetterGlobal(true);},80);}bindSetterGlobalAutosave();
+    var r=await fetch(WORKER+'/api/setter-resources?tenant='+encodeURIComponent(tenant),{headers:_setterHeaders()}).then(r=>r.json());
+    if(tenant!==T)return;
+    _setterResources=r.resources||[];renderSetterResources();normalizeSetterGalleryUrls();
     populateSetterFunnelSelector();
   }catch(e){var l=document.getElementById('srList');if(l)l.innerHTML='<div style="font-size:.82rem;color:var(--muted)">No se pudieron cargar todavía los recursos del setter.</div>';}
 }
 // Poblar el selector de embudos/tratamientos con los del catálogo + los que ya tienen recursos
 function populateSetterFunnelSelector(){
   var sel=document.getElementById('setterFunnelSelector');if(!sel)return;
-  // Obtener tratamientos del catálogo local (si ya se cargaron)
-  var catalogTreatments=[];
-  try{
-    var catRows=document.querySelectorAll('#treatBody tr');
-    catRows.forEach(function(tr){var td=tr.querySelector('td');if(td)catalogTreatments.push(td.textContent.trim());});
-  }catch(e){}
-  // Obtener tratamientos que ya tienen recursos
-  var resourceTreatments=_setterResources.map(function(r){return r.treatment||'';}).filter(Boolean);
-  // Obtener embudos activos de la galería
-  var funnelTreatments=[];
-  try{
-    if(typeof EDFUNNELS!=='undefined'&&Array.isArray(EDFUNNELS)){
-      EDFUNNELS.forEach(function(f){if(f.treatment)funnelTreatments.push(f.treatment);});
-    }
-  }catch(e){}
-  // Unir y deduplicar: catálogo + recursos + embudos activos
-  var all=Array.from(new Set([].concat(catalogTreatments,resourceTreatments,funnelTreatments))).filter(Boolean).sort();
-  // Si no hay ninguno, intentar cargar del catálogo y embudos vía API
-  if(!all.length){
-    Promise.all([
-      fetch(WORKER+'/api/treatments?tenant='+encodeURIComponent(T),{headers:_setterHeaders()}).then(function(r){return r.json();}).catch(function(){return {};}),
-      fetch(WORKER+'/api/tenant/'+encodeURIComponent(T),{headers:_setterHeaders()}).then(function(r){return r.json();}).catch(function(){return {};})
-    ]).then(function(results){
-      var ts=(results[0].treatments||results[0].catalog||[]).map(function(x){return x.name||x.treatment||'';}).filter(Boolean);
-      var fs=(results[1].funnels||[]).map(function(x){return x.treatment||'';}).filter(Boolean);
-      var merged=Array.from(new Set([].concat(ts,fs))).filter(Boolean).sort();
-      if(merged.length){buildSetterFunnelOptions(sel,merged);}else{sel.innerHTML='<option value="">Sin tratamientos configurados — crea un embudo primero</option>';}
-    });
-    return;
-  }
-  buildSetterFunnelOptions(sel,all);
+  // REGLA: Setter IA solo puede existir para un embudo ya creado. El catálogo o
+  // recursos sueltos no generan opciones aquí, porque no tendrían chat que configurar.
+  fetch(WORKER+'/api/tenant/'+encodeURIComponent(T),{headers:_setterHeaders()})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var funnels=(d.funnels||[]).filter(function(f){return f.treatment&&f.treatment!=='generic';});
+      if(typeof EDFUNNELS!=='undefined')EDFUNNELS=funnels;
+      var treatments=Array.from(new Set(funnels.map(function(f){return f.treatment;}))).sort();
+      if(treatments.length){buildSetterFunnelOptions(sel,treatments);}
+      else{sel.innerHTML='<option value="">Primero crea un embudo en la sección Embudos</option>';}
+    }).catch(function(){sel.innerHTML='<option value="">No se pudieron cargar los embudos</option>';});
 }
 function buildSetterFunnelOptions(sel,treatments){
   var current=sel.value||'';
   sel.innerHTML='<option value="">— Selecciona un embudo/tratamiento —</option>'+treatments.map(function(t){
     var hasResources=_setterResources.some(function(r){return r.treatment===t;});
     return '<option value="'+escapeHtml(t)+'"'+(t===current?' selected':'')+'>'+escapeHtml(t)+(hasResources?' ✓':'')+'</option>';
-  }).join('')+'<option value="__custom__">+ Otro tratamiento…</option>';
+  }).join('');
 }
 var _currentSetterFunnel='';
 function onSetterFunnelChange(val){
-  if(val==='__custom__'){
-    var custom=prompt('Nombre del tratamiento/embudo:');
-    if(!custom){document.getElementById('setterFunnelSelector').value=_currentSetterFunnel;return;}
-    val=custom.trim();
-    // Añadir al selector
-    var sel=document.getElementById('setterFunnelSelector');
-    var opt=document.createElement('option');opt.value=val;opt.textContent=val;
-    sel.insertBefore(opt,sel.querySelector('[value="__custom__"]'));
-    sel.value=val;
-  }
   _currentSetterFunnel=val;
   // Actualizar el campo de tratamiento del formulario de recursos
   var srTreat=document.getElementById('srTreatment');
@@ -5834,7 +5838,7 @@ function onSetterFunnelChange(val){
 async function loadFunnelBrainForSelector(treatment){
   if(!treatment)return;
   try{
-    var r=await fetch(WORKER+'/api/setter-funnel-brain?tenant='+encodeURIComponent(T)+'&treatment='+encodeURIComponent(treatment),{headers:_setterHeaders()});
+    var r=await fetch(WORKER+'/api/setter-funnel-brain?tenant_id='+encodeURIComponent(T)+'&treatment='+encodeURIComponent(treatment),{headers:_setterHeaders()});
     var d=await r.json();var brain=d.brain||{};
     // Mostrar indicador de que este embudo tiene cerebro configurado
     var indicator=document.getElementById('setterFunnelBrainStatus');
@@ -5847,8 +5851,8 @@ async function loadFunnelBrainForSelector(treatment){
       indicator.style.background='#ecfdf5';indicator.style.color='#047857';
       indicator.innerHTML='✓ Este embudo tiene cerebro personalizado'+(brain.promo_active?' · <b>Promo activa</b>':'');
     }else{
-      indicator.style.background='#fff7ed';indicator.style.color='#9a3412';
-      indicator.innerHTML='⚠ Sin cerebro personalizado — usa la configuración general. <a href="#" onclick="openBrainModal(\''+escapeHtml(treatment)+'\');return false" style="color:var(--terra);font-weight:700">Configurar →</a>';
+      indicator.style.background='#eff6ff';indicator.style.color='#1d4ed8';
+      indicator.innerHTML='✓ Cerebro creado para este embudo · todavía usa la base común hasta que añadas sus instrucciones y recursos. <a href="#" onclick="openBrainModal(\''+escapeHtml(treatment)+'\');return false" style="color:var(--terra);font-weight:700">Personalizar →</a>';
     }
   }catch(e){}
 }
@@ -5867,8 +5871,7 @@ function renderSetterResourcesFiltered(treatment){
   _setterResources=backup;
 }
 async function saveSetterBrain(){
-  var msg=document.getElementById('sbMsg'); if(msg)msg.textContent='Guardando…';
-  try{var r=await fetch(WORKER+'/api/setter-brain-config',{method:'POST',headers:_setterHeaders(),body:JSON.stringify({tenant_id:T,assistant_name:document.getElementById('sbAssistantName').value.trim(),tone:document.getElementById('sbTone').value,max_sentences:+document.getElementById('sbMaxSentences').value,booking_mode:document.getElementById('sbBookingMode').value,followup_policy:document.getElementById('sbFollowup').value,handoff_message:document.getElementById('sbHandoff').value.trim()})});if(!r.ok)throw new Error();if(msg)msg.textContent='✓ Estrategia guardada';}catch(e){if(msg)msg.textContent='No se pudo guardar';}
+  await persistSetterGlobal(false);
 }
 function clearSetterResource(){['srId','srTreatment','srTitle','srBeforeUrl','srAfterUrl','srPhotoUrl','srPhotoCaption','srVideoUrl','srVideoCaption','srPriceFrom','srPriceTo','srDuration','srRecovery','srFaq'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});document.getElementById('srStatus').value='draft';document.getElementById('srObjection').value='general';document.getElementById('srVideoPurpose').value='';document.getElementById('srConsent').checked=false;clearDropzone('srBeforeDropzone');clearDropzone('srAfterDropzone');clearDropzone('srVideoDropzone');}
 function editSetterResource(id){var r=_setterResources.find(function(x){return x.id===id;});if(!r)return;var set=function(k,v){var e=document.getElementById(k);if(e)e.value=v||'';};set('srId',r.id);set('srTreatment',r.treatment);set('srTitle',r.resource_title);set('srStatus',r.source_status||'draft');set('srObjection',r.target_objection||'general');set('srVideoPurpose',r.video_purpose||'');set('srBeforeUrl',r.before_image_url);set('srAfterUrl',r.after_image_url);set('srPhotoUrl',r.before_after_url);set('srPhotoCaption',r.before_after_caption);set('srVideoUrl',r.video_url);set('srVideoCaption',r.video_caption);set('srPriceFrom',r.price_from);set('srPriceTo',r.price_to);set('srDuration',r.duration_text);set('srRecovery',r.recovery_text);set('srFaq',r.faq_json);document.getElementById('srConsent').checked=!!r.consent_verified;if(r.before_image_url)showDropzonePreview('srBeforeDropzone',r.before_image_url,'image');else clearDropzone('srBeforeDropzone');if(r.after_image_url||r.before_after_url)showDropzonePreview('srAfterDropzone',r.after_image_url||r.before_after_url,'image');else clearDropzone('srAfterDropzone');if(r.video_url)showDropzonePreview('srVideoDropzone',r.video_url,'video');else clearDropzone('srVideoDropzone');document.getElementById('srTreatment').scrollIntoView({behavior:'smooth',block:'center'});}
@@ -6126,6 +6129,7 @@ async function openBrainConfig(treatment){
     const d=await r.json();
     _brainData=d.brain||{};
   }catch(e){_brainData={};}
+  var localDraft=_setterDraftGet('funnel',treatment);if(localDraft)_brainData=Object.assign({},_brainData,localDraft.payload);
   renderBrainModal();
 }
 function renderBrainModal(){
@@ -6139,7 +6143,7 @@ function renderBrainModal(){
   const d=_brainData;
   m.innerHTML=`<div style="background:var(--card);border-radius:20px;width:100%;max-width:720px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)">
     <div style="padding:1.5rem 1.5rem 0;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:1rem">
-      <div><h3 style="margin:0;font-size:1.2rem;font-family:var(--serif)">Cerebro IA · ${esc(_brainTreatment)}</h3><p style="margin:.3rem 0 0;font-size:.8rem;color:var(--muted)">Instrucciones personalizadas para este embudo</p></div>
+      <div><h3 style="margin:0;font-size:1.2rem;font-family:var(--serif)">Cerebro IA · ${esc(_brainTreatment)}</h3><p style="margin:.3rem 0 0;font-size:.8rem;color:var(--muted)">Instrucciones personalizadas para este embudo · <span id="brainSaveStatus">${_setterDraftGet('funnel',_brainTreatment)?'Borrador recuperado · sincronizando…':'Guardado automáticamente'}</span></p></div>
       <button onclick="closeBrainModal()" style="border:none;background:none;font-size:1.5rem;cursor:pointer;color:var(--muted)">×</button>
     </div>
     <div style="padding:1.5rem;display:flex;flex-direction:column;gap:1.2rem">
@@ -6216,14 +6220,14 @@ function renderBrainModal(){
       </div>
       <div style="display:flex;gap:.6rem;justify-content:flex-end;padding-top:.5rem;border-top:1px solid var(--line)">
         <button class="btn" onclick="closeBrainModal()">Cancelar</button>
-        <button class="btn prim" onclick="saveBrainConfig()" style="min-width:140px">Guardar cerebro</button>
+        <button class="btn prim" onclick="saveBrainConfig()" style="min-width:140px">Guardar ahora</button>
       </div>
     </div>
   </div>`;
+  bindBrainAutosave();
 }
 function closeBrainModal(){const m=document.getElementById('brainModal');if(m)m.style.display='none';}
-async function saveBrainConfig(){
-  const data={
+function _brainConfigPayload(){return {
     tenant_id:T, treatment:_brainTreatment,
     custom_prompt:document.getElementById('brainPrompt').value,
     knowledge_base:document.getElementById('brainKB').value,
@@ -6237,13 +6241,21 @@ async function saveBrainConfig(){
     tone:document.getElementById('brainTone').value,
     booking_mode:document.getElementById('brainBooking').value,
     max_sentences:3
-  };
+  };}
+function _brainSaveStatus(text,color){_setterStatus('brainSaveStatus',text,color);}
+function queueBrainAutosave(){if(!_brainTreatment)return;var p=_brainConfigPayload();_setterBrainRevision++;_setterDraftSet('funnel',_brainTreatment,p);_brainSaveStatus('Cambios guardados localmente · sincronizando…','var(--muted)');clearTimeout(_setterBrainSaveTimer);_setterBrainSaveTimer=setTimeout(function(){saveBrainConfig({auto:true});},900);}
+function bindBrainAutosave(){['brainName','brainPrompt','brainGoal','brainQualification','brainClinicalLimits','brainKB','brainPromoActive','brainPromoText','brainCity','brainTone','brainBooking'].forEach(function(id){var el=document.getElementById(id);if(el&&!el.dataset.brainAutosave){el.dataset.brainAutosave='1';el.addEventListener('input',queueBrainAutosave);el.addEventListener('change',queueBrainAutosave);}});}
+async function saveBrainConfig(options){
+  var automatic=!!(options&&options.auto);if(_setterBrainSaving){_setterBrainQueued=true;return;}
+  const data=_brainConfigPayload(),revision=_setterBrainRevision;
+  _setterBrainSaving=true;_brainSaveStatus(automatic?'Guardando automáticamente…':'Guardando…','var(--muted)');
   try{
     const r=await fetch(WORKER+'/api/setter-funnel-brain',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify(data)});
     const d=await r.json();
-    if(d.ok){if(typeof toast==='function')toast('Cerebro guardado para '+_brainTreatment);closeBrainModal();}
-    else{if(typeof toast==='function')toast('Error al guardar','error');}
-  }catch(e){if(typeof toast==='function')toast('Error de conexión','error');}
+    if(d.ok){if(revision===_setterBrainRevision)_setterDraftClear('funnel',_brainTreatment);_brainSaveStatus('✓ Guardado '+new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),'#1f8c69');if(!automatic&&typeof toast==='function')toast('Cerebro guardado para '+_brainTreatment);}
+    else{throw new Error(d.error||'Error al guardar');}
+  }catch(e){_setterDraftSet('funnel',_brainTreatment,data);_brainSaveStatus('Sin conexión: borrador protegido en este dispositivo','#b45309');if(!automatic&&typeof toast==='function')toast('No se pudo sincronizar: borrador protegido','error');
+  }finally{_setterBrainSaving=false;if(_setterBrainQueued){_setterBrainQueued=false;setTimeout(function(){saveBrainConfig({auto:true});},40);}}
 }
 async function handleBrainFile(input){
   const file=input.files[0]; if(!file)return;
@@ -6251,9 +6263,10 @@ async function handleBrainFile(input){
   status.textContent='Leyendo archivo...';
   try{
     const text=await file.text();
-    const kb=document.getElementById('brainKB');
-    kb.value=(kb.value?kb.value+'\n\n---\n\n':'')+text;
-    status.textContent='Archivo añadido a la base de conocimiento';
+        const kb=document.getElementById('brainKB');
+        kb.value=(kb.value?kb.value+'\n\n---\n\n':'')+text;
+        status.textContent='Archivo añadido a la base de conocimiento';
+        queueBrainAutosave();
   }catch(e){status.textContent='Error al leer el archivo';}
 }
 let _brainRecorder=null;
@@ -6282,6 +6295,7 @@ async function startBrainAudio(){
           const kb=document.getElementById('brainKB');
           kb.value=(kb.value?kb.value+'\n\n---\n\n':'')+d.text;
           status.textContent='Audio transcrito y añadido';
+          queueBrainAutosave();
         }else{status.textContent='No se pudo transcribir';}
       }catch(e){status.textContent='Error al transcribir';}
     };
