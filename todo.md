@@ -84,8 +84,8 @@
 - [x] Eliminar el parpadeo de la vista Resumen al recargar rutas directas del dashboard y restaurar la sección antes del primer render visible.
 - [x] Limitar Setter IA a embudos existentes y crear automáticamente su espacio de cerebro al crear cada embudo.
 - [x] Recargar y limpiar correctamente los recursos y el selector Setter IA al cambiar de clínica para evitar cualquier contenido residual entre tenants.
-- [ ] Añadir autoguardado, estado visible y recuperación de borradores para la configuración Setter por tenant y embudo.
-- [ ] Auditar y documentar la capacidad, aislamiento y estrategia de escalado de D1, R2 y Workers para el Setter IA.
-- [ ] Corregir el acceso Personalizar del Setter IA para abrir el cerebro del embudo seleccionado.
-- [ ] Corregir el token usado por el autoguardado del cerebro por embudo para garantizar su sincronización con Cloudflare.
-- [ ] Sincronizar automáticamente los borradores recuperados del cerebro Setter por embudo al volver a abrirlos.
+- [x] Añadir autoguardado, estado visible y recuperación de borradores para la configuración Setter por tenant y embudo.
+- [x] Auditar y documentar la capacidad, aislamiento y estrategia de escalado de D1, R2 y Workers para el Setter IA.
+- [x] Corregir el acceso Personalizar del Setter IA para abrir el cerebro del embudo seleccionado.
+- [x] Corregir el token usado por el autoguardado del cerebro por embudo para garantizar su sincronización con Cloudflare.
+- [x] Sincronizar automáticamente los borradores recuperados del cerebro Setter por embudo al volver a abrirlos.
