@@ -5139,6 +5139,8 @@ async function createCustomFunnel(){
   }catch(e){}
   closeCreateFunnel();
   await loadFunnelGallery();
+  // Actualizar el selector del Setter IA con el nuevo embudo
+  if(typeof populateSetterFunnelSelector==='function') populateSetterFunnelSelector();
 }
 // === FIN SISTEMA GALERÍA ===
 
@@ -7400,14 +7402,26 @@ function populateSetterFunnelSelector(){
   }catch(e){}
   // Obtener tratamientos que ya tienen recursos
   var resourceTreatments=_setterResources.map(function(r){return r.treatment||'';}).filter(Boolean);
-  // Unir y deduplicar
-  var all=Array.from(new Set([].concat(catalogTreatments,resourceTreatments))).filter(Boolean).sort();
-  // Si no hay ninguno, intentar cargar del catálogo vía API
+  // Obtener embudos activos de la galería
+  var funnelTreatments=[];
+  try{
+    if(typeof EDFUNNELS!=='undefined'&&Array.isArray(EDFUNNELS)){
+      EDFUNNELS.forEach(function(f){if(f.treatment)funnelTreatments.push(f.treatment);});
+    }
+  }catch(e){}
+  // Unir y deduplicar: catálogo + recursos + embudos activos
+  var all=Array.from(new Set([].concat(catalogTreatments,resourceTreatments,funnelTreatments))).filter(Boolean).sort();
+  // Si no hay ninguno, intentar cargar del catálogo y embudos vía API
   if(!all.length){
-    fetch(WORKER+'/api/treatments?tenant='+encodeURIComponent(T),{headers:_setterHeaders()}).then(function(r){return r.json();}).then(function(d){
-      var ts=(d.treatments||d.catalog||[]).map(function(x){return x.name||x.treatment||'';}).filter(Boolean);
-      if(ts.length){buildSetterFunnelOptions(sel,ts);}else{sel.innerHTML='<option value="">Sin tratamientos configurados</option>';}
-    }).catch(function(){});
+    Promise.all([
+      fetch(WORKER+'/api/treatments?tenant='+encodeURIComponent(T),{headers:_setterHeaders()}).then(function(r){return r.json();}).catch(function(){return {};}),
+      fetch(WORKER+'/api/tenant/'+encodeURIComponent(T),{headers:_setterHeaders()}).then(function(r){return r.json();}).catch(function(){return {};})
+    ]).then(function(results){
+      var ts=(results[0].treatments||results[0].catalog||[]).map(function(x){return x.name||x.treatment||'';}).filter(Boolean);
+      var fs=(results[1].funnels||[]).map(function(x){return x.treatment||'';}).filter(Boolean);
+      var merged=Array.from(new Set([].concat(ts,fs))).filter(Boolean).sort();
+      if(merged.length){buildSetterFunnelOptions(sel,merged);}else{sel.innerHTML='<option value="">Sin tratamientos configurados — crea un embudo primero</option>';}
+    });
     return;
   }
   buildSetterFunnelOptions(sel,all);

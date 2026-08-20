@@ -1,4 +1,21 @@
 
+/* Evita que la vista Resumen aparezca un instante al abrir directamente otra sección. */
+(function(){
+  try{
+    var allowed=['resumen','pacientes','pipeline','agenda','caja','embudo','contenido','equipo','ajustes','whatsapp','inventario','portal','facturacion','admin'];
+    var hash=(location.hash||'').slice(1);
+    var saved=localStorage.getItem('aura_section')||'';
+    var target=allowed.indexOf(hash)>=0?hash:saved;
+    if(target&&target!=='resumen'){
+      document.documentElement.classList.add('aura-route-pending');
+      window.__auraReleaseRoute=function(){ document.documentElement.classList.remove('aura-route-pending'); };
+      window.setTimeout(window.__auraReleaseRoute,1500);
+    }
+  }catch(e){}
+})();
+
+
+
 const WORKER='https://aura-chat-worker.adrian-7b9.workers.dev';
 
 // ===== INFRAESTRUCTURA DE NIVEL ENTERPRISE =====
@@ -488,6 +505,8 @@ function restoreSection(){
     if(saved.screen)EDSCREEN=saved.screen;
   }
   goSection(v,false);
+  // La app estuvo oculta solo si se cargó una ruta distinta a Resumen: mostramos la vista ya restaurada.
+  requestAnimationFrame(()=>{ try{ if(typeof window.__auraReleaseRoute==='function')window.__auraReleaseRoute(); }catch(e){} });
   if(Number.isFinite(saved.scrollY)&&saved.section===v){
     requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo({top:saved.scrollY,behavior:'instant'})));
   }
@@ -3497,6 +3516,8 @@ async function createCustomFunnel(){
   }catch(e){}
   closeCreateFunnel();
   await loadFunnelGallery();
+  // Actualizar el selector del Setter IA con el nuevo embudo
+  if(typeof populateSetterFunnelSelector==='function') populateSetterFunnelSelector();
 }
 // === FIN SISTEMA GALERÍA ===
 
@@ -5743,24 +5764,159 @@ async function loadSetterBrain(){
     var c=await fetch(WORKER+'/api/setter-brain-config?tenant='+encodeURIComponent(T),{headers:_setterHeaders()}).then(r=>r.json()); var x=c.config||{};
     var set=function(id,v){var el=document.getElementById(id);if(el&&v!==undefined&&v!==null)el.value=v;};
     set('sbAssistantName',x.assistant_name||'');set('sbTone',x.tone||'cálido, claro y profesional');set('sbMaxSentences',x.max_sentences||3);set('sbBookingMode',x.booking_mode||'when_ready');set('sbFollowup',x.followup_policy||'value_first');set('sbHandoff',x.handoff_message||'');
-    var r=await fetch(WORKER+'/api/setter-resources?tenant='+encodeURIComponent(T),{headers:_setterHeaders()}).then(r=>r.json());_setterResources=r.resources||[];renderSetterResources();
+    var r=await fetch(WORKER+'/api/setter-resources?tenant='+encodeURIComponent(T),{headers:_setterHeaders()}).then(r=>r.json());_setterResources=r.resources||[];renderSetterResources();normalizeSetterGalleryUrls();
+    populateSetterFunnelSelector();
   }catch(e){var l=document.getElementById('srList');if(l)l.innerHTML='<div style="font-size:.82rem;color:var(--muted)">No se pudieron cargar todavía los recursos del setter.</div>';}
+}
+// Poblar el selector de embudos/tratamientos con los del catálogo + los que ya tienen recursos
+function populateSetterFunnelSelector(){
+  var sel=document.getElementById('setterFunnelSelector');if(!sel)return;
+  // Obtener tratamientos del catálogo local (si ya se cargaron)
+  var catalogTreatments=[];
+  try{
+    var catRows=document.querySelectorAll('#treatBody tr');
+    catRows.forEach(function(tr){var td=tr.querySelector('td');if(td)catalogTreatments.push(td.textContent.trim());});
+  }catch(e){}
+  // Obtener tratamientos que ya tienen recursos
+  var resourceTreatments=_setterResources.map(function(r){return r.treatment||'';}).filter(Boolean);
+  // Obtener embudos activos de la galería
+  var funnelTreatments=[];
+  try{
+    if(typeof EDFUNNELS!=='undefined'&&Array.isArray(EDFUNNELS)){
+      EDFUNNELS.forEach(function(f){if(f.treatment)funnelTreatments.push(f.treatment);});
+    }
+  }catch(e){}
+  // Unir y deduplicar: catálogo + recursos + embudos activos
+  var all=Array.from(new Set([].concat(catalogTreatments,resourceTreatments,funnelTreatments))).filter(Boolean).sort();
+  // Si no hay ninguno, intentar cargar del catálogo y embudos vía API
+  if(!all.length){
+    Promise.all([
+      fetch(WORKER+'/api/treatments?tenant='+encodeURIComponent(T),{headers:_setterHeaders()}).then(function(r){return r.json();}).catch(function(){return {};}),
+      fetch(WORKER+'/api/tenant/'+encodeURIComponent(T),{headers:_setterHeaders()}).then(function(r){return r.json();}).catch(function(){return {};})
+    ]).then(function(results){
+      var ts=(results[0].treatments||results[0].catalog||[]).map(function(x){return x.name||x.treatment||'';}).filter(Boolean);
+      var fs=(results[1].funnels||[]).map(function(x){return x.treatment||'';}).filter(Boolean);
+      var merged=Array.from(new Set([].concat(ts,fs))).filter(Boolean).sort();
+      if(merged.length){buildSetterFunnelOptions(sel,merged);}else{sel.innerHTML='<option value="">Sin tratamientos configurados — crea un embudo primero</option>';}
+    });
+    return;
+  }
+  buildSetterFunnelOptions(sel,all);
+}
+function buildSetterFunnelOptions(sel,treatments){
+  var current=sel.value||'';
+  sel.innerHTML='<option value="">— Selecciona un embudo/tratamiento —</option>'+treatments.map(function(t){
+    var hasResources=_setterResources.some(function(r){return r.treatment===t;});
+    return '<option value="'+escapeHtml(t)+'"'+(t===current?' selected':'')+'>'+escapeHtml(t)+(hasResources?' ✓':'')+'</option>';
+  }).join('')+'<option value="__custom__">+ Otro tratamiento…</option>';
+}
+var _currentSetterFunnel='';
+function onSetterFunnelChange(val){
+  if(val==='__custom__'){
+    var custom=prompt('Nombre del tratamiento/embudo:');
+    if(!custom){document.getElementById('setterFunnelSelector').value=_currentSetterFunnel;return;}
+    val=custom.trim();
+    // Añadir al selector
+    var sel=document.getElementById('setterFunnelSelector');
+    var opt=document.createElement('option');opt.value=val;opt.textContent=val;
+    sel.insertBefore(opt,sel.querySelector('[value="__custom__"]'));
+    sel.value=val;
+  }
+  _currentSetterFunnel=val;
+  // Actualizar el campo de tratamiento del formulario de recursos
+  var srTreat=document.getElementById('srTreatment');
+  if(srTreat)srTreat.value=val;
+  // Cargar el cerebro específico de este embudo
+  loadFunnelBrainForSelector(val);
+  // Filtrar la biblioteca para mostrar solo los recursos de este embudo
+  renderSetterResourcesFiltered(val);
+}
+async function loadFunnelBrainForSelector(treatment){
+  if(!treatment)return;
+  try{
+    var r=await fetch(WORKER+'/api/setter-funnel-brain?tenant='+encodeURIComponent(T)+'&treatment='+encodeURIComponent(treatment),{headers:_setterHeaders()});
+    var d=await r.json();var brain=d.brain||{};
+    // Mostrar indicador de que este embudo tiene cerebro configurado
+    var indicator=document.getElementById('setterFunnelBrainStatus');
+    if(!indicator){
+      indicator=document.createElement('div');indicator.id='setterFunnelBrainStatus';
+      indicator.style.cssText='margin-top:.5rem;font-size:.78rem;padding:.4rem .6rem;border-radius:8px';
+      document.getElementById('setterFunnelSelector').parentNode.appendChild(indicator);
+    }
+    if(brain.custom_prompt||brain.knowledge_base||brain.promo_text){
+      indicator.style.background='#ecfdf5';indicator.style.color='#047857';
+      indicator.innerHTML='✓ Este embudo tiene cerebro personalizado'+(brain.promo_active?' · <b>Promo activa</b>':'');
+    }else{
+      indicator.style.background='#fff7ed';indicator.style.color='#9a3412';
+      indicator.innerHTML='⚠ Sin cerebro personalizado — usa la configuración general. <a href="#" onclick="openBrainModal(\''+escapeHtml(treatment)+'\');return false" style="color:var(--terra);font-weight:700">Configurar →</a>';
+    }
+  }catch(e){}
+}
+function renderSetterResourcesFiltered(treatment){
+  var box=document.getElementById('srList');if(!box)return;
+  if(!treatment){renderSetterResources();return;}
+  var filtered=_setterResources.filter(function(r){return r.treatment===treatment;});
+  if(!filtered.length){
+    box.innerHTML='<div style="padding:1rem;background:var(--bg2);border-radius:10px;color:var(--muted);font-size:.84rem">No hay recursos para <b>'+escapeHtml(treatment)+'</b>. Crea el primer caso antes/después o vídeo arriba.</div>';
+    return;
+  }
+  // Reutilizar la función de renderizado pero solo con los recursos filtrados
+  var backup=_setterResources;
+  _setterResources=filtered;
+  renderSetterResources();
+  _setterResources=backup;
 }
 async function saveSetterBrain(){
   var msg=document.getElementById('sbMsg'); if(msg)msg.textContent='Guardando…';
   try{var r=await fetch(WORKER+'/api/setter-brain-config',{method:'POST',headers:_setterHeaders(),body:JSON.stringify({tenant_id:T,assistant_name:document.getElementById('sbAssistantName').value.trim(),tone:document.getElementById('sbTone').value,max_sentences:+document.getElementById('sbMaxSentences').value,booking_mode:document.getElementById('sbBookingMode').value,followup_policy:document.getElementById('sbFollowup').value,handoff_message:document.getElementById('sbHandoff').value.trim()})});if(!r.ok)throw new Error();if(msg)msg.textContent='✓ Estrategia guardada';}catch(e){if(msg)msg.textContent='No se pudo guardar';}
 }
-function clearSetterResource(){['srId','srTreatment','srPhotoUrl','srPhotoCaption','srVideoUrl','srPriceFrom','srPriceTo','srDuration','srRecovery','srFaq'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});document.getElementById('srStatus').value='draft';document.getElementById('srConsent').checked=false;}
-function editSetterResource(id){var r=_setterResources.find(function(x){return x.id===id;});if(!r)return;var set=function(k,v){var e=document.getElementById(k);if(e)e.value=v||'';};set('srId',r.id);set('srTreatment',r.treatment);set('srStatus',r.source_status||'draft');set('srPhotoUrl',r.before_after_url);set('srPhotoCaption',r.before_after_caption);set('srVideoUrl',r.video_url);set('srPriceFrom',r.price_from);set('srPriceTo',r.price_to);set('srDuration',r.duration_text);set('srRecovery',r.recovery_text);set('srFaq',r.faq_json);document.getElementById('srConsent').checked=!!r.consent_verified;if(r.before_after_url)showDropzonePreview('srPhotoDropzone',r.before_after_url,'image');else clearDropzone('srPhotoDropzone');if(r.video_url)showDropzonePreview('srVideoDropzone',r.video_url,'video');else clearDropzone('srVideoDropzone');document.getElementById('srTreatment').scrollIntoView({behavior:'smooth',block:'center'});}
+function clearSetterResource(){['srId','srTreatment','srTitle','srBeforeUrl','srAfterUrl','srPhotoUrl','srPhotoCaption','srVideoUrl','srVideoCaption','srPriceFrom','srPriceTo','srDuration','srRecovery','srFaq'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});document.getElementById('srStatus').value='draft';document.getElementById('srObjection').value='general';document.getElementById('srVideoPurpose').value='';document.getElementById('srConsent').checked=false;clearDropzone('srBeforeDropzone');clearDropzone('srAfterDropzone');clearDropzone('srVideoDropzone');}
+function editSetterResource(id){var r=_setterResources.find(function(x){return x.id===id;});if(!r)return;var set=function(k,v){var e=document.getElementById(k);if(e)e.value=v||'';};set('srId',r.id);set('srTreatment',r.treatment);set('srTitle',r.resource_title);set('srStatus',r.source_status||'draft');set('srObjection',r.target_objection||'general');set('srVideoPurpose',r.video_purpose||'');set('srBeforeUrl',r.before_image_url);set('srAfterUrl',r.after_image_url);set('srPhotoUrl',r.before_after_url);set('srPhotoCaption',r.before_after_caption);set('srVideoUrl',r.video_url);set('srVideoCaption',r.video_caption);set('srPriceFrom',r.price_from);set('srPriceTo',r.price_to);set('srDuration',r.duration_text);set('srRecovery',r.recovery_text);set('srFaq',r.faq_json);document.getElementById('srConsent').checked=!!r.consent_verified;if(r.before_image_url)showDropzonePreview('srBeforeDropzone',r.before_image_url,'image');else clearDropzone('srBeforeDropzone');if(r.after_image_url||r.before_after_url)showDropzonePreview('srAfterDropzone',r.after_image_url||r.before_after_url,'image');else clearDropzone('srAfterDropzone');if(r.video_url)showDropzonePreview('srVideoDropzone',r.video_url,'video');else clearDropzone('srVideoDropzone');document.getElementById('srTreatment').scrollIntoView({behavior:'smooth',block:'center'});}
 // ═══ DRAG & DROP: Subida de archivos a R2 para recursos del setter ═══
-async function uploadSetterFile(file, slot, treatment){
+async function uploadSetterFile(file, slot, treatment, onProgress){
+  const currentTreatment=(treatment||document.getElementById('srTreatment').value.trim());
+  if(!currentTreatment)throw new Error('Primero indica el tratamiento del caso');
+  if(file.type.startsWith('video/') && file.size>20*1024*1024){
+    return uploadSetterVideoMultipart(file,slot,currentTreatment,onProgress);
+  }
   const fd=new FormData();
   fd.append('file',file);
   fd.append('tenant_id',T);
-  fd.append('treatment',treatment||document.getElementById('srTreatment').value.trim()||'general');
+  fd.append('treatment',currentTreatment);
   fd.append('slot',slot);
-  const r=await fetch(WORKER+'/api/setter-upload',{method:'POST',headers:{'Authorization':'Bearer '+TOKEN},body:fd});
-  return await r.json();
+  onProgress&&onProgress(0,file.size);
+  const r=await fetch(WORKER+'/api/setter-upload',{method:'POST',headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:fd});
+  const out=await r.json();
+  if(!r.ok)throw new Error(out.error||'No se pudo subir el archivo');
+  onProgress&&onProgress(file.size,file.size);
+  return out;
+}
+async function uploadSetterVideoMultipart(file,slot,treatment,onProgress){
+  const auth={'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')};
+  const started=await fetch(WORKER+'/api/setter-upload-multipart/start',{method:'POST',headers:auth,body:JSON.stringify({tenant_id:T,treatment:treatment,slot:slot,filename:file.name,content_type:file.type||'video/mp4',size_bytes:file.size})});
+  const start=await started.json();
+  if(!started.ok||!start.ok)throw new Error(start.error||'No se pudo iniciar la subida grande');
+  const chunkSize=Number(start.chunk_size)||5*1024*1024;
+  let uploaded=0;
+  try{
+    for(let offset=0,part=1;offset<file.size;offset+=chunkSize,part++){
+      const fd=new FormData();fd.append('tenant_id',T);fd.append('session_id',start.session_id);fd.append('part_number',String(part));fd.append('chunk',file.slice(offset,Math.min(offset+chunkSize,file.size)),file.name+'.part'+part);
+      let lastError='';let uploadedPart=false;
+      for(let attempt=0;attempt<3;attempt++){
+        const controller=new AbortController();const timeout=setTimeout(function(){controller.abort();},45000);
+        try{const response=await fetch(WORKER+'/api/setter-upload-multipart/part',{method:'POST',headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:fd,signal:controller.signal});const body=await response.json();if(response.ok&&body.ok){uploadedPart=true;clearTimeout(timeout);break;}lastError=body.error||'No se pudo subir una parte';}catch(e){lastError=attempt<2?'Reintentando la conexión…':'La conexión ha tardado demasiado';}finally{clearTimeout(timeout);}
+        await new Promise(function(resolve){setTimeout(resolve,700*(attempt+1));});
+      }
+      if(!uploadedPart)throw new Error(lastError||'No se pudo completar una parte del vídeo');
+      uploaded=Math.min(offset+chunkSize,file.size);onProgress&&onProgress(uploaded,file.size);
+    }
+    const finished=await fetch(WORKER+'/api/setter-upload-multipart/complete',{method:'POST',headers:auth,body:JSON.stringify({tenant_id:T,session_id:start.session_id})});
+    const result=await finished.json();if(!finished.ok||!result.ok)throw new Error(result.error||'No se pudo finalizar el vídeo');
+    return result;
+  }catch(error){
+    fetch(WORKER+'/api/setter-upload-multipart/abort',{method:'POST',headers:auth,body:JSON.stringify({tenant_id:T,session_id:start.session_id})}).catch(function(){});
+    throw error;
+  }
 }
 function showDropzonePreview(dropzoneId, url, type){
   const dz=document.getElementById(dropzoneId);
@@ -5769,17 +5925,19 @@ function showDropzonePreview(dropzoneId, url, type){
   const placeholder=dz.querySelector('[id$="Placeholder"]');
   if(!preview||!placeholder)return;
   if(type==='image'){
-    preview.innerHTML='<img src="'+WORKER+url+'" style="max-width:100%;max-height:140px;border-radius:8px;object-fit:contain">'
+    preview.innerHTML='<img src="'+setterAssetSrc(url)+'" style="max-width:100%;max-height:140px;border-radius:8px;object-fit:contain">'
       +'<div style="margin-top:.3rem;font-size:.72rem;color:#1f8c69">Imagen subida</div>'
       +'<button onclick="clearDropzone(\''+dropzoneId+'\')" style="margin-top:.2rem;font-size:.7rem;padding:.2rem .5rem;border:1px solid #ddd;border-radius:4px;cursor:pointer;background:#fff">Cambiar</button>';
   }else if(type==='video'){
-    preview.innerHTML='<video src="'+WORKER+url+'" style="max-width:100%;max-height:140px;border-radius:8px" controls muted></video>'
+    preview.innerHTML='<video src="'+setterAssetSrc(url)+'" style="max-width:100%;max-height:140px;border-radius:8px" controls muted></video>'
       +'<div style="margin-top:.3rem;font-size:.72rem;color:#1f8c69">Vídeo subido</div>'
       +'<button onclick="clearDropzone(\''+dropzoneId+'\',\'video\')" style="margin-top:.2rem;font-size:.7rem;padding:.2rem .5rem;border:1px solid #ddd;border-radius:4px;cursor:pointer;background:#fff">Cambiar</button>';
   }
   preview.style.display='block';
   placeholder.style.display='none';
 }
+function setterAssetSrc(url){return /^https?:\/\//i.test(String(url||''))?String(url):WORKER+String(url||'');}
+function normalizeSetterGalleryUrls(){document.querySelectorAll('#srList img[src]').forEach(function(img){var externalPrefix=WORKER+'https://',sanitizedPrefix=WORKER+'https//';if(img.src.indexOf(externalPrefix)===0)img.src=img.src.slice(WORKER.length);else if(img.src.indexOf(sanitizedPrefix)===0)img.src='https://'+img.src.slice(sanitizedPrefix.length);});}
 function clearDropzone(dropzoneId, hiddenId){
   const dz=document.getElementById(dropzoneId);
   if(!dz)return;
@@ -5794,9 +5952,10 @@ async function handleSetterFileDrop(event, slot, dropzoneId, hiddenId){
   const file=files[0];
   const dz=document.getElementById(dropzoneId);
   const placeholder=dz?dz.querySelector('[id$="Placeholder"]'):null;
-  if(placeholder)placeholder.innerHTML='<div style="font-size:.82rem;color:var(--terra);font-weight:600">Subiendo...</div>';
+  const progress=function(done,total){if(placeholder){const pct=total?Math.round(done/total*100):0;placeholder.innerHTML='<div style="font-size:.82rem;color:var(--terra);font-weight:600">Subiendo '+(file.type.startsWith('video/')?'vídeo':'archivo')+'… '+pct+'%</div><div style="height:5px;background:#f1e5dd;border-radius:9px;margin-top:.45rem;overflow:hidden"><span style="display:block;height:100%;width:'+pct+'%;background:var(--terra)"></span></div>';}};
+  progress(0,file.size);
   try{
-    const result=await uploadSetterFile(file, slot);
+    const result=await uploadSetterFile(file, slot, null, progress);
     if(result.ok&&result.url){
       document.getElementById(hiddenId).value=result.url;
       showDropzonePreview(dropzoneId, result.url, result.type||'image');
@@ -5805,7 +5964,7 @@ async function handleSetterFileDrop(event, slot, dropzoneId, hiddenId){
       setTimeout(()=>{clearDropzone(dropzoneId);},2000);
     }
   }catch(e){
-    if(placeholder)placeholder.innerHTML='<div style="color:#e74c3c;font-size:.82rem">Error de conexión</div>';
+    if(placeholder)placeholder.innerHTML='<div style="color:#e74c3c;font-size:.82rem">'+esc(e.message||'Error de conexión')+'</div>';
     setTimeout(()=>{clearDropzone(dropzoneId);},2000);
   }
 }
@@ -5813,9 +5972,10 @@ async function handleSetterFileSelect(input, slot, dropzoneId, hiddenId){
   const file=input.files[0]; if(!file)return;
   const dz=document.getElementById(dropzoneId);
   const placeholder=dz?dz.querySelector('[id$="Placeholder"]'):null;
-  if(placeholder)placeholder.innerHTML='<div style="font-size:.82rem;color:var(--terra);font-weight:600">Subiendo...</div>';
+  const progress=function(done,total){if(placeholder){const pct=total?Math.round(done/total*100):0;placeholder.innerHTML='<div style="font-size:.82rem;color:var(--terra);font-weight:600">Subiendo '+(file.type.startsWith('video/')?'vídeo':'archivo')+'… '+pct+'%</div><div style="height:5px;background:#f1e5dd;border-radius:9px;margin-top:.45rem;overflow:hidden"><span style="display:block;height:100%;width:'+pct+'%;background:var(--terra)"></span></div>';}};
+  progress(0,file.size);
   try{
-    const result=await uploadSetterFile(file, slot);
+    const result=await uploadSetterFile(file, slot, null, progress);
     if(result.ok&&result.url){
       document.getElementById(hiddenId).value=result.url;
       showDropzonePreview(dropzoneId, result.url, result.type||'image');
@@ -5824,17 +5984,23 @@ async function handleSetterFileSelect(input, slot, dropzoneId, hiddenId){
       setTimeout(()=>{clearDropzone(dropzoneId);},2000);
     }
   }catch(e){
-    if(placeholder)placeholder.innerHTML='<div style="color:#e74c3c;font-size:.82rem">Error de conexión</div>';
+    if(placeholder)placeholder.innerHTML='<div style="color:#e74c3c;font-size:.82rem">'+esc(e.message||'Error de conexión')+'</div>';
     setTimeout(()=>{clearDropzone(dropzoneId);},2000);
   }
 }
 async function saveSetterResource(){
   var treatment=document.getElementById('srTreatment').value.trim();var msg=document.getElementById('srMsg');if(!treatment){if(msg)msg.textContent='Indica el tratamiento';return;}if(msg)msg.textContent='Guardando…';
-  var payload={id:document.getElementById('srId').value||undefined,tenant_id:T,treatment:treatment,before_after_url:document.getElementById('srPhotoUrl').value.trim(),before_after_caption:document.getElementById('srPhotoCaption').value.trim(),video_url:document.getElementById('srVideoUrl').value.trim(),price_from:document.getElementById('srPriceFrom').value||null,price_to:document.getElementById('srPriceTo').value||null,duration_text:document.getElementById('srDuration').value.trim(),recovery_text:document.getElementById('srRecovery').value.trim(),faq_json:document.getElementById('srFaq').value.trim(),source_status:document.getElementById('srStatus').value,consent_verified:document.getElementById('srConsent').checked};
+  var beforeUrl=document.getElementById('srBeforeUrl').value.trim();var afterUrl=document.getElementById('srAfterUrl').value.trim();
+  var payload={id:document.getElementById('srId').value||undefined,tenant_id:T,treatment:treatment,resource_title:document.getElementById('srTitle').value.trim(),resource_type:'case',target_objection:document.getElementById('srObjection').value,video_purpose:document.getElementById('srVideoPurpose').value,before_image_url:beforeUrl,after_image_url:afterUrl,before_after_url:afterUrl||beforeUrl||document.getElementById('srPhotoUrl').value.trim(),before_after_caption:document.getElementById('srPhotoCaption').value.trim(),video_url:document.getElementById('srVideoUrl').value.trim(),video_caption:document.getElementById('srVideoCaption').value.trim(),price_from:document.getElementById('srPriceFrom').value||null,price_to:document.getElementById('srPriceTo').value||null,duration_text:document.getElementById('srDuration').value.trim(),recovery_text:document.getElementById('srRecovery').value.trim(),faq_json:document.getElementById('srFaq').value.trim(),source_status:document.getElementById('srStatus').value,consent_verified:document.getElementById('srConsent').checked};
   try{var r=await fetch(WORKER+'/api/setter-resources',{method:'POST',headers:_setterHeaders(),body:JSON.stringify(payload)});if(!r.ok)throw new Error();if(msg)msg.textContent='✓ Recurso guardado';clearSetterResource();await loadSetterBrain();}catch(e){if(msg)msg.textContent='No se pudo guardar';}
 }
 async function deleteSetterResource(id){if(!confirm('¿Eliminar este recurso?'))return;try{await fetch(WORKER+'/api/setter-resources',{method:'DELETE',headers:_setterHeaders(),body:JSON.stringify({id:id,tenant_id:T})});await loadSetterBrain();}catch(e){toast('No se pudo eliminar','err');}}
-function renderSetterResources(){var box=document.getElementById('srList');if(!box)return;if(!_setterResources.length){box.innerHTML='<div style="padding:.8rem;background:var(--bg2);border-radius:10px;color:var(--muted);font-size:.84rem">Aún no hay recursos. Crea un borrador durante el setup y actívalo solo al confirmar su autorización.</div>';return;}box.innerHTML='<div style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:.4rem 0">Biblioteca cargada</div>'+_setterResources.map(function(r){var status=r.consent_verified&&r.source_status==='approved'?'<span style="color:#047857;background:#ecfdf5">✓ Enviable</span>':'<span style="color:#9a3412;background:#fff7ed">Borrador / bloqueado</span>';return '<div style="display:flex;justify-content:space-between;align-items:center;gap:.8rem;padding:.75rem;border:1px solid var(--line);border-radius:10px;margin:.45rem 0"><div><b>'+esc(r.treatment||'Tratamiento')+'</b><div style="font-size:.76rem;color:var(--muted);margin-top:.18rem">'+status+' · '+(r.before_after_url?'Foto':'')+(r.video_url?' · Vídeo':'')+(r.price_from?' · Precio':'')+'</div></div><div style="display:flex;gap:.35rem"><button class="btn" style="padding:.35rem .55rem;font-size:.76rem" onclick="editSetterResource(\''+r.id+'\')">Editar</button><button class="btn" style="padding:.35rem .55rem;font-size:.76rem;color:#b91c1c" onclick="deleteSetterResource(\''+r.id+'\')">Eliminar</button></div></div>';}).join('');}
+function renderSetterResources(){
+  var box=document.getElementById('srList');if(!box)return;
+  if(!_setterResources.length){box.innerHTML='<div style="padding:1rem;background:var(--bg2);border-radius:10px;color:var(--muted);font-size:.84rem">Aún no hay casos ni vídeos. Crea el primer recurso arriba: un caso antes/después o un vídeo de la doctora que ayude a resolver una duda concreta.</div>';return;}
+  var groups={};_setterResources.forEach(function(r){var k=r.treatment||'Sin tratamiento';(groups[k]=groups[k]||[]).push(r);});
+  box.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;margin:1.3rem 0 .65rem"><div><b style="font-size:.95rem">Biblioteca del Setter</b><div style="font-size:.76rem;color:var(--muted);margin-top:.15rem">El chat usa solo recursos aprobados y autorizados.</div></div><span style="font-size:.75rem;color:var(--muted)">'+_setterResources.length+' recurso'+(_setterResources.length!==1?'s':'')+'</span></div>'+Object.keys(groups).sort().map(function(treatment){var rows=groups[treatment], approved=rows.filter(function(r){return r.consent_verified&&r.source_status==='approved';}).length;return '<section style="margin:.9rem 0 1.3rem"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.55rem"><b>'+esc(treatment)+'</b><span style="font-size:.72rem;padding:.2rem .5rem;border-radius:99px;background:'+(approved?'#ecfdf5':'#fff7ed')+';color:'+(approved?'#047857':'#9a3412')+'">'+approved+' enviable'+(approved!==1?'s':'')+' de '+rows.length+'</span></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(235px,1fr));gap:.7rem">'+rows.map(function(r){var ok=r.consent_verified&&r.source_status==='approved',before=r.before_image_url||'',after=r.after_image_url||r.before_after_url||'',video=r.video_url||'',status=ok?'<span style="color:#047857;background:#ecfdf5">✓ Aprobado</span>':'<span style="color:#9a3412;background:#fff7ed">Borrador / revisión</span>',visual='';if(before||after){visual='<div style="display:grid;grid-template-columns:1fr 1fr;height:100px;background:var(--bg)">'+(before?'<img src="'+WORKER+esc(before)+'" style="width:100%;height:100%;object-fit:cover" alt="Antes">':'<div style="display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--muted)">Sin antes</div>')+(after?'<img src="'+WORKER+esc(after)+'" style="width:100%;height:100%;object-fit:cover" alt="Después">':'<div style="display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--muted)">Sin después</div>')+'</div>';}else if(video){visual='<div style="height:100px;background:#171717;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.8rem">▶ Vídeo · '+esc(r.video_purpose||'explicativo')+'</div>';}else{visual='<div style="height:100px;background:var(--bg);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.8rem">Sin archivo visual</div>';}return '<article style="border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)">'+visual+'<div style="padding:.7rem"><div style="display:flex;justify-content:space-between;gap:.4rem;align-items:start"><b style="font-size:.84rem">'+esc(r.resource_title||'Caso sin título')+'</b><span style="font-size:.66rem;white-space:nowrap;padding:.15rem .35rem;border-radius:5px">'+status+'</span></div><div style="font-size:.72rem;color:var(--muted);margin:.35rem 0">Para: '+esc(r.target_objection||'duda general')+(video?' · Vídeo: '+esc(r.video_purpose||'explicativo'):'')+'</div><div style="display:flex;gap:.35rem;margin-top:.55rem"><button class="btn" style="padding:.32rem .5rem;font-size:.72rem" onclick="editSetterResource(\''+r.id+'\')">Editar</button><button class="btn" style="padding:.32rem .5rem;font-size:.72rem;color:#b91c1c" onclick="deleteSetterResource(\''+r.id+'\')">Eliminar</button></div></div></article>';}).join('')+'</div></section>';}).join('');
+}
 
 async function __auraInit(){
   const ok=await guard(); if(!ok)return;
@@ -5985,6 +6151,22 @@ function renderBrainModal(){
         <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Instrucciones personalizadas <span style="font-weight:400;color:var(--muted)">(cómo debe hablar, qué debe decir, qué NO debe decir)</span></label>
         <textarea id="brainPrompt" rows="6" placeholder="Escribe aquí las instrucciones para el setter de este embudo. Ej: 'Siempre menciona que la doctora tiene 15 años de experiencia. No hables de financiación. Si preguntan por botox, redirige a labios.'" style="width:100%;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;font-size:.85rem;resize:vertical;font-family:inherit">${esc(d.custom_prompt||'')}</textarea>
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div>
+          <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Objetivo del embudo</label>
+          <textarea id="brainGoal" rows="4" placeholder="Ej: que entienda su caso, conozca a la doctora y reserve una valoración gratuita; nunca cerrar por chat." style="width:100%;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;font-size:.84rem;resize:vertical;font-family:inherit">${esc(d.funnel_goal||'')}</textarea>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:.25rem">Guía el siguiente paso, sin convertir la conversación en presión.</div>
+        </div>
+        <div>
+          <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Qué debe cualificar</label>
+          <textarea id="brainQualification" rows="4" placeholder="Ej: tratamiento de interés, objetivo estético, plazo, ciudad y preferencia de cita. Preguntar solo cuando sea natural." style="width:100%;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;font-size:.84rem;resize:vertical;font-family:inherit">${esc(d.qualification_rules||'')}</textarea>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:.25rem">El contexto útil para que el equipo atienda mejor, no un interrogatorio.</div>
+        </div>
+      </div>
+      <div>
+        <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Límites clínicos y cuándo derivar</label>
+        <textarea id="brainClinicalLimits" rows="3" placeholder="Ej: embarazo/lactancia, alergias, efectos adversos o dudas médicas: no responder clínicamente; pasar con la doctora o el equipo." style="width:100%;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;font-size:.84rem;resize:vertical;font-family:inherit">${esc(d.clinical_limits||'')}</textarea>
+      </div>
       <div>
         <label style="font-weight:600;font-size:.85rem;display:block;margin-bottom:.4rem">Base de conocimiento <span style="font-weight:400;color:var(--muted)">(información que el setter debe saber)</span></label>
         <textarea id="brainKB" rows="4" placeholder="Pega aquí información sobre la clínica, la doctora, los tratamientos, preguntas frecuentes, argumentos de venta..." style="width:100%;padding:.6rem .8rem;border:1px solid var(--line);border-radius:10px;font-size:.85rem;resize:vertical;font-family:inherit">${esc(d.knowledge_base||'')}</textarea>
@@ -6045,6 +6227,9 @@ async function saveBrainConfig(){
     tenant_id:T, treatment:_brainTreatment,
     custom_prompt:document.getElementById('brainPrompt').value,
     knowledge_base:document.getElementById('brainKB').value,
+    funnel_goal:document.getElementById('brainGoal').value,
+    qualification_rules:document.getElementById('brainQualification').value,
+    clinical_limits:document.getElementById('brainClinicalLimits').value,
     assistant_name:document.getElementById('brainName').value,
     promo_text:document.getElementById('brainPromoText').value,
     promo_active:document.getElementById('brainPromoActive').checked?1:0,
