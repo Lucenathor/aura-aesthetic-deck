@@ -6131,6 +6131,11 @@ async function openBrainConfig(treatment){
   }catch(e){_brainData={};}
   var localDraft=_setterDraftGet('funnel',treatment);if(localDraft)_brainData=Object.assign({},_brainData,localDraft.payload);
   renderBrainModal();
+  if(localDraft){
+    // El borrador recuperado debe volver a sincronizarse inmediatamente: no basta con
+    // mostrarlo, o quedaría protegido solo en este navegador.
+    setTimeout(function(){saveBrainConfig({auto:true});},80);
+  }
 }
 function renderBrainModal(){
   let m=document.getElementById('brainModal');

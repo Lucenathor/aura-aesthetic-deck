@@ -88,3 +88,4 @@
 - [ ] Auditar y documentar la capacidad, aislamiento y estrategia de escalado de D1, R2 y Workers para el Setter IA.
 - [ ] Corregir el acceso Personalizar del Setter IA para abrir el cerebro del embudo seleccionado.
 - [ ] Corregir el token usado por el autoguardado del cerebro por embudo para garantizar su sincronización con Cloudflare.
+- [ ] Sincronizar automáticamente los borradores recuperados del cerebro Setter por embudo al volver a abrirlos.
