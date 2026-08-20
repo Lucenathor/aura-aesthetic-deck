@@ -6250,7 +6250,7 @@ async function saveBrainConfig(options){
   const data=_brainConfigPayload(),revision=_setterBrainRevision;
   _setterBrainSaving=true;_brainSaveStatus(automatic?'Guardando automáticamente…':'Guardando…','var(--muted)');
   try{
-    const r=await fetch(WORKER+'/api/setter-funnel-brain',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify(data)});
+    const r=await fetch(WORKER+'/api/setter-funnel-brain',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify(data)});
     const d=await r.json();
     if(d.ok){if(revision===_setterBrainRevision)_setterDraftClear('funnel',_brainTreatment);_brainSaveStatus('✓ Guardado '+new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),'#1f8c69');if(!automatic&&typeof toast==='function')toast('Cerebro guardado para '+_brainTreatment);}
     else{throw new Error(d.error||'Error al guardar');}

@@ -87,3 +87,4 @@
 - [ ] Añadir autoguardado, estado visible y recuperación de borradores para la configuración Setter por tenant y embudo.
 - [ ] Auditar y documentar la capacidad, aislamiento y estrategia de escalado de D1, R2 y Workers para el Setter IA.
 - [ ] Corregir el acceso Personalizar del Setter IA para abrir el cerebro del embudo seleccionado.
+- [ ] Corregir el token usado por el autoguardado del cerebro por embudo para garantizar su sincronización con Cloudflare.
