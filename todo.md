@@ -90,8 +90,10 @@
 - [x] Corregir el token usado por el autoguardado del cerebro por embudo para garantizar su sincronización con Cloudflare.
 - [x] Sincronizar automáticamente los borradores recuperados del cerebro Setter por embudo al volver a abrirlos.
 - [x] Auditar y probar de extremo a extremo la integración de 360dialog: Partner API, webhooks, aislamiento por tenant, interfaz y flujo de conexión antes de activar el primer número real.
-- [ ] Investigar prácticas actuales de WhatsApp Business, automatización clínica y operación multi-tenant con fuentes oficiales, comunidades técnicas y vídeos de especialistas.
+- [x] Investigar prácticas actuales de WhatsApp Business, automatización clínica y operación multi-tenant con fuentes oficiales, comunidades técnicas y vídeos de especialistas.
 - [ ] Retirar Unipile de la configuración, código, interfaz y flujos de WhatsApp sin afectar los datos existentes de las clínicas.
-- [ ] Consolidar 360dialog como único proveedor oficial de WhatsApp con conexión segura, bandeja clínica, envío y recepción de medios, plantillas, consentimiento y métricas.
+- [x] Consolidar 360dialog como único proveedor oficial de WhatsApp con conexión segura, bandeja clínica, envío y recepción de medios, plantillas, consentimiento y métricas.
 - [ ] Añadir automatizaciones oficiales de WhatsApp para confirmación de cita, recordatorios, seguimiento y solicitud de reseña, siempre con control y consentimiento por clínica.
-- [ ] Probar el módulo de WhatsApp 360dialog por seguridad, aislamiento entre clínicas, experiencia responsive y eventos de API antes de activarlo con un número real.
+- [x] Probar el módulo de WhatsApp 360dialog por seguridad, aislamiento entre clínicas, experiencia responsive y eventos de API antes de activarlo con un número real.
+- [ ] Completar las automatizaciones de WhatsApp de confirmación, seguimiento post-cita y solicitud de reseña cuando cada clínica disponga de sus plantillas Meta aprobadas y sus consentimientos configurados.
+- [ ] Probar el circuito físico completo con un número real: onboarding Meta, envío, respuesta, medio, plantilla y estado de entrega.
