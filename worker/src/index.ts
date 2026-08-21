@@ -955,7 +955,7 @@ export default {
       ]);
       // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
       const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar','/api/portal-clients']);
-      const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p)) || (p==='/api/packs' && req.method==='POST') || (p.startsWith('/api/wa-') && p!=='/api/wa-webhook' && p!=='/api/wa-media' && p!=='/api/wa-avatar') || (p.startsWith('/api/call-') && p!=='/api/call-twiml' && p!=='/api/call-status' && p!=='/api/call-recording') || p.startsWith('/api/inv-') || p==='/api/copilot';
+      const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p)) || (p==='/api/packs' && req.method==='POST') || (p.startsWith('/api/wa-') && p!=='/api/wa-webhook' && p!=='/api/wa-webhook-360' && p!=='/api/wa-media' && p!=='/api/wa-avatar') || (p.startsWith('/api/call-') && p!=='/api/call-twiml' && p!=='/api/call-status' && p!=='/api/call-recording') || p.startsWith('/api/inv-') || p==='/api/copilot';
       if (mustGuard) {
         // tenant solicitado: de query (?tenant=) o del body para POST
         let tenantReq = url.searchParams.get('tenant') || url.searchParams.get('tenant_id');
