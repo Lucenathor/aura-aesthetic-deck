@@ -3989,7 +3989,7 @@ export default {
         }catch(e){return json({ok:false,error:'save_failed'},500);}
       }
 
-      // ============ WHATSAPP (Unipile API) ============
+      // ============ WHATSAPP (360dialog oficial) ============
       // ============ 360DIALOG PARTNER INTEGRATION ============
       const d360PartnerId = env.D360_PARTNER_ID || '';
       const d360PartnerKey = env.D360_PARTNER_KEY || '';
@@ -4157,7 +4157,7 @@ export default {
         return json({ ok: true, service: 'aura-360dialog-messaging-webhook' });
       }
 
-      // Enviar mensaje vía 360dialog (alternativa a Unipile)
+      // Enviar mensaje vía 360dialog
       if (p === '/api/wa-send-360' && req.method === 'POST') {
         await ensureWaSchema(env);
         const b: any = await req.json();
@@ -4414,13 +4414,13 @@ export default {
           if(!is360) return json({ chats:[], message:'Conecta WhatsApp desde Ajustes → Comunicaciones' });
           const wantSync = url.searchParams.get('sync')==='1';
           // La lista sale SIEMPRE de NUESTRA BD (acumulada por sync inicial + webhook). WhatsApp no permite
-          // resync de historial en Unipile, asi que la persistencia propia es la fuente de verdad y nunca pierde chats.
+          // La persistencia propia es la fuente de verdad y nunca pierde chats.
           let metaRes:any = await env.aura_db.prepare('SELECT * FROM wa_chats_meta WHERE tenant_id=? ORDER BY last_ts DESC LIMIT 200').bind(tnt).all();
           // Sincronización heredada eliminada. Los chats de 360dialog se persisten por webhook.
           const byPhone:any = {};
           try { const leadsRes:any = await env.aura_db.prepare('SELECT id,name,phone,treatment,status,temperature FROM leads WHERE tenant_id=?').bind(tnt).all(); for (const l of (leadsRes.results||[])) { const k=digits9(l.phone); if(k) byPhone[k]=l; } } catch(e){}
           const chats = (metaRes.results||[]).map((m:any)=>{ const num=digits9(m.phone||''); const lead=byPhone[num];
-            // Foto via proxy de Unipile (chat_attendees/{id}/picture). Solo si tenemos attendee_id.
+            // Foto del contacto (solo si tenemos attendee_id persistido).
             const pic = (!is360 && m.attendee_id) ? ('/api/wa-avatar?aid='+encodeURIComponent(m.attendee_id)+'&t='+encodeURIComponent(tnt)) : (m.picture||null);
             return { remoteJid:m.chat_id, id:m.chat_id, chat_id:m.chat_id, pushName:m.name, name:m.name, phone:m.phone, picture:pic, is_group:!!m.is_group, timestamp:m.last_ts||null, unread:m.unread||0, lastMessage:{ message:{ conversation:m.last_text||'' } }, _lead: lead?{ id:lead.id, name:lead.name, treatment:lead.treatment, status:lead.status, temperature:lead.temperature }:undefined }; });
           return json({ chats });
@@ -4491,14 +4491,14 @@ export default {
           try { await env.aura_db.prepare("INSERT INTO clinical_audit_log (id,tenant_id,lead_id,action,resource,actor,actor_role,data_before,ip,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind('au_'+uid(), b.tenant_id, _delMedia?.lead_id||'', 'delete', 'patient_media:'+b.id, _delMediaRole, _delMediaRole, _delMedia?JSON.stringify(_delMedia):null, req.headers.get('cf-connecting-ip')||'', Date.now()).run(); } catch(e){}
           return json({ ok:true });
         }
-        // Mensajes de un chat: SERVIDOS DESDE LA BD. Sincroniza desde Unipile si no hay (1ª vez).
+        // Mensajes de un chat: SERVIDOS DESDE LA BD (fuente de verdad).
         if (p === '/api/wa-messages' && req.method === 'GET') {
           if(!tnt) return json({error:'missing tenant'},400);
           const chatId = url.searchParams.get('number')||'';
           const providerCfg:any = await env.aura_db.prepare('SELECT provider FROM wa_config WHERE tenant_id=?').bind(tnt).first().catch(()=>null);
           const is360 = providerCfg?.provider === '360dialog';
           let dbRes:any = await env.aura_db.prepare('SELECT * FROM wa_messages WHERE tenant_id=? AND chat_id=? ORDER BY ts ASC LIMIT 100').bind(tnt, chatId).all();
-          // RENDIMIENTO: servimos SIEMPRE desde la BD al instante. Solo llamamos a Unipile (lento) si el chat
+          // RENDIMIENTO: servimos SIEMPRE desde la BD al instante. Los mensajes llegan por webhook.
           // está vacío (1ª vez) o si se pide refresco explícito con ?sync=1. El cron resincroniza cada 10 min en 2º plano.
           const wantSync = url.searchParams.get('sync')==='1';
           // Sincronización heredada de Unipile eliminada. Los mensajes llegan por webhook 360dialog.
