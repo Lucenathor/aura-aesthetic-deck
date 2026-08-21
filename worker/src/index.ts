@@ -4062,6 +4062,8 @@ export default {
         const clientId = String(b.client_id || '');
         const channelIds = Array.isArray(b.channel_ids) ? b.channel_ids.map((v:any)=>String(v)).filter(Boolean) : [];
         if (!tenantId || !clientId) return json({ ok:false, error:'missing_connection_data' }, 400);
+        const guard = await requireTenant(env, req, url, tenantId);
+        if (guard) return json({ error:'forbidden', reason:guard }, 403);
         await env.aura_db.prepare("INSERT INTO wa_config (tenant_id,d360_client_id,provider,connected,updated_at) VALUES (?,?,'360dialog',0,?) ON CONFLICT(tenant_id) DO UPDATE SET d360_client_id=excluded.d360_client_id, provider='360dialog', connected=0, updated_at=excluded.updated_at")
           .bind(tenantId, clientId, Date.now()).run();
         const results:any[] = [];
@@ -4160,6 +4162,8 @@ export default {
         await ensureWaSchema(env);
         const b: any = await req.json();
         if (!b.tenant_id) return json({ error: 'missing tenant' }, 400);
+        const guard = await requireTenant(env, req, url, String(b.tenant_id));
+        if (guard) return json({ error:'forbidden', reason:guard }, 403);
         const to = String(b.to || b.number || b.phone || '').replace(/[^0-9]/g, '');
         if (!to) return json({ ok: false, error: 'missing recipient number' });
         // Obtener la D360 API Key del tenant
@@ -4204,6 +4208,8 @@ export default {
         await ensureWaSchema(env);
         const tnt = url.searchParams.get('tenant') || '';
         if (!tnt) return json({ error: 'missing tenant' }, 400);
+        const guard = await requireTenant(env, req, url, tnt);
+        if (guard) return json({ error:'forbidden', reason:guard }, 403);
         const cfg: any = await env.aura_db.prepare('SELECT d360_api_key, d360_channel_id, d360_phone, connected, provider FROM wa_config WHERE tenant_id=?').bind(tnt).first().catch(() => null);
         if (!cfg || cfg.provider !== '360dialog') return json({ connected: false, provider: 'none' });
         return json({ connected: !!cfg.connected, provider: '360dialog', phone: cfg.d360_phone || '', channel_id: cfg.d360_channel_id || '' });
@@ -4214,6 +4220,8 @@ export default {
         await ensureWaSchema(env);
         const b: any = await req.json();
         if (!b.tenant_id) return json({ error: 'missing tenant' }, 400);
+        const guard = await requireTenant(env, req, url, String(b.tenant_id));
+        if (guard) return json({ error:'forbidden', reason:guard }, 403);
         await env.aura_db.prepare("UPDATE wa_config SET d360_api_key=NULL, connected=0, provider='360dialog', updated_at=? WHERE tenant_id=?").bind(Date.now(), b.tenant_id).run();
         return json({ ok: true });
       }
@@ -4267,8 +4275,12 @@ export default {
       if (p === '/api/wa-attach' && req.method === 'POST') {
         await ensureWaSchema(env);
         const b:any=await req.json(), tenantId=String(b.tenant_id||''), to=String(b.jid||b.number||'').replace(/\D/g,'');
+        const guard = await requireTenant(env, req, url, tenantId);
+        if (guard) return json({ error:'forbidden', reason:guard }, 403);
         const encoded=String(b.data_b64||'').split(',').pop()||'';
         if(!tenantId||!to||!encoded) return json({ok:false,error:'missing_attachment_data'},400);
+        const lastIn:any=await env.aura_db.prepare('SELECT ts FROM wa_messages WHERE tenant_id=? AND chat_id=? AND from_me=0 ORDER BY ts DESC LIMIT 1').bind(tenantId,to).first();
+        if(!lastIn?.ts || Date.now()-Number(lastIn.ts)>24*60*60*1000)return json({ok:false,error:'template_required',message:'Fuera de la ventana de 24 horas. Los adjuntos solo se pueden enviar dentro de una conversación activa.'},409);
         const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));
         if(bytes.byteLength>16*1024*1024)return json({ok:false,error:'file_too_large'},413);
         const cfg:any=await env.aura_db.prepare("SELECT d360_api_key FROM wa_config WHERE tenant_id=? AND provider='360dialog' AND connected=1").bind(tenantId).first();
@@ -4289,6 +4301,8 @@ export default {
 
       if (p === '/api/wa-react' && req.method === 'POST') {
         const b:any=await req.json(), tenantId=String(b.tenant_id||''), to=String(b.jid||b.number||'').replace(/\D/g,''), messageId=String(b.message_id||'');
+        const guard = await requireTenant(env, req, url, tenantId);
+        if (guard) return json({ error:'forbidden', reason:guard }, 403);
         const cfg:any=await env.aura_db.prepare("SELECT d360_api_key FROM wa_config WHERE tenant_id=? AND provider='360dialog' AND connected=1").bind(tenantId).first();
         if(!to||!messageId||!cfg?.d360_api_key)return json({ok:false,error:'missing_reaction_data'},400);
         const r=await fetch('https://waba-v2.360dialog.io/messages',{method:'POST',headers:{'D360-API-KEY':cfg.d360_api_key,'Content-Type':'application/json','User-Agent':'AURA-CRM/1.0'},body:JSON.stringify({messaging_product:'whatsapp',recipient_type:'individual',to,type:'reaction',reaction:{message_id:messageId,emoji:String(b.emoji||'👍')}})});
@@ -4297,6 +4311,8 @@ export default {
 
       if (p === '/api/wa-read' && req.method === 'POST') {
         const b:any=await req.json(), tenantId=String(b.tenant_id||''), chatId=String(b.jid||b.number||'');
+        const guard = await requireTenant(env, req, url, tenantId);
+        if (guard) return json({ error:'forbidden', reason:guard }, 403);
         const cfg:any=await env.aura_db.prepare("SELECT d360_api_key FROM wa_config WHERE tenant_id=? AND provider='360dialog' AND connected=1").bind(tenantId).first();
         const last:any=await env.aura_db.prepare('SELECT message_id FROM wa_messages WHERE tenant_id=? AND chat_id=? AND from_me=0 ORDER BY ts DESC LIMIT 1').bind(tenantId,chatId).first();
         if(cfg?.d360_api_key&&last?.message_id) await fetch('https://waba-v2.360dialog.io/messages',{method:'POST',headers:{'D360-API-KEY':cfg.d360_api_key,'Content-Type':'application/json','User-Agent':'AURA-CRM/1.0'},body:JSON.stringify({messaging_product:'whatsapp',status:'read',message_id:last.message_id})}).catch(()=>null);
@@ -4305,6 +4321,8 @@ export default {
 
       if (p === '/api/wa-templates' && req.method === 'GET') {
         await ensureWaSchema(env); const tenantId=url.searchParams.get('tenant')||'';
+        const guard = await requireTenant(env, req, url, tenantId);
+        if (guard) return json({ error:'forbidden', reason:guard }, 403);
         const cfg:any=await env.aura_db.prepare("SELECT d360_api_key,connected FROM wa_config WHERE tenant_id=? AND provider='360dialog'").bind(tenantId).first();
         if(cfg?.connected&&cfg?.d360_api_key){
           const r=await fetch('https://waba-v2.360dialog.io/message_templates?limit=100',{headers:{'D360-API-KEY':cfg.d360_api_key,'User-Agent':'AURA-CRM/1.0'}});
@@ -4316,6 +4334,8 @@ export default {
 
       if (p === '/api/wa-templates' && req.method === 'POST') {
         await ensureWaSchema(env); const b:any=await req.json(),tenantId=String(b.tenant_id||'');
+        const guard = await requireTenant(env, req, url, tenantId);
+        if (guard) return json({ error:'forbidden', reason:guard }, 403);
         const name=String(b.name||'').toLowerCase().replace(/[^a-z0-9_]/g,'_').replace(/_+/g,'_').slice(0,512), language=String(b.language||'es');
         const category=String(b.category||'UTILITY').toUpperCase(),components=Array.isArray(b.components)?b.components:[];
         if(!tenantId||!name||!components.length||!['UTILITY','MARKETING','AUTHENTICATION'].includes(category))return json({ok:false,error:'invalid_template'},400);
@@ -4329,6 +4349,8 @@ export default {
       if (p === '/api/wa-send-template' && req.method === 'POST') {
         await ensureWaSchema(env); const b:any=await req.json(),tenantId=String(b.tenant_id||''),to=String(b.to||b.phone||'').replace(/\D/g,''),templateId=String(b.template_id||'');
         if(!tenantId||!to||!templateId)return json({ok:false,error:'missing_template_data'},400);
+        const guard = await requireTenant(env, req, url, tenantId);
+        if (guard) return json({ error:'forbidden', reason:guard }, 403);
         const tpl:any=await env.aura_db.prepare('SELECT * FROM wa_templates WHERE tenant_id=? AND id=?').bind(tenantId,templateId).first();
         if(!tpl||String(tpl.status).toUpperCase()!=='APPROVED')return json({ok:false,error:'template_not_approved'},409);
         const consentCategory=String(tpl.category).toUpperCase()==='MARKETING'?'marketing':'service';
@@ -4345,23 +4367,28 @@ export default {
 
       if (p === '/api/wa-consents' && req.method === 'GET') {
         await ensureWaSchema(env); const tenantId=url.searchParams.get('tenant')||'',phone=String(url.searchParams.get('phone')||'').replace(/\D/g,'');
+        const guard = await requireTenant(env, req, url, tenantId);
+        if (guard) return json({ error:'forbidden', reason:guard }, 403);
         const rows:any=phone?await env.aura_db.prepare('SELECT * FROM wa_consents WHERE tenant_id=? AND phone=? ORDER BY category').bind(tenantId,phone).all():await env.aura_db.prepare('SELECT * FROM wa_consents WHERE tenant_id=? ORDER BY updated_at DESC LIMIT 300').bind(tenantId).all(); return json({consents:rows.results||[]});
       }
 
       if (p === '/api/wa-consents' && req.method === 'POST') {
         await ensureWaSchema(env); const b:any=await req.json(),tenantId=String(b.tenant_id||''),phone=String(b.phone||'').replace(/\D/g,''),category=String(b.category||'service').toLowerCase();
+        const guard = await requireTenant(env, req, url, tenantId);
+        if (guard) return json({ error:'forbidden', reason:guard }, 403);
         if(!tenantId||!phone||!['service','marketing','reviews'].includes(category))return json({ok:false,error:'invalid_consent'},400);
         const granted=b.status!=='revoked',now=Date.now(); await env.aura_db.prepare("INSERT INTO wa_consents (tenant_id,phone,category,status,source,proof,granted_at,revoked_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,phone,category) DO UPDATE SET status=excluded.status,source=excluded.source,proof=excluded.proof,granted_at=excluded.granted_at,revoked_at=excluded.revoked_at,updated_at=excluded.updated_at").bind(tenantId,phone,category,granted?'granted':'revoked',String(b.source||'aura'),String(b.proof||''),granted?now:null,granted?null:now,now).run(); return json({ok:true,status:granted?'granted':'revoked'});
       }
 
-      if (p === '/api/wa-automations' && req.method === 'GET') { await ensureWaSchema(env); const rows:any=await env.aura_db.prepare('SELECT * FROM wa_automation_rules WHERE tenant_id=? ORDER BY event_key').bind(url.searchParams.get('tenant')||'').all(); return json({rules:rows.results||[]}); }
+      if (p === '/api/wa-automations' && req.method === 'GET') { await ensureWaSchema(env); const tenantId=url.searchParams.get('tenant')||''; const guard=await requireTenant(env,req,url,tenantId); if(guard)return json({error:'forbidden',reason:guard},403); const rows:any=await env.aura_db.prepare('SELECT * FROM wa_automation_rules WHERE tenant_id=? ORDER BY event_key').bind(tenantId).all(); return json({rules:rows.results||[]}); }
       if (p === '/api/wa-automations' && req.method === 'POST') {
         await ensureWaSchema(env);const b:any=await req.json(),tenantId=String(b.tenant_id||''),eventKey=String(b.event_key||''); if(!tenantId||!['appointment_created','appointment_reminder_24h','appointment_reminder_2h','appointment_followup','review_request'].includes(eventKey))return json({ok:false,error:'invalid_rule'},400);
+        const guard=await requireTenant(env,req,url,tenantId); if(guard)return json({error:'forbidden',reason:guard},403);
         const id=String(b.id||('war_'+uid())),now=Date.now();await env.aura_db.prepare("INSERT INTO wa_automation_rules (id,tenant_id,event_key,enabled,template_id,timing_minutes,quiet_start,quiet_end,components_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,event_key) DO UPDATE SET enabled=excluded.enabled,template_id=excluded.template_id,timing_minutes=excluded.timing_minutes,quiet_start=excluded.quiet_start,quiet_end=excluded.quiet_end,components_json=excluded.components_json,updated_at=excluded.updated_at").bind(id,tenantId,eventKey,b.enabled?1:0,b.template_id||null,Number(b.timing_minutes)||0,Number(b.quiet_start)||21,Number(b.quiet_end)||9,JSON.stringify(Array.isArray(b.components)?b.components:[]),now,now).run();return json({ok:true,id});
       }
 
       if (p === '/api/wa-metrics' && req.method === 'GET') {
-        await ensureWaSchema(env);const tenantId=url.searchParams.get('tenant')||'',from=Number(url.searchParams.get('from')||Date.now()-30*86400000);
+        await ensureWaSchema(env);const tenantId=url.searchParams.get('tenant')||''; const guard=await requireTenant(env,req,url,tenantId); if(guard)return json({error:'forbidden',reason:guard},403); const from=Number(url.searchParams.get('from')||Date.now()-30*86400000);
         const sent:any=await env.aura_db.prepare('SELECT COUNT(*) n FROM wa_messages WHERE tenant_id=? AND from_me=1 AND ts>=?').bind(tenantId,from).first();const received:any=await env.aura_db.prepare('SELECT COUNT(*) n FROM wa_messages WHERE tenant_id=? AND from_me=0 AND ts>=?').bind(tenantId,from).first();const delivery:any=await env.aura_db.prepare("SELECT delivery_status,COUNT(*) n FROM wa_messages WHERE tenant_id=? AND from_me=1 AND ts>=? GROUP BY delivery_status").bind(tenantId,from).all();const chats:any=await env.aura_db.prepare('SELECT COUNT(*) n FROM wa_chats_meta WHERE tenant_id=?').bind(tenantId).first();return json({from,sent:Number(sent?.n||0),received:Number(received?.n||0),chats:Number(chats?.n||0),delivery:delivery.results||[]});
       }
 
@@ -4369,122 +4396,27 @@ export default {
       if (p === '/api/wa-logout' && req.method === 'POST') { const b:any=await req.json(); await env.aura_db.prepare("UPDATE wa_config SET connected=0,d360_api_key=NULL,provider='360dialog',updated_at=? WHERE tenant_id=?").bind(Date.now(),String(b.tenant_id||'')).run(); return json({ok:true}); }
       if (p === '/api/wa-avatar' || p === '/api/wa-debug-chats' || p === '/api/wa-webhook-setup' || p === '/api/wa-webhook') return json({ok:false,error:'deprecated_provider_removed'},410);
 
-      // Compatibilidad temporal de nombres de endpoint. Nunca realiza llamadas a proveedores retirados.
+      // ============ BANDEJA WHATSAPP (360dialog nativo) ============
       if (p.startsWith('/api/wa-')) {
         await ensureWaSchema(env);
-        const uni = async (_path:string, _method='GET', _body?:any) => ({ ok:false, status:410, data:{ error:'provider_removed' } });
         const tnt = url.searchParams.get('tenant') || (await (async()=>{ try{ const b:any=await req.clone().json(); return b.tenant_id||b.tenant; }catch{return null;} })());
-        // Devuelve el account_id de Unipile guardado para este tenant
-        const acctOf = async (t:string):Promise<string|null> => { try{ const r:any=await env.aura_db.prepare('SELECT instance FROM wa_config WHERE tenant_id=?').bind(t).first(); return r?.instance||null; }catch{return null;} };
         const digits9 = (s:any)=> String(s||'').replace(/@.*/,'').replace(/\D/g,'').slice(-9);
-        // Convierte string de QR en data URL de imagen usando un generador externo no es posible offline; devolvemos el string y el panel lo renderiza
 
-        // PROXY DE MEDIOS: descarga el adjunto de Unipile (foto/video/audio/doc) y lo sirve al navegador
-        if (p === '/api/wa-media' && req.method === 'GET') {
-          const mid = url.searchParams.get('mid')||''; let aid = url.searchParams.get('aid')||'';
-          if(!mid) return new Response('missing mid', { status:400 });
-          // Si no tenemos attachment_id, intentamos resolverlo consultando el mensaje en Unipile
-          if(!aid || aid==='0' || aid==='null'){
-            try{ const mr = await uni('/api/v1/messages/'+encodeURIComponent(mid)); const at=(mr.data?.attachments&&mr.data.attachments[0])||null; aid = at?(at.id||at.attachment_id||''):''; }catch(e){}
-          }
-          if(!aid) return new Response('no attachment', { status:404 });
-          try{
-            const ar = await fetch(UNI+'/api/v1/messages/'+encodeURIComponent(mid)+'/attachments/'+encodeURIComponent(aid), { headers:{ 'X-API-KEY': UKEY } });
-            if(!ar.ok) return new Response('upstream '+ar.status, { status:502 });
-            const ct = ar.headers.get('content-type') || 'application/octet-stream';
-            const buf = await ar.arrayBuffer();
-            return new Response(buf, { headers: { 'content-type': ct, 'cache-control':'public, max-age=86400', 'access-control-allow-origin':'*' } });
-          }catch(e){ return new Response('error', { status:500 }); }
-        }
-        // PROXY DE FOTO DE CONTACTO/GRUPO: descarga la imagen del attendee (o del chat para grupos) y la sirve.
-        if (p === '/api/wa-avatar' && req.method === 'GET') {
-          const aid = url.searchParams.get('aid')||'';
-          const t2 = url.searchParams.get('t')||'';
-          if(!aid) return new Response('missing aid', { status:400 });
-          try{
-            const ar = await fetch(UNI+'/api/v1/chat_attendees/'+encodeURIComponent(aid)+'/picture', { headers:{ 'X-API-KEY': UKEY } });
-            if(!ar.ok) return new Response('no picture', { status:404 });
-            const ct = ar.headers.get('content-type') || 'image/jpeg';
-            const buf = await ar.arrayBuffer();
-            return new Response(buf, { headers: { 'content-type': ct, 'cache-control':'public, max-age=86400', 'access-control-allow-origin':'*' } });
-          }catch(e){ return new Response('error', { status:500 }); }
-        }
-        // DEBUG: JSON crudo de los primeros chats de Unipile (para inspeccionar campos de fecha/orden)
-        if (p === '/api/wa-debug-chats' && req.method === 'GET') {
-          const acc = await acctOf(tnt||''); if(!acc) return json({ ok:false, error:'no account' });
-          const r = await uni('/api/v1/chats?account_id='+acc+'&limit=5');
-          const items = (r.data?.items)||[];
-          return json({ ok:true, sample: items.map((c:any)=>({ id:c.id, name:c.name, timestamp:c.timestamp, last_message:c.last_message, keys:Object.keys(c) })) });
-        }
-        // Estado de conexión
-        if (p === '/api/wa-status' && req.method === 'GET') {
-          if(!tnt) return json({error:'missing tenant'},400);
-          const providerCfg:any = await env.aura_db.prepare('SELECT provider,d360_phone,connected FROM wa_config WHERE tenant_id=?').bind(tnt).first().catch(()=>null);
-          if (providerCfg?.provider === '360dialog') return json({ connected:!!providerCfg.connected, state:providerCfg.connected?'open':'connecting', exists:true, provider:'360dialog', phone:providerCfg.d360_phone||'' });
-          const acc = await acctOf(tnt);
-          if(!acc) return json({ connected:false, exists:false });
-          const st = await uni('/api/v1/accounts/'+acc);
-          if(!st.ok) return json({ connected:false, exists:false });
-          const sources = st.data?.sources || [];
-          const ok = Array.isArray(sources) ? sources.some((s:any)=>s.status==='OK') : (st.data?.status==='OK');
-          return json({ connected: !!ok, state: ok?'open':'connecting', exists:true, account_id:acc });
-        }
-        // Conectar: crea cuenta WhatsApp en Unipile y devuelve el string del QR
-        if (p === '/api/wa-connect' && req.method === 'POST') {
-          if(!tnt) return json({error:'missing tenant'},400);
-          const r = await uni('/api/v1/accounts','POST',{ provider:'WHATSAPP' });
-          const acc = r.data?.account_id;
-          const qr = r.data?.checkpoint?.qrcode || null;
-          if(acc){ await env.aura_db.prepare("INSERT INTO wa_config (tenant_id,instance,updated_at) VALUES (?,?,?) ON CONFLICT(tenant_id) DO UPDATE SET instance=excluded.instance, updated_at=excluded.updated_at").bind(tnt, acc, Date.now()).run(); }
-          return json({ ok:!!qr, account_id:acc, qrstr:qr });
-        }
-        // Refrescar QR de una cuenta en checkpoint (si caduca)
-        if (p === '/api/wa-qr' && req.method === 'GET') {
-          const acc = await acctOf(tnt||''); if(!acc) return json({ qrstr:null });
-          const r = await uni('/api/v1/accounts/'+acc+'/checkpoint','POST',{});
-          return json({ qrstr: r.data?.checkpoint?.qrcode || null });
-        }
-        // Sincroniza chats desde Unipile a wa_chats_meta (nombre/teléfono reales). Se usa en carga inicial y en cron.
-        const syncChats = async (t:string, acc:string) => {
-          const r = await uni('/api/v1/chats?account_id='+acc+'&limit=80');
-          const items = (r.data?.items)||[];
-          const top = items.slice(0,50);
-          // attendee NO-self de cada chat (de ahi sacamos nombre real y attendee_id para la foto)
-          const att = await Promise.all(top.map((c:any)=> uni('/api/v1/chats/'+encodeURIComponent(c.id)+'/attendees').then((a:any)=>{ const items=(a.data?.items||[]); const it=items.find((x:any)=>x.is_self!==1)||items[0]; return { att:it||null, count:items.length }; }).catch(()=>({att:null,count:0})) ));
-          const nowBase = Date.now();
-          for (let i=0;i<top.length;i++){ const c=top[i]; const a=(att[i]&&att[i].att)||{}; const attCount=(att[i]&&att[i].count)||0;
-            const isGroup = attCount>2 || /@g\.us/i.test(String(c.provider_id||c.id||'')) || !!c.is_group;
-            // Telefono real: specifics.phone_number / public_identifier / provider_id (nunca @lid, que es ID interno sin telefono)
-            const candidates = [ a.specifics?.phone_number, a.public_identifier, a.attendee_provider_id, a.provider_id, c.provider_id, c.attendee_provider_id ];
-            let phoneRaw = '';
-            for (const cand of candidates){ const s=String(cand||''); if(/@lid/i.test(s)) continue; const dgs=s.replace(/@.*/,'').replace(/\D/g,''); if(dgs.length>=7 && dgs.length<=15){ phoneRaw=dgs; break; } }
-            // Nombre: para grupos el nombre del chat; para 1a1 el nombre del attendee; si no, el telefono
-            const groupName = c.name || c.subject || c.title || '';
-            const realName = isGroup ? (groupName || 'Grupo') : (a.name || groupName || (phoneRaw?('+'+phoneRaw):''));
-            // attendee_id para la foto via proxy (1a1: id del contacto; grupo: id del chat)
-            const attendeeId = isGroup ? c.id : (a.id || a.attendee_id || '');
-            const last=c.last_message?.text||c.snippet||'';
-            // ORDEN como en la app de WhatsApp: Unipile YA devuelve los chats por actividad reciente (primero=mas nuevo)
-            // y su 'timestamp' es la hora de la ultima actividad (en UTC; el front la pasa a hora local). Usamos ese
-            // timestamp tal cual; si faltara, respetamos el orden devolviendo nowBase - i para no desordenar.
-            let ts = c.timestamp ? Date.parse(c.timestamp) : NaN;
-            if(!ts || isNaN(ts)) ts = nowBase - i*60000;
-            try { await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,attendee_id,is_group,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET name=COALESCE(NULLIF(excluded.name,''),wa_chats_meta.name), phone=COALESCE(NULLIF(excluded.phone,''),wa_chats_meta.phone), attendee_id=COALESCE(NULLIF(excluded.attendee_id,''),wa_chats_meta.attendee_id), is_group=excluded.is_group, last_text=excluded.last_text, last_ts=excluded.last_ts, unread=excluded.unread, updated_at=excluded.updated_at").bind(t,c.id,realName,phoneRaw,attendeeId,isGroup?1:0,last,ts,c.unread_count||0,Date.now()).run(); } catch(e){}
-          // tras un sync completo, los chats que YA NO estan entre los recientes no deben quedar arriba con ts inflado: nada que hacer aqui porque siempre sobrescribimos last_ts del set actual.
-          }
-        };
+        // [Eliminado] Proxy de medios, avatar, debug, estado, QR y syncChats de Unipile — retirado.
+        // Las rutas /api/wa-media, /api/wa-avatar, /api/wa-debug-chats, /api/wa-connect, /api/wa-qr
+        // ya están manejadas arriba con respuestas 410 o por el módulo oficial de 360dialog.
+
         // Lista de chats: SERVIDA DESDE LA BD de AURA (escalable). Sincroniza la 1ª vez si está vacía.
         if (p === '/api/wa-chats' && req.method === 'GET') {
           if(!tnt) return json({error:'missing tenant'},400);
           const providerCfg:any = await env.aura_db.prepare('SELECT provider,instance FROM wa_config WHERE tenant_id=?').bind(tnt).first().catch(()=>null);
           const is360 = providerCfg?.provider === '360dialog';
-          const acc = providerCfg?.instance || null;
-          if(!is360 && !acc) return json({ chats:[] });
+          if(!is360) return json({ chats:[], message:'Conecta WhatsApp desde Ajustes → Comunicaciones' });
           const wantSync = url.searchParams.get('sync')==='1';
           // La lista sale SIEMPRE de NUESTRA BD (acumulada por sync inicial + webhook). WhatsApp no permite
           // resync de historial en Unipile, asi que la persistencia propia es la fuente de verdad y nunca pierde chats.
           let metaRes:any = await env.aura_db.prepare('SELECT * FROM wa_chats_meta WHERE tenant_id=? ORDER BY last_ts DESC LIMIT 200').bind(tnt).all();
-          if (!is360 && (!(metaRes.results||[]).length || wantSync)) { try{ await syncChats(tnt, acc!); }catch(e){} metaRes = await env.aura_db.prepare('SELECT * FROM wa_chats_meta WHERE tenant_id=? ORDER BY last_ts DESC LIMIT 200').bind(tnt).all(); }
+          // Sincronización heredada eliminada. Los chats de 360dialog se persisten por webhook.
           const byPhone:any = {};
           try { const leadsRes:any = await env.aura_db.prepare('SELECT id,name,phone,treatment,status,temperature FROM leads WHERE tenant_id=?').bind(tnt).all(); for (const l of (leadsRes.results||[])) { const k=digits9(l.phone); if(k) byPhone[k]=l; } } catch(e){}
           const chats = (metaRes.results||[]).map((m:any)=>{ const num=digits9(m.phone||''); const lead=byPhone[num];
@@ -4516,32 +4448,7 @@ export default {
           else return json({ media: [] });
           return json({ media: (rows.results||[]) });
         }
-        // Guardar en la ficha un medio que llegó por el chat (lo descargamos de Unipile y lo subimos a R2)
-        if (p === '/api/wa-patient-media-save' && req.method === 'POST') {
-          const b:any = await req.json(); if(!b.tenant_id) return json({error:'missing tenant'},400);
-          const t2 = b.tenant_id; const mid=b.mid||''; let aid=b.aid||''; const phone=digits9(b.phone||''); let leadId=b.lead_id||'';
-          // resolver lead por teléfono si no viene
-          if(!leadId && phone){ try{ const lr:any=await env.aura_db.prepare('SELECT id FROM leads WHERE tenant_id=?').bind(t2).all(); for(const l of (lr.results||[])){ /* match abajo */ } }catch(e){} }
-          if(!leadId && phone){ try{ const lr:any=await env.aura_db.prepare('SELECT id,phone FROM leads WHERE tenant_id=?').bind(t2).all(); for(const l of (lr.results||[])){ if(digits9(l.phone)===phone){ leadId=l.id; break; } } }catch(e){} }
-          if(!mid) return json({ ok:false, error:'no_mid' });
-          // resolver attachment_id si falta
-          if(!aid){ try{ const mr=await uni('/api/v1/messages/'+encodeURIComponent(mid)); const at=(mr.data?.attachments&&mr.data.attachments[0])||null; aid=at?(at.id||at.attachment_id||''):''; }catch(e){} }
-          if(!aid) return json({ ok:false, error:'no_attachment' });
-          try{
-            const ar = await fetch(UNI+'/api/v1/messages/'+encodeURIComponent(mid)+'/attachments/'+encodeURIComponent(aid), { headers:{ 'X-API-KEY': UKEY } });
-            if(!ar.ok) return json({ ok:false, error:'upstream_'+ar.status });
-            const ct = ar.headers.get('content-type') || 'application/octet-stream';
-            const buf = await ar.arrayBuffer();
-            const ext = ct.includes('png')?'png': ct.includes('jpeg')||ct.includes('jpg')?'jpg': ct.includes('mp4')?'mp4': ct.includes('webp')?'webp': ct.includes('pdf')?'pdf':'bin';
-            const key = 'pm_'+t2+'_'+Math.random().toString(36).slice(2,12)+'.'+ext;
-            if (env.aura_r2) { try { await env.aura_r2.put('img/'+key, buf, { httpMetadata:{ contentType: ct } }); } catch(e){ await env.AURA_IMG.put(key, buf, { metadata:{ contentType: ct } }); } }
-            else { await env.AURA_IMG.put(key, buf, { metadata:{ contentType: ct } }); }
-            const mediaUrl = '/img/'+key; const mt = ct.startsWith('video')?'video': ct.startsWith('image')?'img':'file';
-            const id='pm_'+Math.random().toString(36).slice(2,12);
-            await env.aura_db.prepare('INSERT INTO patient_media (id,tenant_id,lead_id,phone,url,mtype,caption,source,created_at) VALUES (?,?,?,?,?,?,?,?,?)').bind(id, t2, leadId||null, phone||null, mediaUrl, mt, b.caption||'', 'whatsapp', Date.now()).run();
-            return json({ ok:true, id, url: mediaUrl, lead_id: leadId||null });
-          }catch(e){ return json({ ok:false, error:'save_failed' }); }
-        }
+        // [Eliminado] Guardar medio de Unipile — retirado. Usar /api/wa-patient-media-save oficial.
         // Subir un medio manualmente (desde el ordenador) a la ficha
         if (p === '/api/wa-patient-media-upload' && req.method === 'POST') {
           const b:any = await req.json(); if(!b.tenant_id) return json({error:'missing tenant'},400);
@@ -4594,38 +4501,8 @@ export default {
           // RENDIMIENTO: servimos SIEMPRE desde la BD al instante. Solo llamamos a Unipile (lento) si el chat
           // está vacío (1ª vez) o si se pide refresco explícito con ?sync=1. El cron resincroniza cada 10 min en 2º plano.
           const wantSync = url.searchParams.get('sync')==='1';
-          if(!is360 && (!(dbRes.results||[]).length || wantSync)){
-            try {
-              const r = await uni('/api/v1/chats/'+encodeURIComponent(chatId)+'/messages?limit=60');
-              const items = (r.data?.items)||[];
-              for (const m of items){ const att=(m.attachments&&m.attachments[0])||null;
-                const attId=att?(att.id||att.attachment_id||null):null;
-                // tipo: del attachment; si no hay attachment pero el mensaje declara tipo de medio, respetarlo
-                let mtype = att ? String(att.type||att.mimetype||att.mime_type||'file').toLowerCase() : String(m.message_type||m.type||'text').toLowerCase();
-                if(!att && (mtype==='text'||mtype==='chat'||mtype==='conversation'||!mtype)) mtype='text';
-                // url directa solo si NO es el esquema att:// (que no es descargable directamente)
-                let directUrl=att?(att.url||att.download_url||att.public_url||att.file_url||(att.data&&att.data.url)||null):null;
-                if(directUrl && /^att:\/\//i.test(String(directUrl))) directUrl=null;
-                const mname=att?(att.file_name||att.name||att.filename||null):null;
-                const mid=m.id||(chatId+'_'+(m.timestamp?Date.parse(m.timestamp):Date.now()));
-                // si hay attachment (aunque la url venga att://), servimos por nuestro proxy con mid+aid
-                const murl = directUrl || (att ? ('/api/wa-media?mid='+encodeURIComponent(mid)+'&aid='+encodeURIComponent(attId||'0')+'&t='+encodeURIComponent(tnt)) : null);
-                const ts=m.timestamp?Date.parse(m.timestamp):Date.now(); const fromMe=(m.is_sender===1||m.is_sender===true)?1:0;
-                // el placeholder de Unipile no es un texto real: lo limpiamos para que el front muestre el tipo de medio
-                let txt = m.text||''; if(/Unipile cannot display this type of message/i.test(txt)){ txt=''; if(mtype==='text') mtype='file'; }
-                // INSERT OR REPLACE: inserta o reemplaza por message_id (PK), rellenando medios
-                try{ await env.aura_db.prepare("INSERT OR REPLACE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,att_id,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(mid, tnt, chatId, fromMe, txt, mtype, murl, mname, attId, ts, Date.now()).run(); }catch(e){}
-              }
-              // Rellena el TELÉFONO del chat desde el remitente de un mensaje entrante (dato 100% fiable de esta conversación).
-              // Busca un identificador con formato 'numero@s.whatsapp.net' (ignora '@lid', que es ID interno sin teléfono).
-              try{
-                let foundPhone='';
-                for(const m of items){ if(m.is_sender===1||m.is_sender===true) continue; const cands=[m.sender_public_identifier, m.sender?.attendee_provider_id, m.provider_id]; for(const cc of cands){ const s=String(cc||''); if(/@lid|@g\.us/i.test(s)) continue; const dgs=s.replace(/@.*/,'').replace(/\D/g,''); if(dgs.length>=7 && dgs.length<=15){ foundPhone=dgs; break; } } if(foundPhone) break; }
-                if(foundPhone){ await env.aura_db.prepare("UPDATE wa_chats_meta SET phone=COALESCE(NULLIF(phone,''),?), name=COALESCE(NULLIF(name,''),?) WHERE tenant_id=? AND chat_id=?").bind(foundPhone, '+'+foundPhone, tnt, chatId).run(); }
-              }catch(e){}
-            } catch(e){}
-            dbRes = await env.aura_db.prepare('SELECT * FROM wa_messages WHERE tenant_id=? AND chat_id=? ORDER BY ts ASC LIMIT 100').bind(tnt, chatId).all();
-          }
+          // Sincronización heredada de Unipile eliminada. Los mensajes llegan por webhook 360dialog.
+
           // marca leído
           try { await env.aura_db.prepare('UPDATE wa_chats_meta SET unread=0 WHERE tenant_id=? AND chat_id=?').bind(tnt, chatId).run(); } catch(e){}
           const messages = (dbRes.results||[]).map((m:any)=>({ id:m.message_id, fromMe: m.from_me===1, text:m.text||'', timestamp:m.ts||null, mtype:m.mtype||'text', murl:m.murl||null, mname:m.mname||null, key:{ id:m.message_id, fromMe: m.from_me===1 }, message:{ conversation:m.text||'' } }));
@@ -4649,41 +4526,18 @@ export default {
             await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,0,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text,last_ts=excluded.last_ts,unread=0,updated_at=excluded.updated_at").bind(b.tenant_id,to,'+'+to,to,b.text||'',now,now).run().catch(()=>{});
             return json({ ok:true, data });
           }
-          const r = await uni('/api/v1/chats/'+encodeURIComponent(chatId)+'/messages','POST',{ text:b.text });
-          // guarda saliente en BD
-          try { const mid=r.data?.message_id||r.data?.id||(chatId+'_out_'+Date.now()); const now=Date.now(); await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,ts,created_at) VALUES (?,?,?,?,?,?,?,?)").bind(mid, b.tenant_id, chatId, 1, b.text||'', 'text', now, now).run(); await env.aura_db.prepare("UPDATE wa_chats_meta SET last_text=?, last_ts=?, unread=0 WHERE tenant_id=? AND chat_id=?").bind(b.text||'', now, b.tenant_id, chatId).run(); } catch(e){}
-          return json({ ok:r.ok, data:r.data });
+          return json({ ok:false, error:'360dialog_only', message:'Solo se admite envío mediante 360dialog.' }, 409);
         }
-        // Enviar adjunto (imagen/audio/documento) - recibe base64 y lo manda como multipart a Unipile
-        if (p === '/api/wa-attach' && req.method === 'POST') {
-          const b:any = await req.json(); if(!b.tenant_id) return json({error:'missing tenant'},400);
-          const chatId = b.jid || b.number; if(!chatId) return json({ok:false,error:'no chat'});
-          try {
-            const bin = Uint8Array.from(atob(String(b.data_b64||'').split(',').pop()||''), c=>c.charCodeAt(0));
-            const fd = new FormData();
-            if(b.text) fd.append('text', b.text);
-            fd.append('attachments', new Blob([bin], { type: b.mime||'application/octet-stream' }), b.filename||'archivo');
-            const r = await fetch(UNI+'/api/v1/chats/'+encodeURIComponent(chatId)+'/messages', { method:'POST', headers:{ 'X-API-KEY': UKEY, 'accept':'application/json' }, body: fd });
-            const t = await r.text(); const data=(()=>{try{return JSON.parse(t);}catch{return t;}})();
-            try { const mid=(data&&(data.message_id||data.id))||(chatId+'_out_'+Date.now()); const now=Date.now(); const isImg=/^image\//.test(b.mime||''); await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,mname,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(mid, b.tenant_id, chatId, 1, b.text||'', isImg?'img':'file', b.filename||'archivo', now, now).run(); await env.aura_db.prepare("UPDATE wa_chats_meta SET last_text=?, last_ts=?, unread=0 WHERE tenant_id=? AND chat_id=?").bind('[adjunto]', now, b.tenant_id, chatId).run(); } catch(e){}
-            return json({ ok:r.ok, status:r.status, data });
-          } catch(e:any){ return json({ ok:false, error:String(e&&e.message||e) }); }
-        }
-        // Reaccionar a un mensaje
-        if (p === '/api/wa-react' && req.method === 'POST') {
-          const b:any = await req.json(); const chatId=b.jid||b.number; if(!chatId||!b.message_id) return json({ok:false});
-          const r = await uni('/api/v1/chats/'+encodeURIComponent(chatId)+'/messages','POST',{ reaction:{ value:b.emoji||'👍', message_id:b.message_id } });
-          return json({ ok:r.ok, data:r.data });
-        }
-        // Iniciar conversación nueva con un número (start new chat)
-        if (p === '/api/wa-newchat' && req.method === 'POST') {
-          const b:any = await req.json(); if(!b.tenant_id) return json({error:'missing tenant'},400);
-          const acc = await acctOf(b.tenant_id); if(!acc) return json({ok:false,error:'sin cuenta'});
-          const phone = String(b.number||'').replace(/\D/g,'');
-          if(!phone) return json({ok:false,error:'numero'});
-          const fd = new FormData(); fd.append('account_id', acc); fd.append('text', b.text||'Hola'); fd.append('attendees_ids', phone+'@s.whatsapp.net');
-          try { const r = await fetch(UNI+'/api/v1/chats', { method:'POST', headers:{ 'X-API-KEY': UKEY, 'accept':'application/json' }, body: fd }); const t=await r.text(); return json({ ok:r.ok, status:r.status, data:(()=>{try{return JSON.parse(t);}catch{return t;}})() }); } catch(e:any){ return json({ok:false,error:String(e&&e.message||e)}); }
-        }
+        // [Eliminado] Envío de adjuntos vía Unipile — retirado. Usar /api/wa-attach oficial.
+        // [Eliminado] Reacción vía Unipile — retirado. Usar /api/wa-react oficial.
+
+
+
+
+
+
+        // [Eliminado] Inicio de chat vía Unipile — retirado. Usar plantilla oficial.
+
         // Crear paciente/lead desde un chat de WhatsApp (cuando el contacto no existe)
         if (p === '/api/wa-add-lead' && req.method === 'POST') {
           const b:any = await req.json(); if(!b.tenant_id) return json({error:'missing tenant'},400);
@@ -4701,80 +4555,12 @@ export default {
           try { await env.aura_db.prepare("UPDATE appointments SET status='confirmed' WHERE id=? AND tenant_id=?").bind(b.appointment_id, b.tenant_id).run(); } catch(e){ return json({ok:false}); }
           return json({ ok:true });
         }
-        // Marcar chat como leído
-        if (p === '/api/wa-read' && req.method === 'POST') {
-          const b:any = await req.json(); const chatId=b.jid||b.number; if(!chatId) return json({ok:false});
-          await uni('/api/v1/chats/'+encodeURIComponent(chatId),'PATCH',{ action:'setReadStatus', value:true });
-          return json({ ok:true });
-        }
-        // Desconectar
-        if (p === '/api/wa-logout' && req.method === 'POST') {
-          const b:any = await req.json(); const acc = await acctOf(b.tenant_id||''); 
-          if(acc){ await uni('/api/v1/accounts/'+acc,'DELETE'); await env.aura_db.prepare('DELETE FROM wa_config WHERE tenant_id=?').bind(b.tenant_id).run(); }
-          return json({ ok:true });
-        }
-        // Webhook entrante de Unipile (mensajes nuevos) en tiempo real -> persiste en AURA
-        if (p === '/api/wa-webhook' && req.method === 'POST') {
-          try {
-            const ev:any = await req.json();
-            if (ev && (ev.event==='message_received' || ev.message || ev.message_id)) {
-              const accId = ev.account_id;
-              let owner:any = null;
-              try { owner = await env.aura_db.prepare('SELECT tenant_id FROM wa_config WHERE instance=?').bind(accId).first(); } catch(e){}
-              const tenantId = owner?.tenant_id;
-              if (tenantId) {
-                const chatId = ev.chat_id || '';
-                const msgId = ev.message_id || (chatId+'_'+(ev.timestamp||Date.now()));
-                const fromMe = (ev.is_sender===1||ev.is_sender===true) || !!(ev.account_info?.user_id && ev.sender?.attendee_provider_id && String(ev.account_info.user_id)===String(ev.sender.attendee_provider_id));
-                const text = String(ev.message||'');
-                const att = (ev.attachments&&ev.attachments[0])||null;
-                // tipo real del adjunto (img/video/audio/sticker/file...) y att_id para el proxy de medios
-                const mtype = att ? String(att.type||att.mimetype||att.mime_type||'file').toLowerCase() : 'text';
-                const attId = att ? (att.id||att.attachment_id||null) : null;
-                // la url 'att://...' de Unipile no es descargable directa: usamos nuestro proxy con mid+aid
-                const directUrl = att ? (att.url && !/^att:\/\//i.test(String(att.url)) ? att.url : null) : null;
-                const murl = att ? (directUrl || ('/api/wa-media?mid='+encodeURIComponent(msgId)+'&aid='+encodeURIComponent(attId||'0')+'&t='+encodeURIComponent(tenantId))) : null;
-                const mname = att ? (att.file_name||att.name||att.filename||null) : null;
-                const ts = ev.timestamp ? Date.parse(ev.timestamp) : Date.now();
-                const senderPhone = (ev.sender?.attendee_provider_id||ev.provider_id||'').replace(/@.*/,'').replace(/\D/g,'');
-                // dedupe por message_id (INSERT OR REPLACE para rellenar att_id/murl si llega mas completo)
-                try { await env.aura_db.prepare("INSERT OR REPLACE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,att_id,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(msgId, tenantId, chatId, fromMe?1:0, text, mtype, murl, mname, attId, ts, Date.now()).run(); } catch(e){}
-                // actualiza metadatos del chat (nombre, último texto, no leídos)
-                try {
-                  const who = ev.sender?.attendee_name || (senderPhone?('+'+senderPhone):'');
-                  const incUnread = fromMe ? 0 : 1;
-                  // attendee_id del remitente: permite cargar su foto de inmediato (solo en 1a1; en grupos no sobreescribimos)
-                  const senderAttId = (!fromMe && ev.sender?.attendee_id) ? ev.sender.attendee_id : '';
-                  const isGroupEv = Array.isArray(ev.attendees) && ev.attendees.length>1;
-                  await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,attendee_id,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text, last_ts=excluded.last_ts, unread=wa_chats_meta.unread+"+incUnread+", name=COALESCE(NULLIF(wa_chats_meta.name,''),excluded.name), phone=COALESCE(NULLIF(wa_chats_meta.phone,''),excluded.phone), attendee_id=COALESCE(NULLIF(wa_chats_meta.attendee_id,''),NULLIF(excluded.attendee_id,'')), updated_at=excluded.updated_at").bind(tenantId, chatId, who, senderPhone, (isGroupEv?'':senderAttId), text||(att?'[adjunto]':''), ts, incUnread, Date.now()).run();
-                } catch(e){}
-              }
-            }
-          } catch(e){}
-          return json({ ok:true });
-        }
-        if (p === '/api/wa-webhook') { return json({ ok:true }); }
+        // [Eliminado] Marcar leído vía Unipile — retirado. Usar /api/wa-read oficial.
+        // [Eliminado] Logout vía Unipile — retirado. Usar /api/wa-disconnect-360.
+        // [Eliminado] Webhook entrante de Unipile — retirado. Los mensajes llegan por /api/wa-webhook-360.
 
-        // DIAGNOSTICO/ALTA del webhook de mensajeria en Unipile (tiempo real). GET lista, POST crea/recrea.
-        if (p === '/api/wa-webhook-setup') {
-          const hookUrl = 'https://aura-chat-worker.adrian-7b9.workers.dev/api/wa-webhook';
-          const list = await uni('/api/v1/webhooks');
-          const items = (list.data?.items)||(Array.isArray(list.data)?list.data:[]);
-          const matches = (items||[]).filter((w:any)=> String(w.request_url||w.url||'').indexOf('/api/wa-webhook')>=0);
-          const hasJsonHeader = (w:any)=> Array.isArray(w.headers) && w.headers.some((h:any)=> String(h.key||h.name||'').toLowerCase()==='content-type');
-          const good = matches.find((w:any)=> w.enabled!==false && hasJsonHeader(w));
-          if (req.method === 'GET') {
-            return json({ ok:true, configured: matches.length>0, has_json_header: matches.some(hasJsonHeader), hook_url: hookUrl, webhooks: items });
-          }
-          const force = url.searchParams.get('force')==='1';
-          // Si ya hay uno correcto y no se fuerza, no tocamos nada
-          if (good && !force) return json({ ok:true, already:true, webhook: good });
-          // Borrar los webhooks de AURA que no tengan el header correcto (o todos si force)
-          for (const w of matches){ const id=w.id||w.webhook_id; if(!id) continue; if(force || !hasJsonHeader(w)){ try{ await uni('/api/v1/webhooks/'+encodeURIComponent(id),'DELETE'); }catch(e){} } }
-          // Crear el webhook correcto con header Content-Type JSON
-          const created = await uni('/api/v1/webhooks','POST',{ request_url: hookUrl, source:'messaging', name:'AURA mensajes', headers:[{ key:'Content-Type', value:'application/json' }] });
-          return json({ ok: created.ok, created: created.data, hook_url: hookUrl, removed: matches.length });
-        }
+        // [Eliminado] Diagnóstico de webhook Unipile — retirado.
+
 
         // SUGERENCIAS DE RESPUESTA (IA): 2-3 respuestas cortas para que recepción conteste con un clic.
         if (p === '/api/wa-suggest' && req.method === 'POST') {
