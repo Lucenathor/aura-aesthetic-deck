@@ -3969,7 +3969,7 @@ const D360_PARTNER_ID = 'IGw6FhPA';
 async function loadWa360Status(){
   setupWa360ConnectButton();
   try{
-    const r=await fetch(WORKER+'/api/wa-status-360?tenant='+T);
+    const r=await fetch(WORKER+'/api/wa-status-360?tenant='+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}});
     const d=await r.json();
     const st=document.getElementById('wa360Status');
     const conn=document.getElementById('wa360Connected');
