@@ -3,7 +3,7 @@
 ## Datos de la cuenta
 - **Partner ID:** IGw6FhPA
 - **Partner Name:** Thor Group
-- **Partner API Key:** 2e150a7b-db45-451f-8cf8-2ee563e05bf9
+- **Partner API Key:** almacenada exclusivamente como secreto `D360_PARTNER_KEY` del Worker; nunca versionar ni mostrar el valor.
 - **País:** UAE
 - **Modelo de pago:** Partner-paid (PBS)
 - **Cliente creado:** Thor Group Client (ID: rMfUbVyDCL)
