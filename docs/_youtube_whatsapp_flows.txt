@@ -1,0 +1,75 @@
+Starting video analysis...
+Submitting video analysis task...
+Task submitted (ID: video-analysis-151b1426-fc19-4a90-87fd-fd13d375ad15)
+[8s] Status: Analyzing video content with AI...
+[33s] Still processing, please wait...
+[45s] Status: Analysis completed
+[45s] Analysis completed!
+Full analysis result saved to: /home/ubuntu/video_wUDzMzrzLxQ_analysis_20260821_174658.md
+Note: This tool performs AI-based visual and audio analysis, not verbatim transcription. For detailed speech transcription, use `manus-speech-to-text` instead.
+Analysis result:
+
+Basado exhaustivamente en el análisis visual y de audio del video proporcionado, aquí tienes el desglose detallado sobre el sistema de reservas usando WhatsApp Cloud API y Flows.
+
+---
+
+### (A) Recorrido del usuario (User Journey)
+**Lo que se demuestra en el video:**
+1.  **Punto de entrada:** El usuario escanea un código QR desde la pantalla de un ordenador usando la cámara de su teléfono, lo que abre directamente un chat de WhatsApp con la cuenta "Appoint".
+2.  **Interacción inicial:** El usuario envía un mensaje de saludo (*"Hi"*).
+3.  **Selección de idioma:** El bot responde con un menú interactivo (*"Welcome to Nothing Apps. Select a Language to continue"*). El usuario selecciona "English" y pulsa enviar.
+4.  **Apertura del formulario (WhatsApp Flow):** El bot envía un botón que dice "Enter". Al pulsarlo, se abre una pantalla superpuesta nativa de WhatsApp (Flow) titulada *"Appointment Booking"*.
+5.  **Relleno de datos:** El usuario introduce su nombre, elige una fecha en un calendario interactivo y selecciona una franja horaria de una lista desplegable. Pulsa "Continue".
+6.  **Selección de pago:** El bot envía otro menú interactivo para elegir el método de pago (*"Pay Online"* o *"Pay Directly"*). El usuario elige pago online.
+7.  **Revisión y urgencia:** El bot envía una tarjeta resumen con los datos de la cita y un botón de confirmación. Incluye una regla de caducidad visible.
+8.  **Pago externo:** Tras confirmar, el bot envía un botón "Pay". Al pulsarlo, el usuario sale de WhatsApp hacia una pasarela de pago web (Stripe) por valor de 1.00 US$.
+9.  **Redirección y confirmación:** Tras el pago, el navegador pide permiso para volver a abrir WhatsApp (*"This site is trying to open another application"*). Al aceptar, el bot envía el mensaje final: *"Your appointment has been confirmed. Thank you!"*.
+
+---
+
+### (B) Datos que recoge
+**Lo que se demuestra en el video:**
+*   **Datos introducidos manualmente por el usuario (en el Flow):**
+    *   Nombre (*"Enter your name"*).
+    *   Fecha de la cita (*"Single date"*).
+    *   Hora de la cita (*"Choose Time"*).
+    *   Preferencia de método de pago.
+*   **Datos capturados automáticamente (visibles en el panel de administración):**
+    *   Número de teléfono del usuario (se ve claramente en el dashboard web en el minuto 2:08, a pesar de que el usuario nunca lo escribió en el formulario. Esto es una característica inherente de la API de WhatsApp).
+
+---
+
+### (C) Manejo de disponibilidad y confirmación
+**Lo que se demuestra en el video:**
+*   **Gestión de caducidad (User-side):** El sistema retiene temporalmente la cita pero exige confirmación rápida.
+    *   *Cita textual del bot:* *"Confirm in 5 mins or it will be cancelled automatically"* (Confirma en 5 minutos o se cancelará automáticamente).
+    *   *Cita textual del narrador:* *"because you can see confirm in 5 minutes so it will be cancelled automatically so I just confirm."*
+*   **Gestión de disponibilidad (Admin-side / Dashboard web):** El administrador tiene un panel ("Customer-Expert ReserveEasy") con opciones granulares:
+    *   **Asignación por trabajador:** Se puede seleccionar un calendario específico para cada empleado (ej. selecciona al trabajador "Rajee").
+    *   **Fechas bloqueadas:** Opción *"Unavailable Dates"* para marcar días específicos en rojo donde no se pueden agendar citas.
+    *   **Horizonte de reservas:** Opción *"maximum Date"*.
+        *   *Cita textual del narrador:* *"So what is that maximum date an appointment can happen like a user can book till 30 or till this year."* (¿Cuál es la fecha máxima en la que puede ocurrir una cita? Como si un usuario puede reservar hasta el 30 o hasta este año).
+    *   **Duración dinámica de los turnos:** Opción *"Time Duration"*.
+        *   *Cita textual del narrador:* *"We keep that time duration at 30 minutes for each user. So if you want 10 minutes we can able to configure it... then that time slot will be arranged based on this one."* (Mantenemos esa duración en 30 minutos para cada usuario. Así que si quieres 10 minutos podemos configurarlo... entonces la franja horaria se organizará en base a esto).
+    *   **Horarios semanales (*Weekly hours*):** Permite configurar múltiples bloques de disponibilidad por día (ej. Miércoles de 09:00 a 10:00 y de 15:00 a 16:00).
+
+---
+
+### (D) Limitaciones o requisitos oficiales
+*Nota: El video no enumera la documentación oficial de Meta, pero revela las siguientes limitaciones/requisitos técnicos por la forma en que está construido el sistema:*
+*   **Dependencia de pasarelas externas (Demostrado):** El pago no ocurre dentro de la interfaz nativa de WhatsApp. Requiere sacar al usuario a un navegador externo (Stripe) y depender de redirecciones (Deep links) para volver a la app.
+*   **Necesidad de un Backend robusto (Demostrado):** Para que el mensaje de *"Confirm in 5 mins or it will be cancelled"* funcione, y para que el bot sepa que el usuario ha pagado en Stripe (minuto 1:45), es obligatorio contar con un servidor propio que gestione temporizadores cronometrados y reciba webhooks de la pasarela de pago.
+*   **Estructura rígida de los Flows (Demostrado):** La pantalla de reserva es un formulario predefinido. Las horas disponibles ("15:00-15:30", etc.) se cargan dinámicamente desde el servidor antes de mostrar la pantalla, no es una negociación conversacional con IA libre.
+
+---
+
+### (E) Decisiones aplicables a AURA para clínicas estéticas
+*Basado en las mecánicas demostradas en el video, las siguientes son opiniones/recomendaciones estratégicas de cómo AURA podría adaptar este sistema exacto:*
+
+1.  **Gestión de Profesionales (Basado en la función "Select Worker"):** AURA debe usar esta función para separar las agendas de diferentes especialistas (ej. Médico Estético, Técnico Láser, Nutricionista). El usuario podría elegir la especialidad en el primer menú interactivo, y el Flow cargaría la disponibilidad de ese "Worker" específico.
+2.  **Duración de citas variable (Basado en la función "Time Duration"):** Dado que en estética los tratamientos varían enormemente en tiempo, AURA debería programar el backend para que el "Time Duration" cambie según el servicio elegido. Ej: Consulta de valoración (15 mins) vs. Tratamiento de Ácido Hialurónico (45 mins). El sistema reorganizará los huecos automáticamente como demuestra el video.
+3.  **Sistema de Señal/Depósito (Basado en el flujo de Stripe y el límite de 5 minutos):** Las clínicas estéticas sufren mucho por el "no-show" (clientes que no acuden). AURA debe implementar exactamente el flujo mostrado:
+    *   Ofrecer *"Pay Directly"* (Pagar en clínica) solo para consultas gratuitas o clientes VIP.
+    *   Exigir *"Pay Online"* (Reserva de plaza/depósito) para tratamientos costosos.
+    *   Aplicar estrictamente la regla demostrada de *"Confirm in 5 mins or it will be cancelled"*. Si el paciente no completa el pago en Stripe en 5 minutos, el hueco de la agenda se libera automáticamente para otro paciente, optimizando la rentabilidad de la clínica.
+4.  **Captación O2O (Online to Offline) (Basado en el inicio por QR):** AURA puede imprimir códigos QR idénticos al del inicio del video y colocarlos en los escaparates de la clínica, folletos físicos o campañas de Instagram. Un paciente que pase por la calle puede escanear el QR y tener su cita de botox agendada y pagada en menos de 2 minutos sin que intervenga la recepcionista.

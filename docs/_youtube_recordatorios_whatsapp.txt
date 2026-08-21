@@ -1,0 +1,65 @@
+Starting video analysis...
+Submitting video analysis task...
+Task submitted (ID: video-analysis-5be2ad7b-36f6-4346-a9f1-b85b2de15c1f)
+[8s] Status: Analyzing video content with AI...
+[33s] Still processing, please wait...
+[1m3s] Still processing, please wait...
+[1m5s] Status: Analysis completed
+[1m5s] Analysis completed!
+Full analysis result saved to: /home/ubuntu/video_Q5vXXwy38j8_analysis_20260821_174450.md
+Note: This tool performs AI-based visual and audio analysis, not verbatim transcription. For detailed speech transcription, use `manus-speech-to-text` instead.
+Analysis result:
+
+Basado en el análisis exhaustivo del video proporcionado, aquí tienes la extracción detallada sobre los recordatorios de citas por WhatsApp, categorizada según tus requerimientos. 
+
+*(Nota: Las citas textuales se mantienen en su idioma original, inglés, para garantizar la precisión absoluta de lo dicho en el video).*
+
+### (A) Flujo demostrado
+El video demuestra un flujo de automatización en 4 pasos utilizando WordPress (con el plugin Amelia), Zapier y Wati (WhatsApp Business API):
+
+1.  **Captura de datos:** El cliente reserva a través del sitio web. *"Client books through your WordPress site using Amelia. That booking data gets stored in your WordPress database."*
+2.  **Detección (Webhook):** Un servicio conector (Zapier) actúa como mensajero. *"A connector service... detects that new bookings and grabs the details: client name, phone number, appointment time."*
+3.  **Conexión con la API:** Zapier se comunica con la API de WhatsApp (a través de Wati). *"This connector talks to WhatsApp Business API and says: 'Hey, send this specific message to this phone number at this specific time.'"*
+4.  **Entrega:** WhatsApp entrega el mensaje al cliente. *"WhatsApp delivers your personalized reminder directly to your client's phone."*
+
+**Configuración técnica clave mostrada:**
+*   Hacer obligatorio el campo del teléfono en el sistema de reservas.
+*   Crear un Webhook en el sistema de reservas (Amelia) configurado para activarse con la acción: *"Booking Status Changed"*.
+*   Usar Zapier con el disparador *"Catch Hook"* para recibir los datos.
+*   Usar Wati en Zapier con la acción *"Send Template Message"* mapeando los campos (nombre, teléfono) capturados en el paso anterior.
+
+### (B) Mensajes y momentos de envío
+La presentadora detalla tres plantillas específicas de mensajes que "realmente funcionan", enviadas en tres momentos clave del ciclo de la cita:
+
+**1. Recordatorio de 24 horas (The 24-Hour Reminder):**
+*   *Mensaje:* "Hi [Name]! 👋 Just a friendly reminder that you have an appointment with us tomorrow at [Time]. Reply YES to confirm or CANCEL if you need to reschedule. See you soon!"
+
+**2. Aviso previo de 2 horas (The 2-Hour Heads Up):**
+*   *Mensaje:* "[Name], your appointment starts in 2 hours at [Time]. We're at [Address]. Need directions? Reply MAP and I'll send them over!"
+
+**3. Seguimiento de agradecimiento (The Thank You Follow-Up):**
+*   *Mensaje:* "Thanks for coming in today, [Name]! 🙏 How was your experience? Reply with a quick rating 1-5, and if you loved it, we'd appreciate a review: [Link]"
+
+### (C) Interacciones del paciente
+El video destaca cómo y por qué los pacientes interactúan con estos mensajes, en contraste con los correos electrónicos:
+
+*   **Alta visibilidad:** *"The average person opens WhatsApp 23 times per day!"* Además, los clientes tienen *"five times more likely to read a WhatsApp message within five minutes compared to email."*
+*   **Opciones de respuesta rápida:** Se insta al paciente a interactuar con respuestas simples y cortas como "YES", "CANCEL", "MAP" o una calificación del "1-5".
+*   **Tasas de interacción (Métricas citadas):**
+    *   La plantilla de 24 horas obtiene: *"89% confirmation rates."*
+    *   Tasa de respuesta general: *"About 40% of people actually respond to these kind of messages."*
+    *   Reducción de ausencias: *"WhatsApp reminders reduce no-shows by 60 to 80%."*
+
+### (D) Riesgos, consentimiento y reglas de plantilla
+*   **Consentimiento y Expectativas:** Para evitar fricciones y mejorar la conversión, se recomienda añadir una nota en el formulario de reserva original. *"Add a small note in your booking form that says: 'We'll send appointment reminders via WhatsApp.' This sets expectations and actually increases booking completion rates."*
+*   **Riesgo de ignorancia:** El mayor error es enviar mensajes robóticos. *"This is where most people make mistakes. They send boring robotic messages that clients ignore."*
+*   **Reglas de la API y Costos:** No se puede automatizar con la aplicación normal del teléfono. Se requiere la API oficial de WhatsApp Business (usando proveedores como Wati, Twilio o MessageBird) mediante el *"embedded signup"* de Meta. Esto tiene un costo: *"Pricing is roughly $0.005 to $0.01 per message depending on your country."*
+
+### (E) Aprendizajes aplicables a AURA (Mejores prácticas extraídas)
+Si AURA es o será un sistema de gestión de clínicas, debe integrar los siguientes aprendizajes demostrados en el video:
+
+1.  **Cambio de canal (Email vs WhatsApp):** AURA no debe depender del correo electrónico para recordatorios críticos. *"No email reminder worked. They missed it. You lost that time slot, that revenue..."*
+2.  **Estructura de los mensajes (Tono y Claridad):** Las plantillas en AURA deben estar preconfiguradas con un *"Friendly tone, emoji for warmth, specific time, easy response options."*
+3.  **Aportar valor antes de la cita:** AURA debería incluir automatizaciones de "último minuto" (como el aviso de 2 horas) que resuelvan problemas logísticos del paciente (ej. cómo llegar). *"The map option is genius. It shows you're helpful, not just automated."*
+4.  **Automatizar el ciclo completo (Pre y Post cita):** AURA no solo debe recordar la cita, sino aprovechar la inercia post-cita para la reputación de la clínica. El mensaje de seguimiento *"gets you feedback and reviews with almost zero effort."*
+5.  **Retorno de inversión (ROI) como argumento de venta:** Si AURA vende este módulo a clínicas, el argumento clave es el ahorro de tiempo y dinero. *"Businesses using automated WhatsApp reminders report saving an average of 8 to 12 hours per week on manual follow-ups"* y *"one prevented no-show pays for hundreds of messages."*

@@ -1,0 +1,100 @@
+Starting video analysis...
+Submitting video analysis task...
+Task submitted (ID: video-analysis-bc31fbca-1f77-40aa-b9bd-6a5354ad58d1)
+[8s] Status: Analyzing video content with AI...
+[33s] Still processing, please wait...
+[45s] Status: Analysis completed
+[45s] Analysis completed!
+Full analysis result saved to: /home/ubuntu/video_TzpI1xAV5sQ_analysis_20260821_174556.md
+Note: This tool performs AI-based visual and audio analysis, not verbatim transcription. For detailed speech transcription, use `manus-speech-to-text` instead.
+Analysis result:
+
+Basado en el análisis exhaustivo del video proporcionado, a continuación se extrae el máximo detalle sobre el proceso de onboarding para convertirse en un proveedor de tecnología (Tech Provider) de WhatsApp Business API utilizando 360dialog.
+
+Para cumplir con tus requisitos, se utilizará la siguiente nomenclatura:
+*   **"Cita textual"**: Transcripción literal del audio o texto prominente en pantalla.
+*   **[Hecho demostrado]**: Acción o configuración que se muestra explícitamente en la grabación de la pantalla.
+*   *(Inferencia/Opinión)*: Conclusión lógica o recomendación basada en el análisis visual y el contexto técnico, aplicable a tu caso de uso.
+
+---
+
+### (A) Pasos de activación
+
+El video detalla un flujo de trabajo lineal en el panel de Meta for Developers y el Partner Hub de 360dialog:
+
+1.  **Creación de la App en Meta:**
+    *   **"Cita textual"**: *"First, access or create your ISV business portfolio and register as a Meta developer to start setting up your app."*
+    *   [Hecho demostrado]: Se crea una aplicación seleccionando el tipo "Business" (Negocios). Se nombra la app (ej. "TechPartner 360D"), se añade un correo de contacto y se asocia a una cuenta comercial (Business Portfolio).
+2.  **Añadir el producto WhatsApp:**
+    *   [Hecho demostrado]: Desde el panel de la app, se selecciona la tarjeta "WhatsApp" y se hace clic en "Set up".
+3.  **Selección del modelo de Partnership:**
+    *   **"Cita textual"**: *"Continue onboarding as a Tech Provider by accepting Meta's terms of service and choosing your partnership path, working with a solution partner."*
+    *   [Hecho demostrado]: En la ventana emergente "Onboard as a Tech Provider", se elige la opción "Working with a Solution Partner" (Trabajar con un socio de soluciones) en lugar de "Independent Tech Provider".
+4.  **Verificación del Negocio (Business Verification):**
+    *   [Hecho demostrado]: Se requiere que el negocio esté verificado ("Approved") en Meta Business Suite antes de avanzar a la revisión de la app.
+5.  **Creación de la Solución de Partner (Partner Solution):**
+    *   **"Cita textual"**: *"In the next step, create your partner solution. You can find 360dialog partner app ID in our documentation."*
+    *   [Hecho demostrado]: Se introduce el "Partner App ID" de 360dialog. Se configuran los permisos (`Message templates`, `Manage accounts`, `Send messages`) asignando la responsabilidad a "Only my partner" (Solo mi socio).
+6.  **Configuración de la App (App Settings):**
+    *   [Hecho demostrado]: Se debe subir un icono para la app, proporcionar una URL de Política de Privacidad (Privacy Policy URL) y seleccionar una categoría (ej. "Messaging").
+7.  **Revisión de la App (App Review):**
+    *   [Hecho demostrado]: Se deben responder preguntas sobre el manejo de datos (Data handling questions).
+    *   **"Cita textual"**: *"...submit videos demonstrating key functionalities of your WhatsApp integration. These videos validate that your app is properly configured to send messages and create message templates."*
+    *   [Hecho demostrado]: Se suben grabaciones de pantalla (Screen Recordings) para justificar el uso de permisos avanzados como `whatsapp_business_messaging` y `whatsapp_business_management`.
+8.  **Verificación de Acceso (Access Verification):**
+    *   **"Cita textual"**: *"Another important step is the access verification. You can complete the verification on the quickstart menu or from the app settings page."*
+9.  **Paso a Producción (Live Mode):**
+    *   [Hecho demostrado]: Se cambia el interruptor superior de la app de "Development" (Desarrollo) a "Live" (En vivo).
+10. **Vinculación con 360dialog:**
+    *   **"Cita textual"**: *"Copy and add your solution ID in the partner hub to link your Meta app with 360dialog."*
+    *   [Hecho demostrado]: Se copia el "Solution ID" generado en Meta y se pega en la sección "Integration Settings" del "360 Partner Hub" de 360dialog.
+
+---
+
+### (B) Roles y responsabilidades
+
+Basado en la interfaz y las acciones mostradas:
+
+*   **Tech Provider (El Partner/Proveedor - ej. Tu empresa):**
+    *   [Hecho demostrado]: Es responsable de crear la Meta App bajo su propio Business Manager.
+    *   [Hecho demostrado]: Debe proporcionar su propia URL de política de privacidad y verificar su propio negocio ante Meta.
+    *   [Hecho demostrado]: Es el encargado de grabar y enviar los videos demostrativos a Meta para justificar el uso de la API.
+*   **Solution Partner (360dialog):**
+    *   [Hecho demostrado]: Proporciona la infraestructura subyacente, identificada mediante su "Partner App ID".
+    *   **"Cita textual"**: *"If you need help preparing the recordings, you can request us. Just contact our support team and we will guide you through the process."* (Asumen un rol de soporte y consultoría durante el App Review).
+*   **Meta:**
+    *   [Hecho demostrado]: Actúa como entidad auditora. Revisa la verificación del negocio, audita el manejo de datos y aprueba (o rechaza) los videos demostrativos antes de otorgar acceso a la API en modo "Live".
+
+---
+
+### (C) Seguridad y credenciales
+
+Durante el video se exponen identificadores y requisitos de seguridad críticos:
+
+*   **Partner App ID (de 360dialog):**
+    *   [Hecho demostrado]: El ID exacto que se pega en el video para vincular a 360dialog es `1140074537853103`.
+*   **Solution ID:**
+    *   [Hecho demostrado]: Es un código alfanumérico largo generado por Meta (ej. `1143074537853103` visible en pantalla) que actúa como puente criptográfico/lógico entre la Meta App del Tech Provider y el Partner Hub de 360dialog.
+*   **Privacidad y Manejo de Datos:**
+    *   [Hecho demostrado]: Es obligatorio contar con una "Privacy Policy URL" alojada y accesible.
+    *   [Hecho demostrado]: Existe un cuestionario obligatorio llamado "Data handling questions" para declarar cómo se procesarán los datos de los usuarios finales.
+
+---
+
+### (D) Limitaciones y requisitos de Meta
+
+El proceso expone varias barreras de entrada estrictas impuestas por Meta:
+
+*   [Hecho demostrado]: **Bloqueo por Verificación:** No se puede enviar la solicitud de "App Review" si el negocio (Business Portfolio) no tiene el estado "Approved" en la verificación de Meta.
+*   [Hecho demostrado]: **Evidencia visual obligatoria:** Meta no aprueba permisos avanzados basándose solo en descripciones de texto. Exige archivos de video (Screen Recordings) que muestren la interfaz del Tech Provider enviando mensajes y gestionando plantillas.
+*   [Hecho demostrado]: **Modo Live:** La integración final con 360dialog (pegar el Solution ID en el Partner Hub) requiere que la Meta App haya salido del modo "Development" y esté en modo "Live".
+
+---
+
+### (E) Decisiones concretas aplicables a AURA multi-tenant
+
+*(Inferencia/Opinión)*: Asumiendo que "AURA" es una plataforma SaaS multi-tenant donde gestionarás a múltiples clientes finales que usarán WhatsApp, el video sugiere las siguientes decisiones arquitectónicas y operativas:
+
+1.  *(Inferencia)*: **Modelo de delegación de permisos:** Al configurar la "Partner Solution" (Paso 5), el video muestra que se delega la gestión de plantillas y el envío de mensajes a "Only my partner" (360dialog). Para AURA, esto significa que tu plataforma no interactuará directamente con los servidores de Meta para el enrutamiento de mensajes, sino que toda la carga transaccional pasará por los webhooks y endpoints de 360dialog. Tu Meta App actúa como un "cascarón" legal y de permisos.
+2.  *(Inferencia)*: **Un único Solution ID para todo el SaaS:** El proceso mostrado vincula *una* Meta App a *un* entorno en el Partner Hub de 360dialog. Para un modelo multi-tenant como AURA, esto implica que no debes repetir este proceso por cada cliente. Realizas este onboarding una sola vez a nivel "AURA". Posteriormente, utilizarás la API de 360dialog (o el flujo de Embedded Signup) para agregar los números de teléfono de tus clientes bajo este mismo paraguas (Solution ID).
+3.  *(Inferencia)*: **Preparación del entorno Demo para Meta:** Dado que Meta exige videos demostrativos (Paso 7), AURA debe tener un entorno de "staging" o "demo" funcional antes de solicitar el paso a producción. Deberás grabar la interfaz de AURA demostrando cómo un usuario (tenant) crearía una plantilla de WhatsApp y cómo enviaría un mensaje a través de tu CRM/Plataforma, para que Meta apruebe los permisos `whatsapp_business_messaging` y `whatsapp_business_management` a nivel global para tu App.

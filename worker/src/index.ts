@@ -25,8 +25,6 @@ interface Env {
   aura_r2?: R2Bucket;
   EVOLUTION_URL?: string;
   EVOLUTION_KEY?: string;
-  UNIPILE_DSN?: string;
-  UNIPILE_KEY?: string;
   TWILIO_ACCOUNT_SID?: string;
   TWILIO_AUTH_TOKEN?: string;
   TWILIO_FROM_NUMBER?: string;
@@ -256,6 +254,19 @@ async function hmacHex(secret: string, payload: string, hash: 'SHA-256'|'SHA-512
 async function verify360Signature(env: Env, rawBody: string, received: string|null){
   if (!env.D360_PLATFORM_SECRET || !received) return false;
   return timingSafeEqual(await hmacHex(env.D360_PLATFORM_SECRET, rawBody, 'SHA-256'), received.trim());
+}
+async function waMediaSignature(env: Env, tenantId: string, mediaId: string, exp: number){
+  return hmacHex(env.JWT_SECRET || 'aura-media-signing-secret', `wa-media:${tenantId}:${mediaId}:${exp}`, 'SHA-256');
+}
+async function waMediaUrl(env: Env, tenantId: string, mediaId: string){
+  const exp = Math.floor(Date.now() / 1000) + 300;
+  const sig = await waMediaSignature(env, tenantId, mediaId, exp);
+  return `/api/wa-media?tenant=${encodeURIComponent(tenantId)}&mid=${encodeURIComponent(mediaId)}&exp=${exp}&sig=${sig}`;
+}
+async function validWaMediaUrl(env: Env, tenantId: string, mediaId: string, expRaw: string, signature: string){
+  const exp = Number(expRaw);
+  if (!tenantId || !mediaId || !Number.isFinite(exp) || exp < Math.floor(Date.now() / 1000) || exp > Math.floor(Date.now() / 1000) + 600) return false;
+  return timingSafeEqual(await waMediaSignature(env, tenantId, mediaId, exp), signature || '');
 }
 async function signLead(env: Env, leadId: string){
   const secret=env.JWT_SECRET||'aura-default-secret';
@@ -579,25 +590,40 @@ let __waReady = false;
 async function ensureWaSchema(env: Env) {
   if (__waReady) return;
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS wa_config (tenant_id TEXT PRIMARY KEY, instance TEXT, updated_at INTEGER)"); } catch(e){}
-  // 360dialog: campos adicionales para la integración
-  try { await env.aura_db.exec('ALTER TABLE wa_config ADD COLUMN provider TEXT DEFAULT "unipile"'); } catch(e){}
+  // 360dialog es el único proveedor de WhatsApp admitido por AURA.
+  try { await env.aura_db.exec('ALTER TABLE wa_config ADD COLUMN provider TEXT DEFAULT "360dialog"'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE wa_config ADD COLUMN d360_api_key TEXT'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE wa_config ADD COLUMN d360_channel_id TEXT'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE wa_config ADD COLUMN d360_phone TEXT'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE wa_config ADD COLUMN d360_phone_number_id TEXT'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE wa_config ADD COLUMN d360_client_id TEXT'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE wa_config ADD COLUMN connected INTEGER DEFAULT 0'); } catch(e){}
+  // Migración segura: se conservan los chats ya persistidos, pero ningún tenant puede seguir llamando a Unipile.
+  try { await env.aura_db.exec("UPDATE wa_config SET provider='360dialog', connected=CASE WHEN d360_api_key IS NOT NULL THEN connected ELSE 0 END WHERE provider IS NULL OR provider<>'360dialog'"); } catch(e){}
   // Tabla de eventos de Partner 360dialog (log de onboarding)
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS d360_events (id INTEGER PRIMARY KEY AUTOINCREMENT, event TEXT, channel_id TEXT, client_id TEXT, phone TEXT, status TEXT, payload TEXT, created_at INTEGER)"); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE d360_events ADD COLUMN event_id TEXT'); } catch(e){}
   try { await env.aura_db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_d360_event_id ON d360_events(event_id) WHERE event_id IS NOT NULL'); } catch(e){}
-  // Mensajes persistidos (fuente de verdad de AURA). message_id único para dedupe (Unipile recomienda).
+  // Mensajes persistidos: fuente de verdad de AURA e idempotencia frente a reintentos del webhook.
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS wa_messages (message_id TEXT PRIMARY KEY, tenant_id TEXT, chat_id TEXT, from_me INTEGER, text TEXT, mtype TEXT, murl TEXT, mname TEXT, ts INTEGER, created_at INTEGER)"); } catch(e){}
+  try { await env.aura_db.exec("ALTER TABLE wa_messages ADD COLUMN media_id TEXT"); } catch(e){}
+  try { await env.aura_db.exec("ALTER TABLE wa_messages ADD COLUMN delivery_status TEXT DEFAULT 'accepted'"); } catch(e){}
+  try { await env.aura_db.exec("ALTER TABLE wa_messages ADD COLUMN reply_to TEXT"); } catch(e){}
+  try { await env.aura_db.exec("ALTER TABLE wa_messages ADD COLUMN template_name TEXT"); } catch(e){}
+  try { await env.aura_db.exec("ALTER TABLE wa_messages ADD COLUMN template_category TEXT"); } catch(e){}
   try { await env.aura_db.exec("CREATE INDEX IF NOT EXISTS idx_wa_msg_chat ON wa_messages (tenant_id, chat_id, ts)"); } catch(e){}
-  // Metadatos de cada chat para construir la lista sin recorrer Unipile cada vez
+  // Metadatos del chat: no depende de un proveedor externo para cargar la bandeja.
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS wa_chats_meta (tenant_id TEXT, chat_id TEXT, name TEXT, phone TEXT, picture TEXT, last_text TEXT, last_ts INTEGER, unread INTEGER DEFAULT 0, updated_at INTEGER, PRIMARY KEY (tenant_id, chat_id))"); } catch(e){}
-  // attendee_id: id del contacto en Unipile para descargar su foto via /chat_attendees/{id}/picture
   try { await env.aura_db.exec('ALTER TABLE wa_chats_meta ADD COLUMN attendee_id TEXT'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE wa_chats_meta ADD COLUMN is_group INTEGER DEFAULT 0'); } catch(e){}
+  try { await env.aura_db.exec("ALTER TABLE wa_chats_meta ADD COLUMN last_delivery_status TEXT DEFAULT 'accepted'"); } catch(e){}
+  // Plantillas oficiales, opt-in por categoría y reglas configurables por clínica.
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS wa_templates (id TEXT PRIMARY KEY, tenant_id TEXT, name TEXT, language TEXT DEFAULT 'es', category TEXT, components_json TEXT, status TEXT DEFAULT 'draft', source TEXT DEFAULT 'aura', created_at INTEGER, updated_at INTEGER, UNIQUE(tenant_id,name,language))"); } catch(e){}
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS wa_consents (tenant_id TEXT, phone TEXT, category TEXT, status TEXT DEFAULT 'granted', source TEXT, proof TEXT, granted_at INTEGER, revoked_at INTEGER, updated_at INTEGER, PRIMARY KEY(tenant_id,phone,category))"); } catch(e){}
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS wa_automation_rules (id TEXT PRIMARY KEY, tenant_id TEXT, event_key TEXT, enabled INTEGER DEFAULT 1, template_id TEXT, timing_minutes INTEGER DEFAULT 0, quiet_start INTEGER DEFAULT 21, quiet_end INTEGER DEFAULT 9, created_at INTEGER, updated_at INTEGER, UNIQUE(tenant_id,event_key))"); } catch(e){}
+  try { await env.aura_db.exec("ALTER TABLE wa_automation_rules ADD COLUMN components_json TEXT"); } catch(e){}
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS wa_automation_runs (id TEXT PRIMARY KEY, rule_id TEXT, tenant_id TEXT, appointment_id TEXT, status TEXT, detail TEXT, created_at INTEGER, updated_at INTEGER, UNIQUE(rule_id,appointment_id))"); } catch(e){}
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS wa_delivery_events (id TEXT PRIMARY KEY, tenant_id TEXT, message_id TEXT, status TEXT, recipient TEXT, payload TEXT, created_at INTEGER, UNIQUE(tenant_id,message_id,status))"); } catch(e){}
   __waReady = true;
 }
 let __callsReady = false;
@@ -4082,14 +4108,14 @@ export default {
                     let murl: string | null = null;
                     let mname: string | null = null;
                     if (msg.text) text = msg.text.body || '';
-                    if (msg.image) { murl = msg.image.id || null; text = msg.image.caption || ''; }
-                    if (msg.video) { murl = msg.video.id || null; text = msg.video.caption || ''; }
-                    if (msg.audio) { murl = msg.audio.id || null; }
-                    if (msg.document) { murl = msg.document.id || null; mname = msg.document.filename || null; }
-                    if (msg.sticker) { murl = msg.sticker.id || null; }
+                    const mediaId = String(msg.image?.id || msg.video?.id || msg.audio?.id || msg.document?.id || msg.sticker?.id || '');
+                    if (msg.image) text = msg.image.caption || '';
+                    if (msg.video) text = msg.video.caption || '';
+                    if (msg.document) mname = msg.document.filename || null;
+                    if (mediaId) murl = await waMediaUrl(env, tenantId, mediaId);
                     // Guardar mensaje. Si es un reintento del webhook, no se toca el chat ni se crea lead.
                     let inserted = false;
-                    try { const write:any = await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(msgId, tenantId, chatId, 0, text, mtype, murl, mname, ts, Date.now()).run(); inserted = !!write.meta?.changes; } catch (e) {}
+                    try { const write:any = await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,media_id,delivery_status,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(msgId, tenantId, chatId, 0, text, mtype, murl, mname, mediaId || null, 'received', ts, Date.now()).run(); inserted = !!write.meta?.changes; } catch (e) {}
                     if (!inserted) continue;
                     // Actualizar metadatos del chat
                     const contactName = (value.contacts && value.contacts[0]?.profile?.name) || from;
@@ -4108,8 +4134,14 @@ export default {
                 // Procesar estados de mensajes (sent, delivered, read)
                 if (value.statuses) {
                   for (const st of value.statuses) {
-                    // Podemos actualizar el estado del mensaje si lo necesitamos en el futuro
-                    // Por ahora solo logueamos para no perder info
+                    const messageId=String(st.id||''), deliveryStatus=String(st.status||'accepted'), recipient=String(st.recipient_id||'');
+                    if(!messageId) continue;
+                    try {
+                      await env.aura_db.prepare("INSERT OR IGNORE INTO wa_delivery_events (id,tenant_id,message_id,status,recipient,payload,created_at) VALUES (?,?,?,?,?,?,?)").bind('wde_'+uid(),tenantId,messageId,deliveryStatus,recipient,JSON.stringify(st).slice(0,3000),Date.now()).run();
+                      await env.aura_db.prepare('UPDATE wa_messages SET delivery_status=? WHERE tenant_id=? AND message_id=?').bind(deliveryStatus,tenantId,messageId).run();
+                      const msg:any=await env.aura_db.prepare('SELECT chat_id FROM wa_messages WHERE tenant_id=? AND message_id=?').bind(tenantId,messageId).first();
+                      if(msg?.chat_id) await env.aura_db.prepare('UPDATE wa_chats_meta SET last_delivery_status=?,updated_at=? WHERE tenant_id=? AND chat_id=?').bind(deliveryStatus,Date.now(),tenantId,msg.chat_id).run();
+                    } catch(e) {}
                   }
                 }
               }
@@ -4133,6 +4165,10 @@ export default {
         // Obtener la D360 API Key del tenant
         const cfg: any = await env.aura_db.prepare('SELECT d360_api_key FROM wa_config WHERE tenant_id=?').bind(b.tenant_id).first().catch(() => null);
         if (!cfg?.d360_api_key) return json({ ok: false, error: 'no_360dialog_key', message: 'Este tenant no tiene 360dialog configurado' });
+        if (b.type !== 'template') {
+          const lastInbound:any=await env.aura_db.prepare('SELECT ts FROM wa_messages WHERE tenant_id=? AND chat_id=? AND from_me=0 ORDER BY ts DESC LIMIT 1').bind(b.tenant_id,to).first();
+          if(!lastInbound?.ts || Date.now()-Number(lastInbound.ts)>24*60*60*1000)return json({ok:false,error:'template_required',message:'Fuera de la ventana de 24 horas, WhatsApp exige una plantilla aprobada y consentimiento del paciente.'},409);
+        }
         // Construir payload Cloud API
         let msgPayload: any = { messaging_product: 'whatsapp', recipient_type: 'individual', to };
         if (b.type === 'template' && b.template) {
@@ -4178,19 +4214,165 @@ export default {
         await ensureWaSchema(env);
         const b: any = await req.json();
         if (!b.tenant_id) return json({ error: 'missing tenant' }, 400);
-        await env.aura_db.prepare("UPDATE wa_config SET d360_api_key=NULL, d360_channel_id=NULL, d360_phone=NULL, d360_client_id=NULL, connected=0, provider='unipile' WHERE tenant_id=?").bind(b.tenant_id).run();
+        await env.aura_db.prepare("UPDATE wa_config SET d360_api_key=NULL, connected=0, provider='360dialog', updated_at=? WHERE tenant_id=?").bind(Date.now(), b.tenant_id).run();
         return json({ ok: true });
       }
 
-      // Config por tenant: cada clínica tiene su account_id de Unipile. Tabla wa_config (campo instance = account_id).
+      // Núcleo exclusivo de 360dialog. Estas rutas preservan la interfaz de AURA, pero no usan QR ni APIs no oficiales.
+      if (p === '/api/wa-media' && req.method === 'GET') {
+        await ensureWaSchema(env);
+        const tenantId = url.searchParams.get('tenant') || '';
+        const mediaId = url.searchParams.get('mid') || '';
+        const signed = await validWaMediaUrl(env, tenantId, mediaId, url.searchParams.get('exp') || '', url.searchParams.get('sig') || '');
+        const sessionIssue = signed ? null : await requireTenant(env, req, url, tenantId);
+        if (!signed && sessionIssue) return new Response('unauthorized', { status:403 });
+        const cfg:any = await env.aura_db.prepare("SELECT d360_api_key FROM wa_config WHERE tenant_id=? AND provider='360dialog' AND connected=1").bind(tenantId).first();
+        if (!cfg?.d360_api_key) return new Response('not_connected', { status:404 });
+        const metadata = await fetch('https://waba-v2.360dialog.io/' + encodeURIComponent(mediaId), { headers:{ 'D360-API-KEY':cfg.d360_api_key, 'User-Agent':'AURA-CRM/1.0' } });
+        const media:any = await metadata.json().catch(()=>null);
+        if (!metadata.ok || !media?.url) return new Response('media_not_available', { status:502 });
+        const download = await fetch(media.url, { headers:{ 'D360-API-KEY':cfg.d360_api_key, 'User-Agent':'AURA-CRM/1.0' } });
+        if (!download.ok) return new Response('media_download_failed', { status:502 });
+        return new Response(download.body, { headers:{ 'content-type': media.mime_type || download.headers.get('content-type') || 'application/octet-stream', 'cache-control':'private, no-store' } });
+      }
+
+      if ((p === '/api/wa-connect' || p === '/api/wa-qr') && (req.method === 'POST' || req.method === 'GET')) {
+        return json({ ok:false, error:'official_onboarding_required', message:'AURA utiliza la conexión oficial de WhatsApp Business mediante 360dialog. Ve a Ajustes → Comunicaciones → Conectar número de WhatsApp.' }, 410);
+      }
+
+      if (p === '/api/wa-patient-media-save' && req.method === 'POST') {
+        await ensureWaSchema(env);
+        const b:any = await req.json(); const tenantId=String(b.tenant_id||'');
+        if (!tenantId) return json({ error:'missing tenant' },400);
+        let leadId=String(b.lead_id||''), phone=String(b.phone||'').replace(/\D/g,'');
+        const messageId=String(b.mid||'');
+        const stored:any = messageId ? await env.aura_db.prepare('SELECT media_id,mname FROM wa_messages WHERE tenant_id=? AND message_id=?').bind(tenantId,messageId).first() : null;
+        const mediaId=String(b.media_id||stored?.media_id||'');
+        if (!mediaId) return json({ ok:false,error:'no_media' },400);
+        if (!leadId && phone) { const lr:any=await env.aura_db.prepare('SELECT id,phone FROM leads WHERE tenant_id=?').bind(tenantId).all(); leadId=(lr.results||[]).find((l:any)=>String(l.phone||'').replace(/\D/g,'').slice(-9)===phone.slice(-9))?.id||''; }
+        const cfg:any=await env.aura_db.prepare("SELECT d360_api_key FROM wa_config WHERE tenant_id=? AND provider='360dialog' AND connected=1").bind(tenantId).first();
+        if (!cfg?.d360_api_key) return json({ ok:false,error:'not_connected' },409);
+        const metaR=await fetch('https://waba-v2.360dialog.io/'+encodeURIComponent(mediaId),{headers:{'D360-API-KEY':cfg.d360_api_key,'User-Agent':'AURA-CRM/1.0'}});
+        const meta:any=await metaR.json().catch(()=>null); if(!metaR.ok||!meta?.url)return json({ok:false,error:'media_not_available'},502);
+        const fileR=await fetch(meta.url,{headers:{'D360-API-KEY':cfg.d360_api_key,'User-Agent':'AURA-CRM/1.0'}}); if(!fileR.ok)return json({ok:false,error:'media_download_failed'},502);
+        const buf=await fileR.arrayBuffer(), ct=String(meta.mime_type||fileR.headers.get('content-type')||'application/octet-stream');
+        const ext=ct.includes('png')?'png':ct.includes('jpeg')||ct.includes('jpg')?'jpg':ct.includes('webp')?'webp':ct.includes('mp4')?'mp4':ct.includes('pdf')?'pdf':'bin';
+        const key='pm_'+tenantId+'_'+Math.random().toString(36).slice(2,12)+'.'+ext;
+        if(env.aura_r2) await env.aura_r2.put('img/'+key,buf,{httpMetadata:{contentType:ct}}); else await env.AURA_IMG.put(key,buf,{metadata:{contentType:ct}});
+        const id='pm_'+Math.random().toString(36).slice(2,12), mt=ct.startsWith('video')?'video':ct.startsWith('image')?'img':'file';
+        await env.aura_db.prepare('INSERT INTO patient_media (id,tenant_id,lead_id,phone,url,mtype,caption,source,created_at) VALUES (?,?,?,?,?,?,?,?,?)').bind(id,tenantId,leadId||null,phone||null,'/img/'+key,mt,b.caption||stored?.mname||'','whatsapp-360dialog',Date.now()).run();
+        return json({ok:true,id,url:'/img/'+key,lead_id:leadId||null});
+      }
+
+      if (p === '/api/wa-attach' && req.method === 'POST') {
+        await ensureWaSchema(env);
+        const b:any=await req.json(), tenantId=String(b.tenant_id||''), to=String(b.jid||b.number||'').replace(/\D/g,'');
+        const encoded=String(b.data_b64||'').split(',').pop()||'';
+        if(!tenantId||!to||!encoded) return json({ok:false,error:'missing_attachment_data'},400);
+        const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0));
+        if(bytes.byteLength>16*1024*1024)return json({ok:false,error:'file_too_large'},413);
+        const cfg:any=await env.aura_db.prepare("SELECT d360_api_key FROM wa_config WHERE tenant_id=? AND provider='360dialog' AND connected=1").bind(tenantId).first();
+        if(!cfg?.d360_api_key)return json({ok:false,error:'not_connected'},409);
+        const mime=String(b.mime||'application/octet-stream'), filename=String(b.filename||'archivo');
+        const form=new FormData(); form.append('messaging_product','whatsapp'); form.append('file',new Blob([bytes],{type:mime}),filename);
+        const up=await fetch('https://waba-v2.360dialog.io/media',{method:'POST',headers:{'D360-API-KEY':cfg.d360_api_key,'User-Agent':'AURA-CRM/1.0'},body:form});
+        const uploaded:any=await up.json().catch(()=>null); if(!up.ok||!uploaded?.id)return json({ok:false,error:'media_upload_failed',status:up.status,data:uploaded},502);
+        const kind=mime.startsWith('image/')?'image':mime.startsWith('video/')?'video':mime.startsWith('audio/')?'audio':'document';
+        const send:any={messaging_product:'whatsapp',recipient_type:'individual',to,type:kind}; send[kind]={id:uploaded.id}; if(b.text&&kind!=='audio')send[kind].caption=String(b.text);
+        const sent=await fetch('https://waba-v2.360dialog.io/messages',{method:'POST',headers:{'D360-API-KEY':cfg.d360_api_key,'Content-Type':'application/json','User-Agent':'AURA-CRM/1.0'},body:JSON.stringify(send)});
+        const data:any=await sent.json().catch(()=>null); if(!sent.ok)return json({ok:false,error:'media_send_failed',status:sent.status,data},502);
+        const mid=data?.messages?.[0]?.id||('out360_'+Date.now()), now=Date.now(), mediaUrl=await waMediaUrl(env,tenantId,uploaded.id);
+        await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,media_id,delivery_status,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(mid,tenantId,to,1,String(b.text||''),kind,mediaUrl,filename,uploaded.id,'accepted',now,now).run();
+        await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,0,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text,last_ts=excluded.last_ts,unread=0,updated_at=excluded.updated_at").bind(tenantId,to,'+'+to,to,String(b.text||'[Adjunto]'),now,now).run();
+        return json({ok:true,data,media_id:uploaded.id});
+      }
+
+      if (p === '/api/wa-react' && req.method === 'POST') {
+        const b:any=await req.json(), tenantId=String(b.tenant_id||''), to=String(b.jid||b.number||'').replace(/\D/g,''), messageId=String(b.message_id||'');
+        const cfg:any=await env.aura_db.prepare("SELECT d360_api_key FROM wa_config WHERE tenant_id=? AND provider='360dialog' AND connected=1").bind(tenantId).first();
+        if(!to||!messageId||!cfg?.d360_api_key)return json({ok:false,error:'missing_reaction_data'},400);
+        const r=await fetch('https://waba-v2.360dialog.io/messages',{method:'POST',headers:{'D360-API-KEY':cfg.d360_api_key,'Content-Type':'application/json','User-Agent':'AURA-CRM/1.0'},body:JSON.stringify({messaging_product:'whatsapp',recipient_type:'individual',to,type:'reaction',reaction:{message_id:messageId,emoji:String(b.emoji||'👍')}})});
+        return json({ok:r.ok,status:r.status,data:await r.json().catch(()=>null)},r.ok?200:502);
+      }
+
+      if (p === '/api/wa-read' && req.method === 'POST') {
+        const b:any=await req.json(), tenantId=String(b.tenant_id||''), chatId=String(b.jid||b.number||'');
+        const cfg:any=await env.aura_db.prepare("SELECT d360_api_key FROM wa_config WHERE tenant_id=? AND provider='360dialog' AND connected=1").bind(tenantId).first();
+        const last:any=await env.aura_db.prepare('SELECT message_id FROM wa_messages WHERE tenant_id=? AND chat_id=? AND from_me=0 ORDER BY ts DESC LIMIT 1').bind(tenantId,chatId).first();
+        if(cfg?.d360_api_key&&last?.message_id) await fetch('https://waba-v2.360dialog.io/messages',{method:'POST',headers:{'D360-API-KEY':cfg.d360_api_key,'Content-Type':'application/json','User-Agent':'AURA-CRM/1.0'},body:JSON.stringify({messaging_product:'whatsapp',status:'read',message_id:last.message_id})}).catch(()=>null);
+        await env.aura_db.prepare('UPDATE wa_chats_meta SET unread=0 WHERE tenant_id=? AND chat_id=?').bind(tenantId,chatId).run(); return json({ok:true});
+      }
+
+      if (p === '/api/wa-templates' && req.method === 'GET') {
+        await ensureWaSchema(env); const tenantId=url.searchParams.get('tenant')||'';
+        const cfg:any=await env.aura_db.prepare("SELECT d360_api_key,connected FROM wa_config WHERE tenant_id=? AND provider='360dialog'").bind(tenantId).first();
+        if(cfg?.connected&&cfg?.d360_api_key){
+          const r=await fetch('https://waba-v2.360dialog.io/message_templates?limit=100',{headers:{'D360-API-KEY':cfg.d360_api_key,'User-Agent':'AURA-CRM/1.0'}});
+          const data:any=await r.json().catch(()=>null);
+          if(r.ok) for(const tpl of (data?.data||[])){ const id=String(tpl.id||('tpl_'+tpl.name+'_'+tpl.language)); await env.aura_db.prepare("INSERT INTO wa_templates (id,tenant_id,name,language,category,components_json,status,source,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,name,language) DO UPDATE SET category=excluded.category,components_json=excluded.components_json,status=excluded.status,updated_at=excluded.updated_at").bind(id,tenantId,tpl.name,tpl.language||'es',tpl.category||'',JSON.stringify(tpl.components||[]),tpl.status||'UNKNOWN','360dialog',Date.now(),Date.now()).run().catch(()=>{}); }
+        }
+        const rows:any=await env.aura_db.prepare('SELECT * FROM wa_templates WHERE tenant_id=? ORDER BY CASE status WHEN \'APPROVED\' THEN 0 ELSE 1 END,name').bind(tenantId).all(); return json({templates:rows.results||[]});
+      }
+
+      if (p === '/api/wa-templates' && req.method === 'POST') {
+        await ensureWaSchema(env); const b:any=await req.json(),tenantId=String(b.tenant_id||'');
+        const name=String(b.name||'').toLowerCase().replace(/[^a-z0-9_]/g,'_').replace(/_+/g,'_').slice(0,512), language=String(b.language||'es');
+        const category=String(b.category||'UTILITY').toUpperCase(),components=Array.isArray(b.components)?b.components:[];
+        if(!tenantId||!name||!components.length||!['UTILITY','MARKETING','AUTHENTICATION'].includes(category))return json({ok:false,error:'invalid_template'},400);
+        const cfg:any=await env.aura_db.prepare("SELECT d360_api_key,connected FROM wa_config WHERE tenant_id=? AND provider='360dialog'").bind(tenantId).first(); if(!cfg?.connected||!cfg?.d360_api_key)return json({ok:false,error:'not_connected'},409);
+        const payload={name,language,category,components,allow_category_change:true};
+        const r=await fetch('https://waba-v2.360dialog.io/message_templates',{method:'POST',headers:{'D360-API-KEY':cfg.d360_api_key,'Content-Type':'application/json','User-Agent':'AURA-CRM/1.0'},body:JSON.stringify(payload)});
+        const data:any=await r.json().catch(()=>null); if(!r.ok)return json({ok:false,error:'template_submission_failed',status:r.status,data},502);
+        const id=String(data?.id||'tpl_'+uid()); await env.aura_db.prepare("INSERT INTO wa_templates (id,tenant_id,name,language,category,components_json,status,source,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,name,language) DO UPDATE SET components_json=excluded.components_json,status=excluded.status,updated_at=excluded.updated_at").bind(id,tenantId,name,language,category,JSON.stringify(components),data?.status||'PENDING','360dialog',Date.now(),Date.now()).run(); return json({ok:true,id,status:data?.status||'PENDING'});
+      }
+
+      if (p === '/api/wa-send-template' && req.method === 'POST') {
+        await ensureWaSchema(env); const b:any=await req.json(),tenantId=String(b.tenant_id||''),to=String(b.to||b.phone||'').replace(/\D/g,''),templateId=String(b.template_id||'');
+        if(!tenantId||!to||!templateId)return json({ok:false,error:'missing_template_data'},400);
+        const tpl:any=await env.aura_db.prepare('SELECT * FROM wa_templates WHERE tenant_id=? AND id=?').bind(tenantId,templateId).first();
+        if(!tpl||String(tpl.status).toUpperCase()!=='APPROVED')return json({ok:false,error:'template_not_approved'},409);
+        const consentCategory=String(tpl.category).toUpperCase()==='MARKETING'?'marketing':'service';
+        const consent:any=await env.aura_db.prepare("SELECT status FROM wa_consents WHERE tenant_id=? AND phone=? AND category=?").bind(tenantId,to,consentCategory).first();
+        if(consent?.status!=='granted')return json({ok:false,error:'missing_opt_in',message:'Este paciente no tiene consentimiento activo para esta categoría de WhatsApp.'},409);
+        const cfg:any=await env.aura_db.prepare("SELECT d360_api_key FROM wa_config WHERE tenant_id=? AND provider='360dialog' AND connected=1").bind(tenantId).first(); if(!cfg?.d360_api_key)return json({ok:false,error:'not_connected'},409);
+        const components=Array.isArray(b.components)?b.components:[];
+        const payload={messaging_product:'whatsapp',recipient_type:'individual',to,type:'template',template:{name:tpl.name,language:{code:tpl.language||'es'},components}};
+        const r=await fetch('https://waba-v2.360dialog.io/messages',{method:'POST',headers:{'D360-API-KEY':cfg.d360_api_key,'Content-Type':'application/json','User-Agent':'AURA-CRM/1.0'},body:JSON.stringify(payload)}); const data:any=await r.json().catch(()=>null);
+        if(!r.ok)return json({ok:false,error:'template_send_failed',status:r.status,data},502);
+        const mid=String(data?.messages?.[0]?.id||('out360_'+Date.now())),now=Date.now(); await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,delivery_status,template_name,template_category,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(mid,tenantId,to,1,'[Plantilla] '+tpl.name,'template','accepted',tpl.name,tpl.category,now,now).run();
+        await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,0,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text,last_ts=excluded.last_ts,unread=0,updated_at=excluded.updated_at").bind(tenantId,to,'+'+to,to,'[Plantilla] '+tpl.name,now,now).run(); return json({ok:true,message_id:mid,data});
+      }
+
+      if (p === '/api/wa-consents' && req.method === 'GET') {
+        await ensureWaSchema(env); const tenantId=url.searchParams.get('tenant')||'',phone=String(url.searchParams.get('phone')||'').replace(/\D/g,'');
+        const rows:any=phone?await env.aura_db.prepare('SELECT * FROM wa_consents WHERE tenant_id=? AND phone=? ORDER BY category').bind(tenantId,phone).all():await env.aura_db.prepare('SELECT * FROM wa_consents WHERE tenant_id=? ORDER BY updated_at DESC LIMIT 300').bind(tenantId).all(); return json({consents:rows.results||[]});
+      }
+
+      if (p === '/api/wa-consents' && req.method === 'POST') {
+        await ensureWaSchema(env); const b:any=await req.json(),tenantId=String(b.tenant_id||''),phone=String(b.phone||'').replace(/\D/g,''),category=String(b.category||'service').toLowerCase();
+        if(!tenantId||!phone||!['service','marketing','reviews'].includes(category))return json({ok:false,error:'invalid_consent'},400);
+        const granted=b.status!=='revoked',now=Date.now(); await env.aura_db.prepare("INSERT INTO wa_consents (tenant_id,phone,category,status,source,proof,granted_at,revoked_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,phone,category) DO UPDATE SET status=excluded.status,source=excluded.source,proof=excluded.proof,granted_at=excluded.granted_at,revoked_at=excluded.revoked_at,updated_at=excluded.updated_at").bind(tenantId,phone,category,granted?'granted':'revoked',String(b.source||'aura'),String(b.proof||''),granted?now:null,granted?null:now,now).run(); return json({ok:true,status:granted?'granted':'revoked'});
+      }
+
+      if (p === '/api/wa-automations' && req.method === 'GET') { await ensureWaSchema(env); const rows:any=await env.aura_db.prepare('SELECT * FROM wa_automation_rules WHERE tenant_id=? ORDER BY event_key').bind(url.searchParams.get('tenant')||'').all(); return json({rules:rows.results||[]}); }
+      if (p === '/api/wa-automations' && req.method === 'POST') {
+        await ensureWaSchema(env);const b:any=await req.json(),tenantId=String(b.tenant_id||''),eventKey=String(b.event_key||''); if(!tenantId||!['appointment_created','appointment_reminder_24h','appointment_reminder_2h','appointment_followup','review_request'].includes(eventKey))return json({ok:false,error:'invalid_rule'},400);
+        const id=String(b.id||('war_'+uid())),now=Date.now();await env.aura_db.prepare("INSERT INTO wa_automation_rules (id,tenant_id,event_key,enabled,template_id,timing_minutes,quiet_start,quiet_end,components_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,event_key) DO UPDATE SET enabled=excluded.enabled,template_id=excluded.template_id,timing_minutes=excluded.timing_minutes,quiet_start=excluded.quiet_start,quiet_end=excluded.quiet_end,components_json=excluded.components_json,updated_at=excluded.updated_at").bind(id,tenantId,eventKey,b.enabled?1:0,b.template_id||null,Number(b.timing_minutes)||0,Number(b.quiet_start)||21,Number(b.quiet_end)||9,JSON.stringify(Array.isArray(b.components)?b.components:[]),now,now).run();return json({ok:true,id});
+      }
+
+      if (p === '/api/wa-metrics' && req.method === 'GET') {
+        await ensureWaSchema(env);const tenantId=url.searchParams.get('tenant')||'',from=Number(url.searchParams.get('from')||Date.now()-30*86400000);
+        const sent:any=await env.aura_db.prepare('SELECT COUNT(*) n FROM wa_messages WHERE tenant_id=? AND from_me=1 AND ts>=?').bind(tenantId,from).first();const received:any=await env.aura_db.prepare('SELECT COUNT(*) n FROM wa_messages WHERE tenant_id=? AND from_me=0 AND ts>=?').bind(tenantId,from).first();const delivery:any=await env.aura_db.prepare("SELECT delivery_status,COUNT(*) n FROM wa_messages WHERE tenant_id=? AND from_me=1 AND ts>=? GROUP BY delivery_status").bind(tenantId,from).all();const chats:any=await env.aura_db.prepare('SELECT COUNT(*) n FROM wa_chats_meta WHERE tenant_id=?').bind(tenantId).first();return json({from,sent:Number(sent?.n||0),received:Number(received?.n||0),chats:Number(chats?.n||0),delivery:delivery.results||[]});
+      }
+
+      if (p === '/api/wa-newchat' && req.method === 'POST') return json({ok:false,error:'template_required',message:'Los mensajes iniciados por la clínica se envían únicamente con una plantilla aprobada de WhatsApp.'},409);
+      if (p === '/api/wa-logout' && req.method === 'POST') { const b:any=await req.json(); await env.aura_db.prepare("UPDATE wa_config SET connected=0,d360_api_key=NULL,provider='360dialog',updated_at=? WHERE tenant_id=?").bind(Date.now(),String(b.tenant_id||'')).run(); return json({ok:true}); }
+      if (p === '/api/wa-avatar' || p === '/api/wa-debug-chats' || p === '/api/wa-webhook-setup' || p === '/api/wa-webhook') return json({ok:false,error:'deprecated_provider_removed'},410);
+
+      // Compatibilidad temporal de nombres de endpoint. Nunca realiza llamadas a proveedores retirados.
       if (p.startsWith('/api/wa-')) {
         await ensureWaSchema(env);
-        const UNI = env.UNIPILE_DSN || 'https://api50.unipile.com:18013';
-        const UKEY = env.UNIPILE_KEY || '';
-        const uni = async (path:string, method='GET', body?:any) => {
-          const r = await fetch(UNI+path, { method, headers: { 'X-API-KEY': UKEY, 'accept':'application/json', 'content-type':'application/json' }, body: body?JSON.stringify(body):undefined });
-          const t = await r.text(); try { return { ok:r.ok, status:r.status, data: JSON.parse(t) }; } catch { return { ok:r.ok, status:r.status, data:t }; }
-        };
+        const uni = async (_path:string, _method='GET', _body?:any) => ({ ok:false, status:410, data:{ error:'provider_removed' } });
         const tnt = url.searchParams.get('tenant') || (await (async()=>{ try{ const b:any=await req.clone().json(); return b.tenant_id||b.tenant; }catch{return null;} })());
         // Devuelve el account_id de Unipile guardado para este tenant
         const acctOf = async (t:string):Promise<string|null> => { try{ const r:any=await env.aura_db.prepare('SELECT instance FROM wa_config WHERE tenant_id=?').bind(t).first(); return r?.instance||null; }catch{return null;} };
@@ -4457,6 +4639,8 @@ export default {
           if (providerCfg?.provider === '360dialog') {
             const to = String(chatId||'').replace(/\D/g,'');
             if (!to || !providerCfg.d360_api_key) return json({ ok:false, error:'no_360dialog_key' }, 400);
+            const lastInbound:any=await env.aura_db.prepare('SELECT ts FROM wa_messages WHERE tenant_id=? AND chat_id=? AND from_me=0 ORDER BY ts DESC LIMIT 1').bind(b.tenant_id,to).first();
+            if(!lastInbound?.ts || Date.now()-Number(lastInbound.ts)>24*60*60*1000)return json({ok:false,error:'template_required',message:'Para iniciar o retomar una conversación tras 24 horas usa una plantilla aprobada.'},409);
             const upstream = await fetch('https://waba-v2.360dialog.io/messages', { method:'POST', headers:{ 'D360-API-KEY':providerCfg.d360_api_key, 'Content-Type':'application/json', 'User-Agent':'AURA-CRM/1.0' }, body:JSON.stringify({ messaging_product:'whatsapp', recipient_type:'individual', to, type:'text', text:{ body:b.text||'' } }) });
             const data:any = await upstream.json().catch(()=>({}));
             if (!upstream.ok) return json({ ok:false, status:upstream.status, data });
@@ -5659,7 +5843,7 @@ export default {
       return json({ error: 'server_error', detail: String(e && e.message ? e.message : e) }, 500);
     }
   },
-  // Cron: backup (1 vez/día a las 3h) + automatizaciones SMS (cada hora) + sync WhatsApp respaldo (cada 10 min)
+  // Cron: backup (1 vez/día a las 3h) + automatizaciones deterministas de la plataforma.
   async scheduled(event: any, env: Env, ctx: any) {
     const now = new Date();
     const hour = now.getUTCHours();
@@ -5670,52 +5854,12 @@ export default {
     // así que hay que comprobarlas con frecuencia para no perder ningún envío. Los flags (sms_24h, sms_2h…)
     // garantizan que cada SMS se envía UNA sola vez por paciente/cita. Cada clínica usa SUS plantillas/créditos.
     ctx.waitUntil(runAutomations(env).catch((e:any)=>console.error('automations error', e)));
-    // Respaldo WhatsApp: cada 10 min resincroniza chats por si el webhook falló (Unipile lo recomienda)
-    if (min % 10 === 0) ctx.waitUntil(runWaSync(env).catch((e:any)=>console.error('wa sync error', e)));
+    // WhatsApp: solo plantillas aprobadas, regla activada y consentimiento explícito por paciente.
+    ctx.waitUntil(runWaAutomations(env).catch((e:any)=>console.error('wa automations error', e)));
     // Scraping de views de reels: 1 vez al día a las 06:00 UTC
     if (hour === 6 && min === 0) ctx.waitUntil(scrapeReelViews(env).catch((e:any)=>console.error('reel scrape error', e)));
   },
 };
-
-// ─── RESPALDO WHATSAPP (cron cada 10 min) ───
-// Resincroniza chats/mensajes recientes de clínicas conectadas por si el webhook falló. Dedupe por message_id.
-async function runWaSync(env: Env): Promise<void> {
-  const UNI = env.UNIPILE_DSN || 'https://api50.unipile.com:18013';
-  const UKEY = env.UNIPILE_KEY || '';
-  if (!UKEY) return;
-  const uni = async (path:string) => { try { const r=await fetch(UNI+path,{ headers:{ 'X-API-KEY':UKEY, 'accept':'application/json' } }); const t=await r.text(); try{return JSON.parse(t);}catch{return null;} } catch{ return null; } };
-  const digits9 = (s:any)=> String(s||'').replace(/@.*/,'').replace(/\D/g,'').slice(-9);
-  let cfgs:any;
-  try { cfgs = await env.aura_db.prepare('SELECT tenant_id, instance FROM wa_config').all(); } catch { return; }
-  for (const c of (cfgs?.results||[])) {
-    const t=c.tenant_id, acc=c.instance; if(!acc) continue;
-    // Traemos hasta 80 chats (lo que Unipile tenga indexado) y los ACUMULAMOS en BD sin perder los antiguos.
-    const r = await uni('/api/v1/chats?account_id='+acc+'&limit=80'); const items=(r?.items)||[];
-    const top = items.slice(0,60);
-    for (const chat of top) {
-      const ts = chat.timestamp?Date.parse(chat.timestamp):Date.now();
-      const last = chat.last_message?.text||chat.snippet||'';
-      // attendee no-self -> nombre real, attendee_id (foto) y telefono
-      let realName='', attendeeId='', phoneRaw='', isGroup=false;
-      try{
-        const a = await uni('/api/v1/chats/'+encodeURIComponent(chat.id)+'/attendees');
-        const ats=(a?.items)||[]; const it=ats.find((x:any)=>x.is_self!==1)||ats[0]||{};
-        isGroup = ats.length>2 || /@g\.us/i.test(String(chat.provider_id||chat.id||'')) || !!chat.is_group;
-        const cands=[ it.specifics?.phone_number, it.public_identifier, it.attendee_provider_id, it.provider_id, chat.provider_id ];
-        for(const cd of cands){ const s=String(cd||''); if(/@lid/i.test(s)) continue; const dg=s.replace(/@.*/,'').replace(/\D/g,''); if(dg.length>=7&&dg.length<=15){ phoneRaw=dg; break; } }
-        const groupName = chat.name||chat.subject||chat.title||'';
-        realName = isGroup ? (groupName||'Grupo') : (it.name||groupName||(phoneRaw?('+'+phoneRaw):''));
-        attendeeId = isGroup ? chat.id : (it.id||it.attendee_id||'');
-      }catch(e){}
-      try { await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,attendee_id,is_group,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET name=COALESCE(NULLIF(excluded.name,''),wa_chats_meta.name), phone=COALESCE(NULLIF(excluded.phone,''),wa_chats_meta.phone), attendee_id=COALESCE(NULLIF(excluded.attendee_id,''),wa_chats_meta.attendee_id), is_group=excluded.is_group, last_text=excluded.last_text, last_ts=MAX(wa_chats_meta.last_ts,excluded.last_ts), unread=excluded.unread, updated_at=excluded.updated_at").bind(t, chat.id, realName, phoneRaw, attendeeId, isGroup?1:0, last, ts, chat.unread_count||0, Date.now()).run(); } catch(e){}
-      // trae últimos mensajes y deduplica
-      const mr = await uni('/api/v1/chats/'+encodeURIComponent(chat.id)+'/messages?limit=20'); const msgs=(mr?.items)||[];
-      for (const m of msgs){ const att=(m.attachments&&m.attachments[0])||null; const attId=att?(att.id||att.attachment_id||null):null; const mtype=att?String(att.type||att.mimetype||'file').toLowerCase():'text'; let murl=att?(att.url||null):null; if(murl&&/^att:\/\//i.test(String(murl)))murl=null; const mid=m.id||(chat.id+'_'+(m.timestamp?Date.parse(m.timestamp):Date.now())); if(att&&!murl) murl='/api/wa-media?mid='+encodeURIComponent(mid)+'&aid='+encodeURIComponent(attId||'0')+'&t='+encodeURIComponent(t); const mname=att?(att.file_name||att.name||null):null; const mts=m.timestamp?Date.parse(m.timestamp):Date.now(); const fromMe=(m.is_sender===1||m.is_sender===true)?1:0; let txt=m.text||''; if(/Unipile cannot display this type of message/i.test(txt)){ txt=''; }
-        try{ await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,att_id,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(mid, t, chat.id, fromMe, txt, mtype, murl, mname, attId, mts, Date.now()).run(); }catch(e){}
-      }
-    }
-  }
-}
 
 // ─── MOTOR DE AUTOMATIZACIONES SMS (corre cada hora) ───
 // Respeta plantillas, sender, datos, link mágico y créditos de CADA clínica. Anti-duplicado. Horario 9-21h Madrid.
@@ -6000,6 +6144,32 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
   } catch(e) { console.error('daily-summary error', e); }
 
   return { ok: true, sent };
+}
+
+// ─── AUTOMATIZACIONES OFICIALES DE WHATSAPP ───
+// El cron puede reintentarse: wa_automation_runs garantiza un único intento por regla y cita.
+// Deliberadamente no cambia ningún estado de asistencia ni marca no-shows.
+async function runWaAutomations(env: Env): Promise<{ ok:boolean; sent:number }> {
+  await ensureWaSchema(env); let sent=0; const now=Date.now();
+  const localHour=Number(new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Madrid',hour:'2-digit',hour12:false}).format(new Date(now)));
+  const rules:any=await env.aura_db.prepare("SELECT r.*,t.name AS template_name,t.language,t.category,t.components_json AS template_components,t.status AS template_status,c.d360_api_key FROM wa_automation_rules r JOIN wa_templates t ON t.id=r.template_id AND t.tenant_id=r.tenant_id JOIN wa_config c ON c.tenant_id=r.tenant_id WHERE r.enabled=1 AND r.event_key IN ('appointment_reminder_24h','appointment_reminder_2h') AND c.provider='360dialog' AND c.connected=1 AND c.d360_api_key IS NOT NULL").all().catch(()=>({results:[]}));
+  for(const rule of (rules.results||[])){
+    const quietStart=Number(rule.quiet_start),quietEnd=Number(rule.quiet_end); const quiet=quietStart>quietEnd ? (localHour>=quietStart||localHour<quietEnd) : (localHour>=quietStart&&localHour<quietEnd); if(quiet||String(rule.template_status).toUpperCase()!=='APPROVED')continue;
+    const minutes=rule.event_key==='appointment_reminder_24h'?1440:120; const targetStart=new Date(now-(minutes*60000)-90000).toISOString(),targetEnd=new Date(now-(minutes*60000)+90000).toISOString();
+    const appts:any=await env.aura_db.prepare("SELECT a.id,a.date_iso,a.treatment,l.name AS patient_name,l.phone,tn.name AS clinic_name,tn.address FROM appointments a JOIN leads l ON l.id=a.lead_id JOIN tenants tn ON tn.id=a.tenant_id WHERE a.tenant_id=? AND a.status IN ('booked','confirmed') AND a.date_iso>=? AND a.date_iso<=?").bind(rule.tenant_id,targetStart,targetEnd).all().catch(()=>({results:[]}));
+    for(const appt of (appts.results||[])){
+      const phone=String(appt.phone||'').replace(/\D/g,''); if(!phone)continue;
+      const consent:any=await env.aura_db.prepare("SELECT status FROM wa_consents WHERE tenant_id=? AND phone=? AND category='service'").bind(rule.tenant_id,phone).first(); if(consent?.status!=='granted')continue;
+      const runId='warun_'+rule.id+'_'+appt.id; const claim:any=await env.aura_db.prepare("INSERT OR IGNORE INTO wa_automation_runs (id,rule_id,tenant_id,appointment_id,status,created_at,updated_at) VALUES (?,?,?,?,?,?,?)").bind(runId,rule.id,rule.tenant_id,appt.id,'processing',now,now).run(); if(!claim.meta?.changes)continue;
+      const d=new Date(appt.date_iso),date=d.toLocaleDateString('es-ES',{timeZone:'Europe/Madrid',day:'2-digit',month:'2-digit',year:'numeric'}),time=d.toLocaleTimeString('es-ES',{timeZone:'Europe/Madrid',hour:'2-digit',minute:'2-digit'});
+      const values=[appt.patient_name||'',date,time,appt.clinic_name||'',appt.address||'',appt.treatment||''];
+      let configured:any[]=[];try{configured=JSON.parse(rule.components_json||'[]');}catch(e){} let components=configured;
+      if(!components.length){const raw=String(rule.template_components||'');const matches=raw.match(/\{\{\d+\}\}/g)||[];if(matches.length)components=[{type:'body',parameters:matches.map((_v:string,i:number)=>({type:'text',text:String(values[i]||'')}))}];}
+      const payload={messaging_product:'whatsapp',recipient_type:'individual',to:phone,type:'template',template:{name:rule.template_name,language:{code:rule.language||'es'},components}};
+      try{const r=await fetch('https://waba-v2.360dialog.io/messages',{method:'POST',headers:{'D360-API-KEY':rule.d360_api_key,'Content-Type':'application/json','User-Agent':'AURA-CRM/1.0'},body:JSON.stringify(payload)});const data:any=await r.json().catch(()=>null);if(!r.ok)throw new Error(JSON.stringify(data||{}));const mid=String(data?.messages?.[0]?.id||('out360_'+Date.now()));await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,delivery_status,template_name,template_category,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(mid,rule.tenant_id,phone,1,'[Automático] '+rule.template_name,'template','accepted',rule.template_name,rule.category,Date.now(),Date.now()).run();await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,0,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text,last_ts=excluded.last_ts,updated_at=excluded.updated_at").bind(rule.tenant_id,phone,appt.patient_name||phone,phone,'[Automático] '+rule.template_name,Date.now(),Date.now()).run();await env.aura_db.prepare("UPDATE wa_automation_runs SET status='sent',detail=?,updated_at=? WHERE id=?").bind(mid,Date.now(),runId).run();sent++;}catch(e:any){await env.aura_db.prepare("UPDATE wa_automation_runs SET status='failed',detail=?,updated_at=? WHERE id=?").bind(String(e?.message||e).slice(0,1000),Date.now(),runId).run().catch(()=>{});}
+    }
+  }
+  return {ok:true,sent};
 }
 
 // ─── BACKUP: exporta todas las tablas D1 a JSON y lo guarda en KV con fecha + retención 30 días ───

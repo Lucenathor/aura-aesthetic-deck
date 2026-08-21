@@ -1,0 +1,115 @@
+=== REFERENCIAS UNIPILE ===
+worker/src/index.ts:28:  UNIPILE_DSN?: string;
+worker/src/index.ts:29:  UNIPILE_KEY?: string;
+worker/src/index.ts:583:  try { await env.aura_db.exec('ALTER TABLE wa_config ADD COLUMN provider TEXT DEFAULT "unipile"'); } catch(e){}
+worker/src/index.ts:593:  // Mensajes persistidos (fuente de verdad de AURA). message_id único para dedupe (Unipile recomienda).
+worker/src/index.ts:596:  // Metadatos de cada chat para construir la lista sin recorrer Unipile cada vez
+worker/src/index.ts:598:  // attendee_id: id del contacto en Unipile para descargar su foto via /chat_attendees/{id}/picture
+worker/src/index.ts:3966:      // ============ WHATSAPP (Unipile API) ============
+worker/src/index.ts:4126:      // Enviar mensaje vía 360dialog (alternativa a Unipile)
+worker/src/index.ts:4181:        await env.aura_db.prepare("UPDATE wa_config SET d360_api_key=NULL, d360_channel_id=NULL, d360_phone=NULL, d360_client_id=NULL, connected=0, provider='unipile' WHERE tenant_id=?").bind(b.tenant_id).run();
+worker/src/index.ts:4185:      // Config por tenant: cada clínica tiene su account_id de Unipile. Tabla wa_config (campo instance = account_id).
+worker/src/index.ts:4188:        const UNI = env.UNIPILE_DSN || 'https://api50.unipile.com:18013';
+worker/src/index.ts:4189:        const UKEY = env.UNIPILE_KEY || '';
+worker/src/index.ts:4195:        // Devuelve el account_id de Unipile guardado para este tenant
+worker/src/index.ts:4200:        // PROXY DE MEDIOS: descarga el adjunto de Unipile (foto/video/audio/doc) y lo sirve al navegador
+worker/src/index.ts:4204:          // Si no tenemos attachment_id, intentamos resolverlo consultando el mensaje en Unipile
+worker/src/index.ts:4230:        // DEBUG: JSON crudo de los primeros chats de Unipile (para inspeccionar campos de fecha/orden)
+worker/src/index.ts:4250:        // Conectar: crea cuenta WhatsApp en Unipile y devuelve el string del QR
+worker/src/index.ts:4265:        // Sincroniza chats desde Unipile a wa_chats_meta (nombre/teléfono reales). Se usa en carga inicial y en cron.
+worker/src/index.ts:4285:            // ORDEN como en la app de WhatsApp: Unipile YA devuelve los chats por actividad reciente (primero=mas nuevo)
+worker/src/index.ts:4303:          // resync de historial en Unipile, asi que la persistencia propia es la fuente de verdad y nunca pierde chats.
+worker/src/index.ts:4309:            // Foto via proxy de Unipile (chat_attendees/{id}/picture). Solo si tenemos attendee_id.
+worker/src/index.ts:4337:        // Guardar en la ficha un medio que llegó por el chat (lo descargamos de Unipile y lo subimos a R2)
+worker/src/index.ts:4405:        // Mensajes de un chat: SERVIDOS DESDE LA BD. Sincroniza desde Unipile si no hay (1ª vez).
+worker/src/index.ts:4412:          // RENDIMIENTO: servimos SIEMPRE desde la BD al instante. Solo llamamos a Unipile (lento) si el chat
+worker/src/index.ts:4432:                // el placeholder de Unipile no es un texto real: lo limpiamos para que el front muestre el tipo de medio
+worker/src/index.ts:4433:                let txt = m.text||''; if(/Unipile cannot display this type of message/i.test(txt)){ txt=''; if(mtype==='text') mtype='file'; }
+worker/src/index.ts:4473:        // Enviar adjunto (imagen/audio/documento) - recibe base64 y lo manda como multipart a Unipile
+worker/src/index.ts:4532:        // Webhook entrante de Unipile (mensajes nuevos) en tiempo real -> persiste en AURA
+worker/src/index.ts:4550:                // la url 'att://...' de Unipile no es descargable directa: usamos nuestro proxy con mid+aid
+worker/src/index.ts:4574:        // DIAGNOSTICO/ALTA del webhook de mensajeria en Unipile (tiempo real). GET lista, POST crea/recrea.
+worker/src/index.ts:5673:    // Respaldo WhatsApp: cada 10 min resincroniza chats por si el webhook falló (Unipile lo recomienda)
+worker/src/index.ts:5683:  const UNI = env.UNIPILE_DSN || 'https://api50.unipile.com:18013';
+worker/src/index.ts:5684:  const UKEY = env.UNIPILE_KEY || '';
+worker/src/index.ts:5692:    // Traemos hasta 80 chats (lo que Unipile tenga indexado) y los ACUMULAMOS en BD sin perder los antiguos.
+worker/src/index.ts:5713:      for (const m of msgs){ const att=(m.attachments&&m.attachments[0])||null; const attId=att?(att.id||att.attachment_id||null):null; const mtype=att?String(att.type||att.mimetype||'file').toLowerCase():'text'; let murl=att?(att.url||null):null; if(murl&&/^att:\/\//i.test(String(murl)))murl=null; const mid=m.id||(chat.id+'_'+(m.timestamp?Date.parse(m.timestamp):Date.now())); if(att&&!murl) murl='/api/wa-media?mid='+encodeURIComponent(mid)+'&aid='+encodeURIComponent(attId||'0')+'&t='+encodeURIComponent(t); const mname=att?(att.file_name||att.name||null):null; const mts=m.timestamp?Date.parse(m.timestamp):Date.now(); const fromMe=(m.is_sender===1||m.is_sender===true)?1:0; let txt=m.text||''; if(/Unipile cannot display this type of message/i.test(txt)){ txt=''; }
+mvp/dashboard.html:5907:  // 2) en 2º plano: pide a Unipile lo más reciente y, si hay novedades, refresca sin bloquear
+mvp/dashboard.html:5918:  // (el endpoint /api/wa-media resuelve el attachment_id desde Unipile al vuelo). Así se ven aunque la BD no tenga att_id.
+mvp/dashboard.html:5930:    // Medio sin URL resoluble ahora mismo: etiqueta + botón Reintentar (fuerza nueva resolución del adjunto en Unipile,
+mvp/dashboard.html:5931:    // útil cuando Unipile aún estaba procesando el archivo). El _mid lo usamos para reconstruir la URL del proxy.
+mvp/dashboard.html:5948:// Reintentar un medio que no cargó: pide de nuevo el adjunto al proxy (que lo re-resuelve en Unipile) con anti-caché.
+mvp/dashboard.html:5950:  if(kind==='vid'){ wrap.innerHTML='<div style="width:240px;height:200px;border-radius:10px;background:#000;overflow:hidden"><video controls preload="metadata" src="'+url+'" onerror="this.parentNode.parentNode.innerHTML=&quot;<span style=\'color:#667781\'>🎥 Vídeo no disponible (Unipile no lo expone)</span>&quot;" style="width:100%;height:100%;object-fit:contain"></video></div>'; }
+mvp/dashboard.html:5952:  else { wrap.innerHTML='<div style="width:220px;height:220px;border-radius:10px;background:#e9e2d8;overflow:hidden"><img src="'+url+'" onload="this.style.opacity=1" onerror="this.parentNode.parentNode.innerHTML=&quot;<span style=\'color:#667781\'>📷 Foto no disponible (Unipile no la expone)</span>&quot;" style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .2s;cursor:pointer" onclick="window.open(this.src,\'_blank\')"/></div>'; }
+mvp/legal/dpa.html:79:  <p>La Clínica autoriza con carácter general a AURA a recurrir a subencargados para la prestación del servicio (entre otros: Cloudflare, Unipile, LabsMobile, OpenAI, Resend y Stripe). AURA impondrá a dichos subencargados obligaciones de protección de datos equivalentes a las de este DPA. AURA podrá actualizar la lista de subencargados informando a la Clínica, que podrá oponerse por motivos razonables relacionados con la protección de datos.</p>
+mvp/legal/privacidad.html:87:    <li><strong>Unipile</strong> — conexión con WhatsApp.</li>
+mvp/legal/terminos.html:56:  <p>AURA es un software como servicio (SaaS) que proporciona al Cliente herramientas de gestión: pipeline/CRM de pacientes, agenda, caja, comunicación por WhatsApp (a través de Unipile) y SMS (a través de LabsMobile), portal de cliente, copiloto de inventario con IA y generación de embudos de captación. El servicio se presta en modalidad de suscripción y a través de la web.</p>
+docs/360DIALOG-INTEGRACION.md:91:- Formato: Cloud API de Meta (mismo que ya usa Unipile internamente)
+docs/VALIDACION-360DIALOG-2026-08-21.md:16:| Limpieza posterior a la prueba | Correcto: mensaje, chat, lead y configuración temporal se eliminaron; `aura-demo` volvió a Unipile. |
+docs/INVESTIGACION-UNIPILE-VS-360DIALOG.md:1:# Investigación: Unipile vs 360dialog para WhatsApp en AURA
+docs/INVESTIGACION-UNIPILE-VS-360DIALOG.md:5:### Unipile
+docs/INVESTIGACION-UNIPILE-VS-360DIALOG.md:22:### Unipile
+docs/INVESTIGACION-UNIPILE-VS-360DIALOG.md:49:**Unipile:** 10 cuentas × 5€ = 49€/mes (mínimo). Sin coste por mensaje.
+docs/INVESTIGACION-UNIPILE-VS-360DIALOG.md:54:### Unipile
+docs/INVESTIGACION-UNIPILE-VS-360DIALOG.md:58:- Unipile lo reconoce implícitamente: "Unipile is NOT affiliated with, endorsed by, or sponsored by Meta or WhatsApp."
+docs/INVESTIGACION-UNIPILE-VS-360DIALOG.md:69:| Característica | Unipile | 360dialog |
+docs/INVESTIGACION-UNIPILE-VS-360DIALOG.md:88:### Unipile
+docs/INVESTIGACION-UNIPILE-VS-360DIALOG.md:104:### Unipile
+
+=== ENDPOINTS WHATSAPP ===
+583:  try { await env.aura_db.exec('ALTER TABLE wa_config ADD COLUMN provider TEXT DEFAULT "unipile"'); } catch(e){}
+973:        '/api/360-connect-session','/api/360-io-signature',
+981:      const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p)) || (p==='/api/packs' && req.method==='POST') || (p.startsWith('/api/wa-') && p!=='/api/wa-webhook' && p!=='/api/wa-webhook-360' && p!=='/api/wa-media' && p!=='/api/wa-avatar') || (p.startsWith('/api/call-') && p!=='/api/call-twiml' && p!=='/api/call-status' && p!=='/api/call-recording') || p.startsWith('/api/inv-') || p==='/api/copilot';
+3937:      // Guardar croquis médico digital (base64 PNG). Esta ruta debe vivir fuera del bloque /api/wa-*.
+3986:          headers:{ 'D360-API-KEY':numberApiKey, 'Content-Type':'application/json', 'User-Agent':'AURA-CRM/1.0' },
+3987:          body:JSON.stringify({ url:'https://aura-chat-worker.adrian-7b9.workers.dev/api/wa-webhook-360', headers:{ 'x-aura-360-webhook':env.D360_NUMBER_WEBHOOK_TOKEN } })
+3996:      if (p === '/api/360-partner-webhook' && req.method === 'POST') {
+4000:          const customToken = req.headers.get('x-aura-360-partner');
+4021:      if (p === '/api/360-partner-webhook' && req.method === 'GET') {
+4026:      // mediante /api/360-connect-session, autenticado desde el dashboard tras el evento oficial.
+4027:      if (p === '/api/360-connect-callback') {
+4032:      if (p === '/api/360-connect-session' && req.method === 'POST') {
+4047:      if (p === '/api/360-io-signature' && req.method === 'GET') {
+4054:      if (p === '/api/wa-webhook-360' && req.method === 'POST') {
+4058:          const customToken = req.headers.get('x-aura-360-webhook');
+4121:      if (p === '/api/wa-webhook-360' && req.method === 'GET') {
+4127:      if (p === '/api/wa-send-360' && req.method === 'POST') {
+4151:            headers: { 'D360-API-KEY': cfg.d360_api_key, 'Content-Type': 'application/json', 'User-Agent': 'AURA-CRM/1.0' },
+4167:      if (p === '/api/wa-status-360' && req.method === 'GET') {
+4177:      if (p === '/api/wa-disconnect-360' && req.method === 'POST') {
+4181:        await env.aura_db.prepare("UPDATE wa_config SET d360_api_key=NULL, d360_channel_id=NULL, d360_phone=NULL, d360_client_id=NULL, connected=0, provider='unipile' WHERE tenant_id=?").bind(b.tenant_id).run();
+4186:      if (p.startsWith('/api/wa-')) {
+4188:        const UNI = env.UNIPILE_DSN || 'https://api50.unipile.com:18013';
+4201:        if (p === '/api/wa-media' && req.method === 'GET') {
+4218:        if (p === '/api/wa-avatar' && req.method === 'GET') {
+4231:        if (p === '/api/wa-debug-chats' && req.method === 'GET') {
+4238:        if (p === '/api/wa-status' && req.method === 'GET') {
+4251:        if (p === '/api/wa-connect' && req.method === 'POST') {
+4260:        if (p === '/api/wa-qr' && req.method === 'GET') {
+4295:        if (p === '/api/wa-chats' && req.method === 'GET') {
+4310:            const pic = (!is360 && m.attendee_id) ? ('/api/wa-avatar?aid='+encodeURIComponent(m.attendee_id)+'&t='+encodeURIComponent(tnt)) : (m.picture||null);
+4315:        if (p === '/api/wa-patient' && req.method === 'GET') {
+4328:        if (p === '/api/wa-patient-media' && req.method === 'GET') {
+4338:        if (p === '/api/wa-patient-media-save' && req.method === 'POST') {
+4364:        if (p === '/api/wa-patient-media-upload' && req.method === 'POST') {
+4397:        if (p === '/api/wa-patient-media-delete' && req.method === 'POST') {
+4406:        if (p === '/api/wa-messages' && req.method === 'GET') {
+4430:                const murl = directUrl || (att ? ('/api/wa-media?mid='+encodeURIComponent(mid)+'&aid='+encodeURIComponent(attId||'0')+'&t='+encodeURIComponent(tnt)) : null);
+4453:        if (p === '/api/wa-send' && req.method === 'POST') {
+4460:            const upstream = await fetch('https://waba-v2.360dialog.io/messages', { method:'POST', headers:{ 'D360-API-KEY':providerCfg.d360_api_key, 'Content-Type':'application/json', 'User-Agent':'AURA-CRM/1.0' }, body:JSON.stringify({ messaging_product:'whatsapp', recipient_type:'individual', to, type:'text', text:{ body:b.text||'' } }) });
+4474:        if (p === '/api/wa-attach' && req.method === 'POST') {
+4489:        if (p === '/api/wa-react' && req.method === 'POST') {
+4495:        if (p === '/api/wa-newchat' && req.method === 'POST') {
+4504:        if (p === '/api/wa-add-lead' && req.method === 'POST') {
+4515:        if (p === '/api/wa-confirm-appt' && req.method === 'POST') {
+4521:        if (p === '/api/wa-read' && req.method === 'POST') {
+4527:        if (p === '/api/wa-logout' && req.method === 'POST') {
+4533:        if (p === '/api/wa-webhook' && req.method === 'POST') {
+4552:                const murl = att ? (directUrl || ('/api/wa-media?mid='+encodeURIComponent(msgId)+'&aid='+encodeURIComponent(attId||'0')+'&t='+encodeURIComponent(tenantId))) : null;
+4572:        if (p === '/api/wa-webhook') { return json({ ok:true }); }
+4575:        if (p === '/api/wa-webhook-setup') {
+4576:          const hookUrl = 'https://aura-chat-worker.adrian-7b9.workers.dev/api/wa-webhook';
+4579:          const matches = (items||[]).filter((w:any)=> String(w.request_url||w.url||'').indexOf('/api/wa-webhook')>=0);
+4596:        if (p === '/api/wa-suggest' && req.method === 'POST') {
+5683:  const UNI = env.UNIPILE_DSN || 'https://api50.unipile.com:18013';
+5713:      for (const m of msgs){ const att=(m.attachments&&m.attachments[0])||null; const attId=att?(att.id||att.attachment_id||null):null; const mtype=att?String(att.type||att.mimetype||'file').toLowerCase():'text'; let murl=att?(att.url||null):null; if(murl&&/^att:\/\//i.test(String(murl)))murl=null; const mid=m.id||(chat.id+'_'+(m.timestamp?Date.parse(m.timestamp):Date.now())); if(att&&!murl) murl='/api/wa-media?mid='+encodeURIComponent(mid)+'&aid='+encodeURIComponent(attId||'0')+'&t='+encodeURIComponent(t); const mname=att?(att.file_name||att.name||null):null; const mts=m.timestamp?Date.parse(m.timestamp):Date.now(); const fromMe=(m.is_sender===1||m.is_sender===true)?1:0; let txt=m.text||''; if(/Unipile cannot display this type of message/i.test(txt)){ txt=''; }
