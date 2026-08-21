@@ -758,7 +758,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
 
     <!-- WHATSAPP -->
     <section class="view" id="v-whatsapp">
-      <div class="top"><div><h1>WhatsApp</h1><div class="sub2">Atiende por WhatsApp a quien te escribe, desde aquí. AURA centraliza los mensajes de tus pacientes y la IA puede responder sola. <b>Solo responde a quien escribe primero</b> — los recordatorios siguen por SMS.<br><span style="font-size:.78rem;color:var(--muted)">Los chats se van cargando a medida que hay actividad y no se pierden. Si acabas de conectar el WhatsApp, algunos chats antiguos aparecerán cuando reciban un mensaje nuevo. Pulsa ↻ para refrescar.</span></div></div>
+      <div class="top"><div><h1>WhatsApp</h1><div class="sub2">Atiende por WhatsApp Business desde aquí con la API oficial de Meta. AURA centraliza conversaciones, adjuntos, estados de entrega y consentimiento. <b>Los mensajes libres solo se envían dentro de la ventana de 24 horas</b>; para recordatorios y campañas se usan plantillas aprobadas.<br><span style="font-size:.78rem;color:var(--muted)">Los chats se guardan por clínica en AURA. Pulsa ↻ para actualizar la bandeja.</span></div></div>
         <div class="actions" id="waActions"></div></div>
       <div id="waBody"><div class="card"><p class="sub">Cargando estado de WhatsApp…</p></div></div>
     </section>
@@ -5838,7 +5838,7 @@ function renderWaConnect(){
 }
 function openWaOfficialConnect(){
   if(typeof goSection==='function')goSection('ajustes');
-  setTimeout(()=>{const btn=document.getElementById('wa360ConnectBtn');if(btn){btn.scrollIntoView({behavior:'smooth',block:'center'});btn.click();}},280);
+  setTimeout(()=>{const tab=document.querySelector('.settings-nav-item[data-stab="comunicaciones"]');if(tab)tab.click();const btn=document.getElementById('wa360ConnectBtn');if(btn){btn.scrollIntoView({behavior:'smooth',block:'center'});btn.click();}},280);
 }
 function waJidToNumber(jid){ return String(jid||'').replace(/@.*/,''); }
 // ¿El string es un teléfono real (mayoría dígitos) o un ID interno de WhatsApp (mezcla de letras/guiones)?

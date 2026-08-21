@@ -4171,7 +4171,7 @@ function renderWaConnect(){
 }
 function openWaOfficialConnect(){
   if(typeof goSection==='function')goSection('ajustes');
-  setTimeout(()=>{const btn=document.getElementById('wa360ConnectBtn');if(btn){btn.scrollIntoView({behavior:'smooth',block:'center'});btn.click();}},280);
+  setTimeout(()=>{const tab=document.querySelector('.settings-nav-item[data-stab="comunicaciones"]');if(tab)tab.click();const btn=document.getElementById('wa360ConnectBtn');if(btn){btn.scrollIntoView({behavior:'smooth',block:'center'});btn.click();}},280);
 }
 function waJidToNumber(jid){ return String(jid||'').replace(/@.*/,''); }
 // ¿El string es un teléfono real (mayoría dígitos) o un ID interno de WhatsApp (mezcla de letras/guiones)?
