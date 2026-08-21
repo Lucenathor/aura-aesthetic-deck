@@ -18,6 +18,8 @@ La cuenta de Partner de Thor Group (`IGw6FhPA`) está activa y no tiene canales 
 | Comprobación visual posterior al despliegue | Correcto: el dashboard recargado conserva la navegación de Ajustes y permite abrir Comunicaciones sin recargar el documento. |
 | Retirada de QR y conexión heredada | Correcto: la ruta heredada devuelve HTTP 410 y la bandeja ofrece solo conexión oficial con 360dialog y Meta. |
 | Biblioteca de plantillas | Correcto: rechaza peticiones sin sesión con HTTP 403 y responde para el tenant autenticado. |
+| Navegación Bandeja → Comunicaciones | Correcto: se activa la subpestaña `comunicaciones` y su panel se muestra sin iniciar el alta de un número. |
+| Formulario de plantilla | Correcto: se abre en Comunicaciones, separa categoría Utilidad/Marketing y deja claro que Meta debe aprobarla antes del envío. |
 
 ## Medidas aplicadas
 
