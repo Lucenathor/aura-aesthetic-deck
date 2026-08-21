@@ -2315,6 +2315,7 @@ async function loadReviewUrl(){
 // ===== 360dialog WhatsApp =====
 const D360_PARTNER_ID = 'IGw6FhPA';
 async function loadWa360Status(){
+  setupWa360ConnectButton();
   try{
     const r=await fetch(WORKER+'/api/wa-status-360?tenant='+T);
     const d=await r.json();
@@ -2335,12 +2336,37 @@ async function loadWa360Status(){
     const st=document.getElementById('wa360Status');if(st){st.textContent='No conectado';st.style.background='#fef3c7';st.style.color='#92400e';}
   }
 }
-function connectWa360(){
-  // Abre el flujo de Integrated Onboarding de 360dialog con el Connect Button
-  const redirectUrl = encodeURIComponent(WORKER+'/api/360-connect-callback');
-  const state = encodeURIComponent(T);
-  const ioUrl = 'https://hub.360dialog.io/dashboard/app/'+D360_PARTNER_ID+'/permissions?state='+state+'&redirect_url='+redirectUrl;
-  window.open(ioUrl,'_blank','width=700,height=700');
+let wa360ConnectReady=false;
+function setupWa360ConnectButton(){
+  const btn=document.getElementById('wa360ConnectBtn');
+  if(!btn || wa360ConnectReady)return;
+  const configure=async()=>{
+    if(wa360ConnectReady)return;
+    wa360ConnectReady=true;
+    try{
+      const r=await fetch(WORKER+'/api/360-io-signature?tenant='+encodeURIComponent(T),{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}});
+      const sig=await r.json();
+      if(sig.enabled){btn.setAttribute('io-signature',sig.signature);btn.setAttribute('io-timestamp',String(sig.timestamp));}
+    }catch(e){}
+    window.addEventListener('dialog-connect-callback',async event=>{
+      const detail=(event&&event.detail)||{};
+      const clientId=detail.client||'';
+      const channelIds=Array.isArray(detail.channels)?detail.channels:[];
+      if(!clientId)return;
+      const status=document.getElementById('wa360Status');
+      if(status){status.textContent='Activando número…';status.style.background='#eaf2ff';status.style.color='#1d4ed8';}
+      try{
+        const r=await fetch(WORKER+'/api/360-connect-session',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,client_id:clientId,channel_ids:channelIds})});
+        const d=await r.json();
+        const failed=(d.channels||[]).find(x=>!x.ok);
+        if(failed && failed.error==='channel_not_ready'){alert('Tu número se está activando en Meta. AURA lo conectará en cuanto 360dialog lo marque como listo.');}
+        else if(failed){alert('El número se ha creado, pero falta completar su activación: '+(failed.error||'revisa 360dialog.'));}
+        else if(d.ok){alert('WhatsApp Business conectado correctamente.');}
+        await loadWa360Status();
+      }catch(e){alert('No hemos podido confirmar todavía la conexión. Vuelve a cargar esta sección en unos segundos.');}
+    });
+  };
+  if(window.customElements&&customElements.whenDefined)customElements.whenDefined('dialog-connect-button').then(configure).catch(()=>{});else configure();
 }
 async function testWa360(){
   const msg=document.getElementById('wa360TestMsg');

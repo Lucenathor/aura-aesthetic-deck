@@ -89,3 +89,4 @@
 - [x] Corregir el acceso Personalizar del Setter IA para abrir el cerebro del embudo seleccionado.
 - [x] Corregir el token usado por el autoguardado del cerebro por embudo para garantizar su sincronización con Cloudflare.
 - [x] Sincronizar automáticamente los borradores recuperados del cerebro Setter por embudo al volver a abrirlos.
+- [ ] Auditar y probar de extremo a extremo la integración de 360dialog: Partner API, webhooks, aislamiento por tenant, interfaz y flujo de conexión antes de activar el primer número real.

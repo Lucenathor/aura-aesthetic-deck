@@ -30,6 +30,11 @@ interface Env {
   TWILIO_ACCOUNT_SID?: string;
   TWILIO_AUTH_TOKEN?: string;
   TWILIO_FROM_NUMBER?: string;
+  D360_PARTNER_KEY?: string;
+  D360_PARTNER_ID?: string;
+  D360_PLATFORM_SECRET?: string;
+  D360_PARTNER_WEBHOOK_TOKEN?: string;
+  D360_NUMBER_WEBHOOK_TOKEN?: string;
 }
 interface R2Bucket {
   put(key: string, value: string|ArrayBuffer|ReadableStream, opts?: any): Promise<any>;
@@ -237,6 +242,21 @@ function appId() {
 }
 // ── Token firmado para link mágico de conversación (HMAC-SHA256) ──
 function b64url(buf: ArrayBuffer){ const b=btoa(String.fromCharCode(...new Uint8Array(buf))); return b.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function timingSafeEqual(a: string, b: string){
+  if (!a || !b || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+async function hmacHex(secret: string, payload: string, hash: 'SHA-256'|'SHA-512'){
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name:'HMAC', hash }, false, ['sign']);
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  return Array.from(new Uint8Array(signature)).map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+async function verify360Signature(env: Env, rawBody: string, received: string|null){
+  if (!env.D360_PLATFORM_SECRET || !received) return false;
+  return timingSafeEqual(await hmacHex(env.D360_PLATFORM_SECRET, rawBody, 'SHA-256'), received.trim());
+}
 async function signLead(env: Env, leadId: string){
   const secret=env.JWT_SECRET||'aura-default-secret';
   const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
@@ -568,6 +588,8 @@ async function ensureWaSchema(env: Env) {
   try { await env.aura_db.exec('ALTER TABLE wa_config ADD COLUMN connected INTEGER DEFAULT 0'); } catch(e){}
   // Tabla de eventos de Partner 360dialog (log de onboarding)
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS d360_events (id INTEGER PRIMARY KEY AUTOINCREMENT, event TEXT, channel_id TEXT, client_id TEXT, phone TEXT, status TEXT, payload TEXT, created_at INTEGER)"); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE d360_events ADD COLUMN event_id TEXT'); } catch(e){}
+  try { await env.aura_db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_d360_event_id ON d360_events(event_id) WHERE event_id IS NOT NULL'); } catch(e){}
   // Mensajes persistidos (fuente de verdad de AURA). message_id único para dedupe (Unipile recomienda).
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS wa_messages (message_id TEXT PRIMARY KEY, tenant_id TEXT, chat_id TEXT, from_me INTEGER, text TEXT, mtype TEXT, murl TEXT, mname TEXT, ts INTEGER, created_at INTEGER)"); } catch(e){}
   try { await env.aura_db.exec("CREATE INDEX IF NOT EXISTS idx_wa_msg_chat ON wa_messages (tenant_id, chat_id, ts)"); } catch(e){}
@@ -948,6 +970,7 @@ export default {
         '/api/recovered','/api/business-costs','/api/schedule-by-day','/api/vacations',
         '/api/sms-templates','/api/team','/api/funnel-save','/api/funnel-edit','/api/funnel-delete',
         '/api/consent-templates','/api/consent-send','/api/consents','/api/treatment-catalog','/api/tenant-meta',
+        '/api/360-connect-session','/api/360-io-signature',
         '/api/loyalty-adjust','/api/loyalty-balance',
         '/api/clinical','/api/clinical-note','/api/viral-content','/api/viral-content-delete',
         '/api/viral-submit','/api/viral-fire','/api/viral-update-views',
@@ -3942,91 +3965,109 @@ export default {
 
       // ============ WHATSAPP (Unipile API) ============
       // ============ 360DIALOG PARTNER INTEGRATION ============
+      const d360PartnerId = env.D360_PARTNER_ID || '';
+      const d360PartnerKey = env.D360_PARTNER_KEY || '';
+      const provision360Channel = async (tenantId: string, channelId: string, expectedClientId = '') => {
+        if (!d360PartnerId || !d360PartnerKey) return { ok:false, error:'partner_not_configured' };
+        const filters = encodeURIComponent(JSON.stringify({ id: channelId }));
+        const channelResponse = await fetch(`https://hub.360dialog.io/api/v2/partners/${d360PartnerId}/channels?filters=${filters}`, { headers:{ 'x-api-key':d360PartnerKey, 'User-Agent':'AURA-CRM/1.0' } });
+        const channelData: any = await channelResponse.json().catch(()=>null);
+        const channel = channelData?.partner_channels?.[0];
+        if (!channel) return { ok:false, error:'channel_not_found' };
+        if (channel.availability_status !== 'ready') return { ok:false, error:'channel_not_ready', status:channel.availability_status || channel.status || 'unknown' };
+        if (expectedClientId && channel.client_id && expectedClientId !== channel.client_id) return { ok:false, error:'client_mismatch' };
+        const keyResponse = await fetch(`https://hub.360dialog.io/api/v2/partners/${d360PartnerId}/channels/${channelId}/api_keys`, { method:'POST', headers:{ 'x-api-key':d360PartnerKey, 'Content-Type':'application/json', 'User-Agent':'AURA-CRM/1.0' } });
+        const keyData: any = await keyResponse.json().catch(()=>null);
+        const numberApiKey = keyData?.api_key || '';
+        if (!keyResponse.ok || !numberApiKey) return { ok:false, error:'number_key_failed', status:keyResponse.status };
+        if (!env.D360_NUMBER_WEBHOOK_TOKEN) return { ok:false, error:'number_webhook_secret_not_configured' };
+        const webhookResponse = await fetch('https://waba-v2.360dialog.io/v1/configs/webhook', {
+          method:'POST',
+          headers:{ 'D360-API-KEY':numberApiKey, 'Content-Type':'application/json', 'User-Agent':'AURA-CRM/1.0' },
+          body:JSON.stringify({ url:'https://aura-chat-worker.adrian-7b9.workers.dev/api/wa-webhook-360', headers:{ 'x-aura-360-webhook':env.D360_NUMBER_WEBHOOK_TOKEN } })
+        });
+        if (!webhookResponse.ok) return { ok:false, error:'number_webhook_failed', status:webhookResponse.status };
+        const phone = String(channel.setup_info?.phone_number || '').replace(/\D/g,'');
+        await env.aura_db.prepare("UPDATE wa_config SET d360_api_key=?, d360_channel_id=?, d360_phone=?, d360_client_id=?, connected=1, provider='360dialog', updated_at=? WHERE tenant_id=?")
+          .bind(numberApiKey, channelId, phone, channel.client_id || expectedClientId || null, Date.now(), tenantId).run();
+        return { ok:true, phone, channel_id:channelId };
+      };
       // Webhook de Partner: recibe eventos channel_created, channel_running, etc.
       if (p === '/api/360-partner-webhook' && req.method === 'POST') {
         await ensureWaSchema(env);
         try {
-          const ev: any = await req.json();
+          const rawBody = await req.text();
+          const customToken = req.headers.get('x-aura-360-partner');
+          const signatureValid = await verify360Signature(env, rawBody, req.headers.get('x-360dialog-signature'));
+          const tokenValid = !!env.D360_PARTNER_WEBHOOK_TOKEN && timingSafeEqual(customToken || '', env.D360_PARTNER_WEBHOOK_TOKEN);
+          if (!signatureValid && !tokenValid) return json({ ok:false, error:'unauthorized_webhook' }, 401);
+          const ev: any = JSON.parse(rawBody);
           const event = ev.event || ev.type || '';
           const channelId = ev.data?.id || ev.channel_id || '';
           const clientId = ev.data?.client?.id || ev.client_id || '';
           const phone = ev.data?.setup_info?.phone_number || '';
           const status = ev.data?.availability_status || ev.data?.status || event;
-          // Log del evento
-          try { await env.aura_db.prepare("INSERT INTO d360_events (event,channel_id,client_id,phone,status,payload,created_at) VALUES (?,?,?,?,?,?,?)").bind(event, channelId, clientId, phone, status, JSON.stringify(ev).slice(0,4000), Date.now()).run(); } catch(e){}
-          // Si el canal está running, intentar generar API Key automáticamente
-          if ((event === 'channel_running' || event === 'channel_status_running') && channelId) {
-            const D360_PARTNER_KEY = env.D360_PARTNER_KEY || '2e150a7b-db45-451f-8cf8-2ee563e05bf9';
-            const D360_PARTNER_ID = env.D360_PARTNER_ID || 'IGw6FhPA';
-            // Generar Number API Key via Partner API
-            try {
-              const keyResp = await fetch(`https://hub.360dialog.io/api/v2/partners/${D360_PARTNER_ID}/channels/${channelId}/api_keys`, {
-                method: 'POST', headers: { 'x-api-key': D360_PARTNER_KEY, 'Content-Type': 'application/json', 'User-Agent': 'AURA-CRM/1.0' }
-              });
-              const keyData: any = await keyResp.json().catch(() => null);
-              const numberApiKey = keyData?.api_key || keyData?.key || '';
-              if (numberApiKey) {
-                // Buscar qué tenant tiene este client_id para asociar la API Key
-                const tenant: any = await env.aura_db.prepare('SELECT tenant_id FROM wa_config WHERE d360_client_id=?').bind(clientId).first().catch(() => null);
-                if (tenant?.tenant_id) {
-                  await env.aura_db.prepare("UPDATE wa_config SET d360_api_key=?, d360_channel_id=?, d360_phone=?, connected=1, provider='360dialog', updated_at=? WHERE tenant_id=?")
-                    .bind(numberApiKey, channelId, phone, Date.now(), tenant.tenant_id).run();
-                  // Configurar el webhook del número apuntando a AURA
-                  const webhookUrl = 'https://aura-chat-worker.adrian-7b9.workers.dev/api/wa-webhook-360';
-                  await fetch('https://waba-v2.360dialog.io/v1/configs/webhook', {
-                    method: 'POST', headers: { 'D360-API-KEY': numberApiKey, 'Content-Type': 'application/json', 'User-Agent': 'AURA-CRM/1.0' },
-                    body: JSON.stringify({ url: webhookUrl })
-                  });
-                }
-              }
-            } catch (e) {}
+          const eventId = ev.id || `${event}:${channelId}:${status}`;
+          const write:any = await env.aura_db.prepare("INSERT OR IGNORE INTO d360_events (event_id,event,channel_id,client_id,phone,status,payload,created_at) VALUES (?,?,?,?,?,?,?,?)").bind(eventId, event, channelId, clientId, phone, status, rawBody.slice(0,4000), Date.now()).run();
+          if (!write.meta?.changes) return json({ ok:true, duplicate:true });
+          if (channelId && (status === 'ready' || event === 'channel_running' || event === 'channel_status_running')) {
+            const tenant:any = await env.aura_db.prepare('SELECT tenant_id FROM wa_config WHERE d360_client_id=?').bind(clientId).first().catch(()=>null);
+            if (tenant?.tenant_id) await provision360Channel(tenant.tenant_id, channelId, clientId);
           }
           return json({ ok: true });
-        } catch (e) { return json({ ok: true }); }
+        } catch (e) { return json({ ok:false, error:'invalid_webhook' }, 400); }
       }
       // GET para verificación de webhook (360dialog puede hacer un GET de verificación)
       if (p === '/api/360-partner-webhook' && req.method === 'GET') {
         return json({ ok: true, service: 'aura-360dialog-partner-webhook' });
       }
 
-      // Callback del Connect Button: cuando la clínica termina el onboarding, 360dialog redirige aquí
+      // Callback global configurado en el Partner Hub. La asociación real tenant↔canal se hace
+      // mediante /api/360-connect-session, autenticado desde el dashboard tras el evento oficial.
       if (p === '/api/360-connect-callback') {
+        return Response.redirect('https://auracrm.co/dashboard.html#ajustes', 302);
+      }
+
+      // Guarda el resultado del dialog-connect-callback oficial y provisiona cada canal listo.
+      if (p === '/api/360-connect-session' && req.method === 'POST') {
         await ensureWaSchema(env);
-        const clientId = url.searchParams.get('client') || '';
-        const channels = url.searchParams.get('channels') || '[]';
-        const state = url.searchParams.get('state') || ''; // contiene tenant_id
-        let channelIds: string[] = [];
-        try { channelIds = JSON.parse(channels); } catch { channelIds = channels.split(',').filter(Boolean); }
-        // state = tenant_id que pasamos al abrir el Connect Button
-        const tenantId = state || '';
-        if (tenantId && clientId) {
-          // Guardar la asociación tenant ↔ client_id de 360dialog
-          await env.aura_db.prepare("INSERT INTO wa_config (tenant_id, d360_client_id, provider, updated_at) VALUES (?,?,'360dialog',?) ON CONFLICT(tenant_id) DO UPDATE SET d360_client_id=excluded.d360_client_id, provider='360dialog', updated_at=excluded.updated_at")
-            .bind(tenantId, clientId, Date.now()).run();
-          // Si ya tenemos channel_ids, guardar el primero
-          if (channelIds.length > 0) {
-            await env.aura_db.prepare("UPDATE wa_config SET d360_channel_id=? WHERE tenant_id=?").bind(channelIds[0], tenantId).run();
-          }
-        }
-        // Redirigir al dashboard de AURA con mensaje de éxito
-        const redirectUrl = `https://auracrm.co/dashboard.html?section=ajustes&subsection=comunicaciones&wa_connected=1&tenant=${encodeURIComponent(tenantId)}`;
-        return Response.redirect(redirectUrl, 302);
+        const b:any = await req.json();
+        const tenantId = String(b.tenant_id || '');
+        const clientId = String(b.client_id || '');
+        const channelIds = Array.isArray(b.channel_ids) ? b.channel_ids.map((v:any)=>String(v)).filter(Boolean) : [];
+        if (!tenantId || !clientId) return json({ ok:false, error:'missing_connection_data' }, 400);
+        await env.aura_db.prepare("INSERT INTO wa_config (tenant_id,d360_client_id,provider,connected,updated_at) VALUES (?,?,'360dialog',0,?) ON CONFLICT(tenant_id) DO UPDATE SET d360_client_id=excluded.d360_client_id, provider='360dialog', connected=0, updated_at=excluded.updated_at")
+          .bind(tenantId, clientId, Date.now()).run();
+        const results:any[] = [];
+        for (const channelId of channelIds) results.push(await provision360Channel(tenantId, channelId, clientId));
+        return json({ ok:true, channels:results });
+      }
+
+      // Entrega una IO Signature fresca cuando el Platform Secret ya está configurado en el Worker.
+      if (p === '/api/360-io-signature' && req.method === 'GET') {
+        if (!env.D360_PLATFORM_SECRET || !d360PartnerId) return json({ enabled:false });
+        const timestamp = Math.floor(Date.now()/1000);
+        return json({ enabled:true, timestamp, signature:await hmacHex(env.D360_PLATFORM_SECRET, `${d360PartnerId}|${timestamp}`, 'SHA-512') });
       }
 
       // Webhook de mensajes entrantes de 360dialog (formato Cloud API de Meta)
       if (p === '/api/wa-webhook-360' && req.method === 'POST') {
         await ensureWaSchema(env);
         try {
-          const payload: any = await req.json();
+          const rawBody = await req.text();
+          const customToken = req.headers.get('x-aura-360-webhook');
+          const signatureValid = await verify360Signature(env, rawBody, req.headers.get('x-360dialog-signature'));
+          const tokenValid = !!env.D360_NUMBER_WEBHOOK_TOKEN && timingSafeEqual(customToken || '', env.D360_NUMBER_WEBHOOK_TOKEN);
+          if (!signatureValid && !tokenValid) return json({ ok:false, error:'unauthorized_webhook' }, 401);
+          const payload: any = JSON.parse(rawBody);
           // Formato Cloud API de Meta
           if (payload.object === 'whatsapp_business_account' && payload.entry) {
             for (const entry of payload.entry) {
               for (const change of (entry.changes || [])) {
                 const value = change.value || {};
-                const phoneNumberId = value.metadata?.phone_number_id || '';
                 const displayPhone = value.metadata?.display_phone_number || '';
                 // Buscar tenant por el número de teléfono del negocio
-                const tenantRow: any = await env.aura_db.prepare("SELECT tenant_id FROM wa_config WHERE d360_phone=? OR d360_channel_id=?").bind(displayPhone.replace(/\D/g,''), phoneNumberId).first().catch(() => null);
+                const tenantRow: any = await env.aura_db.prepare("SELECT tenant_id FROM wa_config WHERE d360_phone=?").bind(displayPhone.replace(/\D/g,'')).first().catch(() => null);
                 const tenantId = tenantRow?.tenant_id || '';
                 if (!tenantId) continue;
                 // Procesar mensajes entrantes
@@ -4046,8 +4087,10 @@ export default {
                     if (msg.audio) { murl = msg.audio.id || null; }
                     if (msg.document) { murl = msg.document.id || null; mname = msg.document.filename || null; }
                     if (msg.sticker) { murl = msg.sticker.id || null; }
-                    // Guardar mensaje
-                    try { await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(msgId, tenantId, chatId, 0, text, mtype, murl, mname, ts, Date.now()).run(); } catch (e) {}
+                    // Guardar mensaje. Si es un reintento del webhook, no se toca el chat ni se crea lead.
+                    let inserted = false;
+                    try { const write:any = await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(msgId, tenantId, chatId, 0, text, mtype, murl, mname, ts, Date.now()).run(); inserted = !!write.meta?.changes; } catch (e) {}
+                    if (!inserted) continue;
                     // Actualizar metadatos del chat
                     const contactName = (value.contacts && value.contacts[0]?.profile?.name) || from;
                     try { await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,1,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text, last_ts=excluded.last_ts, unread=wa_chats_meta.unread+1, name=COALESCE(NULLIF(wa_chats_meta.name,''),excluded.name), phone=COALESCE(NULLIF(wa_chats_meta.phone,''),excluded.phone), updated_at=excluded.updated_at").bind(tenantId, chatId, contactName, from, text || '[adjunto]', ts, Date.now()).run(); } catch (e) {}
@@ -4073,7 +4116,7 @@ export default {
             }
           }
           return json({ ok: true });
-        } catch (e) { return json({ ok: true }); }
+        } catch (e) { return json({ ok:false, error:'invalid_webhook' }, 400); }
       }
       if (p === '/api/wa-webhook-360' && req.method === 'GET') {
         // Verificación de webhook (si 360dialog lo requiere)
@@ -4194,6 +4237,8 @@ export default {
         // Estado de conexión
         if (p === '/api/wa-status' && req.method === 'GET') {
           if(!tnt) return json({error:'missing tenant'},400);
+          const providerCfg:any = await env.aura_db.prepare('SELECT provider,d360_phone,connected FROM wa_config WHERE tenant_id=?').bind(tnt).first().catch(()=>null);
+          if (providerCfg?.provider === '360dialog') return json({ connected:!!providerCfg.connected, state:providerCfg.connected?'open':'connecting', exists:true, provider:'360dialog', phone:providerCfg.d360_phone||'' });
           const acc = await acctOf(tnt);
           if(!acc) return json({ connected:false, exists:false });
           const st = await uni('/api/v1/accounts/'+acc);
@@ -4249,17 +4294,20 @@ export default {
         // Lista de chats: SERVIDA DESDE LA BD de AURA (escalable). Sincroniza la 1ª vez si está vacía.
         if (p === '/api/wa-chats' && req.method === 'GET') {
           if(!tnt) return json({error:'missing tenant'},400);
-          const acc = await acctOf(tnt); if(!acc) return json({ chats:[] });
+          const providerCfg:any = await env.aura_db.prepare('SELECT provider,instance FROM wa_config WHERE tenant_id=?').bind(tnt).first().catch(()=>null);
+          const is360 = providerCfg?.provider === '360dialog';
+          const acc = providerCfg?.instance || null;
+          if(!is360 && !acc) return json({ chats:[] });
           const wantSync = url.searchParams.get('sync')==='1';
           // La lista sale SIEMPRE de NUESTRA BD (acumulada por sync inicial + webhook). WhatsApp no permite
           // resync de historial en Unipile, asi que la persistencia propia es la fuente de verdad y nunca pierde chats.
           let metaRes:any = await env.aura_db.prepare('SELECT * FROM wa_chats_meta WHERE tenant_id=? ORDER BY last_ts DESC LIMIT 200').bind(tnt).all();
-          if(!(metaRes.results||[]).length || wantSync){ try{ await syncChats(tnt, acc); }catch(e){} metaRes = await env.aura_db.prepare('SELECT * FROM wa_chats_meta WHERE tenant_id=? ORDER BY last_ts DESC LIMIT 200').bind(tnt).all(); }
+          if (!is360 && (!(metaRes.results||[]).length || wantSync)) { try{ await syncChats(tnt, acc!); }catch(e){} metaRes = await env.aura_db.prepare('SELECT * FROM wa_chats_meta WHERE tenant_id=? ORDER BY last_ts DESC LIMIT 200').bind(tnt).all(); }
           const byPhone:any = {};
           try { const leadsRes:any = await env.aura_db.prepare('SELECT id,name,phone,treatment,status,temperature FROM leads WHERE tenant_id=?').bind(tnt).all(); for (const l of (leadsRes.results||[])) { const k=digits9(l.phone); if(k) byPhone[k]=l; } } catch(e){}
           const chats = (metaRes.results||[]).map((m:any)=>{ const num=digits9(m.phone||''); const lead=byPhone[num];
             // Foto via proxy de Unipile (chat_attendees/{id}/picture). Solo si tenemos attendee_id.
-            const pic = m.attendee_id ? ('/api/wa-avatar?aid='+encodeURIComponent(m.attendee_id)+'&t='+encodeURIComponent(tnt)) : (m.picture||null);
+            const pic = (!is360 && m.attendee_id) ? ('/api/wa-avatar?aid='+encodeURIComponent(m.attendee_id)+'&t='+encodeURIComponent(tnt)) : (m.picture||null);
             return { remoteJid:m.chat_id, id:m.chat_id, chat_id:m.chat_id, pushName:m.name, name:m.name, phone:m.phone, picture:pic, is_group:!!m.is_group, timestamp:m.last_ts||null, unread:m.unread||0, lastMessage:{ message:{ conversation:m.last_text||'' } }, _lead: lead?{ id:lead.id, name:lead.name, treatment:lead.treatment, status:lead.status, temperature:lead.temperature }:undefined }; });
           return json({ chats });
         }
@@ -4358,11 +4406,13 @@ export default {
         if (p === '/api/wa-messages' && req.method === 'GET') {
           if(!tnt) return json({error:'missing tenant'},400);
           const chatId = url.searchParams.get('number')||'';
+          const providerCfg:any = await env.aura_db.prepare('SELECT provider FROM wa_config WHERE tenant_id=?').bind(tnt).first().catch(()=>null);
+          const is360 = providerCfg?.provider === '360dialog';
           let dbRes:any = await env.aura_db.prepare('SELECT * FROM wa_messages WHERE tenant_id=? AND chat_id=? ORDER BY ts ASC LIMIT 100').bind(tnt, chatId).all();
           // RENDIMIENTO: servimos SIEMPRE desde la BD al instante. Solo llamamos a Unipile (lento) si el chat
           // está vacío (1ª vez) o si se pide refresco explícito con ?sync=1. El cron resincroniza cada 10 min en 2º plano.
           const wantSync = url.searchParams.get('sync')==='1';
-          if(!(dbRes.results||[]).length || wantSync){
+          if(!is360 && (!(dbRes.results||[]).length || wantSync)){
             try {
               const r = await uni('/api/v1/chats/'+encodeURIComponent(chatId)+'/messages?limit=60');
               const items = (r.data?.items)||[];
@@ -4403,6 +4453,18 @@ export default {
         if (p === '/api/wa-send' && req.method === 'POST') {
           const b:any = await req.json(); if(!b.tenant_id) return json({error:'missing tenant'},400);
           const chatId = b.jid || b.number;
+          const providerCfg:any = await env.aura_db.prepare('SELECT provider,d360_api_key FROM wa_config WHERE tenant_id=?').bind(b.tenant_id).first().catch(()=>null);
+          if (providerCfg?.provider === '360dialog') {
+            const to = String(chatId||'').replace(/\D/g,'');
+            if (!to || !providerCfg.d360_api_key) return json({ ok:false, error:'no_360dialog_key' }, 400);
+            const upstream = await fetch('https://waba-v2.360dialog.io/messages', { method:'POST', headers:{ 'D360-API-KEY':providerCfg.d360_api_key, 'Content-Type':'application/json', 'User-Agent':'AURA-CRM/1.0' }, body:JSON.stringify({ messaging_product:'whatsapp', recipient_type:'individual', to, type:'text', text:{ body:b.text||'' } }) });
+            const data:any = await upstream.json().catch(()=>({}));
+            if (!upstream.ok) return json({ ok:false, status:upstream.status, data });
+            const mid = data.messages?.[0]?.id || ('out360_'+Date.now()); const now = Date.now();
+            await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,ts,created_at) VALUES (?,?,?,?,?,?,?,?)").bind(mid,b.tenant_id,to,1,b.text||'','text',now,now).run().catch(()=>{});
+            await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,0,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text,last_ts=excluded.last_ts,unread=0,updated_at=excluded.updated_at").bind(b.tenant_id,to,'+'+to,to,b.text||'',now,now).run().catch(()=>{});
+            return json({ ok:true, data });
+          }
           const r = await uni('/api/v1/chats/'+encodeURIComponent(chatId)+'/messages','POST',{ text:b.text });
           // guarda saliente en BD
           try { const mid=r.data?.message_id||r.data?.id||(chatId+'_out_'+Date.now()); const now=Date.now(); await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,ts,created_at) VALUES (?,?,?,?,?,?,?,?)").bind(mid, b.tenant_id, chatId, 1, b.text||'', 'text', now, now).run(); await env.aura_db.prepare("UPDATE wa_chats_meta SET last_text=?, last_ts=?, unread=0 WHERE tenant_id=? AND chat_id=?").bind(b.text||'', now, b.tenant_id, chatId).run(); } catch(e){}
