@@ -559,6 +559,15 @@ let __waReady = false;
 async function ensureWaSchema(env: Env) {
   if (__waReady) return;
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS wa_config (tenant_id TEXT PRIMARY KEY, instance TEXT, updated_at INTEGER)"); } catch(e){}
+  // 360dialog: campos adicionales para la integración
+  try { await env.aura_db.exec('ALTER TABLE wa_config ADD COLUMN provider TEXT DEFAULT "unipile"'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE wa_config ADD COLUMN d360_api_key TEXT'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE wa_config ADD COLUMN d360_channel_id TEXT'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE wa_config ADD COLUMN d360_phone TEXT'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE wa_config ADD COLUMN d360_client_id TEXT'); } catch(e){}
+  try { await env.aura_db.exec('ALTER TABLE wa_config ADD COLUMN connected INTEGER DEFAULT 0'); } catch(e){}
+  // Tabla de eventos de Partner 360dialog (log de onboarding)
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS d360_events (id INTEGER PRIMARY KEY AUTOINCREMENT, event TEXT, channel_id TEXT, client_id TEXT, phone TEXT, status TEXT, payload TEXT, created_at INTEGER)"); } catch(e){}
   // Mensajes persistidos (fuente de verdad de AURA). message_id único para dedupe (Unipile recomienda).
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS wa_messages (message_id TEXT PRIMARY KEY, tenant_id TEXT, chat_id TEXT, from_me INTEGER, text TEXT, mtype TEXT, murl TEXT, mname TEXT, ts INTEGER, created_at INTEGER)"); } catch(e){}
   try { await env.aura_db.exec("CREATE INDEX IF NOT EXISTS idx_wa_msg_chat ON wa_messages (tenant_id, chat_id, ts)"); } catch(e){}
@@ -3932,6 +3941,204 @@ export default {
       }
 
       // ============ WHATSAPP (Unipile API) ============
+      // ============ 360DIALOG PARTNER INTEGRATION ============
+      // Webhook de Partner: recibe eventos channel_created, channel_running, etc.
+      if (p === '/api/360-partner-webhook' && req.method === 'POST') {
+        await ensureWaSchema(env);
+        try {
+          const ev: any = await req.json();
+          const event = ev.event || ev.type || '';
+          const channelId = ev.data?.id || ev.channel_id || '';
+          const clientId = ev.data?.client?.id || ev.client_id || '';
+          const phone = ev.data?.setup_info?.phone_number || '';
+          const status = ev.data?.availability_status || ev.data?.status || event;
+          // Log del evento
+          try { await env.aura_db.prepare("INSERT INTO d360_events (event,channel_id,client_id,phone,status,payload,created_at) VALUES (?,?,?,?,?,?,?)").bind(event, channelId, clientId, phone, status, JSON.stringify(ev).slice(0,4000), Date.now()).run(); } catch(e){}
+          // Si el canal está running, intentar generar API Key automáticamente
+          if ((event === 'channel_running' || event === 'channel_status_running') && channelId) {
+            const D360_PARTNER_KEY = env.D360_PARTNER_KEY || '2e150a7b-db45-451f-8cf8-2ee563e05bf9';
+            const D360_PARTNER_ID = env.D360_PARTNER_ID || 'IGw6FhPA';
+            // Generar Number API Key via Partner API
+            try {
+              const keyResp = await fetch(`https://hub.360dialog.io/api/v2/partners/${D360_PARTNER_ID}/channels/${channelId}/api_keys`, {
+                method: 'POST', headers: { 'x-api-key': D360_PARTNER_KEY, 'Content-Type': 'application/json', 'User-Agent': 'AURA-CRM/1.0' }
+              });
+              const keyData: any = await keyResp.json().catch(() => null);
+              const numberApiKey = keyData?.api_key || keyData?.key || '';
+              if (numberApiKey) {
+                // Buscar qué tenant tiene este client_id para asociar la API Key
+                const tenant: any = await env.aura_db.prepare('SELECT tenant_id FROM wa_config WHERE d360_client_id=?').bind(clientId).first().catch(() => null);
+                if (tenant?.tenant_id) {
+                  await env.aura_db.prepare("UPDATE wa_config SET d360_api_key=?, d360_channel_id=?, d360_phone=?, connected=1, provider='360dialog', updated_at=? WHERE tenant_id=?")
+                    .bind(numberApiKey, channelId, phone, Date.now(), tenant.tenant_id).run();
+                  // Configurar el webhook del número apuntando a AURA
+                  const webhookUrl = 'https://aura-chat-worker.adrian-7b9.workers.dev/api/wa-webhook-360';
+                  await fetch('https://waba-v2.360dialog.io/v1/configs/webhook', {
+                    method: 'POST', headers: { 'D360-API-KEY': numberApiKey, 'Content-Type': 'application/json', 'User-Agent': 'AURA-CRM/1.0' },
+                    body: JSON.stringify({ url: webhookUrl })
+                  });
+                }
+              }
+            } catch (e) {}
+          }
+          return json({ ok: true });
+        } catch (e) { return json({ ok: true }); }
+      }
+      // GET para verificación de webhook (360dialog puede hacer un GET de verificación)
+      if (p === '/api/360-partner-webhook' && req.method === 'GET') {
+        return json({ ok: true, service: 'aura-360dialog-partner-webhook' });
+      }
+
+      // Callback del Connect Button: cuando la clínica termina el onboarding, 360dialog redirige aquí
+      if (p === '/api/360-connect-callback') {
+        await ensureWaSchema(env);
+        const clientId = url.searchParams.get('client') || '';
+        const channels = url.searchParams.get('channels') || '[]';
+        const state = url.searchParams.get('state') || ''; // contiene tenant_id
+        let channelIds: string[] = [];
+        try { channelIds = JSON.parse(channels); } catch { channelIds = channels.split(',').filter(Boolean); }
+        // state = tenant_id que pasamos al abrir el Connect Button
+        const tenantId = state || '';
+        if (tenantId && clientId) {
+          // Guardar la asociación tenant ↔ client_id de 360dialog
+          await env.aura_db.prepare("INSERT INTO wa_config (tenant_id, d360_client_id, provider, updated_at) VALUES (?,?,'360dialog',?) ON CONFLICT(tenant_id) DO UPDATE SET d360_client_id=excluded.d360_client_id, provider='360dialog', updated_at=excluded.updated_at")
+            .bind(tenantId, clientId, Date.now()).run();
+          // Si ya tenemos channel_ids, guardar el primero
+          if (channelIds.length > 0) {
+            await env.aura_db.prepare("UPDATE wa_config SET d360_channel_id=? WHERE tenant_id=?").bind(channelIds[0], tenantId).run();
+          }
+        }
+        // Redirigir al dashboard de AURA con mensaje de éxito
+        const redirectUrl = `https://auracrm.co/dashboard.html?section=ajustes&subsection=comunicaciones&wa_connected=1&tenant=${encodeURIComponent(tenantId)}`;
+        return Response.redirect(redirectUrl, 302);
+      }
+
+      // Webhook de mensajes entrantes de 360dialog (formato Cloud API de Meta)
+      if (p === '/api/wa-webhook-360' && req.method === 'POST') {
+        await ensureWaSchema(env);
+        try {
+          const payload: any = await req.json();
+          // Formato Cloud API de Meta
+          if (payload.object === 'whatsapp_business_account' && payload.entry) {
+            for (const entry of payload.entry) {
+              for (const change of (entry.changes || [])) {
+                const value = change.value || {};
+                const phoneNumberId = value.metadata?.phone_number_id || '';
+                const displayPhone = value.metadata?.display_phone_number || '';
+                // Buscar tenant por el número de teléfono del negocio
+                const tenantRow: any = await env.aura_db.prepare("SELECT tenant_id FROM wa_config WHERE d360_phone=? OR d360_channel_id=?").bind(displayPhone.replace(/\D/g,''), phoneNumberId).first().catch(() => null);
+                const tenantId = tenantRow?.tenant_id || '';
+                if (!tenantId) continue;
+                // Procesar mensajes entrantes
+                if (value.messages) {
+                  for (const msg of value.messages) {
+                    const msgId = msg.id || ('d360_' + Date.now());
+                    const from = msg.from || '';
+                    const chatId = from; // En WhatsApp Cloud API, el chat_id es el número del remitente
+                    const ts = msg.timestamp ? parseInt(msg.timestamp) * 1000 : Date.now();
+                    const mtype = msg.type || 'text';
+                    let text = '';
+                    let murl: string | null = null;
+                    let mname: string | null = null;
+                    if (msg.text) text = msg.text.body || '';
+                    if (msg.image) { murl = msg.image.id || null; text = msg.image.caption || ''; }
+                    if (msg.video) { murl = msg.video.id || null; text = msg.video.caption || ''; }
+                    if (msg.audio) { murl = msg.audio.id || null; }
+                    if (msg.document) { murl = msg.document.id || null; mname = msg.document.filename || null; }
+                    if (msg.sticker) { murl = msg.sticker.id || null; }
+                    // Guardar mensaje
+                    try { await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(msgId, tenantId, chatId, 0, text, mtype, murl, mname, ts, Date.now()).run(); } catch (e) {}
+                    // Actualizar metadatos del chat
+                    const contactName = (value.contacts && value.contacts[0]?.profile?.name) || from;
+                    try { await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,1,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text, last_ts=excluded.last_ts, unread=wa_chats_meta.unread+1, name=COALESCE(NULLIF(wa_chats_meta.name,''),excluded.name), phone=COALESCE(NULLIF(wa_chats_meta.phone,''),excluded.phone), updated_at=excluded.updated_at").bind(tenantId, chatId, contactName, from, text || '[adjunto]', ts, Date.now()).run(); } catch (e) {}
+                    // Auto-crear lead si no existe
+                    const phone9 = from.replace(/\D/g, '').slice(-9);
+                    try {
+                      const existingLead: any = await env.aura_db.prepare("SELECT id FROM leads WHERE tenant_id=? AND phone LIKE ?").bind(tenantId, '%' + phone9).first();
+                      if (!existingLead) {
+                        const leadId = 'wa360_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+                        await env.aura_db.prepare("INSERT INTO leads (id,tenant_id,name,phone,treatment,temperature,status,source,notes,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)").bind(leadId, tenantId, contactName, from, '', 'warm', 'new', 'whatsapp-360', 'Contacto entrante vía WhatsApp 360dialog', new Date().toISOString()).run();
+                      }
+                    } catch (e) {}
+                  }
+                }
+                // Procesar estados de mensajes (sent, delivered, read)
+                if (value.statuses) {
+                  for (const st of value.statuses) {
+                    // Podemos actualizar el estado del mensaje si lo necesitamos en el futuro
+                    // Por ahora solo logueamos para no perder info
+                  }
+                }
+              }
+            }
+          }
+          return json({ ok: true });
+        } catch (e) { return json({ ok: true }); }
+      }
+      if (p === '/api/wa-webhook-360' && req.method === 'GET') {
+        // Verificación de webhook (si 360dialog lo requiere)
+        return json({ ok: true, service: 'aura-360dialog-messaging-webhook' });
+      }
+
+      // Enviar mensaje vía 360dialog (alternativa a Unipile)
+      if (p === '/api/wa-send-360' && req.method === 'POST') {
+        await ensureWaSchema(env);
+        const b: any = await req.json();
+        if (!b.tenant_id) return json({ error: 'missing tenant' }, 400);
+        const to = String(b.to || b.number || b.phone || '').replace(/[^0-9]/g, '');
+        if (!to) return json({ ok: false, error: 'missing recipient number' });
+        // Obtener la D360 API Key del tenant
+        const cfg: any = await env.aura_db.prepare('SELECT d360_api_key FROM wa_config WHERE tenant_id=?').bind(b.tenant_id).first().catch(() => null);
+        if (!cfg?.d360_api_key) return json({ ok: false, error: 'no_360dialog_key', message: 'Este tenant no tiene 360dialog configurado' });
+        // Construir payload Cloud API
+        let msgPayload: any = { messaging_product: 'whatsapp', recipient_type: 'individual', to };
+        if (b.type === 'template' && b.template) {
+          msgPayload.type = 'template';
+          msgPayload.template = b.template;
+        } else if (b.type === 'image' && b.image) {
+          msgPayload.type = 'image';
+          msgPayload.image = b.image;
+        } else {
+          msgPayload.type = 'text';
+          msgPayload.text = { body: b.text || b.message || 'Hola' };
+        }
+        try {
+          const resp = await fetch('https://waba-v2.360dialog.io/messages', {
+            method: 'POST',
+            headers: { 'D360-API-KEY': cfg.d360_api_key, 'Content-Type': 'application/json', 'User-Agent': 'AURA-CRM/1.0' },
+            body: JSON.stringify(msgPayload)
+          });
+          const data: any = await resp.json().catch(() => ({}));
+          // Guardar mensaje saliente en BD
+          if (resp.ok && data.messages && data.messages[0]) {
+            const mid = data.messages[0].id || ('out360_' + Date.now());
+            const now = Date.now();
+            try { await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,ts,created_at) VALUES (?,?,?,?,?,?,?,?)").bind(mid, b.tenant_id, to, 1, b.text || b.message || '', 'text', now, now).run(); } catch (e) {}
+            try { await env.aura_db.prepare("UPDATE wa_chats_meta SET last_text=?, last_ts=?, unread=0 WHERE tenant_id=? AND chat_id=?").bind(b.text || '', now, b.tenant_id, to).run(); } catch (e) {}
+          }
+          return json({ ok: resp.ok, status: resp.status, data });
+        } catch (e: any) { return json({ ok: false, error: String(e && e.message || e) }); }
+      }
+
+      // Estado de conexión 360dialog
+      if (p === '/api/wa-status-360' && req.method === 'GET') {
+        await ensureWaSchema(env);
+        const tnt = url.searchParams.get('tenant') || '';
+        if (!tnt) return json({ error: 'missing tenant' }, 400);
+        const cfg: any = await env.aura_db.prepare('SELECT d360_api_key, d360_channel_id, d360_phone, connected, provider FROM wa_config WHERE tenant_id=?').bind(tnt).first().catch(() => null);
+        if (!cfg || cfg.provider !== '360dialog') return json({ connected: false, provider: 'none' });
+        return json({ connected: !!cfg.connected, provider: '360dialog', phone: cfg.d360_phone || '', channel_id: cfg.d360_channel_id || '' });
+      }
+
+      // Desconectar 360dialog de un tenant
+      if (p === '/api/wa-disconnect-360' && req.method === 'POST') {
+        await ensureWaSchema(env);
+        const b: any = await req.json();
+        if (!b.tenant_id) return json({ error: 'missing tenant' }, 400);
+        await env.aura_db.prepare("UPDATE wa_config SET d360_api_key=NULL, d360_channel_id=NULL, d360_phone=NULL, d360_client_id=NULL, connected=0, provider='unipile' WHERE tenant_id=?").bind(b.tenant_id).run();
+        return json({ ok: true });
+      }
+
       // Config por tenant: cada clínica tiene su account_id de Unipile. Tabla wa_config (campo instance = account_id).
       if (p.startsWith('/api/wa-')) {
         await ensureWaSchema(env);

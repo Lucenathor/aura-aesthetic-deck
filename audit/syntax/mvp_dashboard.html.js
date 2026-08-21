@@ -2310,7 +2310,57 @@ async function saveClinicMeta(){
   }catch(e){if(m){m.style.color='#b45309';m.textContent='Error al guardar';}}
 }
 async function loadReviewUrl(){
-  try{const r=await fetch(WORKER+'/api/tenant-meta?tenant='+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}});const d=await r.json();const i=document.getElementById('gReviewUrl');if(i)i.value=d.google_review_url||'';}catch(e){}
+  try{const r=await fetch(WORKER+'/api/tenant-meta?tenant='+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}});const d=await r.json();const i=document.getElementById('gReviewUrl');if(i)i.value=d.google_review_url||'';loadWa360Status();}catch(e){loadWa360Status();}
+}
+// ===== 360dialog WhatsApp =====
+const D360_PARTNER_ID = 'IGw6FhPA';
+async function loadWa360Status(){
+  try{
+    const r=await fetch(WORKER+'/api/wa-status-360?tenant='+T);
+    const d=await r.json();
+    const st=document.getElementById('wa360Status');
+    const conn=document.getElementById('wa360Connected');
+    const disc=document.getElementById('wa360Disconnected');
+    if(d.connected && d.provider==='360dialog'){
+      st.textContent='Conectado';st.style.background='#ecfdf5';st.style.color='#065f46';
+      conn.style.display='block';disc.style.display='none';
+      const ph=document.getElementById('wa360Phone');
+      if(ph && d.phone) ph.textContent='+'+d.phone.replace(/(\d{2})(\d{3})(\d{3})(\d{3})/,'$1 $2 $3 $4');
+    } else {
+      st.textContent='No conectado';st.style.background='#fef3c7';st.style.color='#92400e';
+      conn.style.display='none';disc.style.display='block';
+    }
+  }catch(e){
+    const disc=document.getElementById('wa360Disconnected');if(disc)disc.style.display='block';
+    const st=document.getElementById('wa360Status');if(st){st.textContent='No conectado';st.style.background='#fef3c7';st.style.color='#92400e';}
+  }
+}
+function connectWa360(){
+  // Abre el flujo de Integrated Onboarding de 360dialog con el Connect Button
+  const redirectUrl = encodeURIComponent(WORKER+'/api/360-connect-callback');
+  const state = encodeURIComponent(T);
+  const ioUrl = 'https://hub.360dialog.io/dashboard/app/'+D360_PARTNER_ID+'/permissions?state='+state+'&redirect_url='+redirectUrl;
+  window.open(ioUrl,'_blank','width=700,height=700');
+}
+async function testWa360(){
+  const msg=document.getElementById('wa360TestMsg');
+  const phone=prompt('Número de teléfono para la prueba (con código país, ej: 34612345678):');
+  if(!phone)return;
+  msg.textContent='Enviando...';msg.style.color='var(--muted)';
+  try{
+    const r=await fetch(WORKER+'/api/wa-send-360',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,to:phone.replace(/\D/g,''),text:'¡Hola! Este es un mensaje de prueba desde AURA CRM 🚀'})});
+    const d=await r.json();
+    if(d.ok){msg.textContent='✓ Mensaje enviado correctamente';msg.style.color='#1f8c69';}
+    else{msg.textContent='Error: '+(d.data?.error?.message||d.error||'fallo al enviar');msg.style.color='#b91c1c';}
+  }catch(e){msg.textContent='Error de red';msg.style.color='#b91c1c';}
+  setTimeout(()=>{if(msg)msg.textContent='';},5000);
+}
+async function disconnectWa360(){
+  if(!confirm('¿Desconectar WhatsApp 360dialog de esta clínica?'))return;
+  try{
+    await fetch(WORKER+'/api/wa-disconnect-360',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T})});
+    loadWa360Status();
+  }catch(e){}
 }
 async function saveReviewUrl(){
   const i=document.getElementById('gReviewUrl');const m=document.getElementById('gRevMsg');if(!i)return;
