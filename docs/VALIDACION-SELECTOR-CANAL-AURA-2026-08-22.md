@@ -26,12 +26,13 @@ El selector evalúa las condiciones en este orden:
 2. Teléfono inválido: no envía.
 3. El paciente ya respondió después de convertirse en lead: cancela la recuperación.
 4. Recepción intervino manualmente después de convertirse en lead: cancela la recuperación.
-5. Falta consentimiento de marketing o reseñas: no envía por ningún canal.
-6. Modo Solo SMS: selecciona SMS.
-7. WhatsApp conectado, consentimiento válido y plantilla aprobada vinculada al evento: selecciona WhatsApp.
-8. Modo Solo WhatsApp sin condiciones válidas: deja el evento pendiente.
-9. Modo Automático con respaldo permitido: selecciona un único SMS.
-10. Sin ningún canal permitido: no envía.
+5. El paciente revocó el consentimiento: no envía por ningún canal, tampoco en modo Solo SMS.
+6. Falta consentimiento de marketing o reseñas: no envía por ningún canal.
+7. Modo Solo SMS: selecciona SMS.
+8. WhatsApp conectado, consentimiento válido y plantilla aprobada vinculada al evento: selecciona WhatsApp.
+9. Modo Solo WhatsApp sin condiciones válidas: deja el evento pendiente.
+10. Modo Automático con respaldo permitido: selecciona un único SMS.
+11. Sin ningún canal permitido: no envía.
 
 ## Cobertura funcional
 
@@ -66,6 +67,8 @@ El embudo solicita permiso explícito para contactar por WhatsApp o SMS con fina
 
 Marketing y reseñas requieren permisos separados. La ausencia de consentimiento de marketing o reseñas nunca se transforma en un SMS de respaldo.
 
+Si el paciente envía por WhatsApp una palabra de baja inequívoca —por ejemplo, `STOP`, `BAJA`, `CANCELAR` o «no me contactes»— AURA revoca servicio, marketing y reseñas para ese teléfono dentro del tenant. La revocación manual de una categoría también bloquea cualquier fallback por SMS para esa categoría.
+
 ## Pruebas ejecutadas
 
 | Prueba | Resultado |
@@ -79,6 +82,7 @@ Marketing y reseñas requieren permisos separados. La ausencia de consentimiento
 | Modo Solo SMS | SMS |
 | Automatizaciones pausadas | No enviado |
 | Falta consentimiento de marketing | No enviado por ningún canal |
+| Consentimiento de servicio revocado en modo Solo SMS | No enviado; `contact_opted_out` |
 | Respaldo desactivado | No enviado cuando WhatsApp no está disponible |
 | Paciente respondió | Recuperación cancelada con `patient_replied` |
 | Recepción intervino | Recuperación cancelada con `human_intervened` |
