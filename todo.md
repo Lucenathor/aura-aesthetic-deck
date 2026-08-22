@@ -123,3 +123,6 @@
 - [x] Refinar contraste, transparencias, sombras y profundidad para acercar el panel real al mockup Pearl Aurora aprobado.
 - [x] Añadir microinteracciones premium en botones, navegación, tarjetas y controles respetando teclado y reducción de movimiento.
 - [x] Comparar visualmente la segunda pasada con el concepto en escritorio, tablet y móvil antes de cerrar el despliegue.
+- [ ] Investigar patrones premium de hover, pulsación y foco para botones SaaS sin introducir movimiento excesivo.
+- [ ] Refinar Nueva cita, Ver mi embudo y botones equivalentes con microinteracciones ligeras según su jerarquía.
+- [ ] Validar hover, clic, teclado, reducción de movimiento y responsive de los botones refinados antes de desplegar.
