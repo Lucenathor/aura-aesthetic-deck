@@ -106,3 +106,6 @@
 - [x] Construir un selector central determinista que compruebe estado de 360dialog, consentimiento, plantilla/ventana, actividad web, respuesta humana, reserva y baja.
 - [x] Integrar el selector en recuperación de leads, confirmaciones y recordatorios con idempotencia y cancelación de mensajes pendientes.
 - [ ] Probar por tenant los modos Automático, Solo WhatsApp y Solo SMS, incluidos fallos de entrega y aislamiento entre clínicas.
+- [ ] Realizar una segunda auditoría funcional y visual del selector de canal por tenant, con pruebas de permisos, estados, desktop, tablet y móvil.
+- [ ] Mejorar los puntos de usabilidad confirmados en Ajustes → Comunicaciones sin añadir opciones ni complejidad innecesarias.
+- [ ] Documentar un protocolo de trabajo por zonas y archivos propietarios para avanzar en paralelo sin conflictos ni regresiones.
