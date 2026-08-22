@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
 set -u
 
-BASE_URL="https://auracrm.co/dashboard?t=aura-demo&token=agui1780967104"
+BASE_URL="${AURA_AUDIT_BASE_URL:-https://auracrm.co/dashboard?t=aura-demo}"
 AUDIT_ROOT="/home/ubuntu/aura-presentation/audit/browser"
 PROFILE_DIR="/tmp/aura-audit-chromium"
 
 rm -rf "$PROFILE_DIR"
 mkdir -p "$AUDIT_ROOT/dom" "$AUDIT_ROOT/screens"
+
+if [ -z "${AURA_AUDIT_TOKEN:-}" ]; then
+  echo "Falta AURA_AUDIT_TOKEN. No se aceptan tokens en la URL ni dentro del repositorio." >&2
+  exit 1
+fi
 
 views=(resumen pacientes pipeline agenda caja whatsapp inventario portal embudo contenido equipo ajustes admin)
 

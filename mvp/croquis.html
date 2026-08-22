@@ -482,7 +482,7 @@ async function saveCroquis(){
   var saveButton=document.querySelector('.top-btn.primary');
   var dataUrl=canvas.toDataURL('image/png');
   var WORKER=localStorage.getItem('aura_worker')||'https://aura-chat-worker.adrian-7b9.workers.dev';
-  var TOKEN=localStorage.getItem('aura_token')||'';
+  var TOKEN=sessionStorage.getItem('aura_token')||'';
 var STAFF_TOKEN=inheritedStaffToken||sessionStorage.getItem('staff_token')||'';
   try{
     if(saveButton){saveButton.disabled=true;saveButton.textContent='Guardando…';}

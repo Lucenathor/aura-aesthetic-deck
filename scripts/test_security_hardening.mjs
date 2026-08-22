@@ -5,6 +5,9 @@ const worker=fs.readFileSync(root+'/worker/src/index.ts','utf8');
 const wrangler=fs.readFileSync(root+'/worker/wrangler.toml','utf8');
 const headers=fs.readFileSync(root+'/mvp/_headers','utf8');
 const login=fs.readFileSync(root+'/mvp/login.html','utf8');
+const dashboard=fs.readFileSync(root+'/mvp/dashboard.html','utf8');
+const auditDashboard=fs.readFileSync(root+'/scripts/audit_dashboard_browser.sh','utf8');
+const auditModules=fs.readFileSync(root+'/scripts/audit_module_read_apis.sh','utf8');
 const funnel=fs.readFileSync(root+'/mvp/_t/index.html','utf8');
 const deploy=fs.readFileSync(root+'/deploy.sh','utf8');
 
@@ -23,6 +26,8 @@ const checks=[
   ['Turnstile backend y frontend',worker.includes('verifyTurnstile')&&login.includes('cf-turnstile')&&funnel.includes('turnstile.render')],
   ['cabeceras CSP y HSTS',headers.includes('Content-Security-Policy:')&&headers.includes('Strict-Transport-Security:')],
   ['panel profesional sin token URL',!worker.includes("url.searchParams.get('token') || ''")&&funnel.includes('lead_token')],
+  ['sesión principal limitada a pestaña',login.includes("sessionStorage.setItem('aura_token'")&&dashboard.includes('__auraSessionScoped')&&!login.includes("localStorage.setItem('aura_token'")],
+  ['auditorías sin sesiones hardcodeadas',auditDashboard.includes('AURA_AUDIT_TOKEN')&&auditModules.includes('AURA_AUDIT_TOKEN')&&!/TOKEN=["'][A-Za-z0-9_-]{12,}["']/.test(auditDashboard+auditModules)],
   ['despliegue GitHub sin force',!deploy.includes('git push origin main --force')&&deploy.includes('git push origin main')],
   ['Pages antes del Worker',deploy.indexOf('Desplegando Pages')<deploy.indexOf('Desplegando Worker')],
 ];

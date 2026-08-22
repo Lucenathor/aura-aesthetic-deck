@@ -59,7 +59,7 @@ Diseñar una herramienta INTERNA para el equipo de AURA que guíe paso a paso la
 
 ### Modelo elegido: Sección "Onboarding" en el panel de Super Admin (`v-admin`)
 
-**Acceso:** Solo con token de superadmin (agui1780967104).
+**Acceso:** Solo con una sesión de superadmin válida, temporal y transmitida mediante cabecera `Authorization`; nunca se documenta ni versiona su valor.
 
 **Vista principal:** Lista de todos los tenants con:
 - Nombre de la clínica

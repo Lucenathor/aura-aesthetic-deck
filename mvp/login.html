@@ -108,7 +108,7 @@ const params=new URLSearchParams(location.search);
 const nextTenant=params.get('t')||'';
 // si ya hay sesión, ir al dashboard
 (async function(){
-  const tok=localStorage.getItem('aura_token');
+  const tok=sessionStorage.getItem('aura_token');
   if(tok){ try{ const r=await fetch(WORKER+'/api/auth/me',{headers:{'Authorization':'Bearer '+tok}}); const d=await r.json(); if(d.auth){ location.href='/dashboard?t='+d.tenant_id; } }catch(e){} }
 })();
 function msg(t,cls){ const m=document.getElementById('msg'); m.textContent=t; m.className='msg '+(cls||''); }
@@ -132,7 +132,7 @@ async function verify(){
   try{
     const r=await fetch(WORKER+'/api/auth/verify-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:EMAIL,code})});
     const d=await r.json();
-    if(d.ok){ localStorage.setItem('aura_token',d.token); localStorage.setItem('aura_tenant',d.tenant_id); msg('Acceso correcto','ok'); location.href='/dashboard?t='+d.tenant_id; }
+    if(d.ok){ sessionStorage.setItem('aura_token',d.token); localStorage.removeItem('aura_token'); localStorage.setItem('aura_tenant',d.tenant_id); msg('Acceso correcto','ok'); location.href='/dashboard?t='+d.tenant_id; }
     else msg(d.error||'Código incorrecto','err');
   }catch(e){ msg('Error de conexión','err'); }
   b.disabled=false; b.textContent='Entrar';

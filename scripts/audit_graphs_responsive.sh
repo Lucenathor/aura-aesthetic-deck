@@ -6,11 +6,9 @@ BASE="${AURA_AUDIT_BASE:-http://127.0.0.1:4173/dashboard.html}"
 OUT="$ROOT/audit/graphs-responsive"
 PROFILE="/tmp/aura-graphs-chromium"
 
-LINE=$(grep '^BASE_URL=' "$ROOT/scripts/audit_dashboard_browser.sh")
-TOKEN=${LINE##*token=}
-TOKEN=${TOKEN%\"}
+TOKEN="${AURA_AUDIT_TOKEN:-}"
 if [ -z "$TOKEN" ]; then
-  echo "No se pudo recuperar el token de auditoría existente" >&2
+  echo "Falta AURA_AUDIT_TOKEN. No se aceptan tokens persistidos ni enviados por URL." >&2
   exit 1
 fi
 
@@ -36,7 +34,7 @@ for tenant in "${tenants[@]}"; do
       --virtual-time-budget=10000 \
       --run-all-compositor-stages-before-draw \
       --screenshot="$shot" \
-      --dump-dom "$BASE?t=$tenant&token=$TOKEN#resumen" > "$dom" 2> "$stderr" || true
+      --dump-dom "$BASE?t=$tenant#resumen" > "$dom" 2> "$stderr" || true
     empty_charts=$(grep -oE 'class="[^"]*aura-chart-box[^"]*is-empty[^"]*"' "$dom" | wc -l | tr -d ' ')
     empty_sparks=$(grep -oE 'class="[^"]*aura-spark[^"]*is-empty[^"]*"' "$dom" | wc -l | tr -d ' ')
     canvases=$(grep -o '<canvas' "$dom" | wc -l | tr -d ' ')

@@ -3,8 +3,13 @@ set -u
 
 WORKER="https://aura-chat-worker.adrian-7b9.workers.dev"
 TENANT="aura-demo"
-TOKEN="agui1780967104"
+TOKEN="${AURA_AUDIT_TOKEN:-}"
 OUTPUT="/home/ubuntu/aura-presentation/audit/module_read_api_audit.txt"
+
+if [ -z "$TOKEN" ]; then
+  echo "Falta AURA_AUDIT_TOKEN; nunca guardes sesiones dentro del repositorio." >&2
+  exit 1
+fi
 
 mkdir -p "$(dirname "$OUTPUT")"
 printf 'AURA — Auditoría de APIs de solo lectura\nGenerada: %s\n\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" > "$OUTPUT"
@@ -26,7 +31,7 @@ check_api() {
   printf '%s\t%s\t%s\t%s\n' "$module" "${status:-SIN_RESPUESTA}" "$result" "$path" >> "$OUTPUT"
 }
 
-check_api "Sesión" "/api/auth/me?token=${TOKEN}"
+check_api "Sesión" "/api/auth/me"
 check_api "Resumen/tenencia" "/api/tenant-meta?tenant=${TENANT}"
 check_api "CRM/Pacientes" "/api/leads?tenant=${TENANT}"
 check_api "Pipeline" "/api/pipeline?tenant=${TENANT}"
