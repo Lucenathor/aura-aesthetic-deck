@@ -1,0 +1,262 @@
+=== TOKENS Y FUENTES ===
+30:<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet"/>
+32::root{
+33:  --bg:#FDF8F4;--bg2:#F9F1EB;--card:#FFFFFF;--ink:#2D1B0E;--ink-soft:#5C4033;--muted:#8B7355;
+34:  --terra:#A85942;--terra-d:#8B4533;--champ:#D4A574;--mint:#1f8c69;--line:#E8DDD4;
+46:body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+53:.serif{font-family:'Playfair Display',serif}
+65:.brand .lo{width:34px;height:34px;border-radius:50%;background:#fff;border:1.5px solid var(--champ);display:grid;place-items:center;font-family:'Playfair Display',serif;font-style:italic;font-weight:600;color:var(--terra-d);flex:none}
+66:.brand b{font-family:'Playfair Display',serif;font-weight:600;font-size:1.25rem}
+68:.brand-wm .wm{font-family:'Playfair Display',serif;font-weight:500;font-size:1.65rem;letter-spacing:.2em;color:var(--terra-d)}
+76:.nav-item.on{background:linear-gradient(135deg,var(--terra),var(--terra-d));color:#fff;box-shadow:0 8px 20px -10px rgba(124,58,237,.4)}
+81:.top h1{font-family:'Playfair Display',serif;font-weight:600;font-size:2rem;letter-spacing:-.01em}
+85:.btn:hover{border-color:var(--terra);color:var(--terra-d);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
+87:.btn.prim{background:linear-gradient(135deg,var(--terra),var(--terra-d));color:#fff;border:0;box-shadow:0 10px 22px -12px rgba(124,58,237,.5)}
+108:  .week-player-mobile-step{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:50%;background:var(--terra);color:#fff;font-size:.66rem;margin-right:.4rem}
+181:.kpi b{font-family:'Playfair Display',serif;font-size:2.1rem;font-weight:600;display:block;margin-top:.3rem;line-height:1}
+197:.search-global:focus-within{border-color:var(--terra);box-shadow:0 0 0 3px rgba(124,58,237,.1)}
+202:.collapse-btn:hover{background:var(--terra);color:#fff;border-color:var(--terra)}
+203:.card h3{font-family:'Playfair Display',serif;font-weight:600;font-size:1.2rem;margin-bottom:.2rem}
+208:.search-row input{flex:1;padding:.75rem .9rem;border-radius:11px;border:1px solid var(--line);font-size:.95rem;font-family:inherit;outline:none}
+209:.search-row input:focus{border-color:var(--terra)}
+211:.sres-item:hover{border-color:var(--terra);background:rgba(200,116,90,.04)}
+226:.empty b{display:block;font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--ink);margin-bottom:.4rem}
+231:.cal-day.on{background:linear-gradient(135deg,var(--terra),var(--terra-d));color:#fff;border-color:transparent}
+239:.sch-times select{padding:.42rem .5rem;border-radius:9px;border:1px solid var(--line);font-family:inherit;font-size:.86rem;background:#fff;outline:none}
+240:.sch-times select:focus{border-color:var(--terra)}
+243:.sch-addtramo{font-size:.78rem;color:var(--terra);font-weight:600;cursor:pointer;border:none;background:none;padding:.2rem .3rem}
+250:.tg input:checked+span{background:linear-gradient(135deg,var(--terra),var(--terra-d))}
+256:.vac-del{border:none;background:none;color:var(--terra-d);cursor:pointer;font-size:.85rem;font-weight:600}
+259:.field input,.field select{width:100%;padding:.7rem .85rem;border-radius:11px;border:1px solid var(--line);font-size:.95rem;font-family:inherit;outline:none}
+260:.field input:focus,.field select:focus{border-color:var(--terra)}
+263:.aura-dropzone.drag-over{border-color:var(--terra);background:#fef3ee}
+264:.aura-dropzone:hover{border-color:var(--terra);background:#fef9f6}
+271:.ed-funnel.on{background:linear-gradient(135deg,var(--terra),var(--terra-d));color:#fff;border-color:transparent}
+299:.ed-fld input,.ed-fld textarea{width:100%;padding:.55rem .7rem;border-radius:9px;border:1px solid var(--line);font-size:.88rem;font-family:inherit;outline:none}
+300:.ed-fld input:focus,.ed-fld textarea:focus{border-color:var(--terra)}
+312:.ed-icbtn:not(:disabled):hover{border-color:var(--terra);color:var(--terra-d)}
+332:.kcol.drag-over{outline:2px dashed var(--st,var(--terra));outline-offset:-3px;background:#FBF8F4}
+340:.kcol-h .cnt{background:var(--st,var(--terra-d));color:#fff;border-radius:999px;padding:.12rem .6rem;font-size:.74rem;font-weight:800;min-width:24px;text-align:center}
+343:.kcol-h .mini:hover{border-color:var(--terra);color:var(--terra-d)}
+351:.kbtn.prim{background:var(--st,var(--terra));color:#fff;box-shadow:0 3px 8px -3px var(--st,var(--terra))}
+362:.kcard .kobj-btn{width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:9px;padding:.42rem .55rem;font-size:.74rem;font-weight:700;color:var(--st,var(--terra-d));cursor:pointer;transition:background .08s ease,border-color .08s ease}
+372:@keyframes kcardDrop{0%{transform:scale(1.08);box-shadow:0 0 0 2px var(--st,var(--terra)),0 12px 24px -10px rgba(42,33,28,.5)}to{transform:scale(1)}}
+380:.kcard .kav{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,var(--st,var(--terra)),color-mix(in srgb,var(--st,var(--terra)) 70%,#000));flex:none;display:grid;place-items:center;font-size:.86rem;font-weight:800;color:#fff;box-shadow:0 4px 10px -4px var(--st,var(--terra))}
+399:#cashWin .cw-amt{font-family:'Playfair Display',serif;font-weight:600;font-size:2.6rem;color:#1f8c69;line-height:1;margin:.1rem 0}
+406:.knum{position:absolute;top:-8px;left:-8px;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--st,var(--terra)),color-mix(in srgb,var(--st,var(--terra)) 65%,#000));color:#fff;font-weight:800;font-size:.78rem;display:grid;place-items:center;box-shadow:0 3px 9px -2px var(--st,var(--terra));border:2px solid #fff;z-index:3}
+408:.kcard .kwhy{font-size:.71rem;font-weight:700;margin-top:.45rem;display:inline-flex;align-items:center;padding:.22rem .55rem;border-radius:999px;background:var(--stbg,#f3e9dd);color:var(--st,var(--terra-d));letter-spacing:.01em}
+410:.kcard .kscript-lbl{display:flex;align-items:center;justify-content:space-between;font-size:.64rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--st,var(--terra-d));margin-bottom:.25rem}
+411:.kcard .kscript-copy{border:none;background:transparent;color:var(--st,var(--terra-d));font-size:.64rem;font-weight:700;cursor:pointer;text-decoration:underline;padding:0;letter-spacing:.02em}
+413:.kcard .kpot{flex:none;align-self:flex-start;font-family:'Inter Tight',sans-serif;font-weight:800;font-size:.78rem;color:#1f8c69;background:rgba(31,140,105,.12);border-radius:999px;padding:.2rem .5rem;white-space:nowrap}
+417:.kcard .kscript-d>summary{cursor:pointer;list-style:none;font-weight:800;color:var(--st,var(--terra-d));font-size:.74rem;padding:.4rem .55rem;background:#fbf7f0;border:1px dashed color-mix(in srgb,var(--st,#b06d44) 40%,#e6dccb);border-radius:9px;user-select:none}
+424:.kcard .kobj>summary{cursor:pointer;list-style:none;font-weight:700;color:var(--st,var(--terra-d));font-size:.7rem;padding:.3rem .1rem;user-select:none}
+430:.kcol-sub{font-size:.66rem;font-weight:600;color:var(--st,var(--terra-d));opacity:.85;text-transform:none;letter-spacing:0;margin-top:.15rem}
+433:.pacTab.on{background:var(--terra);color:#fff;border-color:var(--terra)}
+441:.sms-ava{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--terra),var(--champ));color:#fff;display:grid;place-items:center;font-weight:700;font-size:.8rem;flex:none}
+453:.sms-tl.on .dot{background:var(--terra);border-color:var(--terra);box-shadow:0 0 0 4px rgba(200,116,90,.18)}
+461:.drawer h2{font-family:'Playfair Display',serif;font-weight:600;font-size:1.5rem}
+470:.msg-l.user{align-self:flex-end;background:linear-gradient(135deg,var(--terra),var(--terra-d));color:#fff}
+481:  .nav-item.on{background:none;color:var(--terra-d);box-shadow:none}
+526:.mobile-head .wm{font-family:'Playfair Display',serif;font-weight:500;font-size:1.5rem;letter-spacing:.2em;color:var(--terra-d)}
+528:.mobile-head .bell span{position:absolute;top:-4px;right:-4px;background:var(--terra);color:#fff;font-size:.6rem;width:15px;height:15px;border-radius:50%;display:grid;place-items:center}
+537:.settings-nav-item.active{background:var(--terra);color:#fff;font-weight:600;box-shadow:0 2px 8px rgba(168,89,66,.25)}
+552:.agenda-slot-bg:hover::after { content: '+ Nueva cita'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: .65rem; color: var(--terra); opacity: .7; pointer-events: none; font-weight: 600; }
+592:        <label style="font-size:.7rem;font-weight:700;color:var(--terra)">SUPER ADMIN</label>
+593:        <select id="saTenant" onchange="switchTenant(this.value)" style="width:100%;padding:.4rem;border:1px solid var(--terra);border-radius:6px;font-size:.75rem;margin-top:.2rem;background:rgba(255,255,255,.5)"></select>
+595:      Clínica: <b id="tName">—</b><br><span style="opacity:.7">Acceso: <b id="roleBadge">Propietario</b></span><br><button onclick="logout()" style="margin-top:.5rem;background:none;border:0;color:var(--terra-d);cursor:pointer;font-size:.78rem;font-weight:600;padding:0">Cerrar sesión</button>
+612:          <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--terra),var(--terra-d));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.75rem" id="topAvatar">A</div>
+627:      <div id="miDia" style="display:none;background:linear-gradient(135deg,var(--terra),var(--terra-d));color:#fff;border-radius:16px;padding:1rem 1.2rem;margin-bottom:1rem;align-items:center;gap:1rem;flex-wrap:wrap;box-shadow:0 12px 30px -14px rgba(176,93,68,.6)">
+628:        <div style="flex:1;min-width:180px"><div style="font-size:.78rem;opacity:.85">Tu día de un vistazo</div><div id="miDiaTitle" style="font-size:1.15rem;font-weight:800;font-family:'Playfair Display',serif">Cargando…</div></div>
+635:          <div style="font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--terra-d)" id="setupPct">0%</div>
+646:        <div class="kpi"><small>Calientes sin contactar</small><b id="kHot" style="color:var(--terra)">—</b><span class="delta">listas para reservar</span></div>
+681:            <div style="display:flex;align-items:baseline;gap:.5rem;margin-top:.2rem"><span id="recMain" style="font-family:'Playfair Display',serif;font-size:2.5rem;font-weight:600">—</span><span id="recSub" style="font-size:.82rem;color:rgba(255,255,255,.75)">este mes</span></div></div>
+694:          <select id="funnelSel" onchange="loadFunnelMetrics()" style="padding:.55rem .8rem;border-radius:11px;border:1px solid var(--line);font-family:inherit;font-size:.85rem;background:#fff;color:var(--ink);max-width:55%">
+819:        <input type="date" id="cajaDay" style="padding:.5rem .7rem;border:1px solid var(--line);border-radius:10px;font-family:inherit"/></div>
+823:        <div class="card" style="padding:1rem"><div class="sub" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Ingresos del día</div><div id="cajaTotal" style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:var(--ink)">—</div><div id="cajaVsPrev" style="font-size:.76rem;color:var(--muted)"></div></div>
+824:        <div class="card" style="padding:1rem"><div class="sub" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Tickets</div><div id="cajaTickets" style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:var(--ink)">—</div><div class="sub" style="font-size:.76rem">cobros hoy</div></div>
+825:        <div class="card" style="padding:1rem"><div class="sub" style="font-size:.72rem;text-transform:uppercase;letter-spacing:.05em">Margen estimado</div><div id="cajaMargin" style="font-family:'Playfair Display',serif;font-size:2rem;font-weight:600;color:#1f8c69">—</div><div class="sub" style="font-size:.76rem">ingresos − coste producto</div></div>
+854:          <div id="profitMain" style="font-family:'Playfair Display',serif;font-size:2.6rem;font-weight:600;color:#fff">—</div>
+1050:          <div style="font-family:'Playfair Display',serif;font-size:2.4rem;font-weight:600;color:var(--ink)" id="smsCredits">—</div>
+1245:        <div class="field"><label>Pixel ID de Meta</label><input id="cfgPixelId" placeholder="Ej: 1234567890123456" style="font-family:monospace" maxlength="20" oninput="validatePixelId()"><p id="pixelValidation" style="font-size:.72rem;margin:.2rem 0 0;color:var(--muted)"></p></div>
+1246:        <div class="field"><label>Slug publico (URL personalizada)</label><input id="cfgSlug" placeholder="mi-clinica" oninput="document.getElementById('slugPreview').textContent=this.value||'tu-slug'"><div style="margin-top:.3rem;padding:.5rem .7rem;background:var(--bg2);border-radius:8px;font-size:.78rem;font-family:monospace;color:var(--ink-soft)">https://auracrm.co/c/<b id="slugPreview" style="color:var(--terra)">tu-slug</b>?t=labios</div></div>
+1314:              <select id="fStatsPeriod" onchange="loadFunnelStatsPanel()" style="padding:.45rem .6rem;border-radius:9px;border:1px solid var(--line);font-family:inherit;font-size:.8rem;background:#fff;color:var(--ink)">
+1319:              <select id="fStatsSel" onchange="loadFunnelStatsPanel()" style="padding:.45rem .6rem;border-radius:9px;border:1px solid var(--line);font-family:inherit;font-size:.8rem;background:#fff;color:var(--ink)">
+1503:            <h2 style="font-size:1.3rem;margin:0;display:flex;align-items:center;gap:.5rem">🔥 Challenge Viral <span style="font-size:.75rem;background:var(--terra);color:#fff;padding:.2rem .6rem;border-radius:99px;font-weight:700">LIVE</span></h2>
+1594:    <div style="background:var(--bg2);border-radius:12px;padding:.6rem .7rem"><div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Gastado</div><div id="dSpent" style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:600;color:#1f8c69">0€</div></div>
+1595:    <div style="background:var(--bg2);border-radius:12px;padding:.6rem .7rem"><div style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Pendiente</div><div id="dPending" style="font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:600;color:#b0432e">0€</div></div>
+1669:  <div style="display:flex;gap:.5rem;flex-wrap:wrap"><input type="date" id="dRecallDate" style="padding:.5rem .6rem;border:1px solid var(--line);border-radius:9px;font-family:inherit"><input id="dRecallNote" placeholder="motivo (ej: retoque labios)" style="flex:1;min-width:140px;padding:.5rem .6rem;border:1px solid var(--line);border-radius:9px;font-family:inherit"></div>
+1698:  <textarea id="dNotes" rows="3" placeholder="prefiere mañanas, vino recomendada por..." style="width:100%;padding:.6rem .7rem;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:.88rem"></textarea>
+1871:  ov.style.cssText='position:fixed;inset:0;z-index:100000;background:#FBF8F2;overflow-y:auto;font-family:Inter,system-ui,sans-serif;color:#1F2024';
+1874:    +'<img src="/assets/aura-ring.png" alt="AURA" style="width:54px;height:54px;object-fit:contain;display:block;margin:0 auto .6rem"/><div style="font-family:\'Inter Tight\',sans-serif;font-weight:800;font-size:1.2rem;letter-spacing:-.02em;color:#0F1011;margin-bottom:1.4rem">AURA</div>'
+1877:      +'<h1 style="font-family:\'Inter Tight\',sans-serif;font-weight:800;font-size:1.55rem;letter-spacing:-.02em;color:#0F1011;line-height:1.12;margin:0 0 .5rem">¡Bienvenida a AURA!</h1>'
+1891:      +'<input id="lgSigner" placeholder="Nombre y apellidos" value="" style="width:100%;padding:.7rem .9rem;border:1px solid #EAE2D2;border-radius:10px;font-size:1rem;font-family:inherit;margin-bottom:1.1rem"/>'
+1892:      +'<button id="lgBtn" onclick="submitLegal()" style="width:100%;background:linear-gradient(135deg,#C8745A,#A85942);color:#fff;font-family:inherit;font-weight:700;font-size:.98rem;border:0;border-radius:12px;padding:.95rem;cursor:pointer;transition:filter .2s">Activar mi panel</button>'
+1896:    +'<div style="text-align:center;margin-top:1.2rem"><button onclick="logout()" style="background:none;border:0;color:#7C7872;font-family:inherit;font-size:.82rem;cursor:pointer">Cerrar sesión</button></div>'
+2176:    body.innerHTML=cs.map(c=>'<tr style="border-top:1px solid var(--line)"><td style="padding:.6rem .4rem;font-weight:600">'+(c.name||'Cliente')+'</td><td style="padding:.6rem .4rem;color:var(--muted)">'+(c.phone||'')+'</td><td style="padding:.6rem .4rem;font-weight:700;color:var(--terra-d)">'+(c.points||0)+' pts</td><td style="padding:.6rem .4rem">'+(c.orders||0)+'</td><td style="padding:.6rem .4rem">'+eur(c.spent||0)+'</td></tr>').join('');
+2348:  if(tr){ const days=[]; for(let i=6;i>=0;i--){ const d=new Date(nowD.getTime()-i*86400000); const n=arr.filter(l=>new Date(l.created_at).toDateString()===d.toDateString()).length; days.push({d,n}); } const max=Math.max(1,...days.map(x=>x.n)); tr.innerHTML='<div style="font-size:.72rem;color:var(--muted);margin-bottom:.4rem">Pacientes últimos 7 días</div><div style="display:flex;align-items:flex-end;gap:.4rem;height:60px">'+days.map(x=>'<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.2rem"><div style="width:100%;background:linear-gradient(180deg,var(--terra),var(--champ));border-radius:5px 5px 0 0;height:'+Math.round(x.n/max*48+4)+'px"></div><span style="font-size:.6rem;color:var(--muted)">'+['D','L','M','X','J','V','S'][x.d.getDay()]+'</span></div>').join('')+'</div>'; }
+2444:      div.innerHTML=`<div><b>${escHTML(l.name||'—')}</b> <small style="color:var(--muted)">· ${escHTML(l.phone||'')}</small><br><small style="color:var(--terra-d)">${escHTML(l.ref||'')}</small> ${l.wa_opened?'<small style="color:#1f8c69">· continuó por WhatsApp</small>':''}</div><span class="score ${safeTemp}">${safeScore}</span>`;
+2461:        +(signed && x.signature_key?'<a href="'+WORKER+'/img/'+x.signature_key+'" target="_blank" style="font-size:.76rem;color:var(--terra);font-weight:700;text-decoration:none">Ver firma</a>':'<button class="btn" style="padding:.25rem .5rem;font-size:.72rem" onclick="resendConsent(\''+x.id+'\')">Reenviar</button>')
+2482:    if(d.ok){ msg.style.color='#1f8c69'; msg.innerHTML=(d.sms_sent?'Enviado por SMS a su móvil ✓':'Consentimiento creado.')+(d.sign_link?'<br><a href="'+d.sign_link+'" target="_blank" style="display:inline-block;margin-top:.6rem;background:var(--terra);color:#fff;padding:.5rem .8rem;border-radius:9px;text-decoration:none;font-weight:700">Firmar aquí (tablet)</a>':''); setTimeout(()=>{ loadConsents(_curLead.id); }, 800); }
+2512:    +(s&&x.signature_key?('<a href="'+WORKER+'/img/'+x.signature_key+'" target="_blank" style="font-size:.76rem;color:var(--terra);font-weight:700;text-decoration:none;white-space:nowrap">Ver firma</a>'):'')
+2517:  document.getElementById('dMeta').innerHTML=`${l.phone||''} · ${l.email||''} <button onclick="openEditPatient()" style="background:none;border:1px solid var(--line);border-radius:6px;padding:.15rem .4rem;font-size:.7rem;color:var(--terra);cursor:pointer;margin-left:.5rem;font-weight:600">✎ Editar</button>`;
+=== SIDEBAR ===
+60:.side.collapsed .nav-item span,.side.collapsed .brand b,.side.collapsed .brand-wm,.side.collapsed .nav-sep,.side.collapsed .side-foot{display:none}
+61:.side.collapsed .nav-item{justify-content:center;padding:.7rem}
+62:.side.collapsed .nav-item .ic{margin:0}
+72:.nav-item{display:flex;align-items:center;gap:.7rem;padding:.7rem .8rem;border-radius:12px;color:var(--ink-soft);font-weight:500;font-size:.92rem;cursor:pointer;transition:all .18s var(--ease);margin-bottom:.2rem}
+73:.nav-item .ic{width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;opacity:.7}
+74:.nav-item:hover{background:rgba(124,58,237,.06);color:var(--ink);transform:translateX(3px)}
+76:.nav-item.on{background:linear-gradient(135deg,var(--terra),var(--terra-d));color:#fff;box-shadow:0 8px 20px -10px rgba(124,58,237,.4)}
+77:.nav-item.on .ic{opacity:1}
+479:  .nav-item{flex:1;flex-direction:column;gap:.15rem;justify-content:center;align-items:center;padding:.4rem .2rem;font-size:.62rem;margin-bottom:0;border-radius:12px}
+480:  .nav-item .ic{display:block;opacity:.8;font-size:1.05rem}
+481:  .nav-item.on{background:none;color:var(--terra-d);box-shadow:none}
+482:  .nav-item.on .ic{opacity:1}
+532:/* ═══ SETTINGS LAYOUT: sidebar fijo + paneles ═══ */
+535:.settings-nav-item{display:flex;align-items:center;gap:.6rem;padding:.65rem .8rem;border-radius:10px;font-size:.88rem;font-weight:500;color:var(--ink-soft);cursor:pointer;transition:all .18s ease}
+536:.settings-nav-item:hover{background:var(--bg2);color:var(--ink)}
+537:.settings-nav-item.active{background:var(--terra);color:#fff;font-weight:600;box-shadow:0 2px 8px rgba(168,89,66,.25)}
+538:.settings-nav-item .sn-icon{font-size:1rem;width:22px;text-align:center;flex:none}
+545:  .settings-nav-item{white-space:nowrap;padding:.5rem .7rem;font-size:.8rem}
+546:  .settings-nav-item .sn-icon{font-size:.85rem;width:18px}
+575:    <div class="nav-item on" data-v="resumen"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l3-3 3 2 4-5"/></svg></span> Resumen</div>
+576:    <div class="nav-item" data-v="agenda"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg></span> Agenda</div>
+577:    <div class="nav-item" data-v="pipeline"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="13" rx="1"/><rect x="10" y="4" width="5" height="9" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg></span> Pipeline</div>
+578:    <div class="nav-item" data-v="pacientes"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><path d="M17 7a2.5 2.5 0 010 5M22 20c0-2-1.5-3.5-3.5-4"/></svg></span> Pacientes</div>
+579:    <div class="nav-item" data-v="caja"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20M6 15h4"/></svg></span> Caja</div>
+580:    <div class="nav-item" data-v="facturas"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span> Facturas</div>
+582:    <div class="nav-item" data-v="whatsapp"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.9-.9L3 20l1.4-5.1A8.5 8.5 0 1 1 21 11.5z"/></svg></span> WhatsApp</div>
+583:    <div class="nav-item" data-v="inventario"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8V5a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 5v14a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 19z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg></span> Inventario</div>
+584:    <div class="nav-item" data-v="portal"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 18h4"/></svg></span> Portal cliente</div>
+585:    <div class="nav-item" data-v="embudo"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h18l-7 8v6l-4 2v-8z"/></svg></span> Embudo</div>
+586:    <div class="nav-item" data-v="contenido"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></span> Contenido</div>
+587:    <div class="nav-item" data-v="equipo"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="3.2"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg></span> Equipo</div>
+588:    <div class="nav-item" data-v="ajustes"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Ajustes</div>
+589:    <div class="nav-item" data-v="admin" id="navAdmin" style="display:none"><span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V5z"/><path d="m9 12 2 2 4-4"/></svg></span> Administración</div>
+897:          <div class="settings-nav-item active" data-stab="horario"><span class="sn-icon">🕐</span>Horario</div>
+898:          <div class="settings-nav-item" data-stab="tratamientos"><span class="sn-icon">💉</span>Tratamientos</div>
+899:          <div class="settings-nav-item" data-stab="comunicaciones"><span class="sn-icon">💬</span>Comunicaciones</div>
+900:          <div class="settings-nav-item" data-stab="setter"><span class="sn-icon">🧠</span>Setter IA</div>
+901:          <div class="settings-nav-item" data-stab="reservas"><span class="sn-icon">📅</span>Reservas</div>
+902:          <div class="settings-nav-item" data-stab="fidelizacion"><span class="sn-icon">⭐</span>Fidelización</div>
+903:          <div class="settings-nav-item" data-stab="clinica"><span class="sn-icon">🏥</span>Mi clínica</div>
+904:          <div class="settings-nav-item" data-stab="marketing"><span class="sn-icon">📊</span>Marketing</div>
+905:          <div class="settings-nav-item" data-stab="llamadas"><span class="sn-icon">📞</span>Llamadas</div>
+906:          <div class="settings-nav-item" data-stab="datos"><span class="sn-icon">📁</span>Importar datos</div>
+1949:      const tab=document.querySelector('.settings-nav-item.active');
+2011:  document.querySelectorAll('.nav-item').forEach(n=>{ if(!allow.includes(n.dataset.v)) n.style.display='none'; });
+2012:  // etiqueta de rol en el sidebar
+2139:  const item=document.querySelector('.nav-item[data-v="'+v+'"]'); if(!item||item.style.display==='none')v='resumen';
+2140:  document.querySelectorAll('.nav-item').forEach(x=>x.classList.toggle('on',x.dataset.v===v));
+2179:document.querySelectorAll('.nav-item').forEach(n=>{ n.onclick=()=>goSection(n.dataset.v); });
+2323:function setNavBadge(sec,n){ try{ const it=document.querySelector('.nav-item[data-v="'+sec+'"]'); if(!it)return; let b=it.querySelector('.nav-badge'); if(n>0){ if(!b){ b=document.createElement('span'); b.className='nav-badge'; b.style.cssText='margin-left:auto;background:#e0392b;color:#fff;border-radius:10px;font-size:.62rem;font-weight:800;min-width:18px;height:18px;display:inline-grid;place-items:center;padding:0 5px'; it.appendChild(b); } b.textContent=n>99?'99+':n; } else if(b){ b.remove(); } }catch(e){} }
+5887:  setTimeout(()=>{const tab=document.querySelector('.settings-nav-item[data-stab="comunicaciones"]');if(tab)tab.click();const btn=document.getElementById('wa360ConnectBtn');if(btn){btn.scrollIntoView({behavior:'smooth',block:'center'});btn.click();}},280);
+7564:  localStorage.setItem("aura_sidebar",side.classList.contains("collapsed")?"1":"0");
+7804:  if(localStorage.getItem("aura_sidebar")==="1"){document.querySelector(".side").classList.add("collapsed");}
+7821:    const item=e.target.closest('.settings-nav-item');
+7826:    nav.querySelectorAll('.settings-nav-item').forEach(n=>n.classList.remove('active'));
+=== INICIO / RESUMEN ===
+706:      <!-- MÉTRICAS AVANZADAS: Facturación, Conversión, Nuevos vs Recurrentes -->
+709:          <h3>Facturación mensual</h3>
+6828:    +'<div class="card" style="margin-top:1rem"><div style="display:flex;justify-content:space-between;align-items:end;gap:.8rem;flex-wrap:wrap"><div><h3 style="margin:0">Rendimiento de clínicas</h3><p class="sub" style="margin:.2rem 0 0">Facturación registrada, nuevos leads y actividad viral del mes en curso.</p></div><button class="btn" style="font-size:.78rem" onclick="adminLoadViralOverview()">↻ Actualizar datos</button></div><div style="overflow-x:auto;margin-top:.8rem"><table style="min-width:760px"><thead><tr><th>Clínica</th><th>Programación</th><th>Reels</th><th>Views</th><th>Fuegos</th><th>Leads</th><th>Facturación</th></tr></thead><tbody id="avTable"><tr><td colspan="7" style="color:var(--muted)">Cargando…</td></tr></tbody></table></div></div>';
+6841:    document.getElementById('avKpis').innerHTML=[['Clínicas activas',s.clinics||0],['Piezas programadas',s.scheduled||0],['Reels este mes',s.reels||0],['Views acumuladas',adminViralFormat(s.views)],['Facturación mes',new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(s.revenue||0)]].map(function(k){return '<div style="background:#fff;border:1px solid var(--line);border-radius:13px;padding:.8rem .9rem"><div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700">'+k[0]+'</div><div style="font-family:Fraunces,serif;font-size:1.35rem;margin-top:.25rem">'+k[1]+'</div></div>';}).join('');
+7101:    // 1. Facturación mensual (bar chart)
+7105:      window._chartRev=new Chart(revCtx,{type:'bar',data:{labels:m.revenue_months.map(x=>x.month),datasets:[{label:'Facturación (€)',data:m.revenue_months.map(x=>x.total),backgroundColor:'rgba(176,93,68,0.7)',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v+'€'}}}}});
+=== AGENDA ===
+117:.agenda-grid { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #fff; position: relative; min-width: 100%; }
+118:.agenda-time-col { width: 60px; flex-shrink: 0; border-right: 1px solid var(--line); background: #fafafa; position: sticky; left: 0; z-index: 20; }
+119:.agenda-time-slot { height: 120px; border-bottom: 1px solid var(--line); box-sizing: border-box; display: flex; align-items: flex-start; justify-content: center; padding-top: 4px; font-size: 0.7rem; color: var(--muted); font-weight: 600; }
+120:.agenda-pro-col { flex: 1; min-width: 180px; border-right: 1px solid var(--line); position: relative; }
+121:.agenda-pro-col:last-child { border-right: none; }
+122:.agenda-pro-header { height: 40px; border-bottom: 1px solid var(--line); background: #f4f4f4; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.85rem; color: var(--ink); position: sticky; top: 0; z-index: 10; }
+123:.agenda-slots-container { position: relative; }
+124:.agenda-slot-bg { height: 30px; border-bottom: 1px dashed var(--line); box-sizing: border-box; transition: background 0.2s; }
+125:.agenda-slot-bg:nth-child(4n) { border-bottom: 1px solid var(--line); }
+126:.agenda-slot-bg.drag-over { background: rgba(176,93,68,0.1); }
+127:.agenda-appt { position: absolute; left: 4px; right: 4px; border-radius: 6px; padding: 4px 6px; font-size: 0.75rem; color: #fff; overflow: hidden; cursor: grab; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: transform 0.1s, box-shadow 0.1s; z-index: 5; display: flex; flex-direction: column; background: linear-gradient(135deg, #d9a23a, #b88a31); }
+128:.agenda-appt.status-booked { background: linear-gradient(135deg, #d9a23a, #b88a31); }
+129:.agenda-appt:active { cursor: grabbing; transform: scale(0.98); box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 100; }
+130:.agenda-appt.status-confirmed { background: linear-gradient(135deg, #34a877, #2c8f65); }
+131:.agenda-appt.status-pending { background: linear-gradient(135deg, #d9a23a, #b88a31); }
+132:.agenda-appt.status-noshow { background: linear-gradient(135deg, #c0392b, #a33024); }
+133:.agenda-appt.status-cancelled { background: linear-gradient(135deg, #7f8c8d, #6c7a7d); }
+134:.agenda-appt.status-attended { background: linear-gradient(135deg, #2980b9, #2471a3); }
+135:.agenda-appt.status-arrived { background: linear-gradient(135deg, #00b894, #00a381); border: 2px solid #fff; box-shadow: 0 0 8px rgba(0,184,148,0.4); }
+136:.agenda-appt.status-completed { background: linear-gradient(135deg, #3730a3, #4338ca); border: 2px solid #e0e7ff; }
+137:.agenda-appt-title { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+138:.agenda-appt-sub { font-size: 0.65rem; opacity: 0.9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+139:.agenda-appt.short-appt { flex-direction: row; align-items: center; gap: 6px; padding: 2px 6px; }
+140:.agenda-appt.short-appt .agenda-appt-title { margin-bottom: 0; }
+141:.agenda-closed-bg { position: absolute; top: 0; bottom: 0; left: 0; right: 0; background: repeating-linear-gradient(45deg, rgba(0,0,0,0.03), rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.06) 10px, rgba(0,0,0,0.06) 20px); z-index: 1; pointer-events: none; }
+144:.agenda-now-line { position: absolute; left: 0; right: 0; height: 2px; background: #e74c3c; z-index: 15; pointer-events: none; }
+145:.agenda-now-line::before { content: ''; position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: #e74c3c; }
+147:.agenda-block { position: absolute; left: 2px; right: 2px; border-radius: 6px; padding: 4px 6px; font-size: 0.7rem; color: #6b5d52; overflow: hidden; z-index: 4; display: flex; align-items: center; gap: 4px; background: repeating-linear-gradient(135deg, #f6f3ee, #f6f3ee 4px, #efe9e0 4px, #efe9e0 8px); border: 1px dashed #d9cdbf; cursor: pointer; }
+148:.agenda-block:hover { background: #efe9e0; }
+150:.agenda-appt:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 50; }
+152:.agenda-appt.svc-labios { background: linear-gradient(135deg, #e84393, #d63384) !important; }
+153:.agenda-appt.svc-botox { background: linear-gradient(135deg, #6c5ce7, #5a4bd1) !important; }
+154:.agenda-appt.svc-rf { background: linear-gradient(135deg, #e17055, #d35400) !important; }
+155:.agenda-appt.svc-peeling { background: linear-gradient(135deg, #00b894, #00a381) !important; }
+156:.agenda-appt.svc-rino { background: linear-gradient(135deg, #0984e3, #0773c5) !important; }
+157:.agenda-appt.svc-consulta { background: linear-gradient(135deg, #636e72, #576067) !important; }
+158:.agenda-appt.svc-laser { background: linear-gradient(135deg, #fdcb6e, #e6b84d) !important; }
+159:.agenda-appt.svc-meso { background: linear-gradient(135deg, #a29bfe, #8c83f5) !important; }
+161:.agenda-pro-occ { font-size: .6rem; color: var(--muted); margin-top: 2px; }
+162:.agenda-pro-occ-bar { width: 100%; height: 3px; background: #eee; border-radius: 2px; margin-top: 2px; overflow: hidden; }
+163:.agenda-pro-occ-fill { height: 100%; border-radius: 2px; transition: width .3s; }
+493:  .agenda-time-col{width:46px}
+494:  .agenda-time-slot{font-size:.6rem}
+495:  .agenda-pro-col{min-width:120px}
+496:  .agenda-pro-header{font-size:.72rem;padding:0 .2rem;text-align:center;line-height:1.1}
+497:  .agenda-appt{font-size:.66rem;padding:3px 4px;left:2px;right:2px}
+498:  .agenda-appt-sub{font-size:.58rem}
+516:  .agenda-pro-col{min-width:100px}
+517:  .agenda-appt-sub{display:none}
+551:.agenda-slot-bg:hover { background: rgba(168,89,66,0.06); cursor: pointer; }
+552:.agenda-slot-bg:hover::after { content: '+ Nueva cita'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: .65rem; color: var(--terra); opacity: .7; pointer-events: none; font-weight: 600; }
+553:.agenda-slot-bg { position: relative; }
+554:.agenda-appt { animation: apptFadeIn .3s cubic-bezier(.23,1,.32,1) both; }
+556:.agenda-appt::after { content: attr(title); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: .4rem .7rem; border-radius: 8px; font-size: .72rem; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 200; box-shadow: 0 4px 12px rgba(0,0,0,.2); max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+557:.agenda-appt:hover::after { opacity: 1; }
+558:.agenda-grid { min-height: calc(14 * 120px); }
+559:.agenda-pro-header { gap: .3rem; background: #fdf8f4; border-bottom: 2px solid var(--line); }
+560:.agenda-pro-occ { font-size: .65rem; font-weight: 500; }
+561:.agenda-pro-occ-bar { height: 4px; border-radius: 3px; }
+562:.agenda-pro-occ-fill { transition: width .4s ease; }
+563:.agenda-now-line { height: 2.5px; background: linear-gradient(90deg, #e74c3c, #ff6b6b); box-shadow: 0 0 6px rgba(231,76,60,.4); }
+564:.agenda-now-line::before { width: 12px; height: 12px; left: -6px; top: -5px; box-shadow: 0 0 6px rgba(231,76,60,.5); }
+567:.agenda-appt { position:absolute; left:2px; right:2px; }
+3221:function renderNowLine(container,pxPerMin){ var now=new Date(); var dayStr=now.toISOString().slice(0,10); var ref=document.getElementById("calTitle"); if(!ref)return; var mins=(now.getHours()-8)*60+now.getMinutes(); if(mins<0||mins>14*60)return; var top=mins*pxPerMin; var line=document.createElement("div"); line.className="agenda-now-line"; line.style.top=top+"px"; container.appendChild(line); }
+3300:    h+='<div class="agenda-grid" '+(dayClosed.closed?'style="opacity:.6"':'')+'>';
+3302:    h+='<div class="agenda-time-col"><div class="agenda-pro-header"></div>';
+3303:    for(let hr=8;hr<=21;hr++){ h+='<div class="agenda-time-slot" style="height:'+(60*pxPerMin)+'px">'+String(hr).padStart(2,'0')+':00</div>'; }
+3308:      h+='<div class="agenda-pro-col">';
+3309:      h+='<div class="agenda-pro-header" style="border-top:3px solid '+(pro.color||'var(--terra)')+'"><div>'+pro.name+'</div><div class="agenda-pro-occ">'+calcOccupation(pro.id,dayStr)+'% ocupado<div class="agenda-pro-occ-bar"><div class="agenda-pro-occ-fill" style="width:'+calcOccupation(pro.id,dayStr)+'%;background:'+(calcOccupation(pro.id,dayStr)>80?'#c0392b':calcOccupation(pro.id,dayStr)>50?'#d9a23a':'#34a877')+'"></div></div></div></div>';
+3310:      h+='<div class="agenda-slots-container">';
+3311:      if(dayClosed.closed) h+='<div class="agenda-closed-bg"></div>';
+3317:        h+='<div class="agenda-slot-bg" style="height:'+slotHeight+'px" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h00+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+h00+'\',\''+pro.id+'\')"></div>';
+3320:          h+='<div class="agenda-slot-bg" style="height:'+slotHeight+'px" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h15+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+h15+'\',\''+pro.id+'\')"></div>';
+3322:        h+='<div class="agenda-slot-bg" style="height:'+slotHeight+'px" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h30+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+h30+'\',\''+pro.id+'\')"></div>';
+3325:          h+='<div class="agenda-slot-bg" style="height:'+slotHeight+'px" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h45+'\',\''+pro.id+'\')" onclick="openNewAppt(\''+h45+'\',\''+pro.id+'\')"></div>';
+3337:        h+='<div class="agenda-block" style="top:'+top+'px;height:'+height+'px" title="'+tb.reason+' ('+tb.from_time+'-'+tb.to_time+')" onclick="event.stopPropagation();if(confirm(\'¿Eliminar bloqueo: '+tb.reason+'?\')){fetch(WORKER+\'/api/time-block\',{method:\'DELETE\',headers:{\'Content-Type\':\'application/json\',\'Authorization\':\'Bearer \'+(localStorage.getItem(\'aura_token\')||\'\')},body:JSON.stringify({id:\''+tb.id+'\',tenant_id:T})}).then(()=>loadAgendaCal(true));}">🚫 '+(tb.reason||'Bloqueado')+'</div>';
+3351:        h+='<div class="agenda-appt '+shortClass+'" draggable="true" ondragstart="agDragStart(event,\''+a.id+'\')" onclick="event.stopPropagation();openApptCard(\''+a.id+'\')" style="top:'+top+'px; height:'+height+'px;background:'+sty.bg+';opacity:'+sty.op+';'+sty.dash+'" title="'+(a.lead_name||'Cita')+' · '+(a.treatment||'')+' · '+timeStr+' ('+dur+'min)">';
+3352:        h+='<div class="agenda-appt-title"><span style="opacity:.85;margin-right:3px">'+sty.icon+'</span><span style="font-weight:800;margin-right:4px;font-size:.68rem;opacity:.85">'+timeStr+'</span>'+(a.lead_name||'Cita')+'</div>';
+3353:        if(dur > 15 || interval === 30) h+='<div class="agenda-appt-sub">'+(a.treatment||'')+(a.status==='attended'?' · <b>✓ Cobrado</b>':'')+(a.status==='completed'?' · <b>✓ Completada</b>':'')+'</div>';
+3366:      const grid = document.querySelector('.agenda-grid');
+3385:    let h='<div class="agenda-grid">';
+3387:    h+='<div class="agenda-time-col"><div class="agenda-pro-header"></div>';
+3388:    for(let hr=8;hr<=21;hr++){ h+='<div class="agenda-time-slot" style="height:'+(60*pxPerMin)+'px">'+String(hr).padStart(2,'0')+':00</div>'; }
+3398:      h+='<div class="agenda-pro-col" '+(cl.closed?'style="opacity:.6"':'')+'>';
+3400:      h+='<div class="agenda-pro-header" style="'+headStyle+'; flex-direction:column; line-height:1.2; height:40px;">';
+3405:      h+='<div class="agenda-slots-container">';
+3406:      if(cl.closed) h+='<div class="agenda-closed-bg" title="'+cl.reason+'"></div>';
+3412:        h+='<div class="agenda-slot-bg" style="height:'+slotHeight+'px" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h00+'\')" onclick="openNewAppt(\''+h00+'\')"></div>';
+3415:          h+='<div class="agenda-slot-bg" style="height:'+slotHeight+'px" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h15+'\')" onclick="openNewAppt(\''+h15+'\')"></div>';
+3417:        h+='<div class="agenda-slot-bg" style="height:'+slotHeight+'px" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h30+'\')" onclick="openNewAppt(\''+h30+'\')"></div>';
+3420:          h+='<div class="agenda-slot-bg" style="height:'+slotHeight+'px" ondragover="agDragOver(event)" ondragleave="agDragLeave(event)" ondrop="agDrop(event,\''+h45+'\')" onclick="openNewAppt(\''+h45+'\')"></div>';
+3434:        h+='<div class="agenda-appt '+shortClass+'" draggable="true" ondragstart="agDragStart(event,\''+a.id+'\')" onclick="event.stopPropagation();openApptCard(\''+a.id+'\')" style="top:'+top+'px; height:'+height+'px;background:'+sty.bg+';opacity:'+sty.op+';'+sty.dash+'" title="'+(a.lead_name||'Cita')+' - '+(a.treatment||'')+'">';
+3435:        h+='<div class="agenda-appt-title"><span style="opacity:.85;margin-right:3px">'+sty.icon+'</span>'+(a.lead_name||'Cita')+'</div>';
+3436:        if(dur > 15 || interval === 30) h+='<div class="agenda-appt-sub">'+(a.treatment||'')+(a.status==='attended'?' · <b>✓ Cobrado</b>':'')+'</div>';
+3449:      const grid = document.querySelector('.agenda-grid');
+=== COMUNICACIONES ===
+6488:    'settings-comunicaciones':{section:'ajustes',tab:'comunicaciones'},

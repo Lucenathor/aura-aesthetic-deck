@@ -114,3 +114,8 @@
 - [x] Investigar sistemas de diseño, librerías de iconos y tipografías premium que eliminen la apariencia genérica de IA en AURA.
 - [x] Definir un sistema cromático gradual basado en el logo coral, rosa y violeta de AURA, con superficies neutras y acentos controlados.
 - [x] Generar tres mockups visuales diferenciados del dashboard antes de aplicar cualquier rediseño al producto.
+- [ ] Implementar los tokens Pearl Aurora, Instrument Sans y la nueva jerarquía visual global del dashboard sin alterar lógica funcional.
+- [ ] Sustituir emojis y símbolos inconsistentes de Inicio, Agenda y Comunicaciones por una iconografía SVG coherente inspirada en Iconoir.
+- [ ] Rediseñar la pantalla Inicio con agenda diaria, métricas, embudo, tareas y actividad de WhatsApp usando datos reales del tenant.
+- [ ] Adaptar Agenda y Ajustes → Comunicaciones al sistema Pearl Aurora manteniendo todos sus flujos actuales.
+- [ ] Validar las tres pantallas piloto en escritorio, tablet y móvil antes de extender el sistema al resto del CRM.
