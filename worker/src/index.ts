@@ -68,31 +68,16 @@ const SESSION_IDLE_MS = 12 * 60 * 60 * 1000;
 let __authSchemaReady = false;
 async function ensureAuthSchema(env: Env) {
   if (__authSchemaReady) return;
-  await env.aura_db.exec(`CREATE TABLE IF NOT EXISTS auth_codes (
-    email TEXT PRIMARY KEY,
-    tenant_id TEXT NOT NULL,
-    code_hash TEXT NOT NULL,
-    expires_at INTEGER NOT NULL,
-    attempts INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL
-  )`);
-  await env.aura_db.exec(`CREATE TABLE IF NOT EXISTS auth_limits (
-    key TEXT PRIMARY KEY,
-    count INTEGER NOT NULL DEFAULT 0,
-    window_start INTEGER NOT NULL,
-    blocked_until INTEGER NOT NULL DEFAULT 0
-  )`);
-  for (const sql of [
-    'ALTER TABLE sessions ADD COLUMN expires_at INTEGER',
-    'ALTER TABLE sessions ADD COLUMN last_seen_at INTEGER',
-    'ALTER TABLE sessions ADD COLUMN revoked_at INTEGER',
-    'ALTER TABLE sessions ADD COLUMN user_agent_hash TEXT',
-    'ALTER TABLE sessions ADD COLUMN ip_prefix TEXT'
-  ]) { try { await env.aura_db.exec(sql); } catch (_) {} }
-  try { await env.aura_db.exec('ALTER TABLE professionals ADD COLUMN pin_hash TEXT'); } catch (_) {}
-  await env.aura_db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions (expires_at, revoked_at)').catch(()=>{});
-  const now = Date.now();
-  await env.aura_db.prepare('UPDATE sessions SET expires_at=COALESCE(expires_at,?),last_seen_at=COALESCE(last_seen_at,?) WHERE revoked_at IS NULL').bind(now + 24 * 60 * 60 * 1000, now).run().catch(()=>{});
+  const tables:any = await env.aura_db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('auth_codes','auth_limits')").all();
+  const sessionColumns:any = await env.aura_db.prepare('PRAGMA table_info(sessions)').all();
+  const professionalColumns:any = await env.aura_db.prepare('PRAGMA table_info(professionals)').all();
+  const tableNames = new Set((tables.results||[]).map((row:any)=>row.name));
+  const sessionNames = new Set((sessionColumns.results||[]).map((row:any)=>row.name));
+  const professionalNames = new Set((professionalColumns.results||[]).map((row:any)=>row.name));
+  const requiredSession = ['expires_at','last_seen_at','revoked_at','user_agent_hash','ip_prefix'];
+  if (!tableNames.has('auth_codes') || !tableNames.has('auth_limits') || requiredSession.some((name)=>!sessionNames.has(name)) || !professionalNames.has('pin_hash')) {
+    throw new Error('auth_schema_not_migrated');
+  }
   __authSchemaReady = true;
 }
 
@@ -1222,7 +1207,8 @@ export default {
     if (ctx) (globalThis as any).__execCtx = ctx;
     const url = new URL(req.url);
     const p = url.pathname;
-    await ensureAuthSchema(env);
+    try { await ensureAuthSchema(env); }
+    catch (_) { return json({ error:'auth_schema_unavailable' },503); }
     if (req.method === 'OPTIONS') return new Response(null, { headers: { ...corsForOrigin(req.headers.get('origin')), ...SECURITY_HEADERS, 'Access-Control-Max-Age':'600' } });
     if (new Set(['/api/call-twiml','/api/call-status','/api/call-recording']).has(p) && !(await verifyTwilioSignature(env, req))) {
       return json({ error:'invalid_twilio_signature' },403);
