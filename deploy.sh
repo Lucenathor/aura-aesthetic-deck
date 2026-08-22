@@ -54,16 +54,17 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# PASO 3: Desplegar
-if [ "$MODE" = "worker" ] || [ "$MODE" = "all" ]; then
-  echo -e "${GREEN}[3/5]${NC} Desplegando Worker..."
-  cd worker && npx wrangler deploy && cd ..
-  echo ""
-fi
-
+# PASO 3: Desplegar. En "all", Pages va primero para que el cliente nuevo sea
+# compatible antes de que el Worker empiece a exigir campos de seguridad nuevos.
 if [ "$MODE" = "pages" ] || [ "$MODE" = "all" ]; then
   echo -e "${GREEN}[4/5]${NC} Desplegando Pages..."
   npx wrangler pages deploy mvp --project-name aura-mvp --branch main --commit-dirty=true
+  echo ""
+fi
+
+if [ "$MODE" = "worker" ] || [ "$MODE" = "all" ]; then
+  echo -e "${GREEN}[3/5]${NC} Desplegando Worker..."
+  cd worker && npx wrangler deploy && cd ..
   echo ""
 fi
 
@@ -84,9 +85,11 @@ echo ""
 
 # PASO 5: Push a GitHub
 echo -e "${GREEN}[BACKUP]${NC} Sincronizando con GitHub..."
-git add -A 2>/dev/null || true
-git commit -m "deploy: $(date '+%Y-%m-%d %H:%M') — $MODE" 2>/dev/null || true
-git push origin main --force 2>/dev/null || true
+git add -A
+if ! git diff --cached --quiet; then
+  git commit -m "deploy: $(date '+%Y-%m-%d %H:%M') — $MODE"
+fi
+git push origin main
 echo ""
 
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

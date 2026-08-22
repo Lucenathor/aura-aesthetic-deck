@@ -1,0 +1,30 @@
+/*
+  Strict-Transport-Security: max-age=31536000
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: geolocation=(), payment=(), usb=(), browsing-topics=(), camera=(self), microphone=(self)
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  Cross-Origin-Resource-Policy: same-site
+  X-Permitted-Cross-Domain-Policies: none
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self' https://checkout.stripe.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.sheetjs.com https://unpkg.com https://connect.facebook.net https://challenges.cloudflare.com; script-src-attr 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; frame-src 'self' https://www.tiktok.com https://www.instagram.com https://*.360dialog.io https://challenges.cloudflare.com; connect-src 'self' https://aura-chat-worker.adrian-7b9.workers.dev https://*.360dialog.io https://connect.facebook.net https://www.tiktok.com https://challenges.cloudflare.com; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests; block-all-mixed-content
+
+/dashboard*
+  Cache-Control: no-store, private, max-age=0
+  X-Robots-Tag: noindex, nofollow
+
+/login*
+  Cache-Control: no-store, private, max-age=0
+  X-Robots-Tag: noindex, nofollow
+
+/staff*
+  Cache-Control: no-store, private, max-age=0
+  X-Robots-Tag: noindex, nofollow
+
+/croquis*
+  Cache-Control: no-store, private, max-age=0
+  X-Robots-Tag: noindex, nofollow
+
+/admin*
+  Cache-Control: no-store, private, max-age=0
+  X-Robots-Tag: noindex, nofollow

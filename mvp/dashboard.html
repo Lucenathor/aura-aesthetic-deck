@@ -2073,8 +2073,8 @@ var AuraHttp = (function(){
 })();
 
 const params=new URLSearchParams(location.search);
-// Acceso por enlace: si llega ?token= en la URL, lo guardamos como sesion activa
-try{ var _urlTok=params.get('token'); if(_urlTok){ localStorage.setItem('aura_token',_urlTok); } }catch(e){}
+// Nunca aceptar ni conservar sesiones en la URL: evita fugas por historial, logs y Referer.
+try{ if(params.has('token')){ params.delete('token'); history.replaceState(null,'',location.pathname+(params.toString()?('?'+params.toString()):'')+location.hash); } }catch(e){}
 let T=params.get('t')||'clinica-elvira';
 // Blindaje: adjunta automaticamente el token de sesion a TODA llamada al WORKER (Authorization: Bearer).
 // Asi el backend verifica que esta sesion pertenece al tenant y ninguna clinica toca datos de otra.
@@ -2096,7 +2096,7 @@ async function guard(){
   const tok=localStorage.getItem('aura_token');
   if(!tok){ location.href='/login'+(params.get('t')?('?t='+params.get('t')):''); return false; }
   try{ 
-    const r=await fetch(WORKER+'/api/auth/me?token='+tok); const d=await r.json(); 
+    const r=await fetch(WORKER+'/api/auth/me',{headers:{'Authorization':'Bearer '+tok}}); const d=await r.json();
     if(!d.auth){ localStorage.removeItem('aura_token'); location.href='/login'; return false; } 
     ROLE=d.role||'owner'; 
     // Super admin: respeta la clínica elegida en la URL (?t=); el resto usa el tenant de su sesión
@@ -2178,7 +2178,7 @@ async function submitLegal(){
   var btn=document.getElementById('lgBtn'); btn.disabled=true; btn.textContent='Guardando…';
   try{
     var tok=localStorage.getItem('aura_token');
-    var r=await fetch(WORKER+'/api/legal-accept?token='+tok,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({ signer_name:signer, accept_terms:true, accept_privacy:true, accept_dpa:true, version:'1.0', reviewed:!!window._lgScrolled })});
+    var r=await fetch(WORKER+'/api/legal-accept',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify({ signer_name:signer, accept_terms:true, accept_privacy:true, accept_dpa:true, version:'1.0', reviewed:!!window._lgScrolled })});
     var j=await r.json();
     if(j&&j.ok){ var g=document.getElementById('legalGate'); if(g)g.remove(); location.reload(); }
     else { btn.disabled=false; btn.textContent='Aceptar y activar mi panel'; err.style.display='block'; err.textContent='No se pudo registrar. Inténtalo de nuevo.'; }
@@ -4061,7 +4061,7 @@ async function createAppt(){
   if(!name){alert('Pon el nombre');return;}
   const ds=String(iso).slice(0,10); const cl=agClosed(ds);
   if(cl.closed){ if(!confirm('Ese día la clínica está marcada como "'+cl.reason+'". ¿Quieres crear la cita igualmente?')) return; }
-  try{ const r=await fetch(WORKER+'/api/appt-create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:T,name,phone,treatment:treat,date_iso:iso,duration_min:dur,professional_id:pro||null})});
+  try{ const r=await fetch(WORKER+'/api/appt-create',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,name,phone,treatment:treat,date_iso:iso,duration_min:dur,professional_id:pro||null})});
     const d=await r.json(); if(!d.ok&&d.error==='clash'){ alert('Ese hueco ya está ocupado por ese profesional.'); return; } if(d.appointment_id)window._newApptId=d.appointment_id; }catch(e){}
   document.getElementById('naOverlay').remove(); loadAgendaCal(true);
 }

@@ -19,5 +19,26 @@ id = "c03e3252543b4210af87828d75607ca8"
 binding = "aura_r2"
 bucket_name = "aura-storage"
 
+[[ratelimits]]
+name = "AUTH_RATE_LIMITER"
+namespace_id = "19001"
+  [ratelimits.simple]
+  limit = 20
+  period = 60
+
+[[ratelimits]]
+name = "PUBLIC_RATE_LIMITER"
+namespace_id = "19002"
+  [ratelimits.simple]
+  limit = 60
+  period = 60
+
+[[ratelimits]]
+name = "COST_RATE_LIMITER"
+namespace_id = "19003"
+  [ratelimits.simple]
+  limit = 15
+  period = 60
+
 [triggers]
 crons = ["* * * * *"]

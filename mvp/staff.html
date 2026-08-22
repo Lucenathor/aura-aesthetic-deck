@@ -104,10 +104,10 @@ function doLogin(){
   if(!tenant||!pin){document.getElementById('loginError').textContent='Introduce clínica y PIN';return}
   fetch(W+'/api/staff-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:tenant,pin:pin})})
   .then(r=>r.json()).then(d=>{
-    if(d.error){document.getElementById('loginError').textContent=d.error;return}
-    staffToken=d.token;
-    localStorage.setItem('staff_token',staffToken);
-    localStorage.setItem('staff_tenant',tenant);
+	    if(d.error){document.getElementById('loginError').textContent=d.error;return}
+	    staffToken=d.token;
+	    sessionStorage.setItem('staff_token',staffToken);
+	    sessionStorage.setItem('staff_tenant',tenant);
     document.getElementById('proName').textContent=d.professional.name;
     document.getElementById('proAvatar').textContent=(d.professional.name||'D')[0];
     document.getElementById('loginScreen').style.display='none';
@@ -123,7 +123,7 @@ function showTab(t){
   else if(t==='calendar')renderIcal();
 }
 function loadAgenda(){
-  fetch(W+'/api/staff-agenda?token='+staffToken+'&date='+currentDate)
+  fetch(W+'/api/staff-agenda?date='+currentDate,{headers:{'X-Staff-Token':staffToken}})
   .then(r=>r.json()).then(d=>{
     if(d.error){doLogout();return}
     agendaData=d;
@@ -164,8 +164,8 @@ function navDate(dir){
   currentDate=d.toISOString().slice(0,10);loadAgenda();
 }
 function markArrived(id){
-  const tenant=localStorage.getItem('staff_tenant');
-  fetch(W+'/api/appt-arrived',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer agui1780967104'},body:JSON.stringify({appointment_id:id,tenant_id:tenant})})
+  const tenant=sessionStorage.getItem('staff_tenant');
+  fetch(W+'/api/appt-arrived',{method:'POST',headers:{'Content-Type':'application/json','X-Staff-Token':staffToken},body:JSON.stringify({appointment_id:id,tenant_id:tenant})})
   .then(()=>loadAgenda());
 }
 function toggleComplete(apptId,treatment,leadId){
@@ -190,14 +190,14 @@ function photoTaken(apptId,type,input){
   if(input.files[0]){photoFiles[apptId+'_'+type]=input.files[0];document.getElementById('cf'+type.charAt(0).toUpperCase()+type.slice(1)+'_'+apptId).classList.add('has-photo');document.getElementById('cf'+type.charAt(0).toUpperCase()+type.slice(1)+'_'+apptId).innerHTML='✓ Foto '+type+' tomada'}
 }
 function doComplete(apptId,treatment,leadId){
-  const tenant=localStorage.getItem('staff_tenant');
+  const tenant=sessionStorage.getItem('staff_tenant');
   const areas=document.getElementById('cfAreas_'+apptId)?.value||'';
   const note=document.getElementById('cfNote_'+apptId)?.value||'';
   // Marcar cita como completada
-  fetch(W+'/api/appt-arrived',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer agui1780967104'},body:JSON.stringify({appointment_id:apptId,tenant_id:tenant,status:'completed'})});
+  fetch(W+'/api/appt-arrived',{method:'POST',headers:{'Content-Type':'application/json','X-Staff-Token':staffToken},body:JSON.stringify({appointment_id:apptId,tenant_id:tenant,status:'completed'})});
   // Guardar nota clínica si hay algo
   if(note||areas){
-    fetch(W+'/api/clinical-note',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer agui1780967104'},body:JSON.stringify({tenant_id:tenant,lead_id:leadId,visit_date:currentDate,professional:agendaData.professional.name,treatment:treatment,areas:areas,note:note})});
+    fetch(W+'/api/clinical-note',{method:'POST',headers:{'Content-Type':'application/json','X-Staff-Token':staffToken},body:JSON.stringify({tenant_id:tenant,lead_id:leadId,visit_date:currentDate,professional:agendaData.professional.name,treatment:treatment,areas:areas,note:note})});
   }
   // Actualizar estado local
   setTimeout(()=>loadAgenda(),500);
@@ -231,7 +231,7 @@ function openCroquis(leadId,name,visitId,gender){
   setTimeout(shareSession,150);
 }
 function openPatient(leadId){
-  fetch(W+'/api/staff-patient?token='+staffToken+'&lead_id='+leadId)
+  fetch(W+'/api/staff-patient?lead_id='+leadId,{headers:{'X-Staff-Token':staffToken}})
   .then(r=>r.json()).then(d=>{
     if(d.error)return;
     const p=d.patient||{};const c=d.clinical||{};
@@ -250,7 +250,7 @@ function openPatient(leadId){
 function closePatient(){document.getElementById('patientModal').classList.remove('show')}
 // Auto-login si hay sesión guardada
 (function(){
-  const t=localStorage.getItem('staff_token');
+  const t=sessionStorage.getItem('staff_token');
   if(t){staffToken=t;document.getElementById('loginScreen').style.display='none';document.getElementById('app').style.display='block';loadAgenda()}
   const params=new URLSearchParams(location.search);
   if(params.get('t'))document.getElementById('tenantInput').value=params.get('t');

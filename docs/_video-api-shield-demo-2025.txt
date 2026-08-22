@@ -1,0 +1,59 @@
+Starting video analysis...
+Submitting video analysis task...
+Task submitted (ID: video-analysis-b6c3617f-f245-4109-8c10-bcb68eb52c29)
+[8s] Status: Analyzing video content with AI...
+[33s] Still processing, please wait...
+[1m3s] Still processing, please wait...
+[1m27s] Status: Analysis completed
+[1m27s] Analysis completed!
+Full analysis result saved to: /home/ubuntu/aura-presentation/video_dTkKzCRCNPc_analysis_20260822_174824.md
+Note: This tool performs AI-based visual and audio analysis, not verbatim transcription. For detailed speech transcription, use `manus-speech-to-text` instead.
+Analysis result:
+
+Basado en el análisis exhaustivo del video proporcionado, a continuación se detalla la información técnica extraída sobre el despliegue de Cloudflare API Shield, estructurada según sus requerimientos. 
+
+Es importante destacar que el video es una demostración de producto de alto nivel y **no cubre los puntos C (explícitamente), E y F** de su solicitud. La información proporcionada refleja estrictamente el contenido visual y auditivo del video.
+
+### A) Funciones demostradas
+
+El video demuestra las siguientes funciones y componentes de la interfaz de Cloudflare API Shield (dentro de la sección "Security" > "Web assets"):
+
+*   **Discovery (Descubrimiento mediante Machine Learning):** Identifica automáticamente todos los puntos finales (endpoints) de la API activos. Los endpoints descubiertos se pueden guardar en "Endpoint management".
+*   **Endpoint Management (Gestión de endpoints):** Un inventario de los endpoints guardados donde se centraliza la información de rendimiento, límites de tasa recomendados y etiquetas de riesgo.
+*   **Schema validation (Validación de esquema):** Permite implementar un **"positive security model"** (modelo de seguridad positivo) donde se aplica un esquema aprendido automáticamente o modificado por el cliente. Bloquea el tráfico que no cumple con el esquema (métodos, parámetros o endpoints no permitidos), resolviendo el problema de **"dangling and zombie APIs"** (APIs zombis y colgantes). Permite exportar el esquema en formato OpenAPI v3.
+*   **Sequences (Secuencias):** Analiza cómo los usuarios interactúan con la API rastreando el orden de las solicitudes. Muestra métricas como "Correlation score", "Length" y "Frequency".
+*   **API sequence rules (Reglas de secuencia de API):** Dentro de "Security rules", permite crear reglas de mitigación que imponen un orden estricto en el que deben llamarse las APIs (por ejemplo, requerir un GET a `/balance` antes de permitir un POST a `/transfer`).
+*   **Volumetric abuse protection (Protección contra abuso volumétrico):** Cloudflare mantiene una línea base (baseline) del tráfico de cada endpoint y sugiere un **"Recommended rate limit per 10 min"** (Límite de tasa recomendado por 10 minutos). Permite crear reglas de limitación de tasa con un solo clic basadas en esta sugerencia.
+*   **Labels (Etiquetas):** El sistema aplica etiquetas para categorizar endpoints. Incluye etiquetas definidas por el usuario y etiquetas de riesgo (Risk labels) aplicadas automáticamente por Cloudflare (ej. `pii-risk-sensitive`, `pii-risk-missing-auth`, `pii-risk-mixed-auth`, `pii-risk-missing-schema`).
+*   **Sensitive Data Detection (Detección de datos sensibles):** Identifica si un endpoint está filtrando información confidencial (en la demostración, detecta "American Express Credit Card").
+*   **Authentication Analytics & Active session identifiers:** Gráficos que muestran el porcentaje de solicitudes exitosas que contienen identificadores (ej. "0% of successful requests contain identifiers"). Desglosa qué identificadores de sesión se encontraron (ej. `x-api-token` en el Header) o si no hubo identificadores ("No identifiers").
+
+### B) Secuencia recomendada de observación, aprendizaje y bloqueo
+
+El flujo de trabajo demostrado por el presentador (Humair Ahmed) para asegurar los endpoints es el siguiente:
+
+1.  **Descubrimiento y Guardado:** Utilizar "Machine learning discovery" para que Cloudflare identifique automáticamente los endpoints. El cliente revisa los endpoints recién descubiertos y los guarda en "Endpoint management".
+2.  **Aprendizaje y Revisión de Esquema:** Cloudflare aprende automáticamente el esquema de la API. El cliente exporta, **"reviews that schema, modifies it, and applies it"** (revisa ese esquema, lo modifica y lo aplica) a la validación de esquemas.
+3.  **Aplicación de Modelo de Seguridad Positivo (Bloqueo):** Se utiliza el botón "Apply learned schema" para proteger el endpoint. La acción predeterminada mostrada para solicitudes no conformes es **"Block"** (Bloquear). El cliente luego monitorea los análisis para ver el tráfico bloqueado debido a violaciones del esquema.
+4.  **Análisis de Secuencias y Mitigación:** Revisar la pestaña "Sequences" para entender las rutas de los usuarios. Luego, ir a "Security rules" y configurar una regla de secuencia ("API sequence rule") que defina un endpoint de inicio y un endpoint final requeridos, configurando la acción en **"Block"** si las solicitudes entrantes no siguen la secuencia.
+5.  **Protección Volumétrica:** En "Endpoint management", observar la métrica "Recommended rate limit per 10 min" generada a partir de la línea base de tráfico y hacer clic en "Create rule" para imponer protección contra abuso volumétrico.
+6.  **Auditoría de Riesgos (Observación):** Utilizar los filtros de "Labels" para buscar vulnerabilidades específicas (ej. `pii-risk-missing-auth`, `pii-risk-sensitive`).
+7.  **Investigación Profunda y Remediación:** Hacer clic en los endpoints con etiquetas de riesgo para revisar los gráficos de "Sensitive Data Detection" y "Authentication". Analizar los "Active session identifiers" para ver si el tráfico está autenticado. Finalmente, el cliente **"can now follow up with developers to review and remediate"** (ahora puede hacer un seguimiento con los desarrolladores para revisar y remediar).
+
+### C) Riesgos de falsos positivos
+
+El video **no menciona explícitamente** el término "falsos positivos" ni discute estrategias directas para mitigarlos. 
+
+Sin embargo, el flujo de trabajo demostrado infiere una fase de validación manual para evitar bloqueos erróneos: se indica que el cliente "revisa" y "modifica" el esquema aprendido automáticamente antes de aplicarlo en modo de bloqueo, y las reglas de limitación de tasa se basan en una "línea base" de tráfico observada previamente por Cloudflare.
+
+### D) Requisitos de plan
+
+Aunque el presentador no lo menciona verbalmente, la interfaz de usuario mostrada en el video indica claramente en la esquina superior izquierda, junto al nombre del dominio (`api.cf-time.com`), una etiqueta que dice **"Enterprise plan"**. Esto sugiere que las funciones mostradas (o al menos la configuración del entorno de demostración) pertenecen a este nivel de suscripción.
+
+### E) Controles aplicables a Workers
+
+El video **no proporciona ninguna información** sobre cómo Cloudflare API Shield interactúa, protege o se configura en relación con Cloudflare Workers. (Existe un elemento de menú llamado "Workers Routes" visible en la barra lateral izquierda, pero nunca se accede a él ni se menciona).
+
+### F) Límites: qué no sustituye a la autorización multi-tenant del backend
+
+El video **no aborda** el tema de la autorización multi-tenant, el aislamiento de datos entre inquilinos, ni las limitaciones de la herramienta respecto a la lógica de autorización del backend. La demostración se centra exclusivamente en la validación de esquemas, el orden de las peticiones (secuencias), límites de tasa y la presencia/ausencia de tokens de autenticación.

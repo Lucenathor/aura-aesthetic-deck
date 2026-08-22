@@ -33,10 +33,15 @@ interface Env {
   D360_PLATFORM_SECRET?: string;
   D360_PARTNER_WEBHOOK_TOKEN?: string;
   D360_NUMBER_WEBHOOK_TOKEN?: string;
+  TURNSTILE_SECRET?: string;
+  AUTH_RATE_LIMITER?: RateLimitBinding;
+  PUBLIC_RATE_LIMITER?: RateLimitBinding;
+  COST_RATE_LIMITER?: RateLimitBinding;
 }
+interface RateLimitBinding { limit(input: { key: string }): Promise<{ success: boolean }> }
 interface R2Bucket {
   put(key: string, value: string|ArrayBuffer|ReadableStream, opts?: any): Promise<any>;
-  get(key: string): Promise<any>;
+  get(key: string, opts?: any): Promise<any>;
   delete(key: string): Promise<void>;
   list(opts?: any): Promise<any>;
 }
@@ -56,6 +61,39 @@ interface D1PreparedStatement {
   first<T = any>(colName?: string): Promise<T | null>;
   run(): Promise<any>;
   all<T = any>(): Promise<{ results: T[] }>;
+}
+
+const SESSION_ABSOLUTE_MS = 7 * 24 * 60 * 60 * 1000;
+const SESSION_IDLE_MS = 12 * 60 * 60 * 1000;
+let __authSchemaReady = false;
+async function ensureAuthSchema(env: Env) {
+  if (__authSchemaReady) return;
+  await env.aura_db.exec(`CREATE TABLE IF NOT EXISTS auth_codes (
+    email TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    code_hash TEXT NOT NULL,
+    expires_at INTEGER NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL
+  )`);
+  await env.aura_db.exec(`CREATE TABLE IF NOT EXISTS auth_limits (
+    key TEXT PRIMARY KEY,
+    count INTEGER NOT NULL DEFAULT 0,
+    window_start INTEGER NOT NULL,
+    blocked_until INTEGER NOT NULL DEFAULT 0
+  )`);
+  for (const sql of [
+    'ALTER TABLE sessions ADD COLUMN expires_at INTEGER',
+    'ALTER TABLE sessions ADD COLUMN last_seen_at INTEGER',
+    'ALTER TABLE sessions ADD COLUMN revoked_at INTEGER',
+    'ALTER TABLE sessions ADD COLUMN user_agent_hash TEXT',
+    'ALTER TABLE sessions ADD COLUMN ip_prefix TEXT'
+  ]) { try { await env.aura_db.exec(sql); } catch (_) {} }
+  try { await env.aura_db.exec('ALTER TABLE professionals ADD COLUMN pin_hash TEXT'); } catch (_) {}
+  await env.aura_db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions (expires_at, revoked_at)').catch(()=>{});
+  const now = Date.now();
+  await env.aura_db.prepare('UPDATE sessions SET expires_at=COALESCE(expires_at,?),last_seen_at=COALESCE(last_seen_at,?) WHERE revoked_at IS NULL').bind(now + 24 * 60 * 60 * 1000, now).run().catch(()=>{});
+  __authSchemaReady = true;
 }
 
 let __setterBrainSchemaReady = false;
@@ -117,7 +155,7 @@ const CORS = {
 const json = (data: any, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
-    headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json' },
+    headers: { ...CORS, ...SECURITY_HEADERS, 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' },
   });
 
 const text = (data: string, status = 200) =>
@@ -148,6 +186,17 @@ function sanitize(s: any): string | null {
   return String(s).replace(/<[^>]*>/g, '').replace(/javascript:/gi, '').trim().slice(0, 500);
 }
 
+function signingSecret(env: Env): string {
+  const secret = String(env.JWT_SECRET || '');
+  if (secret.length < 32) throw new Error('JWT_SECRET is missing or too short');
+  return secret;
+}
+function secureToken(bytes = 16): string {
+  const data = new Uint8Array(bytes);
+  crypto.getRandomValues(data);
+  return Array.from(data).map((v) => v.toString(16).padStart(2, '0')).join('');
+}
+
 function safeHttpUrl(value: any): string {
   const raw = String(value || '').trim();
   if (!raw) return '';
@@ -157,13 +206,35 @@ function safeHttpUrl(value: any): string {
   } catch (_) { return ''; }
 }
 
+function detectSafeImage(bytes: Uint8Array): { contentType:string, ext:string }|null {
+  if (bytes.length >= 8 && bytes[0]===0x89 && bytes[1]===0x50 && bytes[2]===0x4e && bytes[3]===0x47 && bytes[4]===0x0d && bytes[5]===0x0a && bytes[6]===0x1a && bytes[7]===0x0a) return { contentType:'image/png', ext:'png' };
+  if (bytes.length >= 3 && bytes[0]===0xff && bytes[1]===0xd8 && bytes[2]===0xff) return { contentType:'image/jpeg', ext:'jpg' };
+  if (bytes.length >= 12 && String.fromCharCode(...bytes.slice(0,4))==='RIFF' && String.fromCharCode(...bytes.slice(8,12))==='WEBP') return { contentType:'image/webp', ext:'webp' };
+  return null;
+}
+function detectSafeVideo(bytes: Uint8Array): {contentType:string,ext:string}|null {
+  if(bytes.length>=12 && String.fromCharCode(...bytes.slice(4,8))==='ftyp') {
+    const brand=String.fromCharCode(...bytes.slice(8,12));
+    return brand==='qt  '?{contentType:'video/quicktime',ext:'mov'}:{contentType:'video/mp4',ext:'mp4'};
+  }
+  if(bytes.length>=4 && bytes[0]===0x1a&&bytes[1]===0x45&&bytes[2]===0xdf&&bytes[3]===0xa3) return {contentType:'video/webm',ext:'webm'};
+  return null;
+}
+function detectSafeDocument(bytes: Uint8Array, declaredType: string): {contentType:string,ext:string}|null {
+  if(bytes.length>=5 && String.fromCharCode(...bytes.slice(0,5))==='%PDF-') return {contentType:'application/pdf',ext:'pdf'};
+  if(declaredType==='application/vnd.openxmlformats-officedocument.wordprocessingml.document' && bytes.length>=4 && bytes[0]===0x50&&bytes[1]===0x4b&&bytes[2]===0x03&&bytes[3]===0x04) return {contentType:declaredType,ext:'docx'};
+  if(declaredType==='text/plain' && !bytes.slice(0,4096).some(b=>b===0)) return {contentType:'text/plain; charset=utf-8',ext:'txt'};
+  return null;
+}
+
 function uid() {
-  return 'l_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  return 'l_' + Date.now().toString(36) + secureToken(6);
 }
 // ── Slug público aleatorio para URLs de embudo (no adivinable) ──
 function publicSlug() {
   const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
-  let s = ''; for (let i = 0; i < 8; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  const random = new Uint8Array(12); crypto.getRandomValues(random);
+  let s = ''; for (let i = 0; i < 12; i++) s += chars[random[i] % chars.length];
   return s;
 }
 
@@ -181,6 +252,12 @@ function checkRateLimit(ip: string, maxReqs: number, windowSec: number): boolean
   if (entry.count > maxReqs) return false; // blocked
   return true;
 }
+async function cloudRateLimit(binding: RateLimitBinding|undefined, key: string, fallbackMax: number, fallbackWindowSec: number): Promise<boolean> {
+  if (binding) {
+    try { return !!(await binding.limit({ key })).success; } catch (_) {}
+  }
+  return checkRateLimit(key, fallbackMax, fallbackWindowSec);
+}
 // Limpiar entradas viejas cada 1000 requests
 let _rlCleanCounter = 0;
 function rlCleanup() {
@@ -192,14 +269,14 @@ function rlCleanup() {
 // ── Token temporal de sesión para quiz (anti-spam) ──
 async function generateQuizToken(env: Env, tenantId: string, ip: string): Promise<string> {
   const payload = tenantId + '|' + ip + '|' + Math.floor(Date.now() / 60000); // válido ~1 min window
-  const secret = env.JWT_SECRET || 'aura-default-secret';
+  const secret = signingSecret(env);
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
   return b64url(sig).slice(0, 16);
 }
 async function verifyQuizToken(env: Env, token: string, tenantId: string, ip: string): Promise<boolean> {
   // Verificar ventana actual y anterior (2 minutos de gracia)
-  const secret = env.JWT_SECRET || 'aura-default-secret';
+  const secret = signingSecret(env);
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   for (let offset = 0; offset <= 2; offset++) {
     const payload = tenantId + '|' + ip + '|' + (Math.floor(Date.now() / 60000) - offset);
@@ -223,7 +300,6 @@ const ALLOWED_ORIGINS = new Set([
   'https://auracrm.co',
   'https://auraos.io',
   'https://www.auraos.io',
-  'https://auracrm.co',
   'https://www.auracrm.co',
   'http://localhost:3000',
   'http://localhost:8788',
@@ -232,11 +308,12 @@ function corsForOrigin(origin: string | null): Record<string, string> {
   if (origin && (ALLOWED_ORIGINS.has(origin) || origin.endsWith('.aura-mvp.pages.dev') || origin.endsWith('.auracrm.co'))) {
     return { ...CORS, 'Access-Control-Allow-Origin': origin, 'Vary': 'Origin' };
   }
-  return CORS;
+  const { 'Access-Control-Allow-Origin': _omit, ...withoutOrigin } = CORS;
+  return withoutOrigin;
 }
 
 function appId() {
-  return 'a_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  return 'a_' + Date.now().toString(36) + secureToken(5);
 }
 // ── Token firmado para link mágico de conversación (HMAC-SHA256) ──
 function b64url(buf: ArrayBuffer){ const b=btoa(String.fromCharCode(...new Uint8Array(buf))); return b.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
@@ -255,8 +332,37 @@ async function verify360Signature(env: Env, rawBody: string, received: string|nu
   if (!env.D360_PLATFORM_SECRET || !received) return false;
   return timingSafeEqual(await hmacHex(env.D360_PLATFORM_SECRET, rawBody, 'SHA-256'), received.trim());
 }
+async function verifyTwilioSignature(env: Env, req: Request): Promise<boolean> {
+  const received = req.headers.get('x-twilio-signature') || '';
+  if (!env.TWILIO_AUTH_TOKEN || !received) return false;
+  try {
+    const form = await req.clone().formData();
+    const pairs = Array.from(form.entries()).map(([key,value])=>[key,String(value)] as [string,string]).sort((a,b)=>a[0].localeCompare(b[0]));
+    let payload = req.url;
+    for (const [key,value] of pairs) payload += key + value;
+    const key = await crypto.subtle.importKey('raw',new TextEncoder().encode(env.TWILIO_AUTH_TOKEN),{name:'HMAC',hash:'SHA-1'},false,['sign']);
+    const sig = await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(payload));
+    const expected = btoa(String.fromCharCode(...new Uint8Array(sig)));
+    return timingSafeEqual(expected, received.trim());
+  } catch (_) { return false; }
+}
+async function verifyTurnstile(env: Env, token: string, req: Request, expectedAction: string): Promise<boolean> {
+  if (!env.TURNSTILE_SECRET || !token || token.length > 2048) return false;
+  try {
+    const form = new FormData();
+    form.append('secret', env.TURNSTILE_SECRET);
+    form.append('response', token);
+    form.append('remoteip', req.headers.get('cf-connecting-ip') || '');
+    form.append('idempotency_key', crypto.randomUUID());
+    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify',{method:'POST',body:form});
+    const result:any = await response.json().catch(()=>({}));
+    const hostname = String(result.hostname || '').toLowerCase();
+    const validHost = hostname === 'auracrm.co' || hostname.endsWith('.auracrm.co') || hostname === 'aura-mvp.pages.dev';
+    return !!(response.ok && result.success && result.action === expectedAction && validHost);
+  } catch (_) { return false; }
+}
 async function waMediaSignature(env: Env, tenantId: string, mediaId: string, exp: number){
-  return hmacHex(env.JWT_SECRET || 'aura-media-signing-secret', `wa-media:${tenantId}:${mediaId}:${exp}`, 'SHA-256');
+  return hmacHex(signingSecret(env), `wa-media:${tenantId}:${mediaId}:${exp}`, 'SHA-256');
 }
 async function waMediaUrl(env: Env, tenantId: string, mediaId: string){
   const exp = Math.floor(Date.now() / 1000) + 300;
@@ -269,17 +375,20 @@ async function validWaMediaUrl(env: Env, tenantId: string, mediaId: string, expR
   return timingSafeEqual(await waMediaSignature(env, tenantId, mediaId, exp), signature || '');
 }
 async function signLead(env: Env, leadId: string){
-  const secret=env.JWT_SECRET||'aura-default-secret';
+  const secret=signingSecret(env);
   const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
   const sig=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(leadId));
   return b64url(sig).slice(0,24);
 }
 async function verifyLead(env: Env, leadId: string, token: string){
-  try{ const expected=await signLead(env,leadId); return expected===token; }catch(e){ return false; }
+  try{ const expected=await signLead(env,leadId); return timingSafeEqual(expected,token||''); }catch(e){ return false; }
+}
+async function requireLeadCapability(env: Env, body: any){
+  return !!(body?.lead_id && await verifyLead(env,String(body.lead_id),String(body.lead_token||'')));
 }
 // Token FUERTE atado a un consentimiento concreto (no reutilizable entre documentos).
 async function signConsent(env: Env, consentId: string, leadId: string){
-  const secret=env.JWT_SECRET||'aura-default-secret';
+  const secret=signingSecret(env);
   const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
   const sig=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode('consent:'+consentId+':'+leadId));
   return b64url(sig).slice(0,32);
@@ -288,19 +397,17 @@ async function verifyConsent(env: Env, consentId: string, leadId: string, token:
   try{ if(!token) return false; const expected=await signConsent(env,consentId,leadId); // comparacion en tiempo constante
     if(expected.length!==token.length) return false; let diff=0; for(let i=0;i<expected.length;i++) diff |= expected.charCodeAt(i)^token.charCodeAt(i); return diff===0; }catch(e){ return false; }
 }
+async function signIcalFeed(env: Env, tenantId: string, professionalId: string){
+  return (await hmacHex(signingSecret(env), `ical:${tenantId}:${professionalId}`, 'SHA-256')).slice(0,32);
+}
+async function signAppointmentConfirm(env: Env, appointmentId: string, expiresAt: number){
+  return (await hmacHex(signingSecret(env), `appointment-confirm:${appointmentId}:${expiresAt}`, 'SHA-256')).slice(0,32);
+}
 // Guardia multi-tenant: el token de sesion (cookie/header/query) debe pertenecer al tenant solicitado.
 // Devuelve null si OK; o un objeto error para responder 403. Asi una clinica NUNCA toca datos de otra.
 async function requireTenant(env: Env, req: Request, url: URL, tenantSolicitado: string|null): Promise<string|null> {
   if (!tenantSolicitado) return 'missing_tenant';
-  // token desde Authorization: Bearer, header x-aura-token o query ?token=
-  let tok = '';
-  const auth = req.headers.get('authorization')||'';
-  if (auth.toLowerCase().startsWith('bearer ')) tok = auth.slice(7).trim();
-  if (!tok) tok = req.headers.get('x-aura-token') || '';
-  if (!tok) tok = url.searchParams.get('token') || '';
-  if (!tok) { try{ const c=req.headers.get('cookie')||''; const m=c.match(/aura_token=([^;]+)/); if(m) tok=decodeURIComponent(m[1]); }catch(e){} }
-  if (!tok) return 'no_token';
-  const s: any = await env.aura_db.prepare('SELECT tenant_id, email FROM sessions WHERE token=?').bind(tok).first();
+  const s: any = await readSession(env, req, url);
   if (!s) return 'invalid_token';
   if (s.tenant_id === tenantSolicitado) return null; // OK: su propia clínica
   // El SUPER ADMIN puede acceder a cualquier clínica (selector de clínicas del panel)
@@ -310,37 +417,87 @@ async function requireTenant(env: Env, req: Request, url: URL, tenantSolicitado:
   } catch(e){}
   return 'tenant_mismatch';
 }
+async function requireStaffTenant(env: Env, req: Request, tenantSolicitado: string|null): Promise<string|null> {
+  if (!tenantSolicitado) return 'missing_tenant';
+  const auth = req.headers.get('authorization') || '';
+  const bearer = auth.toLowerCase().startsWith('bearer ') ? auth.slice(7).trim() : '';
+  const staffToken = req.headers.get('x-staff-token') || bearer;
+  if (!staffToken) return 'no_staff_token';
+  try {
+    const raw = await env.AURA_IMG.get('staff_session_' + staffToken);
+    const staff = raw ? JSON.parse(raw) : null;
+    if (!staff || staff.exp < Date.now()) {
+      if (raw) await env.AURA_IMG.delete('staff_session_' + staffToken);
+      return 'expired_staff_token';
+    }
+    if (staff.tenant_id !== tenantSolicitado) return 'tenant_mismatch';
+    return null;
+  } catch (_) { return 'invalid_staff_token'; }
+}
+function sessionTokenFrom(req: Request, url: URL): string {
+  const auth = req.headers.get('authorization') || '';
+  if (auth.toLowerCase().startsWith('bearer ')) return auth.slice(7).trim();
+  const header = req.headers.get('x-aura-token') || '';
+  if (header) return header;
+  try {
+    const match = (req.headers.get('cookie') || '').match(/aura_token=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  } catch (_) { return ''; }
+}
+function clientIpPrefix(req: Request): string {
+  const raw = (req.headers.get('cf-connecting-ip') || '').trim();
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(raw)) return raw.split('.').slice(0, 3).join('.') + '.0/24';
+  return raw ? raw.split(':').slice(0, 4).join(':') + '::/64' : 'unknown';
+}
+async function shortHash(env: Env, value: string): Promise<string> {
+  return (await hmacHex(signingSecret(env), value, 'SHA-256')).slice(0, 24);
+}
+async function readSession(env: Env, req: Request, url: URL, touch = true): Promise<any|null> {
+  await ensureAuthSchema(env);
+  const token = sessionTokenFrom(req, url);
+  if (!token) return null;
+  const s:any = await env.aura_db.prepare('SELECT * FROM sessions WHERE token=?').bind(token).first();
+  if (!s || s.revoked_at) return null;
+  const now = Date.now();
+  if ((s.expires_at && now > Number(s.expires_at)) || (s.last_seen_at && now - Number(s.last_seen_at) > SESSION_IDLE_MS)) {
+    await env.aura_db.prepare('UPDATE sessions SET revoked_at=? WHERE token=?').bind(now, token).run().catch(()=>{});
+    return null;
+  }
+  if (touch && (!s.last_seen_at || now - Number(s.last_seen_at) > 5 * 60 * 1000)) {
+    await env.aura_db.prepare('UPDATE sessions SET last_seen_at=? WHERE token=?').bind(now, token).run().catch(()=>{});
+  }
+  return s;
+}
+async function authLimit(env: Env, key: string, maxAttempts: number, windowMs: number, blockMs: number): Promise<boolean> {
+  await ensureAuthSchema(env);
+  const now = Date.now();
+  const row:any = await env.aura_db.prepare('SELECT count,window_start,blocked_until FROM auth_limits WHERE key=?').bind(key).first();
+  if (row?.blocked_until && now < Number(row.blocked_until)) return false;
+  if (!row || now - Number(row.window_start || 0) >= windowMs) {
+    await env.aura_db.prepare('INSERT INTO auth_limits (key,count,window_start,blocked_until) VALUES (?,1,?,0) ON CONFLICT(key) DO UPDATE SET count=1,window_start=excluded.window_start,blocked_until=0').bind(key, now).run();
+    return true;
+  }
+  const next = Number(row.count || 0) + 1;
+  const blockedUntil = next > maxAttempts ? now + blockMs : 0;
+  await env.aura_db.prepare('UPDATE auth_limits SET count=?,blocked_until=? WHERE key=?').bind(next, blockedUntil, key).run();
+  return next <= maxAttempts;
+}
 // Devuelve el rol del usuario de la sesion: superadmin | owner | finance | reception | pro | null
 async function getSessionRole(env: Env, req: Request, url: URL): Promise<string|null> {
-  let tok = '';
-  const auth = req.headers.get('authorization')||'';
-  if (auth.toLowerCase().startsWith('bearer ')) tok = auth.slice(7).trim();
-  if (!tok) tok = req.headers.get('x-aura-token') || '';
-  if (!tok) tok = url.searchParams.get('token') || '';
-  if (!tok) { try{ const c=req.headers.get('cookie')||''; const m=c.match(/aura_token=([^;]+)/); if(m) tok=decodeURIComponent(m[1]); }catch(e){} }
-  if (!tok) return null;
-  const s: any = await env.aura_db.prepare('SELECT email, tenant_id FROM sessions WHERE token=?').bind(tok).first();
+  const s: any = await readSession(env, req, url);
   if (!s) return null;
-  const owner: any = await env.aura_db.prepare('SELECT role FROM owners WHERE email=?').bind(s.email).first();
+  const owner: any = await env.aura_db.prepare('SELECT role,tenant_id FROM owners WHERE email=?').bind(s.email).first();
   if (owner?.role === 'superadmin') return 'superadmin';
-  const isOwner: any = await env.aura_db.prepare('SELECT 1 FROM owners WHERE email=? AND tenant_id=?').bind(s.email, s.tenant_id).first();
-  if (isOwner) return 'owner';
-  const mb: any = await env.aura_db.prepare('SELECT role FROM team_members WHERE email=? AND tenant_id=?').bind(s.email, s.tenant_id).first();
-  return mb?.role || 'owner';
+  if (owner?.tenant_id === s.tenant_id && ['owner','finance','reception','pro','admin'].includes(owner?.role)) return owner.role;
+  const mb: any = await env.aura_db.prepare("SELECT role FROM team_members WHERE email=? AND tenant_id=? AND status='active'").bind(s.email, s.tenant_id).first();
+  return mb?.role || null;
 }
 // === BLINDAJE COPILOTO: deriva el tenant de la SESIÓN (no del parámetro) y verifica permiso ===
 // Devuelve { tenant, role, email } si todo OK, o { error } si no.
 async function resolveCopilotTenant(env: Env, req: Request, url: URL, tenantSolicitado: string|null): Promise<{tenant?:string, role?:string, email?:string, error?:string}> {
-  let tok = '';
-  const auth = req.headers.get('authorization')||'';
-  if (auth.toLowerCase().startsWith('bearer ')) tok = auth.slice(7).trim();
-  if (!tok) tok = req.headers.get('x-aura-token') || '';
-  if (!tok) tok = url.searchParams.get('token') || '';
-  if (!tok) { try{ const c=req.headers.get('cookie')||''; const m=c.match(/aura_token=([^;]+)/); if(m) tok=decodeURIComponent(m[1]); }catch(e){} }
-  if (!tok) return { error:'no_token' };
-  const s:any = await env.aura_db.prepare('SELECT email, tenant_id FROM sessions WHERE token=?').bind(tok).first();
+  const s:any = await readSession(env, req, url);
   if (!s) return { error:'invalid_token' };
-  const owner:any = await env.aura_db.prepare('SELECT role FROM owners WHERE email=?').bind(s.email).first();
+  const owner:any = await env.aura_db.prepare('SELECT role,tenant_id FROM owners WHERE email=?').bind(s.email).first();
   const isSuper = owner?.role === 'superadmin';
   // El tenant SIEMPRE es el de la sesión. Solo el super admin puede operar sobre otra clínica.
   let tenant = s.tenant_id;
@@ -351,8 +508,10 @@ async function resolveCopilotTenant(env: Env, req: Request, url: URL, tenantSoli
   // Rol efectivo en esa clínica
   let role = isSuper ? 'superadmin' : '';
   if (!role) {
-    const isOwner:any = await env.aura_db.prepare('SELECT 1 FROM owners WHERE email=? AND tenant_id=?').bind(s.email, tenant).first();
-    if (isOwner) role='owner';
+    if (owner?.tenant_id === tenant && ['owner','finance','reception','pro','admin'].includes(owner?.role)) role=owner.role;
+    if (role) {
+      if (!['owner','finance','admin'].includes(role)) return { error:'no_copilot_permission' };
+    }
     else { const mb:any = await env.aura_db.prepare('SELECT role, can_copilot FROM team_members WHERE email=? AND tenant_id=?').bind(s.email, tenant).first();
       role = mb?.role || '';
       // Permiso del copiloto: recepción/pro necesitan can_copilot; owner/finance/superadmin siempre
@@ -1061,30 +1220,40 @@ const CONSENT_DEFAULTS = [
 export default {
   async fetch(req: Request, env: Env, ctx?: any): Promise<Response> {
     if (ctx) (globalThis as any).__execCtx = ctx;
-    if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
     const url = new URL(req.url);
     const p = url.pathname;
+    await ensureAuthSchema(env);
+    if (req.method === 'OPTIONS') return new Response(null, { headers: { ...corsForOrigin(req.headers.get('origin')), ...SECURITY_HEADERS, 'Access-Control-Max-Age':'600' } });
+    if (new Set(['/api/call-twiml','/api/call-status','/api/call-recording']).has(p) && !(await verifyTwilioSignature(env, req))) {
+      return json({ error:'invalid_twilio_signature' },403);
+    }
 
     // ── SEGURIDAD: Rate Limiting por IP ──
     const clientIP = req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'unknown';
     rlCleanup();
     
-    // Endpoints públicos de escritura: 30 req/min por IP (anti-spam de leads falsos)
+    // Endpoints públicos de escritura: binding Cloudflare + fallback local para desarrollo.
     const PUBLIC_WRITE_ENDPOINTS = ['/api/leads', '/api/lead-quiz-update', '/api/lead-chatted', '/api/lead-event', '/api/public-book', '/api/public-cancel', '/api/funnel-event'];
     if (req.method === 'POST' && PUBLIC_WRITE_ENDPOINTS.includes(p)) {
-      if (!checkRateLimit('pub_w:' + clientIP, 30, 60)) {
+      if (!(await cloudRateLimit(env.PUBLIC_RATE_LIMITER, 'pub_w:' + p + ':' + clientIP, 30, 60))) {
         return json({ error: 'rate_limited', detail: 'Demasiadas solicitudes. Intenta de nuevo en 1 minuto.' }, 429);
       }
     }
     // Chat IA: 10 req/min por IP (proteger coste OpenAI)
     if ((p === '/' || p === '/chat') && req.method === 'POST') {
-      if (!checkRateLimit('chat:' + clientIP, 10, 60)) {
+      if (!(await cloudRateLimit(env.COST_RATE_LIMITER, 'chat:' + clientIP, 10, 60))) {
         return json({ error: 'rate_limited', detail: 'Demasiados mensajes. Espera un momento.' }, 429);
       }
     }
+    if (req.method === 'POST' && (p === '/api/auth/request-code' || p === '/api/auth/verify-code')) {
+      if (!(await cloudRateLimit(env.AUTH_RATE_LIMITER, 'auth:' + p + ':' + clientIP, 20, 60))) return json({ error:'rate_limited' },429);
+    }
+    if (req.method === 'POST' && ['/api/transcribe','/api/generate-image','/api/regenerate-image','/api/sms-generate','/api/setter-funnel-brain/transcribe'].includes(p)) {
+      if (!(await cloudRateLimit(env.COST_RATE_LIMITER, 'cost:' + p + ':' + clientIP, 15, 60))) return json({ error:'rate_limited' },429);
+    }
     // Endpoints de lectura pública: 60 req/min por IP (anti-scraping)
     if (req.method === 'GET' && (p === '/api/content' || p === '/api/slots' || p === '/api/confirm-link' || p.startsWith('/api/tenant/'))) {
-      if (!checkRateLimit('pub_r:' + clientIP, 60, 60)) {
+      if (!(await cloudRateLimit(env.PUBLIC_RATE_LIMITER, 'pub_r:' + p + ':' + clientIP, 60, 60))) {
         return json({ error: 'rate_limited' }, 429);
       }
     }
@@ -1096,7 +1265,7 @@ export default {
         const body: any = await cloned.json();
         if (body._hp && body._hp.length > 0) {
           // Bot detectado — responder OK silenciosamente (no revelar que lo detectamos)
-          return json({ ok: true, lead_id: 'l_' + Math.random().toString(36).slice(2, 10) });
+          return json({ ok: true, lead_id: uid() });
         }
       } catch(e) {}
     }
@@ -1117,27 +1286,34 @@ export default {
       // Endpoints de GESTIÓN (panel del dueño) que exigen que el token de sesión pertenezca al tenant.
       // El embudo público del paciente y el chat NO están aquí (deben funcionar sin sesión).
       // Siempre protegidos (cualquier método): datos sensibles del panel.
-      const TENANT_GUARDED = new Set<string>([
-        '/api/lead-stage','/api/lead-meta','/api/lead-update','/api/lead-search',
-        '/api/treatments','/api/close-visit','/api/visit-revert','/api/professionals','/api/blocks',
-        '/api/waitlist','/api/pipeline','/api/products','/api/bonos','/api/cashbox','/api/profit',
-        '/api/recovered','/api/business-costs','/api/schedule-by-day','/api/vacations',
-        '/api/sms-templates','/api/team','/api/funnel-save','/api/funnel-edit','/api/funnel-delete',
-        '/api/consent-templates','/api/consent-send','/api/consents','/api/treatment-catalog','/api/tenant-meta',
-        '/api/360-connect-session','/api/360-io-signature','/api/channel-policy','/api/channel-policy/preview',
-        '/api/loyalty-adjust','/api/loyalty-balance',
-        '/api/clinical','/api/clinical-note','/api/viral-content','/api/viral-content-delete',
-        '/api/viral-submit','/api/viral-fire','/api/viral-update-views',
-        '/api/clinical-audit','/api/setter-brain-config','/api/setter-resources','/api/setter-funnel-brain','/api/setter-funnel-brain/transcribe','/api/setter-upload','/api/setter-upload-multipart/start','/api/setter-upload-multipart/part','/api/setter-upload-multipart/complete','/api/setter-upload-multipart/abort',
-        '/api/advanced-metrics','/api/retention-report','/api/funnel-metrics'
-      ]);
-      // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
-      const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar','/api/portal-clients']);
-      const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p)) || (p.startsWith('/api/dashboard/') && req.method==='GET') || (p==='/api/packs' && req.method==='POST') || (p.startsWith('/api/wa-') && p!=='/api/wa-webhook' && p!=='/api/wa-webhook-360' && p!=='/api/wa-media' && p!=='/api/wa-avatar') || (p.startsWith('/api/call-') && p!=='/api/call-twiml' && p!=='/api/call-status' && p!=='/api/call-recording') || p.startsWith('/api/inv-') || p==='/api/copilot';
-      if (mustGuard) {
+	      const TENANT_GUARDED = new Set<string>([
+	        '/api/lead-stage','/api/lead-meta','/api/lead-update','/api/lead-search',
+	        '/api/treatments','/api/close-visit','/api/visit-revert','/api/professionals','/api/blocks',
+	        '/api/waitlist','/api/pipeline','/api/products','/api/bonos','/api/cashbox','/api/profit',
+	        '/api/recovered','/api/business-costs','/api/schedule-by-day','/api/vacations',
+	        '/api/sms-templates','/api/team','/api/funnel-save','/api/funnel-edit','/api/funnel-delete',
+	        '/api/consent-templates','/api/consent-send','/api/consents','/api/treatment-catalog','/api/tenant-meta',
+	        '/api/360-connect-session','/api/360-io-signature','/api/channel-policy','/api/channel-policy/preview',
+	        '/api/loyalty-adjust','/api/loyalty-balance',
+	        '/api/clinical','/api/clinical-note','/api/viral-content','/api/viral-content-delete',
+	        '/api/viral-submit','/api/viral-fire','/api/viral-update-views',
+	        '/api/clinical-audit','/api/setter-brain-config','/api/setter-resources','/api/setter-funnel-brain','/api/setter-funnel-brain/transcribe','/api/setter-upload','/api/setter-upload-multipart/start','/api/setter-upload-multipart/part','/api/setter-upload-multipart/complete','/api/setter-upload-multipart/abort',
+	        '/api/advanced-metrics','/api/retention-report','/api/funnel-metrics',
+	        '/api/upload-image','/api/generate-image','/api/regenerate-image','/api/magic-link','/api/ical-link','/api/ical-url',
+	        '/api/send-sms','/api/sms-generate','/api/sms-credits','/api/sms-checkout','/api/transcribe',
+	        '/api/time-block','/api/time-blocks','/api/appt-create','/api/appt-move','/api/appt-resize',
+	        '/api/appt-cancel-panel','/api/appt-confirm-panel','/api/appt-noshow','/api/appt-arrived'
+	      ]);
+	      const TENANT_GUARDED_WRITE = new Set<string>(['/api/calendar','/api/booking-config']);
+	      const STAFF_ALLOWED = new Set<string>(['/api/appt-arrived','/api/clinical-note']);
+	      // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
+	      const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar','/api/portal-clients']);
+	      const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p)) || (req.method!=='GET' && TENANT_GUARDED_WRITE.has(p)) || (p.startsWith('/api/dashboard/') && req.method==='GET') || (p==='/api/packs' && req.method==='POST') || p.startsWith('/api/regenerate-images/') || (p.startsWith('/api/wa-') && p!=='/api/wa-webhook' && p!=='/api/wa-webhook-360' && p!=='/api/wa-media' && p!=='/api/wa-avatar') || (p.startsWith('/api/call-') && p!=='/api/call-twiml' && p!=='/api/call-status' && p!=='/api/call-recording') || p.startsWith('/api/inv-') || p==='/api/copilot';
+	      if (mustGuard) {
         // tenant solicitado: de query (?tenant=) o del body para POST
-        let tenantReq = url.searchParams.get('tenant') || url.searchParams.get('tenant_id');
-        if (!tenantReq && p.startsWith('/api/dashboard/')) tenantReq = decodeURIComponent(p.slice('/api/dashboard/'.length));
+	        let tenantReq = url.searchParams.get('tenant') || url.searchParams.get('tenant_id');
+	        if (!tenantReq && p.startsWith('/api/dashboard/')) tenantReq = decodeURIComponent(p.slice('/api/dashboard/'.length));
+	        if (!tenantReq && p.startsWith('/api/regenerate-images/')) tenantReq = decodeURIComponent(p.slice('/api/regenerate-images/'.length));
         if (!tenantReq && (req.method==='POST'||req.method==='PUT'||req.method==='DELETE')) {
           try {
             const cloned = req.clone();
@@ -1150,9 +1326,10 @@ export default {
             }
           } catch(e){}
         }
-        const err = await requireTenant(env, req, url, tenantReq);
-        if (err) return json({ error:'forbidden', reason: err }, 403);
-      }
+	        let err = await requireTenant(env, req, url, tenantReq);
+	        if (err && STAFF_ALLOWED.has(p)) err = await requireStaffTenant(env, req, tenantReq);
+	        if (err) return json({ error:'forbidden', reason: err }, 403);
+	      }
 
       // Restriccion por ROL: datos financieros sensibles solo owner/finance/superadmin
       const FINANCE_ONLY = new Set<string>(['/api/profit','/api/business-costs','/api/recovered']);
@@ -1231,16 +1408,17 @@ export default {
           const treatment = safeStorageSegment(b.treatment, 'general');
           const slot = safeStorageSegment(b.slot, 'video');
           const filename = String(b.filename || 'video.mp4').slice(0, 180);
-          const contentType = String(b.content_type || 'video/mp4');
+          const contentType = String(b.content_type || 'video/mp4').toLowerCase();
           const size = Number(b.size_bytes || 0);
-          if (!tenant || !contentType.startsWith('video/') || !size) return json({ error:'video_required' }, 400);
+          const allowedVideoTypes = new Set(['video/mp4','video/webm','video/quicktime']);
+          if (!tenant || !allowedVideoTypes.has(contentType) || !size) return json({ error:'video_required' }, 400);
           if (size > 500 * 1024 * 1024) return json({ error:'El vídeo supera el máximo de 500 MB' }, 400);
           if (!env.aura_r2) return json({ error:'storage_unavailable' }, 503);
           const ext = contentType.includes('webm') ? 'webm' : contentType.includes('quicktime') ? 'mov' : 'mp4';
-          const resourceKey = `setter/${safeStorageSegment(tenant, 'tenant')}/${treatment}/${slot}_${Date.now().toString(36)}${Math.random().toString(36).slice(2,7)}.${ext}`;
+          const resourceKey = `setter/${safeStorageSegment(tenant, 'tenant')}/${treatment}/${slot}_${Date.now().toString(36)}_${secureToken(8)}.${ext}`;
           const objectKey = 'img/' + resourceKey;
           const upload:any = await env.aura_r2.createMultipartUpload(objectKey, { httpMetadata: { contentType } });
-          const sessionId = 'su_' + Date.now().toString(36) + Math.random().toString(36).slice(2,10);
+          const sessionId = 'su_' + secureToken(16);
           const now = Date.now();
           await env.aura_db.prepare(`INSERT INTO setter_upload_sessions (id,tenant_id,treatment,slot,filename,object_key,content_type,upload_id,size_bytes,parts_json,created_at,updated_at)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`).bind(sessionId,tenant,treatment,slot,filename,objectKey,contentType,upload.uploadId,size,'[]',now,now).run();
@@ -1252,7 +1430,8 @@ export default {
           const partNumber = Number(fd.get('part_number') || 0);
           const chunk:any = fd.get('chunk');
           const tenant = String(fd.get('tenant_id') || '');
-          if (!sessionId || !chunk || !partNumber || partNumber < 1) return json({ error:'part_required' }, 400);
+          if (!sessionId || !chunk || !partNumber || partNumber < 1 || partNumber > 100) return json({ error:'part_required' }, 400);
+          if (Number(chunk.size||0)<=0 || Number(chunk.size||0)>6*1024*1024) return json({ error:'invalid_part_size' },413);
           const session:any = await env.aura_db.prepare('SELECT * FROM setter_upload_sessions WHERE id=? AND tenant_id=?').bind(sessionId,tenant).first();
           if (!session || !env.aura_r2) return json({ error:'upload_not_found' }, 404);
           const upload:any = env.aura_r2.resumeMultipartUpload(session.object_key, session.upload_id);
@@ -1274,6 +1453,14 @@ export default {
           if (!parts.length) return json({ error:'no_parts_uploaded' }, 400);
           const upload:any = env.aura_r2.resumeMultipartUpload(session.object_key, session.upload_id);
           await upload.complete(parts);
+          const probe:any = await env.aura_r2.get(session.object_key,{range:{offset:0,length:64}});
+          const firstBytes = probe ? new Uint8Array(await new Response(probe.body).arrayBuffer()) : new Uint8Array();
+          const detected = detectSafeVideo(firstBytes);
+          if (!detected || detected.contentType !== session.content_type) {
+            await env.aura_r2.delete(session.object_key).catch(()=>{});
+            await env.aura_db.prepare('DELETE FROM setter_upload_sessions WHERE id=? AND tenant_id=?').bind(sessionId,tenant).run();
+            return json({ error:'unsupported_video_signature' },415);
+          }
           await env.aura_db.prepare('DELETE FROM setter_upload_sessions WHERE id=? AND tenant_id=?').bind(sessionId,tenant).run();
           const resourceKey = String(session.object_key).replace(/^img\//,'');
           return json({ ok:true, url:'/img/'+resourceKey, key:resourceKey, type:'video', size:session.size_bytes });
@@ -1292,26 +1479,25 @@ export default {
             const fd = await req.formData();
             const file: any = fd.get('file');
             const tenant = String(fd.get('tenant_id') || '');
-            const treatment = String(fd.get('treatment') || 'general');
-            const slot = String(fd.get('slot') || 'resource'); // before_after, video, document, resource
+            const treatment = safeStorageSegment(fd.get('treatment') || 'general','general');
+            const slot = safeStorageSegment(fd.get('slot') || 'resource','resource'); // before_after, video, document, resource
             if (!file || !tenant) return json({ error: 'faltan datos' }, 400);
-            const ct = file.type || 'application/octet-stream';
-            const isImage = ct.startsWith('image/');
-            const isVideo = ct.startsWith('video/');
-            const isDoc = ct.includes('pdf') || ct.includes('word') || ct.includes('text');
-            const ext = isImage ? (ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : 'jpg')
-              : isVideo ? (ct.includes('mp4') ? 'mp4' : ct.includes('webm') ? 'webm' : 'mov')
-              : ct.includes('pdf') ? 'pdf' : 'bin';
-            // Clave organizada: setter/{tenant}/{treatment}/{slot}_{timestamp}.{ext}
-            const key = `setter/${tenant}/${treatment}/${slot}_${Date.now().toString(36)}${Math.random().toString(36).slice(2,6)}.${ext}`;
+            const declaredType = String(file.type || 'application/octet-stream').toLowerCase();
+            if (Number(file.size||0)<=0 || Number(file.size||0)>25*1024*1024) return json({ error:'invalid_file_size' },413);
             const buf = await file.arrayBuffer();
+            const bytes = new Uint8Array(buf);
+            const detected = detectSafeImage(bytes) || detectSafeVideo(bytes) || detectSafeDocument(bytes,declaredType);
+            if (!detected) return json({ error:'unsupported_file_signature' },415);
+            const isImage = detected.contentType.startsWith('image/');
+            const isVideo = detected.contentType.startsWith('video/');
+            const key = `setter/${safeStorageSegment(tenant,'tenant')}/${treatment}/${slot}_${Date.now().toString(36)}_${secureToken(8)}.${detected.ext}`;
             // Limitar tamaño: 25MB para vídeos, 10MB para imágenes, 5MB para docs
             const maxSize = isVideo ? 25*1024*1024 : isImage ? 10*1024*1024 : 5*1024*1024;
             if (buf.byteLength > maxSize) return json({ error: `Archivo demasiado grande. Máximo: ${Math.round(maxSize/1024/1024)}MB` }, 400);
             if (env.aura_r2) {
-              await env.aura_r2.put('img/'+key, buf, { httpMetadata: { contentType: ct } });
+              await env.aura_r2.put('img/'+key, buf, { httpMetadata: { contentType: detected.contentType } });
             } else {
-              await env.AURA_IMG.put(key, buf, { metadata: { contentType: ct } });
+              await env.AURA_IMG.put(key, buf, { metadata: { contentType: detected.contentType } });
             }
             return json({ ok: true, url: '/img/' + key, key, type: isImage ? 'image' : isVideo ? 'video' : 'document', size: buf.byteLength });
           } catch (e: any) { return json({ error: String(e) }, 400); }
@@ -1353,16 +1539,13 @@ export default {
           if (consentId && leadId && (await verifyConsent(env, consentId, leadId, ktok))) allowed = true;
           if (!allowed) {
             // sesion del duenno: el token debe pertenecer a la clinica duena de esta firma
-            const stok = (req.headers.get('Authorization')||'').replace(/^Bearer\s+/i,'') || url.searchParams.get('token') || '';
-            if (stok) {
-              try {
-                const sess:any = await env.aura_db.prepare('SELECT tenant_id FROM sessions WHERE token=?').bind(stok).first();
-                if (sess?.tenant_id) {
-                  const owner:any = await env.aura_db.prepare('SELECT tenant_id FROM consents_signed WHERE signature_key=?').bind(k).first();
-                  if (owner && owner.tenant_id === sess.tenant_id) allowed = true;
-                }
-              } catch(e) {}
-            }
+            try {
+              const sess:any = await readSession(env, req, url);
+              if (sess?.tenant_id) {
+                const owner:any = await env.aura_db.prepare('SELECT tenant_id FROM consents_signed WHERE signature_key=?').bind(k).first();
+                if (owner && owner.tenant_id === sess.tenant_id) allowed = true;
+              }
+            } catch(e) {}
           }
           if (!allowed) return new Response('forbidden', { status: 403, headers: CORS });
         }
@@ -1404,14 +1587,15 @@ export default {
           const fd = await req.formData();
           const file: any = fd.get('file');
           const tenant = String(fd.get('tenant_id') || '');
-          const slot = String(fd.get('slot') || 'hero');
+          const slot = safeStorageSegment(fd.get('slot') || 'hero', 'hero');
           if (!file || !tenant) return json({ error: 'faltan datos' }, 400);
-          const ct = file.type || 'image/jpeg';
-          const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : 'jpg';
-          const key = 'up_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8) + '.' + ext;
+          if (Number(file.size || 0) <= 0 || Number(file.size || 0) > 12*1024*1024) return json({ error:'image_too_large' },413);
           const buf = await file.arrayBuffer();
-          if (env.aura_r2) { try { await env.aura_r2.put('img/'+key, buf, { httpMetadata: { contentType: ct } }); } catch(e) { await env.AURA_IMG.put(key, buf, { metadata: { contentType: ct } }); } }
-          else { await env.AURA_IMG.put(key, buf, { metadata: { contentType: ct } }); }
+          const detected = detectSafeImage(new Uint8Array(buf));
+          if (!detected) return json({ error:'unsupported_image' },415);
+          const key = 'tenant/' + safeStorageSegment(tenant,'tenant') + '/assets/up_' + Date.now().toString(36) + '_' + secureToken(6) + '.' + detected.ext;
+          if (env.aura_r2) { try { await env.aura_r2.put('img/'+key, buf, { httpMetadata: { contentType: detected.contentType } }); } catch(e) { await env.AURA_IMG.put(key, buf, { metadata: { contentType: detected.contentType } }); } }
+          else { await env.AURA_IMG.put(key, buf, { metadata: { contentType: detected.contentType } }); }
           const imgUrl = '/img/' + key;
           if (slot==='hero'||slot==='doctor'||slot==='room') {
             const col = slot==='doctor' ? 'doctor_image_url' : slot==='room' ? 'room_image_url' : 'hero_image_url';
@@ -1821,6 +2005,7 @@ export default {
       // Leads CRUD
       if (p === '/api/leads' && req.method === 'POST') {
         const b = await req.json();
+        if (!(await verifyTurnstile(env, String(b.turnstile_token || ''), req, 'lead'))) return json({ error:'Verificación de seguridad no válida. Recarga e inténtalo de nuevo.' },400);
         // Resolver tenant por slug si no es un ID directo
         if (b.tenant_id && !b.tenant_id.includes('-') && b.tenant_id.length === 8) {
           const resolved: any = await env.aura_db.prepare('SELECT id FROM tenants WHERE public_slug=?').bind(b.tenant_id).first();
@@ -1864,7 +2049,7 @@ export default {
           await env.aura_db.prepare('UPDATE leads SET contact_consent=1,contact_consent_at=?,contact_consent_proof=? WHERE id=? AND tenant_id=?').bind(now,proof,id,b.tenant_id).run();
           if(normalizedPhone) await env.aura_db.prepare("INSERT INTO wa_consents (tenant_id,phone,category,status,source,proof,granted_at,revoked_at,updated_at) VALUES (?,?,'service','granted',?,?,?,NULL,?) ON CONFLICT(tenant_id,phone,category) DO UPDATE SET status='granted',source=excluded.source,proof=excluded.proof,granted_at=excluded.granted_at,revoked_at=NULL,updated_at=excluded.updated_at").bind(b.tenant_id,normalizedPhone,String(b.source||'embudo'),proof,now,now).run();
         }
-        return json({ ok: true, lead_id: id, ref: b.ref || null });
+        return json({ ok: true, lead_id: id, lead_token: await signLead(env,id), ref: b.ref || null });
       }
 
       if (p === '/api/leads' && req.method === 'GET') {
@@ -2046,9 +2231,10 @@ export default {
       if (p === '/api/confirm-link' && req.method === 'GET') {
         const apptId = url.searchParams.get('a');
         const token = url.searchParams.get('k');
-        if (!apptId || !token) return new Response('<html><body style="font-family:sans-serif;text-align:center;padding:3rem"><h2>Enlace invalido</h2></body></html>', {headers:{'Content-Type':'text/html'}});
-        const expected = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(apptId+'aura-confirm-2026')).then((h:ArrayBuffer)=>Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,12));
-        if (token !== expected) return new Response('<html><body style="font-family:sans-serif;text-align:center;padding:3rem"><h2>Enlace invalido o expirado</h2></body></html>', {headers:{'Content-Type':'text/html'}});
+        const expiresAt = Number(url.searchParams.get('e') || 0);
+        if (!apptId || !token || !expiresAt || Date.now() > expiresAt || expiresAt > Date.now()+400*86400000) return new Response('<html><body style="font-family:sans-serif;text-align:center;padding:3rem"><h2>Enlace invalido o expirado</h2></body></html>', {headers:{'Content-Type':'text/html'}});
+        const expected = await signAppointmentConfirm(env, apptId, expiresAt);
+        if (!timingSafeEqual(token, expected)) return new Response('<html><body style="font-family:sans-serif;text-align:center;padding:3rem"><h2>Enlace invalido o expirado</h2></body></html>', {headers:{'Content-Type':'text/html'}});
         const appt:any = await env.aura_db.prepare("SELECT a.*, l.name as lead_name, t.name as clinic_name FROM appointments a LEFT JOIN leads l ON a.lead_id=l.id LEFT JOIN tenants t ON a.tenant_id=t.id WHERE a.id=?").bind(apptId).first();
         if (!appt) return new Response('<html><body style="font-family:sans-serif;text-align:center;padding:3rem"><h2>Cita no encontrada</h2></body></html>', {headers:{'Content-Type':'text/html'}});
         await env.aura_db.prepare("UPDATE appointments SET status='confirmed', confirmed=1 WHERE id=?").bind(apptId).run();
@@ -2124,21 +2310,29 @@ export default {
         const b: any = await req.json();
         const email = (b.email||'').trim().toLowerCase();
         if (!email || !email.includes('@')) return json({ error: 'email inválido' }, 400);
-        const code = String(Math.floor(100000 + Math.random()*900000));
+        if (!(await verifyTurnstile(env, String(b.turnstile_token || ''), req, 'login'))) return json({ error:'Verificación de seguridad no válida. Recarga e inténtalo de nuevo.' },400);
+        const ipKey = await shortHash(env, clientIpPrefix(req));
+        const emailKey = await shortHash(env, email);
+        const ipAllowed = await authLimit(env, 'otp-request-ip:'+ipKey, 8, 15*60*1000, 30*60*1000);
+        const emailAllowed = await authLimit(env, 'otp-request-email:'+emailKey, 3, 15*60*1000, 30*60*1000);
+        if (!ipAllowed || !emailAllowed) return json({ error:'rate_limited', detail:'Espera antes de solicitar otro código.' }, 429);
+        const owner:any = await env.aura_db.prepare("SELECT tenant_id,role FROM owners WHERE email=? AND role IN ('owner','superadmin','finance','reception','pro','admin')").bind(email).first();
+        const tm:any = await env.aura_db.prepare("SELECT tenant_id,role FROM team_members WHERE email=? AND status='active'").bind(email).first();
+        const identity = owner || tm;
+        // Respuesta indistinguible para evitar enumerar usuarios autorizados.
+        if (!identity?.tenant_id) return json({ ok:true, sent:true });
+        const random = new Uint32Array(1); crypto.getRandomValues(random);
+        const code = String(100000 + (random[0] % 900000));
         const exp = Date.now() + 10*60*1000;
-        // Si el email es de un miembro del equipo, usa el tenant de ese equipo
-        const tm: any = await env.aura_db.prepare("SELECT tenant_id FROM team_members WHERE email=? AND status='active'").bind(email).first();
-        const tenant = tm?.tenant_id || b.tenant_id || email.split('@')[0].replace(/[^a-z0-9]/g,'-');
-        await env.aura_db.prepare(
-          `INSERT INTO owners (email,tenant_id,code,code_exp) VALUES (?,?,?,?)
-           ON CONFLICT(email) DO UPDATE SET code=excluded.code,code_exp=excluded.code_exp`
-        ).bind(email, tenant, code, exp).run();
+        const codeHash = await hmacHex(signingSecret(env), 'otp:'+email+':'+code, 'SHA-256');
+        await env.aura_db.prepare("INSERT INTO auth_codes (email,tenant_id,code_hash,expires_at,attempts,created_at) VALUES (?,?,?,?,0,?) ON CONFLICT(email) DO UPDATE SET tenant_id=excluded.tenant_id,code_hash=excluded.code_hash,expires_at=excluded.expires_at,attempts=0,created_at=excluded.created_at").bind(email, identity.tenant_id, codeHash, exp, Date.now()).run();
         // enviar con Resend
         try{
-          await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':'Bearer '+env.RESEND_KEY,'Content-Type':'application/json'},body:JSON.stringify({
+          const mail = await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':'Bearer '+env.RESEND_KEY,'Content-Type':'application/json'},body:JSON.stringify({
             from:'AURA <onboarding@resend.dev>', to:[email], subject:'Tu código de acceso a AURA: '+code,
             html:`<div style="font-family:sans-serif;max-width:420px;margin:auto;padding:24px"><h2 style="font-family:Georgia,serif;color:#A85942">Tu código de acceso</h2><p style="color:#444">Usa este código para entrar a tu panel de AURA. Caduca en 10 minutos.</p><div style="font-size:34px;font-weight:bold;letter-spacing:8px;color:#2A211C;background:#F7EFE8;padding:18px;border-radius:12px;text-align:center;margin:18px 0">${code}</div><p style="color:#999;font-size:12px">Si no has solicitado esto, ignora este correo.</p></div>`
           })});
+          if (!mail.ok) return json({ ok:true, sent:false });
         }catch(e){ return json({ ok:true, sent:false }); }
         return json({ ok:true, sent:true });
       }
@@ -2146,25 +2340,38 @@ export default {
       if (p === '/api/auth/verify-code' && req.method === 'POST') {
         const b: any = await req.json();
         const email = (b.email||'').trim().toLowerCase();
-        const o: any = await env.aura_db.prepare('SELECT * FROM owners WHERE email=?').bind(email).first();
-        if (!o || o.code !== String(b.code) || Date.now() > (o.code_exp||0)) return json({ error: 'Código incorrecto o caducado' }, 401);
-        const token = crypto.randomUUID().replace(/-/g,'') + crypto.randomUUID().replace(/-/g,'');
-        await env.aura_db.prepare('INSERT INTO sessions (token,email,tenant_id,created_at) VALUES (?,?,?,?)').bind(token, email, o.tenant_id, Date.now()).run();
-        await env.aura_db.prepare('UPDATE owners SET code=NULL WHERE email=?').bind(email).run();
-        // resolver rol: si es miembro del equipo usa su rol; si no, es owner
-        const member: any = await env.aura_db.prepare("SELECT role FROM team_members WHERE email=? AND tenant_id=? AND status='active'").bind(email, o.tenant_id).first();
-        const role = member?.role || 'owner';
-        return json({ ok:true, token, tenant_id: o.tenant_id, email, role });
+        const code = String(b.code || '').trim();
+        if (!email || !/^\d{6}$/.test(code)) return json({ error:'Código incorrecto o caducado' }, 401);
+        const ipKey = await shortHash(env, clientIpPrefix(req));
+        const emailKey = await shortHash(env, email);
+        const allowed = (await authLimit(env, 'otp-verify-ip:'+ipKey, 20, 15*60*1000, 30*60*1000)) && (await authLimit(env, 'otp-verify-email:'+emailKey, 6, 15*60*1000, 30*60*1000));
+        if (!allowed) return json({ error:'rate_limited', detail:'Demasiados intentos. Solicita un código nuevo más tarde.' }, 429);
+        const record:any = await env.aura_db.prepare('SELECT * FROM auth_codes WHERE email=?').bind(email).first();
+        const submittedHash = await hmacHex(signingSecret(env), 'otp:'+email+':'+code, 'SHA-256');
+        if (!record || record.attempts >= 5 || Date.now() > Number(record.expires_at || 0) || !timingSafeEqual(record.code_hash || '', submittedHash)) {
+          if (record) await env.aura_db.prepare('UPDATE auth_codes SET attempts=attempts+1 WHERE email=?').bind(email).run();
+          return json({ error:'Código incorrecto o caducado' }, 401);
+        }
+        const owner:any = await env.aura_db.prepare("SELECT tenant_id,role FROM owners WHERE email=? AND role IN ('owner','superadmin','finance','reception','pro','admin')").bind(email).first();
+        const member:any = await env.aura_db.prepare("SELECT tenant_id,role FROM team_members WHERE email=? AND tenant_id=? AND status='active'").bind(email, record.tenant_id).first();
+        const identity = owner?.tenant_id === record.tenant_id ? owner : member;
+        if (!identity) { await env.aura_db.prepare('DELETE FROM auth_codes WHERE email=?').bind(email).run(); return json({ error:'Acceso no autorizado' }, 403); }
+        const token = secureToken(32);
+        const now = Date.now();
+        const uaHash = await shortHash(env, req.headers.get('user-agent') || 'unknown');
+        await env.aura_db.prepare('INSERT INTO sessions (token,email,tenant_id,created_at,expires_at,last_seen_at,revoked_at,user_agent_hash,ip_prefix) VALUES (?,?,?,?,?,?,NULL,?,?)').bind(token, email, record.tenant_id, now, now+SESSION_ABSOLUTE_MS, now, uaHash, clientIpPrefix(req)).run();
+        await env.aura_db.prepare('DELETE FROM auth_codes WHERE email=?').bind(email).run();
+        await env.aura_db.prepare('UPDATE sessions SET revoked_at=? WHERE email=? AND revoked_at IS NULL AND token NOT IN (SELECT token FROM sessions WHERE email=? AND revoked_at IS NULL ORDER BY created_at DESC LIMIT 5)').bind(now,email,email).run().catch(()=>{});
+        return json({ ok:true, token, tenant_id:record.tenant_id, email, role:identity.role, expires_at:now+SESSION_ABSOLUTE_MS });
       }
       // AUTH: validar sesión
       if (p === '/api/auth/me' && req.method === 'GET') {
-        const token = url.searchParams.get('token');
-        if (!token) return json({ auth:false });
-        const s: any = await env.aura_db.prepare('SELECT * FROM sessions WHERE token=?').bind(token).first();
+        const s: any = await readSession(env, req, url);
         if (!s) return json({ auth:false });
-        const owner: any = await env.aura_db.prepare('SELECT role FROM owners WHERE email=?').bind(s.email).first();
+        const owner: any = await env.aura_db.prepare('SELECT role,tenant_id FROM owners WHERE email=?').bind(s.email).first();
         const mb: any = await env.aura_db.prepare("SELECT role,name FROM team_members WHERE email=? AND tenant_id=? AND status='active'").bind(s.email, s.tenant_id).first();
-        const role = owner?.role === 'superadmin' ? 'superadmin' : (mb?.role || 'owner');
+        const role = owner?.role === 'superadmin' ? 'superadmin' : (owner?.tenant_id === s.tenant_id ? owner?.role : (mb?.role || null));
+        if (!role) return json({ auth:false });
         // Estado de aceptación legal (solo aplica al dueño de la clínica, no a superadmin ni a otros roles)
         let legal_accepted = true;
         if (role === 'owner') {
@@ -2174,23 +2381,21 @@ export default {
             legal_accepted = !!la;
           } catch(e){ legal_accepted = true; }
         }
-        return json({ auth:true, email:s.email, tenant_id:s.tenant_id, role, name: mb?.name||null, legal_accepted });
+        return json({ auth:true, email:s.email, tenant_id:s.tenant_id, role, name: mb?.name||null, legal_accepted, expires_at:s.expires_at||null });
       }
 
       // ESTADO/REGISTRO de aceptación legal (clickwrap)
       if (p === '/api/legal-status' && req.method === 'GET') {
-        const token = url.searchParams.get('token'); const tid = url.searchParams.get('tenant')||'';
-        if (!token) return json({ ok:false, error:'unauthorized' }, 401);
-        const s:any = await env.aura_db.prepare('SELECT * FROM sessions WHERE token=?').bind(token).first();
+        const tid = url.searchParams.get('tenant')||'';
+        const s:any = await readSession(env, req, url);
         if (!s) return json({ ok:false, error:'unauthorized' }, 401);
+        if (tid && tid !== s.tenant_id && (await getSessionRole(env,req,url)) !== 'superadmin') return json({ ok:false,error:'forbidden' },403);
         await env.aura_db.prepare('CREATE TABLE IF NOT EXISTS legal_acceptances (id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT, signer_name TEXT, clinic_name TEXT, version TEXT, docs TEXT, ip TEXT, user_agent TEXT, accepted_at INTEGER)').run().catch(()=>{});
         const la:any = await env.aura_db.prepare('SELECT * FROM legal_acceptances WHERE tenant_id=? ORDER BY accepted_at DESC LIMIT 1').bind(tid||s.tenant_id).first();
         return json({ ok:true, accepted: !!la, record: la||null });
       }
       if (p === '/api/legal-accept' && req.method === 'POST') {
-        const token = url.searchParams.get('token') || (req.headers.get('authorization')||'').replace(/^Bearer\s+/i,'');
-        if (!token) return json({ ok:false, error:'unauthorized' }, 401);
-        const s:any = await env.aura_db.prepare('SELECT * FROM sessions WHERE token=?').bind(token).first();
+        const s:any = await readSession(env, req, url);
         if (!s) return json({ ok:false, error:'unauthorized' }, 401);
         const b:any = await req.json().catch(()=>({}));
         const signer = (b.signer_name||'').trim();
@@ -2201,16 +2406,14 @@ export default {
         const t:any = await env.aura_db.prepare('SELECT name FROM tenants WHERE id=?').bind(tid).first().catch(()=>null);
         const ip = req.headers.get('cf-connecting-ip') || '';
         const ua = req.headers.get('user-agent') || '';
-        const id = 'la_'+Math.random().toString(36).slice(2,12);
+        const id = 'la_'+secureToken(8);
         await env.aura_db.prepare('INSERT INTO legal_acceptances (id,tenant_id,email,signer_name,clinic_name,version,docs,ip,user_agent,accepted_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
           .bind(id, tid, s.email, signer, (t&&t.name)||(b.clinic_name||''), b.version||'1.0', JSON.stringify({terms:true,privacy:true,dpa:true,reviewed:!!b.reviewed}), ip, ua, Date.now()).run();
         return json({ ok:true, id });
       }
       // Listar todos los tenants (solo para superadmin)
       if (p === '/api/tenants' && req.method === 'GET') {
-        const token = url.searchParams.get('token') || (req.headers.get('authorization')||'').replace(/^Bearer\s+/i,'');
-        if (!token) return json({ error:'unauthorized' }, 401);
-        const s: any = await env.aura_db.prepare('SELECT email FROM sessions WHERE token=?').bind(token).first();
+        const s: any = await readSession(env, req, url);
         if (!s) return json({ error:'unauthorized' }, 401);
         const owner: any = await env.aura_db.prepare('SELECT role FROM owners WHERE email=?').bind(s.email).first();
         if (!owner || owner.role !== 'superadmin') return json({ error:'forbidden' }, 403);
@@ -2222,13 +2425,11 @@ export default {
       if (p.startsWith('/api/admin-')) {
         // El superadmin puede ver todas las clínicas. Un propietario/administrador
         // solo puede abrir y actualizar el wizard de su propia clínica.
-        let tk = (req.headers.get('authorization')||'').replace(/^Bearer\s+/i,''); if(!tk) tk = url.searchParams.get('token')||'';
-        if(!tk){ try{ const c=req.headers.get('cookie')||''; const m=c.match(/aura_token=([^;]+)/); if(m) tk=decodeURIComponent(m[1]); }catch(e){} }
-        const sess:any = tk ? await env.aura_db.prepare('SELECT email,tenant_id FROM sessions WHERE token=?').bind(tk).first() : null;
+        const sess:any = await readSession(env, req, url);
         const ow:any = sess ? await env.aura_db.prepare('SELECT role FROM owners WHERE email=?').bind(sess.email).first() : null;
         const isSuperAdmin = !!(ow && ow.role === 'superadmin');
-        const isTenantOwner:any = sess ? await env.aura_db.prepare('SELECT 1 FROM owners WHERE email=? AND tenant_id=?').bind(sess.email, sess.tenant_id).first().catch(()=>null) : null;
-        const member:any = sess ? await env.aura_db.prepare('SELECT role FROM team_members WHERE email=? AND tenant_id=?').bind(sess.email, sess.tenant_id).first().catch(()=>null) : null;
+        const isTenantOwner:any = sess ? await env.aura_db.prepare("SELECT 1 FROM owners WHERE email=? AND tenant_id=? AND role='owner'").bind(sess.email, sess.tenant_id).first().catch(()=>null) : null;
+        const member:any = sess ? await env.aura_db.prepare("SELECT role FROM team_members WHERE email=? AND tenant_id=? AND status='active'").bind(sess.email, sess.tenant_id).first().catch(()=>null) : null;
         const isOnboardingAdmin = !!isTenantOwner || member?.role === 'admin';
         const isOwnWizard = p === '/api/admin-onboarding-wizard';
         if (!isSuperAdmin && (!isOnboardingAdmin || !isOwnWizard)) return json({ error:'forbidden' }, 403);
@@ -2765,7 +2966,7 @@ export default {
       // LEAD QUIZ UPDATE: actualizar respuestas del quiz después de completarlo
       if (p === '/api/lead-quiz-update' && req.method === 'POST') {
         const b: any = await req.json();
-        if (!b.lead_id) return json({ error: 'missing lead_id' }, 400);
+        if (!(await requireLeadCapability(env,b))) return json({ error:'invalid_lead_capability' },403);
         await env.aura_db.prepare(
           "UPDATE leads SET motivo=?, plazo=?, objecion=?, quiz_score=?, temperature=? WHERE id=?"
         ).bind(b.motivo||null, b.plazo||null, b.objecion||null, b.quiz_score||0, b.temperature||'cold', b.lead_id).run();
@@ -2773,6 +2974,7 @@ export default {
       }
       if (p === '/api/lead-chatted' && req.method === 'POST') {
         const b: any = await req.json();
+        if (!(await requireLeadCapability(env,b))) return json({ error:'invalid_lead_capability' },403);
         await env.aura_db.prepare("UPDATE leads SET chatted=1 WHERE id=?").bind(b.lead_id).run();
         return json({ ok:true });
       }
@@ -3093,6 +3295,7 @@ export default {
       // Lead event (whatsapp opened, etc.)
       if (p === '/api/lead-event' && req.method === 'POST') {
         const b: any = await req.json();
+        if (!(await requireLeadCapability(env,b))) return json({ error:'invalid_lead_capability' },403);
         if (b.event === 'whatsapp_opened' && b.lead_id) {
           await env.aura_db.prepare(`UPDATE leads SET wa_opened=1, last_message_at=CURRENT_TIMESTAMP WHERE id=?`).bind(b.lead_id).run();
         }
@@ -4971,7 +5174,7 @@ export default {
         if (!ok) return json({ error: 'invalid_token' }, 403);
         const lr: any = await env.aura_db.prepare('SELECT id,name,phone,treatment,motivo,plazo,objecion,temperature,status FROM leads WHERE id=?').bind(lead).first();
         const mr = await env.aura_db.prepare('SELECT role,content,channel,created_at FROM messages WHERE lead_id=? ORDER BY created_at ASC').bind(lead).all();
-        return json({ ok: true, lead: lr || null, messages: mr.results || [] });
+        return json({ ok: true, lead: lr || null, lead_token: tok, messages: mr.results || [] });
       }
       // Generar link mágico de un lead
       if (p === '/api/magic-link' && req.method === 'GET') {
@@ -4983,6 +5186,12 @@ export default {
       // Citas
       if (p === '/api/appointments' && req.method === 'POST') {
         const b = await req.json();
+        const panelSession:any = await readSession(env,req,url);
+        if (!panelSession) {
+          if (!(await requireLeadCapability(env,b))) return json({ error:'invalid_lead_capability' },403);
+          const ownedLead:any = await env.aura_db.prepare('SELECT tenant_id FROM leads WHERE id=?').bind(b.lead_id).first();
+          if (!ownedLead || ownedLead.tenant_id !== b.tenant_id) return json({ error:'tenant_mismatch' },403);
+        } else if (panelSession.tenant_id !== b.tenant_id && (await getSessionRole(env,req,url)) !== 'superadmin') return json({ error:'tenant_mismatch' },403);
         const id = appId();
         await env.aura_db
           .prepare(
@@ -5433,8 +5642,8 @@ export default {
         const icalTenant = parts[3] || '';
         const icalPro = parts[4] || '';
         const icalToken = (parts[5] || '').replace('.ics','');
-        const expectedToken = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(icalTenant+icalPro+'aura-ical-2026')).then((h:ArrayBuffer)=>Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16));
-        if (icalToken !== expectedToken) return new Response('Unauthorized', {status:401});
+        const expectedToken = await signIcalFeed(env, icalTenant, icalPro);
+        if (!timingSafeEqual(icalToken, expectedToken)) return new Response('Unauthorized', {status:401});
         const from = new Date(Date.now()-7*86400000).toISOString().slice(0,10);
         const to = new Date(Date.now()+120*86400000).toISOString().slice(0,10);
         const rows:any = await env.aura_db.prepare("SELECT a.*, l.name as lead_name, l.phone FROM appointments a LEFT JOIN leads l ON a.lead_id=l.id WHERE a.tenant_id=? AND a.professional_id=? AND a.date_iso BETWEEN ? AND ? AND a.status NOT IN ('cancelled','noshow') ORDER BY a.date_iso").bind(icalTenant, icalPro, from, to).all();
@@ -5454,7 +5663,7 @@ export default {
       if (p === '/api/ical-url' && req.method === 'GET') {
         const proId = url.searchParams.get("professional_id"); const tenant = url.searchParams.get("tenant") || "";
         if (!proId || !tenant) return json({ error:'missing params' }, 400);
-        const token = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(tenant+proId+'aura-ical-2026')).then((h:ArrayBuffer)=>Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16));
+        const token = await signIcalFeed(env, tenant, proId);
         const icalUrl = `https://aura-chat-worker.adrian-7b9.workers.dev/api/ical/${tenant}/${proId}/${token}.ics`;
         return json({ ok:true, url:icalUrl, instructions:'Copia esta URL y pégala en Google Calendar > Otros calendarios > Desde URL. IMPORTANTE: después ve a calendar.google.com/calendar/u/0/syncselect y activa el sync del nuevo calendario. En Apple Calendar (iPhone/Mac) se actualiza cada 15 min automáticamente.', sync_url:'https://calendar.google.com/calendar/u/0/syncselect', tips:['Apple Calendar (iPhone/iPad): Ajustes > Calendario > Cuentas > Añadir cuenta > Otro > Suscripción a calendario > pega la URL','Google Calendar (PC): Otros calendarios > + > Desde URL > pega > Añadir','Outlook: Añadir calendario > Suscribirse desde web > pega la URL'] });
       }
@@ -5466,15 +5675,21 @@ export default {
       if (p === '/api/staff-login' && req.method === 'POST') {
         const b:any = await req.json();
         if (!b.tenant_id || !b.pin) return json({ error:'Introduce tu PIN' }, 400);
-        const pro:any = await env.aura_db.prepare("SELECT id,name,color,role FROM professionals WHERE tenant_id=? AND pin=? AND active=1").bind(b.tenant_id, b.pin).first();
+        if (!(await cloudRateLimit(env.AUTH_RATE_LIMITER,'staff-login:'+clientIP+':'+safeStorageSegment(b.tenant_id,'tenant'),10,60))) return json({error:'Demasiados intentos. Espera un minuto.'},429);
+        const candidates:any = await env.aura_db.prepare("SELECT id,name,color,role,pin,pin_hash FROM professionals WHERE tenant_id=? AND active=1").bind(b.tenant_id).all();
+        let pro:any = null;
+        for (const candidate of (candidates.results||[])) {
+          const candidateHash = await hmacHex(signingSecret(env),`staff-pin:${b.tenant_id}:${candidate.id}:${String(b.pin)}`,'SHA-256');
+          if ((candidate.pin_hash && timingSafeEqual(candidate.pin_hash,candidateHash)) || (!candidate.pin_hash && candidate.pin && timingSafeEqual(String(candidate.pin),String(b.pin)))) { pro=candidate; if(!candidate.pin_hash) await env.aura_db.prepare('UPDATE professionals SET pin_hash=?,pin=NULL WHERE id=? AND tenant_id=?').bind(candidateHash,candidate.id,b.tenant_id).run(); break; }
+        }
         if (!pro) return json({ error:'PIN incorrecto' }, 401);
-        const staffToken = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pro.id+b.tenant_id+'staff-2026-'+Date.now())).then((h:ArrayBuffer)=>Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,32));
-        await env.AURA_IMG.put('staff_session_'+staffToken, JSON.stringify({pro_id:pro.id, tenant_id:b.tenant_id, name:pro.name, role:pro.role, exp:Date.now()+24*3600000}));
-        return json({ ok:true, token:staffToken, professional:pro });
+        const staffToken = secureToken(32);
+        await env.AURA_IMG.put('staff_session_'+staffToken, JSON.stringify({pro_id:pro.id, tenant_id:b.tenant_id, name:pro.name, role:pro.role, exp:Date.now()+8*3600000}), { expirationTtl:8*3600 });
+        return json({ ok:true, token:staffToken, professional:{id:pro.id,name:pro.name,color:pro.color,role:pro.role}, expires_at:Date.now()+8*3600000 });
       }
 
       if (p === '/api/staff-agenda' && req.method === 'GET') {
-        const staffToken = url.searchParams.get('token') || '';
+        const staffToken = req.headers.get('x-staff-token') || '';
         const sessionData = await env.AURA_IMG.get('staff_session_'+staffToken);
         if (!sessionData) return json({ error:'Sesión expirada' }, 401);
         const sess = JSON.parse(sessionData);
@@ -5490,16 +5705,17 @@ export default {
         // Bloques de tiempo
         const blocks:any = await env.aura_db.prepare("SELECT * FROM time_blocks WHERE tenant_id=? AND professional_id=? AND block_date BETWEEN ? AND ?").bind(sess.tenant_id, sess.pro_id, dateParam, weekEnd).all();
         // iCal URL
-        const icalToken = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sess.tenant_id+sess.pro_id+'aura-ical-2026')).then((h:ArrayBuffer)=>Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16));
+        const icalToken = await signIcalFeed(env, sess.tenant_id, sess.pro_id);
         const icalUrl = `https://aura-chat-worker.adrian-7b9.workers.dev/api/ical/${sess.tenant_id}/${sess.pro_id}/${icalToken}.ics`;
         return json({ ok:true, professional:{id:sess.pro_id, name:sess.name, role:sess.role}, appointments:appts.results||[], blocks:blocks.results||[], metrics:{month_appointments:monthAppts?.total||0, month_completed:monthAppts?.completed||0, month_revenue:monthRevenue?.total||0}, ical_url:icalUrl });
       }
 
       if (p === '/api/staff-patient' && req.method === 'GET') {
-        const staffToken = url.searchParams.get('token') || '';
+        const staffToken = req.headers.get('x-staff-token') || '';
         const sessionData = await env.AURA_IMG.get('staff_session_'+staffToken);
         if (!sessionData) return json({ error:'Sesión expirada' }, 401);
         const sess = JSON.parse(sessionData);
+        if (sess.exp < Date.now()) { await env.AURA_IMG.delete('staff_session_'+staffToken); return json({ error:'Sesión expirada' }, 401); }
         const leadId = url.searchParams.get('lead_id') || '';
         if (!leadId) return json({ error:'missing lead_id' }, 400);
         const lead:any = await env.aura_db.prepare("SELECT * FROM leads WHERE id=? AND tenant_id=?").bind(leadId, sess.tenant_id).first();
@@ -5900,8 +6116,10 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
       const hora = dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
       const mlink = await magicLink(env, a.tenant_id, a.lead_id);
       // Generar enlace de confirmación personalizado para esta cita
-      const confirmToken = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(a.id+'aura-confirm-2026')).then((h:ArrayBuffer)=>Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,12));
-      const confirmLink = 'https://aura-chat-worker.adrian-7b9.workers.dev/api/confirm-link?a='+a.id+'&k='+confirmToken;
+      const apptTs = Number.isFinite(new Date(a.date_iso).getTime()) ? new Date(a.date_iso).getTime() : Date.now();
+      const confirmExpires = Math.min(Date.now()+400*86400000, Math.max(Date.now()+7*86400000, apptTs+7*86400000));
+      const confirmToken = await signAppointmentConfirm(env, a.id, confirmExpires);
+      const confirmLink = 'https://aura-chat-worker.adrian-7b9.workers.dev/api/confirm-link?a='+encodeURIComponent(a.id)+'&e='+confirmExpires+'&k='+confirmToken;
       const vars = { clinica: tn.name||'', nombre: a.lead_name||'', fecha, hora, direccion: tn.address||'', tel: (tn.whatsapp||''), link: confirmLink };
       // La cita NO debe caer en un día cerrado/vacaciones (edge case: se cerró el día después de reservar).
       // Si cae cerrada, no enviamos recordatorios que confundan y marcamos como enviados para no reintentar.
@@ -6179,6 +6397,7 @@ async function runBackup(env: Env): Promise<{ ok: boolean; key?: string; tables?
 async function handleChat(req: Request, env: Env) {
   if (req.method !== 'POST') return text('AURA chat worker · POST a este endpoint');
   const body: any = await req.json();
+  if (body.lead_id && !(await requireLeadCapability(env,body))) return json({ error:'invalid_lead_capability' },403);
   const tenantId = body.tenant_id || 'clinica-elvira';
   const t = await env.aura_db
     .prepare('SELECT * FROM tenants WHERE id=?')

@@ -483,7 +483,7 @@ async function saveCroquis(){
   var dataUrl=canvas.toDataURL('image/png');
   var WORKER=localStorage.getItem('aura_worker')||'https://aura-chat-worker.adrian-7b9.workers.dev';
   var TOKEN=localStorage.getItem('aura_token')||'';
-  var STAFF_TOKEN=inheritedStaffToken||localStorage.getItem('staff_token')||'';
+var STAFF_TOKEN=inheritedStaffToken||sessionStorage.getItem('staff_token')||'';
   try{
     if(saveButton){saveButton.disabled=true;saveButton.textContent='Guardando…';}
     var templateMeta=document.querySelector('.tpl-card.active')?(templateFamily+'-'+document.querySelector('.tpl-card.active').id.replace('tpl-','')):'photo';
