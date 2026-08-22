@@ -577,7 +577,8 @@ async function loadKPIs(){
     const kt=document.getElementById('kToday'); if(kt)kt.textContent='+'+today+' hoy';
     const kn=document.getElementById('kApptNext'); if(kn)kn.textContent= future[0]? ('próxima '+fmtTime(future[0].date_iso)) : 'sin próximas';
     const aml=document.getElementById('auraMetricLeads'); if(aml)aml.textContent=String(today);
-    const amc=document.getElementById('auraMetricConversion'); if(amc)amc.textContent=(arr.length?Math.round(booked/arr.length*100):0)+'%';
+    const converted=arr.filter(l=>l.status==='booked'||l.status==='client'||l.status==='attended').length;
+    const amc=document.getElementById('auraMetricConversion'); if(amc)amc.textContent=(arr.length?Math.round(converted/arr.length*100):0)+'%';
     // KPIs financieros avanzados
     try{
       const kd=await fetch(WORKER+'/api/dashboard/'+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}}).then(r=>r.json());
@@ -651,19 +652,20 @@ function renderPearlOverview(arr,appts,todayAppts,future){
         return '<button class="aura-timeline-item" onclick="goSection(\'agenda\')"><span class="aura-time">'+tm+'</span><span class="aura-timeline-dot" style="--dot:'+['#FF9C88','#F778AA','#C978ED','#765BE7','#F6A25A'][i%5]+'"></span><span class="aura-patient-avatar">'+esc(initials)+'</span><span class="aura-patient-copy"><b>'+esc(a.lead_name||'Paciente')+'</b><small>'+esc(a.treatment||'Consulta')+'</small></span><span class="aura-appointment-status">'+esc(String(a.status||'reservada'))+'</span></button>';
       }).join(''):'<div class="aura-soft-empty"><b>Agenda despejada</b><span>No hay citas para hoy. Puedes crear una desde Agenda.</span></div>';
     }
-    const leads=arr.length,contacted=arr.filter(l=>l.chatted||l.last_contact_at).length,booked=arr.filter(l=>l.status==='booked'||l.status==='client'||l.status==='attended').length;
+    const leads=arr.length,booked=arr.filter(l=>l.status==='booked'||l.status==='client'||l.status==='attended').length,contacted=Math.max(booked,arr.filter(l=>l.chatted||l.last_contact_at).length);
     const stages=[['Leads',leads],['Contactados',contacted],['Cita agendada',booked]]; const max=Math.max(leads,1);
     const box=document.getElementById('auraFunnelSnapshot'); if(box)box.innerHTML=stages.map((s,i)=>'<div class="aura-funnel-row"><span>'+s[0]+'</span><b>'+s[1]+'</b><i><em style="width:'+Math.max(4,Math.round(s[1]/max*100))+'%"></em></i><small>'+Math.round(s[1]/max*100)+'%</small></div>').join('');
   }catch(e){}
 }
 function renderPearlTasks(pc,citasHoy,waUnread){
   try{
-    pc=pc||{llama:0,recup:0,conf:0,react:0,total:0}; const items=[];
+    pc=pc||{llama:0,recup:0,conf:0,react:0,total:0}; const items=(window.__pearlPriorityTasks||[]).slice();
     if(pc.llama)items.push(['Contactar leads calientes',pc.llama,'pipeline']);
     if(pc.recup)items.push(['Recuperar conversaciones',pc.recup,'pipeline']);
     if(pc.conf)items.push(['Confirmar próximas citas',pc.conf,'agenda']);
     if(citasHoy)items.push(['Revisar la agenda de hoy',citasHoy,'agenda']);
-    const box=document.getElementById('auraPriorityTasks'); if(box)box.innerHTML=items.length?items.slice(0,4).map(x=>'<button class="aura-task-row" onclick="goSection(\''+x[2]+'\')"><span class="aura-task-check"></span><span>'+esc(x[0])+'</span><b>'+x[1]+'</b><span aria-hidden="true">›</span></button>').join(''):'<div class="aura-soft-empty"><b>Todo al día</b><span>No hay tareas urgentes.</span></div>';
+    const seen=new Set(); const clean=items.filter(x=>{const k=x[0]+'|'+x[2];if(seen.has(k))return false;seen.add(k);return true;});
+    const box=document.getElementById('auraPriorityTasks'); if(box)box.innerHTML=clean.length?clean.slice(0,4).map(x=>'<button class="aura-task-row" onclick="goSection(\''+x[2]+'\')"><span class="aura-task-check"></span><span>'+esc(x[0])+'</span><b>'+x[1]+'</b><span aria-hidden="true">›</span></button>').join(''):'<div class="aura-soft-empty"><b>Todo al día</b><span>No hay tareas urgentes.</span></div>';
     const ws=document.getElementById('auraWhatsAppSummary'); if(ws)ws.innerHTML='<div class="aura-wa-overview"><span class="aura-patient-avatar">WA</span><div><b>'+(waUnread?waUnread+' conversación'+(waUnread>1?'es':'')+' pendiente'+(waUnread>1?'s':''):'Sin mensajes pendientes')+'</b><small>'+(waUnread?'Entra para responder desde la bandeja.':'La bandeja está al día.')+'</small></div>'+(waUnread?'<span class="aura-unread">'+waUnread+'</span>':'')+'</div>';
     const st=document.getElementById('auraWaStatus'); if(st){st.textContent=waUnread?'Pendiente':'Al día';st.classList.toggle('attention',!!waUnread);}
   }catch(e){}
@@ -679,13 +681,15 @@ function loadResumen(arr,appts,future){
   const todo=[];
   // PUNTO B (prioridad): conversó en el chat y NO agendó → LLAMAR AHORA
   const callNow=arr.filter(l=>l.chatted&&l.status!=='booked');
-  if(callNow.length)todo.push({t:'🔴 LLAMAR AHORA: '+callNow.length+' paciente'+(callNow.length>1?'s':'')+' conversó y no reservó',cta:'Ver',go:'pipeline',urgent:true});
+  if(callNow.length)todo.push({t:'Contactar ahora: '+callNow.length+' paciente'+(callNow.length>1?'s':'')+' conversó y no reservó',cta:'Ver',go:'pipeline',urgent:true});
   // resto de calientes que no escribieron
   const hotUn=arr.filter(l=>l.temperature==='hot'&&l.status!=='booked'&&!l.chatted);
   if(hotUn.length)todo.push({t:hotUn.length+' paciente'+(hotUn.length>1?'s':'')+' caliente'+(hotUn.length>1?'s':'')+' esperan respuesta',cta:'Ver en Pipeline',go:'pipeline'});
   const nowD=new Date(); const tom=new Date(nowD.getTime()+86400000);
   const tomAppts=(appts||[]).filter(a=>a.date_iso&&new Date(a.date_iso).toDateString()===tom.toDateString());
   if(tomAppts.length)todo.push({t:tomAppts.length+' cita'+(tomAppts.length>1?'s':'')+' mañana · confirma asistencia',cta:'Ver agenda',go:'agenda'});
+  window.__pearlPriorityTasks=todo.map(x=>[x.t,x.urgent?'Prioridad':'Pendiente',x.go]);
+  renderPearlTasks({llama:0,recup:0,conf:0,react:0,total:0},0,window.__waUnread||0);
   const tc=document.getElementById('todoCard'),tl=document.getElementById('todoList');
   if(tl){ if(todo.length){ tc.style.display='block'; tl.innerHTML=todo.map(x=>'<div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.7rem .85rem;border-radius:11px;'+(x.urgent?'background:#fde8e4;border:1px solid #e8a294':'background:var(--bg2)')+'"><span style="font-size:.9rem;font-weight:'+(x.urgent?'700':'600')+';'+(x.urgent?'color:#b0432e':'')+'">'+x.t+'</span><button class="btn'+(x.urgent?' prim':'')+'" style="padding:.4rem .8rem;font-size:.8rem" onclick="goSection(\''+x.go+'\')">'+x.cta+'</button></div>').join(''); } else { tc.style.display='none'; } }
   // próximas citas
@@ -3158,7 +3162,7 @@ async function playSmsPrev(){
     const b=document.createElement('div'); b.className='sms-bub'; b.innerHTML='<span class="ph">'+p.when+'</span>'+fillVars(txt,v)+'<span class="tm">entregado</span>'; body.appendChild(b); body.scrollTop=body.scrollHeight;
     await new Promise(r=>setTimeout(r,1400));
   }
-  btn.textContent='▶ Reproducir otra vez'; _smsPlaying=false;
+  btn.textContent='Reproducir otra vez'; _smsPlaying=false;
 }
 async function genSms(){
   const m=document.getElementById('smsTplMsg'); m.style.color='var(--muted)'; m.textContent='Generando con IA…';
