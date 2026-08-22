@@ -141,6 +141,6 @@
 - [x] Crear un backup verificado del código, base D1, inventario R2/KV, Worker, Pages, DNS y configuración Cloudflare antes del endurecimiento.
 - [x] Investigar y contrastar controles actuales de Cloudflare para SaaS multi-tenant, APIs, webhooks, bots, DDoS y abuso de autenticación.
 - [x] Auditar superficie pública, cabeceras, TLS, DNS, WAF, rate limiting, secretos, rutas administrativas, CORS, webhooks y almacenamiento AURA.
-- [ ] Aplicar por capas las mejoras Cloudflare seguras y compatibles con 360dialog, embudos públicos y usuarios legítimos.
-- [ ] Validar recuperación, aislamiento multi-tenant, flujos críticos, falsos positivos y seguridad tras cada cambio.
-- [ ] Documentar arquitectura, controles aplicados, permisos necesarios, riesgos residuales y procedimientos de rollback.
+- [x] Aplicar por capas las mejoras Cloudflare seguras y compatibles con 360dialog, embudos públicos y usuarios legítimos.
+- [x] Validar recuperación, aislamiento multi-tenant, flujos críticos, falsos positivos y seguridad tras cada cambio.
+- [x] Documentar arquitectura, controles aplicados, permisos necesarios, riesgos residuales y procedimientos de rollback.

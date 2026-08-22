@@ -1,0 +1,50 @@
+{
+  "captured_at": "2026-08-22T19:50:00Z",
+  "zone_id": "2f820fa534a00cba90dd70d603206ad3",
+  "zone": "auracrm.co",
+  "settings": {
+    "min_tls_version": "1.2",
+    "tls_1_3": "on",
+    "always_use_https": "on",
+    "automatic_https_rewrites": "on",
+    "zero_rtt": "off",
+    "security_level": "medium",
+    "browser_check": "on",
+    "hsts": {
+      "enabled": true,
+      "max_age": 15552000,
+      "include_subdomains": false,
+      "preload": false,
+      "nosniff": true
+    },
+    "ssl_mode": "full",
+    "ssl_mode_note": "Mantener hasta poder auditar todos los DNS y orígenes; después valorar strict."
+  },
+  "rulesets": {
+    "managed_waf": {
+      "id": "397efe0b87ef49dbbe8114ac5cf2f131",
+      "phase": "http_request_firewall_managed",
+      "managed_ruleset_id": "77454fe2d30c4220b5701f6fdfb893ba",
+      "enabled": true
+    },
+    "custom_waf": {
+      "id": "cb34176e910c4042925312b42318be01",
+      "phase": "http_request_firewall_custom",
+      "rule_id": "0a0775a629ad441e986a4b803703dd7c",
+      "enabled": true,
+      "purpose": "Bloquear TRACE, CONNECT y rutas sensibles sin uso legítimo en AURA."
+    }
+  },
+  "deployments": {
+    "worker_version": "5abfb57d-ae3d-436d-a31c-bb67d98bd9e1",
+    "pages_deployment_domain": "d3a91a8d.aura-mvp.pages.dev",
+    "git_commit": "ed67a2c"
+  },
+  "pre_hardening_values_for_rollback": {
+    "min_tls_version": "1.0",
+    "always_use_https": "off",
+    "hsts_enabled": false,
+    "managed_waf_entrypoint": "absent",
+    "custom_waf_entrypoint": "absent"
+  }
+}
