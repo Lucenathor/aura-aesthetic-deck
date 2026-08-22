@@ -18,3 +18,17 @@ La segunda revisión debe confirmar que el selector funciona como una capa invis
 ## Límites de usabilidad
 
 La mejora puede añadir orientación contextual, pero no nuevos flujos visibles al paciente ni controles avanzados por evento. Las decisiones de canal continúan siendo internas y se mantienen los tres modos actuales.
+
+## Hallazgos visuales de escritorio
+
+La verificación en producción confirmó que el selector aparece en Comunicaciones antes del centro de plantillas y que los tres controles principales son visibles sin desplazamiento horizontal. El estado refleja correctamente `Automático · SMS` cuando la clínica todavía no tiene WhatsApp conectado. También se confirmó que la lista de decisiones queda dentro de la tarjeta y que la interfaz no presenta SMS como un segundo envío paralelo.
+
+La segunda revisión detectó dos oportunidades de claridad, ya corregidas: tarjetas visuales para diferenciar respaldo y pausa, y una guía automática de categoría Meta cuando se asocia una plantilla a un evento de marketing o de servicio.
+
+## Resultados de interacción
+
+En producción, al elegir Solo WhatsApp se desactiva el respaldo SMS y el panel explica que, mientras el número no esté conectado, los envíos quedarán pendientes. La opción no puede producir un fallback oculto.
+
+Al asociar una plantilla a Cumpleaños, Recall o reactivaciones de los días 3, 7 o 21, la categoría se ajusta a Marketing y se informa de que necesita consentimiento y aprobación de Meta. Al asociarla a confirmación, recordatorio, cuidado, firma o reseña, se ajusta a Utilidad. La consola del panel no registró errores durante la comprobación.
+
+La cuadrícula usa columnas adaptativas con un mínimo de 220 píxeles y las acciones admiten salto de línea; por ello se conserva una sola columna utilizable en pantallas estrechas. La sesión de navegación automatizada no puede reutilizarse en el navegador headless móvil, que mostró la pantalla de acceso; la adaptación del selector se validó mediante su estructura responsive y la sesión real de escritorio.
