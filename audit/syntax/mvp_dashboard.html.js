@@ -583,6 +583,11 @@ async function loadKPIs(){
     const aml=document.getElementById('auraMetricLeads'); if(aml)aml.textContent=String(today);
     const converted=arr.filter(l=>l.status==='booked'||l.status==='client'||l.status==='attended').length;
     const amc=document.getElementById('auraMetricConversion'); if(amc)amc.textContent=(arr.length?Math.round(converted/arr.length*100):0)+'%';
+    const sparkDays=auraLastDays(7);
+    const leadSeries=sparkDays.map(day=>arr.filter(l=>auraDayKey(l.created_at)===day).length);
+    const convSeries=sparkDays.map(day=>{const cohort=arr.filter(l=>auraDayKey(l.created_at)===day);if(!cohort.length)return 0;const done=cohort.filter(l=>l.status==='booked'||l.status==='client'||l.status==='attended').length;return Math.round(done/cohort.length*100);});
+    renderAuraSpark('auraSparkLeads',leadSeries,today===0);
+    renderAuraSpark('auraSparkConversion',convSeries,converted===0);
     // KPIs financieros avanzados
     try{
       const kd=await fetch(WORKER+'/api/dashboard/'+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}}).then(r=>r.json());
@@ -594,6 +599,8 @@ async function loadKPIs(){
         const kns=document.getElementById('kNoshows'); if(kns)kns.textContent=String(kd.noshows_month||0);
         const amr=document.getElementById('auraMetricRevenue'); if(amr)amr.textContent=(kd.month_revenue||0).toLocaleString('es-ES')+'€';
         const amrs=document.getElementById('auraMetricRevenueSub'); if(amrs)amrs.textContent=(kd.month_tickets||0)+' cobros registrados';
+        const revenueMap=new Map((kd.revenue_daily||[]).map(x=>[String(x.day),Number(x.total)||0]));
+        renderAuraSpark('auraSparkRevenue',sparkDays.map(day=>revenueMap.get(day)||0),Number(kd.month_revenue||0)===0);
         // Rendimiento por profesional
         if(kd.by_professional && kd.by_professional.length>0){
           const card=document.getElementById('proPerformanceCard'); if(card)card.style.display='block';
@@ -658,7 +665,8 @@ function renderPearlOverview(arr,appts,todayAppts,future){
     }
     const leads=arr.length,booked=arr.filter(l=>l.status==='booked'||l.status==='client'||l.status==='attended').length,contacted=Math.max(booked,arr.filter(l=>l.chatted||l.last_contact_at).length);
     const stages=[['Leads',leads],['Contactados',contacted],['Cita agendada',booked]]; const max=Math.max(leads,1);
-    const box=document.getElementById('auraFunnelSnapshot'); if(box)box.innerHTML=stages.map((s,i)=>'<div class="aura-funnel-row"><span>'+s[0]+'</span><b>'+s[1]+'</b><i><em style="width:'+Math.max(4,Math.round(s[1]/max*100))+'%"></em></i><small>'+Math.round(s[1]/max*100)+'%</small></div>').join('');
+    const funnelGradients=['linear-gradient(90deg,#FF9C88,#F778AA)','linear-gradient(90deg,#F778AA,#C978ED)','linear-gradient(90deg,#C978ED,#765BE7)'];
+    const box=document.getElementById('auraFunnelSnapshot'); if(box)box.innerHTML=stages.map((s,i)=>{const pct=leads?Math.round(s[1]/max*100):0;return '<div class="aura-funnel-row"><span>'+s[0]+'</span><b>'+s[1]+'</b><i><em style="width:'+pct+'%;background:'+funnelGradients[i]+'"></em></i><small>'+pct+'%</small></div>';}).join('');
   }catch(e){}
 }
 function renderPearlTasks(pc,citasHoy,waUnread){
@@ -701,7 +709,7 @@ function loadResumen(arr,appts,future){
   if(na){ const f=(future||[]).slice(0,5); na.innerHTML = f.length? f.map(a=>'<div style="display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-bottom:1px solid var(--line)"><span style="width:8px;height:8px;border-radius:50%;background:var(--mint)"></span><div style="flex:1"><b style="font-size:.88rem">'+(a.lead_name||'Paciente')+'</b><div style="font-size:.76rem;color:var(--muted)">'+(a.treatment||'')+'</div></div><span style="font-size:.78rem;color:var(--ink-soft)">'+fmtTime(a.date_iso)+'</span></div>').join('') : '<div style="color:var(--muted);font-size:.85rem;padding:.6rem 0">Sin citas próximas todavía.</div>'; }
   // mini-tendencia 7 días (leads/día)
   const tr=document.getElementById('trend');
-  if(tr){ const days=[]; for(let i=6;i>=0;i--){ const d=new Date(nowD.getTime()-i*86400000); const n=arr.filter(l=>new Date(l.created_at).toDateString()===d.toDateString()).length; days.push({d,n}); } const max=Math.max(1,...days.map(x=>x.n)); tr.innerHTML='<div style="font-size:.72rem;color:var(--muted);margin-bottom:.4rem">Pacientes últimos 7 días</div><div style="display:flex;align-items:flex-end;gap:.4rem;height:60px">'+days.map(x=>'<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.2rem"><div style="width:100%;background:linear-gradient(180deg,var(--terra),var(--champ));border-radius:5px 5px 0 0;height:'+Math.round(x.n/max*48+4)+'px"></div><span style="font-size:.6rem;color:var(--muted)">'+['D','L','M','X','J','V','S'][x.d.getDay()]+'</span></div>').join('')+'</div>'; }
+  if(tr){ const days=[]; for(let i=6;i>=0;i--){ const d=new Date(nowD.getTime()-i*86400000); const n=arr.filter(l=>auraDayKey(l.created_at)===auraDayKey(d)).length; days.push({d,n}); } const max=Math.max(0,...days.map(x=>x.n)); tr.innerHTML='<div style="font-size:.72rem;color:var(--muted);margin-bottom:.4rem">Leads últimos 7 días</div>'+(max<=0?'<div class="aura-soft-empty"><b>Sin actividad</b><span>No se registraron leads en este periodo.</span></div>':'<div style="display:flex;align-items:flex-end;gap:.4rem;height:60px">'+days.map((x,i)=>'<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:.2rem"><div title="'+x.n+' leads" style="width:100%;background:'+['linear-gradient(180deg,#FF9C88,#FFC0B5)','linear-gradient(180deg,#F778AA,#FFB7D2)','linear-gradient(180deg,#C978ED,#F1C5F7)','linear-gradient(180deg,#765BE7,#CABEF7)'][i%4]+';border-radius:5px 5px 0 0;height:'+(x.n>0?Math.max(4,Math.round(x.n/max*48)):0)+'px"></div><span style="font-size:.6rem;color:var(--muted)">'+['D','L','M','X','J','V','S'][x.d.getDay()]+'</span></div>').join('')+'</div>'); }
   // checklist de activación
   loadSetup(arr.length);
 }
@@ -724,6 +732,17 @@ async function loadSetup(hasLeads){
   document.getElementById('setupList').innerHTML=steps.map(s=>'<div style="display:flex;align-items:center;gap:.6rem;padding:.55rem 0;border-bottom:1px solid var(--line)"><span style="width:22px;height:22px;border-radius:50%;display:grid;place-items:center;flex:none;font-size:.75rem;font-weight:700;'+(s.done?'background:var(--mint);color:#1f6b4f':'background:#fff;border:1.5px solid var(--line);color:var(--muted)')+'">'+(s.done?'✓':'')+'</span><span style="flex:1;font-size:.9rem;'+(s.done?'color:var(--muted);text-decoration:line-through':'font-weight:600')+'">'+s.label+'</span>'+(s.done?'':'<button class="btn" style="padding:.35rem .7rem;font-size:.78rem" onclick="goSection(\''+s.go+'\')">Hacer</button>')+'</div>').join('');
 }
 function countUp(id,val){ const el=document.getElementById(id); let s=0; const step=Math.max(1,Math.ceil(val/20)); const iv=setInterval(()=>{s+=step;if(s>=val){s=val;clearInterval(iv);}el.textContent=s;},30); }
+function auraDayKey(value){
+  const d=value instanceof Date?value:parseTS(value); if(!d||isNaN(d.getTime()))return'';
+  return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+}
+function auraLastDays(n){ const out=[]; const now=new Date(); for(let i=n-1;i>=0;i--){const d=new Date(now);d.setHours(12,0,0,0);d.setDate(d.getDate()-i);out.push(auraDayKey(d));}return out; }
+function renderAuraSpark(id,values,forceEmpty){
+  const el=document.getElementById(id); if(!el)return; const bars=Array.from(el.querySelectorAll('i'));
+  const clean=(values||[]).slice(-bars.length).map(v=>Math.max(0,Number(v)||0)); while(clean.length<bars.length)clean.unshift(0);
+  const max=Math.max(0,...clean), empty=!!forceEmpty||max<=0; el.classList.toggle('is-empty',empty);
+  bars.forEach((bar,i)=>{const v=clean[i]||0;bar.style.height=empty||v<=0?'0%':Math.max(7,Math.round(v/max*100))+'%';bar.title=String(v);});
+}
 
 let _allLeads=[]; let _pacFilter='all'; let _spendMap={};
 function escHTML(value){
@@ -1246,7 +1265,7 @@ async function loadFunnelMetrics(){
   const sel=document.getElementById('funnelSel');
   const funnel=sel?sel.value:'all';
   let m={entered:0,quizDone:0,chatted:0,booked:0,attended:0}, funnels=[];
-  try{ const r=await fetch(WORKER+'/api/funnel-metrics?tenant='+T+'&funnel='+encodeURIComponent(funnel)); const d=await r.json(); m=d.metrics||m; funnels=d.funnels||[]; }catch(e){}
+  try{ const token=localStorage.getItem('aura_token')||''; const r=await fetch(WORKER+'/api/funnel-metrics?tenant='+T+'&funnel='+encodeURIComponent(funnel),{headers:token?{'Authorization':'Bearer '+token}:{}}); const d=await r.json(); m=d.metrics||m; funnels=d.funnels||[]; }catch(e){}
   // rellenar selector una sola vez
   if(!funnelOpts && funnels.length){ funnelOpts=true; funnels.forEach(f=>{ const o=document.createElement('option'); o.value=f; o.textContent=f; sel.appendChild(o); }); }
   const max=Math.max(m.entered,1);
@@ -1264,7 +1283,7 @@ async function loadFunnelMetrics(){
     const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:.8rem;margin-bottom:.6rem';
     row.innerHTML=`<b style="width:170px;font-size:.82rem;font-weight:600;color:var(--ink-soft)">${s.name}</b><div style="flex:1;height:30px;background:var(--bg2);border-radius:8px;overflow:hidden"><i style="display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--terra),var(--champ));transition:width .8s var(--ease)"></i></div><span style="width:46px;text-align:right;font-family:'Playfair Display',serif;font-weight:600">${s.val}</span>`;
     c.appendChild(row);
-    setTimeout(()=>{row.querySelector('i').style.width=Math.max(pct,4)+'%';},100+i*120);
+    setTimeout(()=>{row.querySelector('i').style.width=pct+'%';},100+i*120);
   });
 }
 
@@ -5403,13 +5422,22 @@ async function adminDelNote(nid){
   await adminApi('/api/admin-note-delete',{method:'POST',body:JSON.stringify({ id:nid })}); adminLoadNotes();
 }
 
-let _retChart=null;
+const _auraCharts=window._auraCharts||{}; window._auraCharts=_auraCharts;
+function auraDestroyChart(id){ if(_auraCharts[id]){try{_auraCharts[id].destroy();}catch(e){}_auraCharts[id]=null;} }
+function setAuraChartEmpty(id,empty,message){
+  const canvas=document.getElementById(id); if(!canvas)return; const box=canvas.closest('.aura-chart-box'); if(!box)return;
+  const label=box.querySelector('.aura-chart-empty'); if(label&&message)label.textContent=message;
+  box.classList.toggle('is-empty',!!empty); if(empty)auraDestroyChart(id);
+}
+function auraGradient(ctx,colors,horizontal){ const g=ctx.createLinearGradient(0,0,horizontal?Math.max(ctx.canvas.clientWidth,280):0,horizontal?0:Math.max(ctx.canvas.clientHeight,180)); colors.forEach((c,i)=>g.addColorStop(i/Math.max(1,colors.length-1),c)); return g; }
+function auraChartAnimation(){ return window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches?false:{duration:650,easing:'easeOutQuart'}; }
 async function loadRetention(){
   try{
     const r=await fetch(WORKER+"/api/retention-report?tenant="+T,{headers:{"Authorization":"Bearer "+(localStorage.getItem("aura_token")||"")}});
+    if(!r.ok)throw new Error('retention_http_'+r.status);
     const d=await r.json();
-    document.getElementById("kRetention").textContent=d.retention_pct+"%";
-    document.getElementById("kLTV").textContent=d.ltv.toLocaleString("es-ES")+"€";
+    document.getElementById("kRetention").textContent=Number(d.retention_pct||0)+"%";
+    document.getElementById("kLTV").textContent=Number(d.ltv||0).toLocaleString("es-ES")+"€";
     document.getElementById("kFrequency").textContent=(d.avg_frequency_days||"—")+(d.avg_frequency_days?" días":"");
     document.getElementById("kInactive").textContent=d.inactive_patients||"0";
     // Top pacientes
@@ -5419,13 +5447,15 @@ async function loadRetention(){
     const tt=d.top_treatments||[];
     document.getElementById("retTopTreatments").innerHTML=tt.length?"<div style=\"display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.5rem\">"+tt.map(function(t){return "<div style=\"padding:.5rem;background:#f9fafb;border-radius:8px;border:1px solid #f3f4f6\"><div style=\"font-weight:600\">"+escapeHtml(t.name)+"</div><div style=\"font-size:.74rem;color:#6b7280\">"+t.count+" cobros · "+t.revenue.toLocaleString("es-ES")+"€</div></div>";}).join("")+"</div>":"<div style=\"color:var(--muted)\">Sin datos aún</div>";
     // Gráfico de tendencia
-    const monthly=d.monthly_trend||[];
-    if(monthly.length>1){
-      const ctx=document.getElementById("retChart");
-      if(_retChart){_retChart.destroy();}
-      _retChart=new Chart(ctx,{type:"line",data:{labels:monthly.map(function(m){return m.month;}),datasets:[{label:"Ingresos €",data:monthly.map(function(m){return m.revenue;}),borderColor:"#6366f1",backgroundColor:"rgba(99,102,241,.1)",fill:true,tension:.3},{label:"Pacientes",data:monthly.map(function(m){return m.patients;}),borderColor:"#10b981",backgroundColor:"rgba(16,185,129,.1)",fill:true,tension:.3,yAxisID:"y1"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{font:{size:10}}}},scales:{y:{beginAtZero:true,title:{display:true,text:"€"}},y1:{position:"right",beginAtZero:true,title:{display:true,text:"Pacientes"},grid:{drawOnChartArea:false}}}}});
+    const monthly=(d.monthly_trend||[]).map(m=>({month:String(m.month||''),revenue:Number(m.revenue||0),patients:Number(m.patients||0)}));
+    const hasActivity=monthly.some(m=>m.revenue>0||m.patients>0);
+    setAuraChartEmpty('retChart',!hasActivity,'Sin cobros registrados en los últimos 6 meses.');
+    if(hasActivity){
+      const canvas=document.getElementById('retChart'),ctx=canvas.getContext('2d'); auraDestroyChart('retChart');
+      const revenueFill=auraGradient(ctx,['rgba(255,156,136,.32)','rgba(247,120,170,.05)'],false);
+      _auraCharts.retChart=new Chart(ctx,{type:'line',data:{labels:monthly.map(m=>{const d=new Date(m.month+'-01T12:00:00Z');return d.toLocaleDateString('es-ES',{month:'short'});}),datasets:[{label:'Ingresos €',data:monthly.map(m=>m.revenue),borderColor:'#F778AA',backgroundColor:revenueFill,fill:true,tension:.34,pointRadius:3,pointBackgroundColor:'#FF9C88',pointBorderWidth:0},{label:'Pacientes',data:monthly.map(m=>m.patients),borderColor:'#765BE7',backgroundColor:'transparent',fill:false,tension:.34,pointRadius:3,pointBackgroundColor:'#A895F0',pointBorderWidth:0,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,animation:auraChartAnimation(),interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:7,font:{family:'Instrument Sans',size:10}}},tooltip:{callbacks:{label:c=>c.dataset.yAxisID==='y1'?' '+c.dataset.label+': '+c.parsed.y:' '+c.dataset.label+': '+Number(c.parsed.y||0).toLocaleString('es-ES')+'€'}}},scales:{x:{grid:{display:false},ticks:{color:'#8B7355',font:{family:'Instrument Sans',size:10}}},y:{beginAtZero:true,grid:{color:'rgba(118,91,231,.08)'},ticks:{color:'#8B7355',callback:v=>v+'€',font:{size:10}}},y1:{position:'right',beginAtZero:true,grid:{drawOnChartArea:false},ticks:{color:'#765BE7',precision:0,font:{size:10}}}}}});
     }
-  }catch(e){console.error("retention",e);}
+  }catch(e){setAuraChartEmpty('retChart',true,'No se pudo cargar la tendencia. Inténtalo de nuevo.');console.error("retention",e);}
 }
 // La navegación carga al instante solo la sección activa. El resto se precalienta
 // cuando el navegador queda libre para evitar siete peticiones simultáneas por sesión.
@@ -5452,34 +5482,42 @@ async function loadAdvancedMetrics(){
   if(typeof Chart==='undefined') return; // Chart.js aún no cargó
   try{
     const r=await fetch(WORKER+'/api/advanced-metrics?tenant='+T,{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}});
-    const d=await r.json(); if(!d.ok) return;
+    if(!r.ok)throw new Error('advanced_metrics_http_'+r.status);
+    const d=await r.json(); if(!d.ok)throw new Error(d.error||'advanced_metrics_invalid');
     const m=d.metrics||{};
     // 1. Facturación mensual (bar chart)
-    const revCtx=document.getElementById('chartRevenue');
-    if(revCtx&&m.revenue_months){
-      if(window._chartRev) window._chartRev.destroy();
-      window._chartRev=new Chart(revCtx,{type:'bar',data:{labels:m.revenue_months.map(x=>x.month),datasets:[{label:'Facturación (€)',data:m.revenue_months.map(x=>x.total),backgroundColor:'rgba(176,93,68,0.7)',borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v+'€'}}}}});
+    const revenueMonths=(m.revenue_months||[]).map(x=>({month:String(x.month||''),total:Number(x.total||0)}));
+    const revenueTotal=revenueMonths.reduce((sum,x)=>sum+x.total,0);
+    setAuraChartEmpty('chartRevenue',revenueTotal<=0,'Sin cobros registrados en los últimos 6 meses.');
+    if(revenueTotal>0){
+      const canvas=document.getElementById('chartRevenue'),ctx=canvas.getContext('2d'); auraDestroyChart('chartRevenue');
+      _auraCharts.chartRevenue=new Chart(ctx,{type:'bar',data:{labels:revenueMonths.map(x=>{const d=new Date(x.month+'-01T12:00:00Z');return d.toLocaleDateString('es-ES',{month:'short'});}),datasets:[{label:'Facturación (€)',data:revenueMonths.map(x=>x.total),backgroundColor:auraGradient(ctx,['rgba(247,120,170,.92)','rgba(255,156,136,.68)'],false),borderColor:'rgba(247,120,170,.95)',borderWidth:1,borderRadius:7,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,animation:auraChartAnimation(),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+Number(c.parsed.y||0).toLocaleString('es-ES')+'€'}}},scales:{x:{grid:{display:false},ticks:{color:'#8B7355',font:{family:'Instrument Sans',size:10}}},y:{beginAtZero:true,grid:{color:'rgba(118,91,231,.08)'},ticks:{color:'#8B7355',font:{size:10},callback:v=>v+'€'}}}}});
     }
     // 2. Pacientes nuevos vs recurrentes (doughnut)
-    const patCtx=document.getElementById('chartPatients');
-    if(patCtx&&m.patient_split){
-      if(window._chartPat) window._chartPat.destroy();
-      window._chartPat=new Chart(patCtx,{type:'doughnut',data:{labels:['Nuevos','Recurrentes'],datasets:[{data:[m.patient_split.new_patients,m.patient_split.returning],backgroundColor:['#B05D44','#34a877']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+    const patientValues=[Number(m.patient_split?.new_patients||0),Number(m.patient_split?.returning||0)];
+    const patientTotal=patientValues[0]+patientValues[1];
+    setAuraChartEmpty('chartPatients',patientTotal<=0,'Todavía no hay pacientes con citas este mes.');
+    if(patientTotal>0){
+      const canvas=document.getElementById('chartPatients'),ctx=canvas.getContext('2d'); auraDestroyChart('chartPatients');
+      _auraCharts.chartPatients=new Chart(ctx,{type:'doughnut',data:{labels:['Nuevos','Recurrentes'],datasets:[{data:patientValues,backgroundColor:[auraGradient(ctx,['#FF9C88','#F778AA'],true),auraGradient(ctx,['#C978ED','#3F89FF'],true)],borderColor:'#fff',borderWidth:3,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,animation:auraChartAnimation(),cutout:'64%',plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8,color:'#5C4033',font:{family:'Instrument Sans',size:10}}},tooltip:{callbacks:{label:c=>' '+c.label+': '+c.parsed+' pacientes'}}}}});
     }
     // 3. Tasa de conversión (line chart)
-    const convCtx=document.getElementById('chartConversion');
-    if(convCtx&&m.conversion_months){
-      if(window._chartConv) window._chartConv.destroy();
-      window._chartConv=new Chart(convCtx,{type:'line',data:{labels:m.conversion_months.map(x=>x.month),datasets:[{label:'Conversión %',data:m.conversion_months.map(x=>x.rate),borderColor:'#6b4fd0',backgroundColor:'rgba(107,79,208,0.1)',fill:true,tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}}}});
+    const conversionMonths=(m.conversion_months||[]).map(x=>({month:String(x.month||''),rate:Number(x.rate||0),total:Number(x.total||0),booked:Number(x.booked||0)}));
+    const hasLeadData=conversionMonths.some(x=>x.total>0||x.rate>0);
+    setAuraChartEmpty('chartConversion',!hasLeadData,'Todavía no hay leads para calcular la conversión.');
+    if(hasLeadData){
+      const canvas=document.getElementById('chartConversion'),ctx=canvas.getContext('2d'); auraDestroyChart('chartConversion');
+      _auraCharts.chartConversion=new Chart(ctx,{type:'line',data:{labels:conversionMonths.map(x=>{const d=new Date(x.month+'-01T12:00:00Z');return d.toLocaleDateString('es-ES',{month:'short'});}),datasets:[{label:'Conversión %',data:conversionMonths.map(x=>x.rate),borderColor:auraGradient(ctx,['#C978ED','#765BE7','#3F89FF'],true),backgroundColor:auraGradient(ctx,['rgba(201,120,237,.28)','rgba(63,137,255,.03)'],false),borderWidth:3,fill:true,tension:.36,pointRadius:3,pointHoverRadius:5,pointBackgroundColor:'#765BE7',pointBorderColor:'#fff',pointBorderWidth:1.5}]},options:{responsive:true,maintainAspectRatio:false,animation:auraChartAnimation(),interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const x=conversionMonths[c.dataIndex];return ' '+x.rate+'% · '+x.booked+' de '+x.total+' leads';}}}},scales:{x:{grid:{display:false},ticks:{color:'#8B7355',font:{family:'Instrument Sans',size:10}}},y:{beginAtZero:true,max:100,grid:{color:'rgba(118,91,231,.08)'},ticks:{color:'#8B7355',font:{size:10},callback:v=>v+'%'}}}}});
     }
-    // 4. Top tratamientos (horizontal bar)
-    const treatCtx=document.getElementById('chartTopTreat');
-    if(treatCtx&&m.top_treatments&&m.top_treatments.length){
-      if(window._chartTreat) window._chartTreat.destroy();
-      const colors=['#B05D44','#34a877','#6b4fd0','#d9a23a','#3a8fd9'];
-      window._chartTreat=new Chart(treatCtx,{type:'bar',data:{labels:m.top_treatments.map(x=>x.name.length>18?x.name.slice(0,18)+'…':x.name),datasets:[{label:'Ingresos (€)',data:m.top_treatments.map(x=>x.revenue),backgroundColor:m.top_treatments.map((_,i)=>colors[i%colors.length]),borderRadius:6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{callback:v=>v+'€'}}}}});
+    // 4. Ingresos por tratamiento (horizontal bar)
+    const treatments=(m.top_treatments||[]).map(x=>({name:String(x.name||'Sin nombre'),revenue:Number(x.revenue||0)})).filter(x=>x.revenue>0);
+    setAuraChartEmpty('chartTopTreat',!treatments.length,'Sin tratamientos cobrados este mes.');
+    if(treatments.length){
+      const canvas=document.getElementById('chartTopTreat'),ctx=canvas.getContext('2d'); auraDestroyChart('chartTopTreat');
+      const palette=[['#FF9C88','#F778AA'],['#F778AA','#C978ED'],['#C978ED','#765BE7'],['#765BE7','#3F89FF'],['#FFB7D2','#A895F0']];
+      _auraCharts.chartTopTreat=new Chart(ctx,{type:'bar',data:{labels:treatments.map(x=>x.name.length>22?x.name.slice(0,22)+'…':x.name),datasets:[{label:'Ingresos (€)',data:treatments.map(x=>x.revenue),backgroundColor:treatments.map((_,i)=>auraGradient(ctx,palette[i%palette.length],true)),borderRadius:7,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,animation:auraChartAnimation(),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+Number(c.parsed.x||0).toLocaleString('es-ES')+'€'}}},scales:{y:{grid:{display:false},ticks:{color:'#5C4033',font:{family:'Instrument Sans',size:10}}},x:{beginAtZero:true,grid:{color:'rgba(118,91,231,.08)'},ticks:{color:'#8B7355',font:{size:10},callback:v=>v+'€'}}}}});
     }
-  }catch(e){ console.error('advMetrics',e); }
+  }catch(e){ ['chartRevenue','chartPatients','chartConversion','chartTopTreat'].forEach(id=>setAuraChartEmpty(id,true,'No se pudieron cargar estos datos. Inténtalo de nuevo.')); console.error('advMetrics',e); }
 }
 
 // ===== SMS créditos =====

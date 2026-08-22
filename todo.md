@@ -126,3 +126,8 @@
 - [x] Investigar patrones premium de hover, pulsación y foco para botones SaaS sin introducir movimiento excesivo.
 - [x] Refinar Nueva cita, Ver mi embudo y botones equivalentes con microinteracciones ligeras según su jerarquía.
 - [x] Validar hover, clic, teclado, reducción de movimiento y responsive de los botones refinados antes de desplegar.
+- [ ] Inventariar todas las gráficas, sparklines, barras y tendencias del panel e identificar cualquier dato decorativo o fijo.
+- [ ] Conectar cada visualización a una serie real del tenant con periodo y fórmula documentados.
+- [ ] Implementar estados cero honestos: ningún volumen o tendencia visible cuando el valor real sea cero o no haya datos.
+- [ ] Aplicar degradados Pearl Aurora diferenciados por métrica sin alterar la proporcionalidad de los datos.
+- [ ] Probar variación de datos, aislamiento entre tenants, carga, error y responsive antes de desplegar todas las gráficas reales.

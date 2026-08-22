@@ -1128,14 +1128,16 @@ export default {
         '/api/loyalty-adjust','/api/loyalty-balance',
         '/api/clinical','/api/clinical-note','/api/viral-content','/api/viral-content-delete',
         '/api/viral-submit','/api/viral-fire','/api/viral-update-views',
-        '/api/clinical-audit','/api/setter-brain-config','/api/setter-resources','/api/setter-funnel-brain','/api/setter-funnel-brain/transcribe','/api/setter-upload','/api/setter-upload-multipart/start','/api/setter-upload-multipart/part','/api/setter-upload-multipart/complete','/api/setter-upload-multipart/abort'
+        '/api/clinical-audit','/api/setter-brain-config','/api/setter-resources','/api/setter-funnel-brain','/api/setter-funnel-brain/transcribe','/api/setter-upload','/api/setter-upload-multipart/start','/api/setter-upload-multipart/part','/api/setter-upload-multipart/complete','/api/setter-upload-multipart/abort',
+        '/api/advanced-metrics','/api/retention-report','/api/funnel-metrics'
       ]);
       // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
       const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar','/api/portal-clients']);
-      const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p)) || (p==='/api/packs' && req.method==='POST') || (p.startsWith('/api/wa-') && p!=='/api/wa-webhook' && p!=='/api/wa-webhook-360' && p!=='/api/wa-media' && p!=='/api/wa-avatar') || (p.startsWith('/api/call-') && p!=='/api/call-twiml' && p!=='/api/call-status' && p!=='/api/call-recording') || p.startsWith('/api/inv-') || p==='/api/copilot';
+      const mustGuard = TENANT_GUARDED.has(p) || (req.method==='GET' && TENANT_GUARDED_GET.has(p)) || (p.startsWith('/api/dashboard/') && req.method==='GET') || (p==='/api/packs' && req.method==='POST') || (p.startsWith('/api/wa-') && p!=='/api/wa-webhook' && p!=='/api/wa-webhook-360' && p!=='/api/wa-media' && p!=='/api/wa-avatar') || (p.startsWith('/api/call-') && p!=='/api/call-twiml' && p!=='/api/call-status' && p!=='/api/call-recording') || p.startsWith('/api/inv-') || p==='/api/copilot';
       if (mustGuard) {
         // tenant solicitado: de query (?tenant=) o del body para POST
         let tenantReq = url.searchParams.get('tenant') || url.searchParams.get('tenant_id');
+        if (!tenantReq && p.startsWith('/api/dashboard/')) tenantReq = decodeURIComponent(p.slice('/api/dashboard/'.length));
         if (!tenantReq && (req.method==='POST'||req.method==='PUT'||req.method==='DELETE')) {
           try {
             const cloned = req.clone();
@@ -2849,14 +2851,30 @@ export default {
           metrics.revenue_months = months;
         } catch(e) { metrics.revenue_months = []; }
 
-        // 2. Pacientes nuevos vs recurrentes (este mes)
+        // 2. Pacientes nuevos vs recurrentes activos este mes.
+        // Se clasifica cada paciente por su primera cita registrada, no por el total histórico de leads.
         try {
           const ym = now.toISOString().slice(0, 7);
-          const newP: any = await env.aura_db.prepare("SELECT COUNT(*) c FROM leads WHERE tenant_id=? AND substr(created_at,1,7)=?").bind(tid, ym).first();
-          const totalP: any = await env.aura_db.prepare("SELECT COUNT(*) c FROM leads WHERE tenant_id=?").bind(tid).first();
-          const newCount = newP?.c || 0;
-          const returning = Math.max(0, (totalP?.c || 0) - newCount);
-          metrics.patient_split = { new_patients: newCount, returning };
+          const split: any = await env.aura_db.prepare(`
+            WITH active AS (
+              SELECT DISTINCT lead_id
+              FROM appointments
+              WHERE tenant_id=? AND lead_id IS NOT NULL AND lead_id!=''
+                AND status IN ('booked','confirmed','attended')
+                AND substr(date_iso,1,7)=?
+            ), first_visit AS (
+              SELECT lead_id, MIN(substr(date_iso,1,7)) first_month
+              FROM appointments
+              WHERE tenant_id=? AND lead_id IS NOT NULL AND lead_id!=''
+                AND status IN ('booked','confirmed','attended')
+              GROUP BY lead_id
+            )
+            SELECT
+              COALESCE(SUM(CASE WHEN f.first_month=? THEN 1 ELSE 0 END),0) new_patients,
+              COALESCE(SUM(CASE WHEN f.first_month<? THEN 1 ELSE 0 END),0) returning
+            FROM active a JOIN first_visit f ON f.lead_id=a.lead_id
+          `).bind(tid, ym, tid, ym, ym).first();
+          metrics.patient_split = { new_patients: Number(split?.new_patients || 0), returning: Number(split?.returning || 0) };
         } catch(e) { metrics.patient_split = { new_patients: 0, returning: 0 }; }
 
         // 3. Tasa de conversión últimos 6 meses (leads → booked/attended)
@@ -2869,7 +2887,7 @@ export default {
             const total: any = await env.aura_db.prepare("SELECT COUNT(*) c FROM leads WHERE tenant_id=? AND substr(created_at,1,7)=?").bind(tid, ym).first();
             const booked: any = await env.aura_db.prepare("SELECT COUNT(*) c FROM leads WHERE tenant_id=? AND substr(created_at,1,7)=? AND status IN ('booked','attended','client')").bind(tid, ym).first();
             const rate = (total?.c > 0) ? Math.round((booked?.c || 0) / total.c * 100) : 0;
-            months.push({ month: label, rate });
+            months.push({ month: label, rate, total: Number(total?.c || 0), booked: Number(booked?.c || 0) });
           }
           metrics.conversion_months = months;
         } catch(e) { metrics.conversion_months = []; }
@@ -5709,6 +5727,12 @@ export default {
         const monthRevenue = rev?.total||0;
         const monthTickets = rev?.tickets||0;
         const avgTicket = monthTickets>0 ? Math.round(monthRevenue/monthTickets*100)/100 : 0;
+        // Serie diaria real del mes para el sparkline de Inicio. Los días sin cobros permanecen en cero.
+        let revenueDaily:any[] = [];
+        try {
+          const daily:any = await env.aura_db.prepare("SELECT substr(date_iso,1,10) day, COALESCE(SUM(amount),0) total FROM treatments_log WHERE tenant_id=? AND pay_status='paid' AND date_iso>=? GROUP BY day ORDER BY day").bind(id, monthStart).all();
+          revenueDaily = (daily.results||[]).map((r:any)=>({ day:String(r.day||''), total:Number(r.total||0) }));
+        } catch(e) {}
         // Ocupación: citas de hoy vs slots disponibles (asumimos 8h * nº profesionales)
         const todayAppts:any = await env.aura_db.prepare("SELECT COUNT(*) as n FROM appointments WHERE tenant_id=? AND date_iso LIKE ? AND status NOT IN ('cancelled')").bind(id, todayISO+'%').first();
         const prosCount:any = await env.aura_db.prepare("SELECT COUNT(*) as n FROM professionals WHERE tenant_id=?").bind(id).first();
@@ -5737,6 +5761,7 @@ export default {
           noshows_month: noshows?.n||0,
           new_patients_month: newPats?.n||0,
           by_professional: byPro,
+          revenue_daily: revenueDaily,
         });
       }
 
@@ -5765,7 +5790,12 @@ export default {
         let monthly:any[] = [];
         try {
           const m:any = await env.aura_db.prepare("SELECT substr(date_iso,1,7) as month, COALESCE(SUM(amount),0) as revenue, COUNT(*) as tickets, COUNT(DISTINCT lead_id) as patients FROM treatments_log WHERE tenant_id=? AND pay_status='paid' AND date_iso>=? GROUP BY month ORDER BY month").bind(tid, new Date(now-180*86400000).toISOString().slice(0,10)).all();
-          monthly = (m.results||[]).map((r:any)=>({month:r.month, revenue:r.revenue, tickets:r.tickets, patients:r.patients}));
+          const byMonth = new Map((m.results||[]).map((r:any)=>[String(r.month),r]));
+          for(let i=5;i>=0;i--){
+            const d=new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth()-i);
+            const key=d.toISOString().slice(0,7); const r:any=byMonth.get(key)||{};
+            monthly.push({month:key, revenue:Number(r.revenue||0), tickets:Number(r.tickets||0), patients:Number(r.patients||0)});
+          }
         } catch(e){}
         // Pacientes inactivos (última visita hace >60 días)
         let inactive = 0;

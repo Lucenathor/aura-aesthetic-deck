@@ -1,0 +1,54 @@
+Validación de gráficas — casos reales seleccionados (2026-08-22)
+
+Sesión comprobada: superadmin autenticado en https://auracrm.co/dashboard.
+
+Tenant con actividad suficiente para validar escalas y estados mixtos:
+- id: aura-demo
+- nombre: Clínica Estética Aura Demo S.L.
+- leads registrados: 171
+- facturación del mes: 1.940 €
+- cobros del mes: 10
+
+Tenant sin actividad para validar estados cero honestos:
+- id: clinicaespana
+- nombre: ClinicaEspaña
+- leads registrados: 0
+- facturación del mes: 0 €
+- cobros del mes: 0
+
+Caso adicional sin actividad:
+- id: demo-firma
+- nombre: Clínica Demo Firma
+- leads registrados: 0
+- facturación del mes: 0 €
+- cobros del mes: 0
+
+Estos datos se obtuvieron con peticiones GET autenticadas desde la sesión real del panel. No se modificó ningún dato clínico.
+
+Comprobación de APIs antes del nuevo despliegue
+
+En `aura-demo`, las tres APIs devolvieron HTTP 200. La facturación mensual real de marzo a agosto fue 450 €, 0 €, 6.180 €, 25.590 €, 0 € y 1.940 €. El embudo devolvió 171 entradas, 62 cuestionarios, 8 conversaciones, 57 reservas y 27 asistencias. La retención devolvió meses dispersos, lo que confirma la necesidad de normalizar a seis meses incluyendo ceros.
+
+En `clinicaespana`, las tres APIs devolvieron HTTP 200 y todas las series fueron cero o vacías: seis meses de facturación a cero, seis meses de conversión a cero, pacientes 0/0, tratamientos vacíos y embudo 0/0/0/0/0.
+
+La versión anterior de `patient_split` devolvía en `aura-demo` 97 nuevos y 74 recurrentes porque restaba nuevos del total histórico de leads. Esa cifra no representaba pacientes activos del mes. El Worker nuevo lo sustituye por una clasificación basada en pacientes con cita del mes y su primera cita histórica.
+
+Validación visual local previa al despliegue
+
+El dashboard modificado cargó autenticado en `http://127.0.0.1:4173/dashboard.html?t=aura-demo#resumen`. El miniembudo mostró 171/57/57 con anchuras 100%/33%/33% y sin mínimos decorativos. La tendencia de leads de los últimos siete días mostró el estado «Sin actividad» porque todos esos días estaban a cero. Los canvases de Retención y Métricas se montaron sin errores visibles.
+
+La prueba local usa el frontend nuevo contra el Worker antiguo de producción. Por ello, el sparkline de facturación todavía aparece vacío aunque el titular marque 1.940 €, ya que el Worker antiguo no devuelve `revenue_daily`. Esta discrepancia debe desaparecer al desplegar ambos cambios juntos y se volverá a comprobar después del despliegue.
+
+El tenant `clinicaespana` mostró un estado cero coherente en toda la pantalla: los tres KPI principales en 0, las tres etapas del miniembudo en 0% sin barra coloreada, tendencia semanal sin actividad, embudo principal con mensaje de ausencia de datos y las cinco zonas Chart.js sin volumen dibujado. Retención, facturación, pacientes, conversión y tratamientos mostraron mensajes específicos, no doughnuts o líneas artificiales.
+
+La auditoría automatizada generó capturas para `aura-demo` y `clinicaespana` en 1440×1200, 1024×1000 y 390×844. Las seis capturas existen. En el tenant cero, los cuatro canvases de Métricas Avanzadas se marcaron como vacíos en los tres tamaños; la gráfica de Retención también estaba vacía, aunque el contador simple de clases no la incluyó porque tiene una clase adicional `retention-chart` entre ambas. No se detectó ausencia de canvas ni fallo de carga del documento.
+
+La captura desktop de `aura-demo` mantiene alineación, jerarquía y contraste Pearl Aurora. El miniembudo refleja 171/57/57 con proporciones 100%/33%/33%. La gráfica de Retención utiliza coral-rosa para ingresos y violeta-azul para pacientes; ambos ejes permanecen legibles. La captura móvil conserva navegación, botones y tarjetas sin desbordamiento horizontal visible en el primer viewport; el título se adapta en varias líneas y la agenda se desplaza horizontalmente como estaba previsto.
+
+La captura móvil inicial no alcanza la zona inferior de gráficas por la altura de 844 px. Se realizará una segunda captura móvil alta con el mismo ancho de 390 px para inspeccionar específicamente Retención y Métricas Avanzadas.
+
+La captura móvil larga de `aura-demo` confirmó que la gráfica de Retención se adapta a 390 px sin desbordamiento horizontal: la lista de pacientes queda a la izquierda y la gráfica a la derecha dentro del grid existente, con etiquetas y leyenda legibles aunque compactas. Los valores 0%, 583,73 €, 9 días y 54 permanecen visibles y la línea muestra la evolución real disponible.
+
+La captura móvil larga de `clinicaespana` confirmó que los KPI, el miniembudo, Retención y la tendencia semanal no muestran actividad ficticia. La zona de Retención presenta 0%, 0 €, frecuencia «—», 0 inactivos y el mensaje «Sin cobros registrados en los últimos 6 meses» en lugar de líneas o áreas. El documento continúa sin desbordamiento horizontal visible. La auditoría corregida detectó los cinco canvases como vacíos en los cinco viewports del tenant cero.
+
+Después de la primera revisión móvil se mejoró Retención: la lista de pacientes y la gráfica ya no comparten dos columnas comprimidas a 390 px. Ahora se apilan y la gráfica dispone de 220 px de altura. La nueva captura muestra etiquetas, curva y leyenda legibles en `aura-demo`; en `clinicaespana`, el mensaje vacío ocupa la zona completa sin línea, punto ni área decorativa.
