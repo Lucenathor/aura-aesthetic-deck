@@ -62,7 +62,7 @@ const QUIZ=[
       {em:'💋',t:'Definir mejor el contorno'},
       {em:'⚖️',t:'Corregir asimetría'},
     ]},
-  { k:'datos', form:true, q:'Tu plan de labios, gratis', help:'Te decimos qué técnica te va mejor y el precio exacto, antes de pisar la clínica.' },
+  { k:'datos', form:true, q:'Tu plan de labios, gratis', help:'Te orientamos sobre la técnica más adecuada y te ayudamos a reservar una valoración gratuita.' },
   { k:'estilo', q:'¿Cómo los quieres?', help:'Tranquila, trabajamos siempre resultados naturales.',
     opts:[
       {em:'🌿',t:'Muy naturales, que no se note'},
@@ -115,7 +115,7 @@ function renderQ(){
       <label style="display:flex;align-items:flex-start;gap:.55rem;margin:.75rem 0;font-size:.72rem;line-height:1.45;color:#6b625d;cursor:pointer"><input id="fContactConsent" type="checkbox" style="margin-top:.15rem;accent-color:#A85942;flex:0 0 auto"/><span>Acepto que ${CFG.name} me contacte por WhatsApp o SMS para atender mi solicitud y gestionar mi cita. <a href="/legal/privacidad" target="_blank" rel="noopener" style="color:#A85942;text-decoration:underline">Privacidad</a></span></label>
       <button class="qsubmit" id="fSubmit" onclick="submitData()">Continuar
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
-      <div class="recip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7S9 2 6 4s2 3 6 3M12 7s3-5 6-3-2 3-6 3"/></svg> Verás cómo quedarían tus labios + cuánto costaría (te gustará 😏)</div>
+      <div class="recip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7S9 2 6 4s2 3 6 3M12 7s3-5 6-3-2 3-6 3"/></svg> Verás una orientación inicial y podrás reservar tu valoración gratuita</div>
       <p class="priv"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Datos cifrados · 100% confidencial · sin spam</p>`;
     const n=document.getElementById('fName'),p=document.getElementById('fPhone'),c=document.getElementById('fContactConsent'),s=document.getElementById('fSubmit');
     function chk(){ s.classList.toggle('ready', n.value.trim().length>1 && p.value.replace(/\D/g,'').length>=9 && c.checked); }

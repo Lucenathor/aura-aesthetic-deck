@@ -630,6 +630,7 @@ async function ensureWaSchema(env: Env) {
   try { await env.aura_db.exec('ALTER TABLE wa_config ADD COLUMN automations_paused INTEGER DEFAULT 0'); } catch(e){}
   try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS channel_dispatches (id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, event_key TEXT NOT NULL, entity_id TEXT NOT NULL, phone TEXT, selected_channel TEXT, status TEXT DEFAULT 'processing', reason TEXT, provider_id TEXT, detail TEXT, attempts INTEGER DEFAULT 0, created_at INTEGER, updated_at INTEGER, UNIQUE(tenant_id,event_key,entity_id))"); } catch(e){}
   try { await env.aura_db.exec('CREATE INDEX IF NOT EXISTS idx_channel_dispatches_tenant ON channel_dispatches (tenant_id,updated_at)'); } catch(e){}
+  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS channel_contact_state (tenant_id TEXT NOT NULL, phone TEXT NOT NULL, last_inbound_at INTEGER, last_human_outbound_at INTEGER, updated_at INTEGER, PRIMARY KEY(tenant_id,phone))"); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE leads ADD COLUMN contact_consent INTEGER DEFAULT 0'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE leads ADD COLUMN contact_consent_at INTEGER'); } catch(e){}
   try { await env.aura_db.exec('ALTER TABLE leads ADD COLUMN contact_consent_proof TEXT'); } catch(e){}
@@ -655,6 +656,12 @@ function normalizeAuraPhone(value: any) {
   return digits;
 }
 
+async function recordChannelContactActivity(env:Env,tenantId:string,phoneValue:any,kind:'inbound'|'human_outbound',at=Date.now()){
+  const phone=normalizeAuraPhone(phoneValue);if(!tenantId||!phone)return;
+  const inbound=kind==='inbound'?at:null,human=kind==='human_outbound'?at:null;
+  await env.aura_db.prepare("INSERT INTO channel_contact_state (tenant_id,phone,last_inbound_at,last_human_outbound_at,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(tenant_id,phone) DO UPDATE SET last_inbound_at=COALESCE(excluded.last_inbound_at,channel_contact_state.last_inbound_at),last_human_outbound_at=COALESCE(excluded.last_human_outbound_at,channel_contact_state.last_human_outbound_at),updated_at=excluded.updated_at").bind(tenantId,phone,inbound,human,at).run();
+}
+
 async function getChannelPolicy(env: Env, tenantId: string) {
   await ensureWaSchema(env);
   const row: any = await env.aura_db.prepare("SELECT channel_mode,sms_fallback,automations_paused,provider,connected,d360_api_key,d360_phone FROM wa_config WHERE tenant_id=?").bind(tenantId).first();
@@ -668,11 +675,16 @@ async function getChannelPolicy(env: Env, tenantId: string) {
   };
 }
 
-async function decideAuraChannel(env: Env, input: { tenantId: string; phone: string; eventKey: string; consentCategory: 'service'|'marketing'|'reviews' }): Promise<AuraChannelDecision> {
+async function decideAuraChannel(env: Env, input: { tenantId: string; phone: string; eventKey: string; consentCategory: 'service'|'marketing'|'reviews'; sinceAt?: number }): Promise<AuraChannelDecision> {
   const tenantId = String(input.tenantId || ''), phone = normalizeAuraPhone(input.phone);
   const policy = await getChannelPolicy(env, tenantId);
   if (policy.paused) return { channel:'none', reason:'automations_paused', mode:policy.mode, smsFallback:policy.smsFallback, cfg:policy.cfg };
   if (!phone) return { channel:'none', reason:'invalid_phone', mode:policy.mode, smsFallback:policy.smsFallback, cfg:policy.cfg };
+  if (input.sinceAt) {
+    const activity:any=await env.aura_db.prepare('SELECT last_inbound_at,last_human_outbound_at FROM channel_contact_state WHERE tenant_id=? AND phone=?').bind(tenantId,phone).first();
+    if(Number(activity?.last_inbound_at||0)>=input.sinceAt)return { channel:'none',reason:'patient_replied',mode:policy.mode,smsFallback:policy.smsFallback,cfg:policy.cfg };
+    if(Number(activity?.last_human_outbound_at||0)>=input.sinceAt)return { channel:'none',reason:'human_intervened',mode:policy.mode,smsFallback:policy.smsFallback,cfg:policy.cfg };
+  }
   const consent: any = await env.aura_db.prepare('SELECT status FROM wa_consents WHERE tenant_id=? AND phone=? AND category=?').bind(tenantId,phone,input.consentCategory).first();
   if (input.consentCategory !== 'service' && consent?.status !== 'granted') return { channel:'none', reason:'missing_'+input.consentCategory+'_consent', mode:policy.mode, smsFallback:policy.smsFallback, cfg:policy.cfg };
   if (policy.mode === 'sms') return { channel:'sms', reason:'tenant_sms_only', mode:policy.mode, smsFallback:policy.smsFallback, cfg:policy.cfg };
@@ -717,7 +729,7 @@ async function sendAuraWhatsAppTemplate(env: Env, input: { tenantId:string; phon
   return { ok:true, providerId:messageId, data };
 }
 
-async function dispatchAuraChannel(env: Env, input: { tenantId:string; eventKey:string; entityId:string; phone:string; consentCategory:'service'|'marketing'|'reviews'; smsText:string; smsSender:string; whatsappValues?:string[] }) {
+async function dispatchAuraChannel(env: Env, input: { tenantId:string; eventKey:string; entityId:string; phone:string; consentCategory:'service'|'marketing'|'reviews'; smsText:string; smsSender:string; whatsappValues?:string[]; sinceAt?:number }) {
   const tenantId=String(input.tenantId||''),eventKey=String(input.eventKey||''),entityId=String(input.entityId||''),phone=normalizeAuraPhone(input.phone),now=Date.now();
   await ensureWaSchema(env);
   const existing:any=await env.aura_db.prepare('SELECT * FROM channel_dispatches WHERE tenant_id=? AND event_key=? AND entity_id=?').bind(tenantId,eventKey,entityId).first();
@@ -727,7 +739,7 @@ async function dispatchAuraChannel(env: Env, input: { tenantId:string; eventKey:
   if(existing) await env.aura_db.prepare("UPDATE channel_dispatches SET status='processing',attempts=COALESCE(attempts,0)+1,updated_at=? WHERE id=?").bind(now,id).run();
   else await env.aura_db.prepare("INSERT INTO channel_dispatches (id,tenant_id,event_key,entity_id,phone,status,attempts,created_at,updated_at) VALUES (?,?,?,?,?,'processing',1,?,?)").bind(id,tenantId,eventKey,entityId,phone,now,now).run();
 
-  let decision=await decideAuraChannel(env,{tenantId,phone,eventKey,consentCategory:input.consentCategory});
+  let decision=await decideAuraChannel(env,{tenantId,phone,eventKey,consentCategory:input.consentCategory,sinceAt:input.sinceAt});
   if(decision.channel==='whatsapp'){
     const wa=await sendAuraWhatsAppTemplate(env,{tenantId,phone,decision,values:input.whatsappValues||[],eventKey});
     if(wa.ok){await env.aura_db.prepare("UPDATE channel_dispatches SET selected_channel='whatsapp',status='sent',reason=?,provider_id=?,detail=?,updated_at=? WHERE id=?").bind(decision.reason,wa.providerId||null,JSON.stringify(wa.data||{}).slice(0,2000),Date.now(),id).run();return{ok:true,channel:'whatsapp',reason:decision.reason,providerId:wa.providerId};}
@@ -4238,8 +4250,9 @@ export default {
                     if (mediaId) murl = await waMediaUrl(env, tenantId, mediaId);
                     // Guardar mensaje. Si es un reintento del webhook, no se toca el chat ni se crea lead.
                     let inserted = false;
-                    try { const write:any = await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,media_id,delivery_status,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(msgId, tenantId, chatId, 0, text, mtype, murl, mname, mediaId || null, 'received', ts, Date.now()).run(); inserted = !!write.meta?.changes; } catch (e) {}
-                    if (!inserted) continue;
+                     try { const write:any = await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,media_id,delivery_status,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(msgId, tenantId, chatId, 0, text, mtype, murl, mname, mediaId || null, 'received', ts, Date.now()).run(); inserted = !!write.meta?.changes; } catch (e) {}
+                     if (!inserted) continue;
+                     await recordChannelContactActivity(env,tenantId,from,'inbound',ts||Date.now()).catch(()=>{});
                     // Actualizar metadatos del chat
                     const contactName = (value.contacts && value.contacts[0]?.profile?.name) || from;
                     try { await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,1,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text, last_ts=excluded.last_ts, unread=wa_chats_meta.unread+1, name=COALESCE(NULLIF(wa_chats_meta.name,''),excluded.name), phone=COALESCE(NULLIF(wa_chats_meta.phone,''),excluded.phone), updated_at=excluded.updated_at").bind(tenantId, chatId, contactName, from, text || '[adjunto]', ts, Date.now()).run(); } catch (e) {}
@@ -4319,6 +4332,7 @@ export default {
             const now = Date.now();
             try { await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,ts,created_at) VALUES (?,?,?,?,?,?,?,?)").bind(mid, b.tenant_id, to, 1, b.text || b.message || '', 'text', now, now).run(); } catch (e) {}
             try { await env.aura_db.prepare("UPDATE wa_chats_meta SET last_text=?, last_ts=?, unread=0 WHERE tenant_id=? AND chat_id=?").bind(b.text || '', now, b.tenant_id, to).run(); } catch (e) {}
+            await recordChannelContactActivity(env,b.tenant_id,to,'human_outbound',now).catch(()=>{});
           }
           return json({ ok: resp.ok, status: resp.status, data });
         } catch (e: any) { return json({ ok: false, error: String(e && e.message || e) }); }
@@ -4449,6 +4463,7 @@ export default {
         const mid=data?.messages?.[0]?.id||('out360_'+Date.now()), now=Date.now(), mediaUrl=await waMediaUrl(env,tenantId,uploaded.id);
         await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,media_id,delivery_status,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(mid,tenantId,to,1,String(b.text||''),kind,mediaUrl,filename,uploaded.id,'accepted',now,now).run();
         await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,0,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text,last_ts=excluded.last_ts,unread=0,updated_at=excluded.updated_at").bind(tenantId,to,'+'+to,to,String(b.text||'[Adjunto]'),now,now).run();
+        await recordChannelContactActivity(env,tenantId,to,'human_outbound',now).catch(()=>{});
         return json({ok:true,data,media_id:uploaded.id});
       }
 
@@ -4515,7 +4530,7 @@ export default {
         const r=await fetch('https://waba-v2.360dialog.io/messages',{method:'POST',headers:{'D360-API-KEY':cfg.d360_api_key,'Content-Type':'application/json','User-Agent':'AURA-CRM/1.0'},body:JSON.stringify(payload)}); const data:any=await r.json().catch(()=>null);
         if(!r.ok)return json({ok:false,error:'template_send_failed',status:r.status,data},502);
         const mid=String(data?.messages?.[0]?.id||('out360_'+Date.now())),now=Date.now(); await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,delivery_status,template_name,template_category,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)").bind(mid,tenantId,to,1,'[Plantilla] '+tpl.name,'template','accepted',tpl.name,tpl.category,now,now).run();
-        await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,0,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text,last_ts=excluded.last_ts,unread=0,updated_at=excluded.updated_at").bind(tenantId,to,'+'+to,to,'[Plantilla] '+tpl.name,now,now).run(); return json({ok:true,message_id:mid,data});
+        await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,0,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text,last_ts=excluded.last_ts,unread=0,updated_at=excluded.updated_at").bind(tenantId,to,'+'+to,to,'[Plantilla] '+tpl.name,now,now).run(); await recordChannelContactActivity(env,tenantId,to,'human_outbound',now).catch(()=>{}); return json({ok:true,message_id:mid,data});
       }
 
       if (p === '/api/wa-consents' && req.method === 'GET') {
@@ -4677,6 +4692,7 @@ export default {
             const mid = data.messages?.[0]?.id || ('out360_'+Date.now()); const now = Date.now();
             await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,ts,created_at) VALUES (?,?,?,?,?,?,?,?)").bind(mid,b.tenant_id,to,1,b.text||'','text',now,now).run().catch(()=>{});
             await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,0,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text,last_ts=excluded.last_ts,unread=0,updated_at=excluded.updated_at").bind(b.tenant_id,to,'+'+to,to,b.text||'',now,now).run().catch(()=>{});
+            await recordChannelContactActivity(env,b.tenant_id,to,'human_outbound',now).catch(()=>{});
             return json({ ok:true, data });
           }
           return json({ ok:false, error:'360dialog_only', message:'Solo se admite envío mediante 360dialog.' }, 409);
@@ -5914,27 +5930,27 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
       const mins = (nowUTC.getTime()-created.getTime())/60000;
       // TOQUE RÁPIDO: dejó datos y no reservó ni entró al chat. 1er SMS a los ~3 min (lead caliente, contacto inmediato), 2º a las 5h
       if (!l.sms_fast20 && mins >= 3 && mins < 300 && !l.chatted) {
-        const r = await dispatchAuraChannel(env,{tenantId:l.tenant_id,eventKey:'lead_recovery_fast',entityId:l.id,phone:l.phone,consentCategory:'service',smsText:fill(T.fast20,vars),smsSender:tn.name||'AURA',whatsappValues:[l.name||'',tn.name||'',mlink,prox||'esta semana']});
+        const r = await dispatchAuraChannel(env,{tenantId:l.tenant_id,eventKey:'lead_recovery_fast',entityId:l.id,phone:l.phone,consentCategory:'service',smsText:fill(T.fast20,vars),smsSender:tn.name||'AURA',whatsappValues:[l.name||'',tn.name||'',mlink,prox||'esta semana'],sinceAt:new Date(l.created_at).getTime()});
         if (r.ok) { await env.aura_db.prepare('UPDATE leads SET sms_fast20=1 WHERE id=?').bind(l.id).run(); sent++; }
       } else if (!l.sms_fast5h && mins >= 300 && mins < 1440 && !l.chatted) {
         // BLINDADO: a partir de 5h y hasta 24h tras dejar datos (antes solo 5-6h). Flag sms_fast5h evita duplicados.
         if (!prox) { /* sin día abierto: espera */ } else {
-          const r = await dispatchAuraChannel(env,{tenantId:l.tenant_id,eventKey:'lead_recovery_5h',entityId:l.id,phone:l.phone,consentCategory:'service',smsText:fill(T.fast5h,vars),smsSender:tn.name||'AURA',whatsappValues:[l.name||'',tn.name||'',mlink,prox||'esta semana']});
+          const r = await dispatchAuraChannel(env,{tenantId:l.tenant_id,eventKey:'lead_recovery_5h',entityId:l.id,phone:l.phone,consentCategory:'service',smsText:fill(T.fast5h,vars),smsSender:tn.name||'AURA',whatsappValues:[l.name||'',tn.name||'',mlink,prox||'esta semana'],sinceAt:new Date(l.created_at).getTime()});
           if (r.ok) { await env.aura_db.prepare('UPDATE leads SET sms_fast5h=1 WHERE id=?').bind(l.id).run(); sent++; }
         }
       } else if (!l.react_d3 && days >= 3 && days < 7) {
         // BLINDADO: ventana amplia (día 3 al 7) en vez de franja de 1h. Flag react_d3 evita duplicados.
         if (!prox) continue; // sin ningún día abierto en el horizonte: espera al siguiente cron
-        const r = await dispatchAuraChannel(env,{tenantId:l.tenant_id,eventKey:'lead_recovery_d3',entityId:l.id,phone:l.phone,consentCategory:'marketing',smsText:fill(T.reactivation,vars),smsSender:tn.name||'AURA',whatsappValues:[l.name||'',tn.name||'',mlink,prox||'esta semana']});
+        const r = await dispatchAuraChannel(env,{tenantId:l.tenant_id,eventKey:'lead_recovery_d3',entityId:l.id,phone:l.phone,consentCategory:'marketing',smsText:fill(T.reactivation,vars),smsSender:tn.name||'AURA',whatsappValues:[l.name||'',tn.name||'',mlink,prox||'esta semana'],sinceAt:new Date(l.created_at).getTime()});
         if (r.ok) { await env.aura_db.prepare('UPDATE leads SET react_d3=1 WHERE id=?').bind(l.id).run(); sent++; }
       } else if (!l.react_d7 && days >= 7 && days < 21) {
         // BLINDADO: ventana amplia (día 7 al 21). Flag react_d7 evita duplicados.
         if (!prox) continue;
-        const r = await dispatchAuraChannel(env,{tenantId:l.tenant_id,eventKey:'lead_recovery_d7',entityId:l.id,phone:l.phone,consentCategory:'marketing',smsText:fill(T.reactivation,vars),smsSender:tn.name||'AURA',whatsappValues:[l.name||'',tn.name||'',mlink,prox||'esta semana']});
+        const r = await dispatchAuraChannel(env,{tenantId:l.tenant_id,eventKey:'lead_recovery_d7',entityId:l.id,phone:l.phone,consentCategory:'marketing',smsText:fill(T.reactivation,vars),smsSender:tn.name||'AURA',whatsappValues:[l.name||'',tn.name||'',mlink,prox||'esta semana'],sinceAt:new Date(l.created_at).getTime()});
         if (r.ok) { await env.aura_db.prepare('UPDATE leads SET react_d7=1 WHERE id=?').bind(l.id).run(); sent++; }
       } else if (!l.react_d21 && days >= 21 && days < 60) {
         // BLINDADO: último intento, ventana amplia (día 21 al 60). Flag react_d21 evita duplicados.
-        const r = await dispatchAuraChannel(env,{tenantId:l.tenant_id,eventKey:'lead_recovery_d21',entityId:l.id,phone:l.phone,consentCategory:'marketing',smsText:fill(T.react_last,vars),smsSender:tn.name||'AURA',whatsappValues:[l.name||'',tn.name||'',mlink,prox||'esta semana']});
+        const r = await dispatchAuraChannel(env,{tenantId:l.tenant_id,eventKey:'lead_recovery_d21',entityId:l.id,phone:l.phone,consentCategory:'marketing',smsText:fill(T.react_last,vars),smsSender:tn.name||'AURA',whatsappValues:[l.name||'',tn.name||'',mlink,prox||'esta semana'],sinceAt:new Date(l.created_at).getTime()});
         if (r.ok) { await env.aura_db.prepare('UPDATE leads SET react_d21=1 WHERE id=?').bind(l.id).run(); sent++; }
       }
       } catch(err){ console.error('automations lead error', l && l.id, err); }
