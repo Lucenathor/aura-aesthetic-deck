@@ -1,0 +1,39 @@
+flowchart LR
+  classDef tenantA fill:#FDF8F4,stroke:#A85942,color:#2D1B0E,stroke-width:2px;
+  classDef tenantB fill:#F3F7FB,stroke:#527C9D,color:#193B58,stroke-width:2px;
+  classDef data fill:#FFFFFF,stroke:#D8C8BB,color:#2D1B0E;
+  classDef lock fill:#F6F1ED,stroke:#9B8A7B,color:#5D4B3C,stroke-dasharray: 5 4;
+  classDef core fill:#FFF4ED,stroke:#C47A61,color:#2D1B0E,stroke-width:2px;
+
+  OA["Propietario de Clínica A"]:::tenantA --> GA{"requireTenant"}:::core
+  OB["Propietario de Clínica B"]:::tenantB --> GB{"requireTenant"}:::core
+
+  GA --> A1["Política A"]:::tenantA
+  GA --> A2["Plantillas A"]:::tenantA
+  GA --> A3["Consentimientos A"]:::tenantA
+  GA --> A4["Decisiones y chats A"]:::tenantA
+
+  GB --> B1["Política B"]:::tenantB
+  GB --> B2["Plantillas B"]:::tenantB
+  GB --> B3["Consentimientos B"]:::tenantB
+  GB --> B4["Decisiones y chats B"]:::tenantB
+
+  OA -. "HTTP 403" .-> B1
+  OA -. "HTTP 403" .-> B2
+  OA -. "HTTP 403" .-> B3
+  OA -. "HTTP 403" .-> B4
+  OB -. "HTTP 403" .-> A1
+  OB -. "HTTP 403" .-> A2
+  OB -. "HTTP 403" .-> A3
+  OB -. "HTTP 403" .-> A4
+
+  SA["Superadmin AURA<br/>operación y onboarding"]:::core --> A1
+  SA --> B1
+  SA --> A2
+  SA --> B2
+  SA --> A3
+  SA --> B3
+  SA --> A4
+  SA --> B4
+
+  K["Cada registro lleva tenant_id.<br/>Las claves compuestas separan teléfono,<br/>evento y entidad por clínica."]:::lock

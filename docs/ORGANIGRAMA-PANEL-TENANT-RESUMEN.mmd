@@ -1,0 +1,32 @@
+flowchart TB
+  classDef tenant fill:#FDF8F4,stroke:#A85942,color:#2D1B0E,stroke-width:2px;
+  classDef choice fill:#FFFFFF,stroke:#A85942,color:#2D1B0E,stroke-width:2px;
+  classDef automatic fill:#FFF4ED,stroke:#C47A61,color:#2D1B0E,stroke-width:2px;
+  classDef outcome fill:#EFF8F2,stroke:#2E7D4F,color:#174A2E,stroke-width:2px;
+  classDef locked fill:#F6F1ED,stroke:#9B8A7B,color:#5D4B3C,stroke-dasharray: 5 4;
+
+  A["Clínica autenticada<br/>Tenant T"]:::tenant --> B["Ajustes → Comunicaciones<br/>solo ve datos de T"]:::tenant
+
+  B --> C{"Qué puede decidir la clínica"}:::choice
+  C --> C1["Canal:<br/>Automático · Solo WhatsApp · Solo SMS"]:::choice
+  C --> C2["SMS de respaldo:<br/>sí / no"]:::choice
+  C --> C3["Pausar automatizaciones:<br/>sí / no"]:::choice
+  C --> C4["Conectar número oficial<br/>y asociar plantillas"]:::choice
+
+  C1 --> D["Selector automático de AURA"]:::automatic
+  C2 --> D
+  C3 --> D
+  C4 --> D
+
+  D --> E{"¿Se puede contactar?"}:::automatic
+  E -->|WhatsApp válido| F["Un WhatsApp"]:::outcome
+  E -->|No válido + respaldo permitido| G["Un SMS"]:::outcome
+  E -->|No válido + sin respaldo| H["Pendiente: no envía"]:::locked
+  E -->|Paciente respondió, reservó,<br/>humano intervino o baja| I["Cancela automatizaciones"]:::locked
+
+  J["AURA bloquea siempre"]:::locked
+  J --> J1["Captación fuera del embudo web"]:::locked
+  J --> J2["WhatsApp + SMS en el mismo evento"]:::locked
+  J --> J3["Enviar sin consentimiento o plantilla"]:::locked
+  J --> J4["No-show automático"]:::locked
+  J --> J5["Modificar datos de otro tenant"]:::locked

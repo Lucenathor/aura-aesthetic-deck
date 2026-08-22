@@ -109,3 +109,5 @@
 - [x] Realizar una segunda auditoría funcional y visual del selector de canal por tenant, con pruebas de permisos, estados, desktop, tablet y móvil.
 - [x] Mejorar los puntos de usabilidad confirmados en Ajustes → Comunicaciones sin añadir opciones ni complejidad innecesarias.
 - [x] Documentar un protocolo de trabajo por zonas y archivos propietarios para avanzar en paralelo sin conflictos ni regresiones.
+- [x] Crear un organigrama del panel de Comunicaciones que delimite decisiones del tenant y reglas automáticas no modificables.
+- [x] Verificar de nuevo el aislamiento por tenant de política, consentimiento, plantillas, historial de decisiones y permisos antes de fijar el organigrama.

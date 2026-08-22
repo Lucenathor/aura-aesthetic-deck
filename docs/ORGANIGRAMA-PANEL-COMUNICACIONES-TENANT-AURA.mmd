@@ -1,0 +1,77 @@
+flowchart TB
+  classDef tenant fill:#FDF8F4,stroke:#A85942,color:#2D1B0E,stroke-width:2px;
+  classDef choice fill:#FFFFFF,stroke:#A85942,color:#2D1B0E,stroke-width:2px;
+  classDef system fill:#FFF4ED,stroke:#C47A61,color:#2D1B0E,stroke-width:2px;
+  classDef lock fill:#F6F1ED,stroke:#9B8A7B,color:#5D4B3C,stroke-dasharray: 5 4;
+  classDef data fill:#FFFDFB,stroke:#D8C8BB,color:#2D1B0E;
+  classDef ok fill:#EFF8F2,stroke:#2E7D4F,color:#174A2E,stroke-width:2px;
+
+  A["Clínica autenticada<br/>tenant = T"]:::tenant --> B["Ajustes → Comunicaciones<br/>solo datos de T"]:::tenant
+
+  subgraph V["Lo que la clínica puede decidir"]
+    direction TB
+    B --> C{"Canal de seguimiento"}:::choice
+    C --> C1["Automático · recomendado"]:::choice
+    C --> C2["Solo WhatsApp"]:::choice
+    C --> C3["Solo SMS"]:::choice
+    C1 --> D["Permitir SMS de respaldo<br/>sí / no"]:::choice
+    B --> E["Pausar automatizaciones<br/>sí / no"]:::choice
+    B --> F["Conectar número oficial<br/>360dialog / Meta"]:::choice
+    B --> G["Asociar plantilla aprobada<br/>a un evento"]:::choice
+  end
+
+  subgraph X["Lo que AURA decide automáticamente"]
+    direction TB
+    H["Evento: recuperación, cita,<br/>post-cita, recall o reseña"]:::system --> I{"¿Automatizaciones pausadas,<br/>paciente respondió, humano intervino,<br/>reserva o baja?"}:::system
+    I -->|Sí| J["No enviar / cancelar pendientes"]:::lock
+    I -->|No| K{"¿Existe consentimiento<br/>para la categoría?"}:::system
+    K -->|No| J
+    K -->|Sí| L{"Modo, 360dialog conectado,<br/>ventana/plantilla válida"}:::system
+    L -->|WhatsApp válido| M["Enviar un WhatsApp"]:::ok
+    L -->|No válido y respaldo permitido| N["Enviar un SMS"]:::ok
+    L -->|No válido y sin respaldo| O["Dejar pendiente<br/>sin duplicar"]:::lock
+  end
+
+  C1 --> L
+  C2 --> L
+  C3 --> N
+  D --> L
+  E --> I
+  F --> L
+  G --> L
+
+  subgraph S["Barreras que el tenant no puede cambiar"]
+    direction TB
+    P["Captación siempre en el embudo web de AURA"]:::lock
+    Q["Nunca WhatsApp y SMS<br/>para el mismo evento"]:::lock
+    R["Sin consentimiento / plantilla,<br/>no hay envío forzado"]:::lock
+    T["No-show solo manual<br/>por recepción"]:::lock
+    U["Un tenant no puede leer ni guardar<br/>datos de otro tenant"]:::lock
+  end
+
+  P -. regla fija .-> H
+  Q -. idempotencia .-> M
+  Q -. idempotencia .-> N
+  R -. cumplimiento .-> K
+  T -. regla fija .-> H
+
+  subgraph DB["Datos aislados por tenant T"]
+    direction TB
+    DB1["wa_config[T]<br/>modo, respaldo, pausa, conexión"]:::data
+    DB2["wa_templates[T]<br/>plantillas de esa clínica"]:::data
+    DB3["wa_consents[T, teléfono, categoría]"]:::data
+    DB4["channel_dispatches[T, evento, entidad]<br/>una decisión idempotente"]:::data
+    DB5["wa_messages / chats[T]<br/>historial de esa clínica"]:::data
+  end
+
+  B --> DB1
+  G --> DB2
+  K --> DB3
+  H --> DB4
+  M --> DB5
+  N --> DB4
+  U -. autorización requireTenant .-> DB1
+  U -. autorización requireTenant .-> DB2
+  U -. autorización requireTenant .-> DB3
+  U -. autorización requireTenant .-> DB4
+  U -. autorización requireTenant .-> DB5
