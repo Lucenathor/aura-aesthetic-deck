@@ -52,3 +52,15 @@ La captura móvil larga de `aura-demo` confirmó que la gráfica de Retención s
 La captura móvil larga de `clinicaespana` confirmó que los KPI, el miniembudo, Retención y la tendencia semanal no muestran actividad ficticia. La zona de Retención presenta 0%, 0 €, frecuencia «—», 0 inactivos y el mensaje «Sin cobros registrados en los últimos 6 meses» en lugar de líneas o áreas. El documento continúa sin desbordamiento horizontal visible. La auditoría corregida detectó los cinco canvases como vacíos en los cinco viewports del tenant cero.
 
 Después de la primera revisión móvil se mejoró Retención: la lista de pacientes y la gráfica ya no comparten dos columnas comprimidas a 390 px. Ahora se apilan y la gráfica dispone de 220 px de altura. La nueva captura muestra etiquetas, curva y leyenda legibles en `aura-demo`; en `clinicaespana`, el mensaje vacío ocupa la zona completa sin línea, punto ni área decorativa.
+
+Validación posterior al despliegue
+
+El despliegue conjunto terminó correctamente: Worker versión `b9e2352c-02bf-41fc-8fce-9c9724f2a7d6`, Pages `eba81273.aura-mvp.pages.dev` y commit `d6f929d`. La landing y los rewrites de embudos pasaron el preflight. La primera reapertura interactiva de producción no conservó la sesión del navegador (`aura_token` ausente), por lo que no se usará esa vista anónima para evaluar datos. Las pruebas finales continuarán con el token de auditoría superadmin ya existente en el repositorio, leído de forma interna por el script sin imprimirlo.
+
+Las cuatro APIs protegidas devolvieron HTTP 200 para `aura-demo` y `clinicaespana` con sesión superadmin. En `aura-demo`, Conversión ya incluye denominadores reales por mes; por ejemplo, agosto muestra 2 reservas de 97 leads (2%). Retención devuelve exactamente seis meses e incluye abril y julio con ceros. `revenue_daily` devuelve 720 €, 870 € y 350 € en los días 14, 15 y 17 de agosto. En `clinicaespana`, todas las sumas y arrays permanecen en cero o vacíos.
+
+La auditoría de permisos con una sesión real de propietario de `demo-firma` confirmó HTTP 200 en sus cuatro APIs y HTTP 403 tanto sin autenticación como al solicitar `aura-demo`. Esto cubre `/api/advanced-metrics`, `/api/retention-report`, `/api/funnel-metrics` y `/api/dashboard/:tenantId`.
+
+Las capturas de producción para cinco viewports por tenant se completaron. `aura-demo` tiene una sola gráfica vacía, Pacientes nuevos vs recurrentes, porque no existen citas activas del mes clasificables; no se dibuja un doughnut 0/0. Tiene dos sparklines vacíos por ausencia de actividad reciente en leads y conversión, mientras Facturación sí representa el único cobro real dentro de los últimos siete días. `clinicaespana` mantiene los cinco canvases y los tres sparklines en estado vacío en todos los tamaños.
+
+La inspección desktop y móvil larga de producción confirma que el sparkline diario de facturación ya no muestra el falso vacío observado contra el Worker antiguo. Retención mantiene la curva real con meses cero, y en móvil lista y gráfica siguen apiladas sin desbordamiento horizontal visible.

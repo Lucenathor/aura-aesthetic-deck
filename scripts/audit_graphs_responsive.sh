@@ -2,7 +2,7 @@
 set -u
 
 ROOT="/home/ubuntu/aura-presentation"
-BASE="http://127.0.0.1:4173/dashboard.html"
+BASE="${AURA_AUDIT_BASE:-http://127.0.0.1:4173/dashboard.html}"
 OUT="$ROOT/audit/graphs-responsive"
 PROFILE="/tmp/aura-graphs-chromium"
 
