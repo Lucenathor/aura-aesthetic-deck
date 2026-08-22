@@ -111,3 +111,6 @@
 - [x] Documentar un protocolo de trabajo por zonas y archivos propietarios para avanzar en paralelo sin conflictos ni regresiones.
 - [x] Crear un organigrama del panel de Comunicaciones que delimite decisiones del tenant y reglas automáticas no modificables.
 - [x] Verificar de nuevo el aislamiento por tenant de política, consentimiento, plantillas, historial de decisiones y permisos antes de fijar el organigrama.
+- [x] Investigar sistemas de diseño, librerías de iconos y tipografías premium que eliminen la apariencia genérica de IA en AURA.
+- [x] Definir un sistema cromático gradual basado en el logo coral, rosa y violeta de AURA, con superficies neutras y acentos controlados.
+- [x] Generar tres mockups visuales diferenciados del dashboard antes de aplicar cualquier rediseño al producto.
