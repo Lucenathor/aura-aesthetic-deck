@@ -69,12 +69,17 @@ fi
 
 # PASO 4: Purgar caché
 echo -e "${GREEN}[5/5]${NC} Purgando caché de Cloudflare..."
-curl -sS -X POST 'https://api.cloudflare.com/client/v4/zones/2f820fa534a00cba90dd70d603206ad3/purge_cache' \
-  -H 'X-Auth-Email: adrian@lucenathor.com' \
+PURGE_RESULT=$(curl -sS -w '\n%{http_code}' -X POST 'https://api.cloudflare.com/client/v4/zones/2f820fa534a00cba90dd70d603206ad3/purge_cache' \
   -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"purge_everything":true}' > /dev/null 2>&1
-echo -e "${GREEN}✅ Caché purgada${NC}"
+  -d '{"purge_everything":true}' 2>/dev/null || printf '\n000')
+PURGE_HTTP=$(printf '%s\n' "$PURGE_RESULT" | tail -n 1)
+PURGE_BODY=$(printf '%s\n' "$PURGE_RESULT" | sed '$d')
+if [ "$PURGE_HTTP" = "200" ] && printf '%s' "$PURGE_BODY" | grep -q '"success":true'; then
+  echo -e "${GREEN}✅ Caché purgada${NC}"
+else
+  echo -e "${YELLOW}⚠️  Caché no purgada (HTTP ${PURGE_HTTP}). Revisa el permiso Zone · Cache Purge del token.${NC}"
+fi
 echo ""
 
 # PASO 5: Push a GitHub

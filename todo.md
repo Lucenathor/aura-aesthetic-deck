@@ -131,3 +131,8 @@
 - [x] Implementar estados cero honestos: ningún volumen o tendencia visible cuando el valor real sea cero o no haya datos.
 - [x] Aplicar degradados Pearl Aurora diferenciados por métrica sin alterar la proporcionalidad de los datos.
 - [x] Probar variación de datos, aislamiento entre tenants, carga, error y responsive antes de desplegar todas las gráficas reales.
+- [x] Verificar la validez del token Cloudflare sin exponerlo y confirmar las cuentas a las que da acceso.
+- [x] Auditar acceso efectivo a Workers, Pages, D1, R2, KV y DNS relacionados con AURA.
+- [x] Confirmar permisos de lectura y despliegue con comprobaciones no destructivas y detectar cualquier alcance ausente.
+- [x] Documentar qué operaciones permite la clave, qué no permite y si es adecuada para gestionar AURA de extremo a extremo.
+- [x] Corregir `deploy.sh` para que valide la respuesta de purga de caché y nunca muestre éxito ante HTTP 401/403.
