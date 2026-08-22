@@ -38,3 +38,5 @@ La cuadrícula usa columnas adaptativas con un mínimo de 220 píxeles y las acc
 La segunda comprobación se realizó con una sesión real de AURA en 375 × 812 y 768 × 1024. No se detectaron desbordamientos del panel, el buscador y la navegación principal se mantienen accesibles, y los controles de ajustes se reordenan a una columna o a dos columnas según el ancho disponible.
 
 En móvil, la navegación secundaria de Ajustes se desplaza horizontalmente; funciona, pero se detectó una oportunidad de orientación: hacer visible que existen más secciones a la derecha para que Comunicaciones no quede implícitamente escondida tras el borde de pantalla.
+
+Se añadió el texto «Desliza para ver más ajustes →» bajo la navegación secundaria únicamente en móvil. La verificación posterior a producción confirmó que el aviso es visible sin desplazar la página y que no altera la vista tablet ni escritorio.
