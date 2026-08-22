@@ -686,6 +686,7 @@ async function decideAuraChannel(env: Env, input: { tenantId: string; phone: str
     if(Number(activity?.last_human_outbound_at||0)>=input.sinceAt)return { channel:'none',reason:'human_intervened',mode:policy.mode,smsFallback:policy.smsFallback,cfg:policy.cfg };
   }
   const consent: any = await env.aura_db.prepare('SELECT status FROM wa_consents WHERE tenant_id=? AND phone=? AND category=?').bind(tenantId,phone,input.consentCategory).first();
+  if (consent?.status === 'revoked') return { channel:'none', reason:'contact_opted_out', mode:policy.mode, smsFallback:policy.smsFallback, cfg:policy.cfg };
   if (input.consentCategory !== 'service' && consent?.status !== 'granted') return { channel:'none', reason:'missing_'+input.consentCategory+'_consent', mode:policy.mode, smsFallback:policy.smsFallback, cfg:policy.cfg };
   if (policy.mode === 'sms') return { channel:'sms', reason:'tenant_sms_only', mode:policy.mode, smsFallback:policy.smsFallback, cfg:policy.cfg };
 
@@ -4254,6 +4255,10 @@ export default {
                      try { const write:any = await env.aura_db.prepare("INSERT OR IGNORE INTO wa_messages (message_id,tenant_id,chat_id,from_me,text,mtype,murl,mname,media_id,delivery_status,ts,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(msgId, tenantId, chatId, 0, text, mtype, murl, mname, mediaId || null, 'received', ts, Date.now()).run(); inserted = !!write.meta?.changes; } catch (e) {}
                      if (!inserted) continue;
                      await recordChannelContactActivity(env,tenantId,from,'inbound',ts||Date.now()).catch(()=>{});
+                     if(/^(stop|baja|cancelar|no\s+me\s+(?:escribas|contactes)|dejar\s+de\s+recibir)[.!\s]*$/i.test(String(text||'').trim())){
+                       const revokedAt=Date.now(),proof='Palabra de baja recibida por WhatsApp';
+                       for(const category of ['service','marketing','reviews'])await env.aura_db.prepare("INSERT INTO wa_consents (tenant_id,phone,category,status,source,proof,granted_at,revoked_at,updated_at) VALUES (?,?,?,'revoked','whatsapp_keyword',?,NULL,?,?) ON CONFLICT(tenant_id,phone,category) DO UPDATE SET status='revoked',source='whatsapp_keyword',proof=excluded.proof,revoked_at=excluded.revoked_at,updated_at=excluded.updated_at").bind(tenantId,normalizeAuraPhone(from),category,proof,revokedAt,revokedAt).run().catch(()=>{});
+                     }
                     // Actualizar metadatos del chat
                     const contactName = (value.contacts && value.contacts[0]?.profile?.name) || from;
                     try { await env.aura_db.prepare("INSERT INTO wa_chats_meta (tenant_id,chat_id,name,phone,last_text,last_ts,unread,updated_at) VALUES (?,?,?,?,?,?,1,?) ON CONFLICT(tenant_id,chat_id) DO UPDATE SET last_text=excluded.last_text, last_ts=excluded.last_ts, unread=wa_chats_meta.unread+1, name=COALESCE(NULLIF(wa_chats_meta.name,''),excluded.name), phone=COALESCE(NULLIF(wa_chats_meta.phone,''),excluded.phone), updated_at=excluded.updated_at").bind(tenantId, chatId, contactName, from, text || '[adjunto]', ts, Date.now()).run(); } catch (e) {}
