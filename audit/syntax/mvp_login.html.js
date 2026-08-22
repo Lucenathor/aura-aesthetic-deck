@@ -1,6 +1,9 @@
 
 const WORKER='https://aura-chat-worker.adrian-7b9.workers.dev';
 let EMAIL='';
+let TURNSTILE_TOKEN='';
+function onTurnstile(token){ TURNSTILE_TOKEN=token||''; }
+function onTurnstileExpired(){ TURNSTILE_TOKEN=''; }
 // chispas doradas
 (function(){ if(matchMedia('(prefers-reduced-motion: reduce)').matches)return; for(let i=0;i<14;i++){ const s=document.createElement('div'); s.className='spark'; s.style.left=(Math.random()*100)+'%'; s.style.bottom=(Math.random()*60)+'%'; s.style.animationDuration=(6+Math.random()*6)+'s'; s.style.animationDelay=(Math.random()*6)+'s'; document.body.appendChild(s); } })();
 // frase rotativa motivadora
@@ -13,18 +16,19 @@ const nextTenant=params.get('t')||'';
 // si ya hay sesión, ir al dashboard
 (async function(){
   const tok=localStorage.getItem('aura_token');
-  if(tok){ try{ const r=await fetch(WORKER+'/api/auth/me?token='+tok); const d=await r.json(); if(d.auth){ location.href='/dashboard?t='+d.tenant_id; } }catch(e){} }
+  if(tok){ try{ const r=await fetch(WORKER+'/api/auth/me',{headers:{'Authorization':'Bearer '+tok}}); const d=await r.json(); if(d.auth){ location.href='/dashboard?t='+d.tenant_id; } }catch(e){} }
 })();
 function msg(t,cls){ const m=document.getElementById('msg'); m.textContent=t; m.className='msg '+(cls||''); }
 async function sendCode(){
   EMAIL=document.getElementById('email').value.trim();
   if(!EMAIL.includes('@')){ msg('Pon un email válido','err'); return; }
+  if(!TURNSTILE_TOKEN){ msg('Completa la verificación de seguridad','err'); return; }
   const b=document.getElementById('sendBtn'); b.disabled=true; b.textContent='Enviando…';
   try{
-    const r=await fetch(WORKER+'/api/auth/request-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:EMAIL,tenant_id:nextTenant||undefined})});
+    const r=await fetch(WORKER+'/api/auth/request-code',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:EMAIL,turnstile_token:TURNSTILE_TOKEN})});
     const d=await r.json();
     if(d.ok){ confetti(); document.getElementById('step1').classList.remove('on'); document.getElementById('step2').classList.add('on'); document.getElementById('sub').textContent='Revisa tu correo ('+EMAIL+') e introduce el código.'; msg('Código enviado','ok'); document.getElementById('code').focus(); }
-    else msg(d.error||'No se pudo enviar','err');
+    else { msg(d.error||'No se pudo enviar','err'); TURNSTILE_TOKEN=''; if(window.turnstile)turnstile.reset(); }
   }catch(e){ msg('Error de conexión','err'); }
   b.disabled=false; b.textContent='Enviar código';
 }
@@ -40,6 +44,6 @@ async function verify(){
   }catch(e){ msg('Error de conexión','err'); }
   b.disabled=false; b.textContent='Entrar';
 }
-function reset(){ document.getElementById('step2').classList.remove('on'); document.getElementById('step1').classList.add('on'); document.getElementById('sub').textContent='Entra con tu email. Te enviamos un código.'; msg(''); }
+function reset(){ document.getElementById('step2').classList.remove('on'); document.getElementById('step1').classList.add('on'); document.getElementById('sub').textContent='Entra con tu email. Te enviamos un código.'; TURNSTILE_TOKEN=''; if(window.turnstile)turnstile.reset(); msg(''); }
 document.getElementById('email').addEventListener('keydown',e=>{if(e.key==='Enter')sendCode();});
 document.getElementById('code').addEventListener('keydown',e=>{if(e.key==='Enter')verify();});
