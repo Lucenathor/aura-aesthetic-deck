@@ -63,6 +63,12 @@ El token no puede completar tareas que impliquen cambiar DNS o vaciar la caché.
 
 `deploy.sh` mostraba «Caché purgada» sin comprobar la respuesta de Cloudflare. La API estaba devolviendo HTTP 401, pero el script ocultaba el cuerpo y anunciaba éxito igualmente. Se corrigió para validar simultáneamente HTTP 200 y `success=true`; si falta el permiso, ahora muestra una advertencia explícita y no genera un falso positivo.
 
+## Revalidación tras ampliar permisos
+
+Después de la actualización solicitada por el usuario, el token sigue activo y ahora puede consultar la lista de API tokens de la cuenta: ese endpoint pasó de HTTP 403 a HTTP 200. Sin embargo, las pruebas reales de `Zone DNS Read`, creación de un TXT temporal y `Cache Purge` siguen fallando con HTTP 403, HTTP 403 y HTTP 401 respectivamente. No se creó ningún registro DNS durante esta segunda prueba.
+
+La política visible sigue estando limitada al espacio de recursos de cuenta (`com.cloudflare.api.account… => *`), no a una zona. Para gestionar `auracrm.co` desde DNS y para purgar caché debe usarse un token compatible con recursos de zona, creado en **My Profile → API Tokens** y limitado a **Zone Resources → Include → Specific zone → auracrm.co**, con `Zone → DNS → Edit`, `Zone → Zone → Read` y `Zone → Cache Purge`.[2] [3]
+
 ## Referencias
 
 [1]: https://developers.cloudflare.com/fundamentals/api/reference/permissions/ "Cloudflare — API token permissions"
