@@ -2363,7 +2363,7 @@ async function saveChannelPolicy(){
   try{const r=await fetch(WORKER+'/api/channel-policy',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')},body:JSON.stringify({tenant_id:T,mode,sms_fallback:fallback,automations_paused:paused})}),d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'error');if(msg){msg.textContent='Configuración guardada ✓';msg.style.color='#1f8c69';setTimeout(()=>msg.textContent='',2200);}loadChannelPolicy();}catch(e){if(msg){msg.textContent=e.message==='owner_required'?'Solo el propietario puede cambiar esta configuración.':'No se pudo guardar.';msg.style.color='#b91c1c';}}
 }
 function waTplStatus(status){const s=String(status||'BORRADOR').toUpperCase();const c=s==='APPROVED'||s==='APROBADA'?'#1f8c69':s==='REJECTED'||s==='RECHAZADA'?'#b91c1c':'#a66a16';return '<span style="font-size:.68rem;font-weight:700;color:'+c+';background:'+ (c==='#1f8c69'?'#e8f6ee':c==='#b91c1c'?'#fef2f2':'#fff6e9') +';padding:.2rem .45rem;border-radius:999px">'+escapeHtml(s)+'</span>';}
-function waEventName(k){return({appointment_confirmation:'Confirmación',appointment_reminder_24h:'Recordatorio 24 h',appointment_reminder_2h:'Recordatorio 2 h',lead_recovery_fast:'Recuperación inmediata',lead_recovery_5h:'Recuperación 5 h',lead_recovery_d3:'Reactivación día 3',lead_recovery_d7:'Reactivación día 7',lead_recovery_d21:'Seguimiento día 21',appointment_followup:'Seguimiento post-cita',review_request:'Solicitud de reseña'})[k]||'';}
+function waEventName(k){return({appointment_confirmation:'Confirmación',appointment_consent_signature:'Firma clínica',appointment_reminder_24h:'Recordatorio 24 h',appointment_reminder_2h:'Recordatorio 2 h',lead_recovery_fast:'Recuperación inmediata',lead_recovery_5h:'Recuperación 5 h',lead_recovery_d3:'Reactivación día 3',lead_recovery_d7:'Reactivación día 7',lead_recovery_d21:'Seguimiento día 21',birthday_greeting:'Cumpleaños',recall_sale:'Recall de venta',postcare_24h:'Cuidados 24 h',appointment_followup:'Seguimiento post-cita',review_request:'Solicitud de reseña'})[k]||'';}
 async function loadWa360Workspace(connected){
   const list=document.getElementById('wa360TemplateList'),metrics=document.getElementById('wa360Metrics');if(!list||!metrics)return;
   if(!connected){metrics.innerHTML='';list.innerHTML='<p class="sub" style="margin:.7rem 0 0">Conecta un número para gestionar plantillas, consentimiento y automatizaciones oficiales.</p>';return;}
@@ -3018,7 +3018,7 @@ async function delProduct(id){ if(!confirm('¿Eliminar este producto?'))return; 
 
 function copyFunnel(){const i=document.getElementById('funnelUrl');navigator.clipboard.writeText(i.value);}
 // ===== Plantillas SMS =====
-const SMS_LABELS={result_no_chat:'Tras el resultado (no entró al chat)',chat_no_book:'Conversó pero no agendó',reminder_24h:'Recordatorio 24h antes',reminder_2h:'Recordatorio 2h antes',no_show:'No asistió (recuperación)',reactivation:'Reactivación lead frío',recall_sale:'Recall de nueva venta (retoque)'};
+const SMS_LABELS={result_no_chat:'Tras el resultado (no entró al chat)',chat_no_book:'Conversó pero no agendó',reminder_24h:'Recordatorio 24h antes',reminder_2h:'Recordatorio 2h antes',no_show:'No-show confirmado por recepción (manual)',reactivation:'Reactivación lead frío',recall_sale:'Recall de nueva venta (retoque)'};
 let SMS_TPL={};
 async function loadSmsTpl(){
   try{ const r=await fetch(WORKER+'/api/sms-templates?tenant='+T); const d=await r.json(); SMS_TPL=d.templates||{}; }catch(e){ SMS_TPL={}; }
@@ -3100,7 +3100,6 @@ const SMS_PHASES=[
   {k:'chat_no_book', label:'Conversó sin reservar', when:'a los 10 min'},
   {k:'reminder_24h', label:'Recordatorio', when:'24h antes de la cita'},
   {k:'reminder_2h', label:'Recordatorio', when:'2h antes'},
-  {k:'no_show', label:'No asistió', when:'1h después'},
   {k:'reactivation', label:'Reactivación', when:'día 3 y 7'}
 ];
 function smsVars(){ const t=(document.getElementById('tName')?document.getElementById('tName').textContent:'Clínica Elvira')||'Clínica Elvira'; return {clinica:t, nombre:'María', link:'aura.app/c/'+(T||'clinica'), fecha:'jue 12 jun', hora:'12:00', direccion:'Velázquez 84, Madrid', tel:'600 123 456'}; }

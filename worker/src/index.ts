@@ -1982,7 +1982,7 @@ export default {
             const hora = dt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
             let msg = `${clinica}: ${b.name}, tu cita queda reservada para el ${fecha} a las ${hora}. Confirma o cambia aquí: ${mlink}`;
             if (tn?.whatsapp) msg += ` o escríbenos: https://wa.me/${tn.whatsapp.replace(/[^0-9]/g, '')}`;
-            await sendSMS(env, phone, msg, clinica, b.tenant_id);
+            await dispatchAuraChannel(env,{tenantId:b.tenant_id,eventKey:'appointment_confirmation',entityId:apptId,phone,consentCategory:'service',smsText:msg,smsSender:clinica,whatsappValues:[b.name||'',fecha,hora,clinica,tn?.address||'',b.treatment||'Valoración']});
           }
         } catch (e) {}
         // Enviar consentimiento automático si aplica
@@ -1996,7 +1996,8 @@ export default {
               const csTok = await signConsent(env, csId, leadId);
               const signLink = 'https://auracrm.co/firmar?consent=' + csId + '&lead=' + encodeURIComponent(leadId) + '&k=' + csTok;
               const tn2: any = await env.aura_db.prepare('SELECT name FROM tenants WHERE id=?').bind(b.tenant_id).first();
-              await sendSMS(env, phone, (tn2?.name || 'AURA') + ': ' + b.name + ', firma tu consentimiento antes de la cita (1 min): ' + signLink, tn2?.name || 'AURA', b.tenant_id);
+              const consentText=(tn2?.name || 'AURA') + ': ' + b.name + ', firma tu consentimiento antes de la cita (1 min): ' + signLink;
+              await dispatchAuraChannel(env,{tenantId:b.tenant_id,eventKey:'appointment_consent_signature',entityId:csId,phone,consentCategory:'service',smsText:consentText,smsSender:tn2?.name||'AURA',whatsappValues:[b.name||'',tn2?.name||'AURA',signLink,b.treatment||'']});
             }
           }
         } catch (e) {}
@@ -4550,7 +4551,7 @@ export default {
 
       if (p === '/api/wa-automations' && req.method === 'GET') { await ensureWaSchema(env); const tenantId=url.searchParams.get('tenant')||''; const guard=await requireTenant(env,req,url,tenantId); if(guard)return json({error:'forbidden',reason:guard},403); const rows:any=await env.aura_db.prepare('SELECT * FROM wa_automation_rules WHERE tenant_id=? ORDER BY event_key').bind(tenantId).all(); return json({rules:rows.results||[]}); }
       if (p === '/api/wa-automations' && req.method === 'POST') {
-        await ensureWaSchema(env);const b:any=await req.json(),tenantId=String(b.tenant_id||''),eventKey=String(b.event_key||''); if(!tenantId||!['appointment_created','appointment_confirmation','appointment_reminder_24h','appointment_reminder_2h','lead_recovery_fast','lead_recovery_5h','lead_recovery_d3','lead_recovery_d7','lead_recovery_d21','appointment_followup','review_request'].includes(eventKey))return json({ok:false,error:'invalid_rule'},400);
+        await ensureWaSchema(env);const b:any=await req.json(),tenantId=String(b.tenant_id||''),eventKey=String(b.event_key||''); if(!tenantId||!['appointment_created','appointment_confirmation','appointment_consent_signature','appointment_reminder_24h','appointment_reminder_2h','lead_recovery_fast','lead_recovery_5h','lead_recovery_d3','lead_recovery_d7','lead_recovery_d21','birthday_greeting','recall_sale','postcare_24h','appointment_followup','review_request'].includes(eventKey))return json({ok:false,error:'invalid_rule'},400);
         const guard=await requireTenant(env,req,url,tenantId); if(guard)return json({error:'forbidden',reason:guard},403);
         const id=String(b.id||('war_'+uid())),now=Date.now();await env.aura_db.prepare("INSERT INTO wa_automation_rules (id,tenant_id,event_key,enabled,template_id,timing_minutes,quiet_start,quiet_end,components_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,event_key) DO UPDATE SET enabled=excluded.enabled,template_id=excluded.template_id,timing_minutes=excluded.timing_minutes,quiet_start=excluded.quiet_start,quiet_end=excluded.quiet_end,components_json=excluded.components_json,updated_at=excluded.updated_at").bind(id,tenantId,eventKey,b.enabled?1:0,b.template_id||null,Number(b.timing_minutes)||0,Number(b.quiet_start)||21,Number(b.quiet_end)||9,JSON.stringify(Array.isArray(b.components)?b.components:[]),now,now).run();return json({ok:true,id});
       }
@@ -5893,26 +5894,8 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
           sent++;
         }
       }
-      // FLUJO NO-SHOW paso 1 — BLINDADO: a partir de 2h después de la cita (hasta 48h) si sigue booked. Flag sms_noshow evita duplicados.
-      if (!a.sms_noshow && diffH <= -2 && diffH > -48) {
-        const r = await sendSMS(env, a.lead_phone, fill(T.no_show, vars), tn.name||'AURA', a.tenant_id);
-        if (r.ok) {
-          await env.aura_db.prepare('UPDATE appointments SET sms_noshow=1, noshow_at=? WHERE id=?').bind(nowUTC.toISOString(), a.id).run();
-          // marcar lead como no-show recuperable: contador + estado + llamar urgente
-          await env.aura_db.prepare("UPDATE leads SET noshow_count=COALESCE(noshow_count,0)+1, recover_state='noshow', call_priority='urgent' WHERE id=?").bind(a.lead_id).run();
-          sent++;
-        }
-      }
-      // FLUJO NO-SHOW paso 2: 48h después del no-show, si no ha reservado nueva cita
-      if (a.sms_noshow && !a.sms_noshow2 && diffH <= -48 && diffH > -72) {
-        const futura: any = await env.aura_db.prepare("SELECT COUNT(*) c FROM appointments WHERE lead_id=? AND status='booked' AND date_iso > ?").bind(a.lead_id, nowUTC.toISOString()).first();
-        if ((futura?.c||0) === 0) {
-          const r = await sendSMS(env, a.lead_phone, fill(T.noshow2, vars), tn.name||'AURA', a.tenant_id);
-          if (r.ok) { await env.aura_db.prepare('UPDATE appointments SET sms_noshow2=1 WHERE id=?').bind(a.id).run(); sent++; }
-        } else {
-          await env.aura_db.prepare('UPDATE appointments SET sms_noshow2=1 WHERE id=?').bind(a.id).run();
-        }
-      }
+      // No se auto-marca ni se contacta por no-show. Tras una hora AURA solo alerta a recepción;
+      // el equipo decide manualmente si fue inasistencia, retraso, cancelación o visita atendida.
       } catch(err){ console.error('automations appt error', a && a.id, err); }
     }
     // 2) Reactivación de leads no reservados (día 3 y 7) — EXCLUYE clientes con recall (ya son clientes, no leads fríos)
@@ -5966,7 +5949,7 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
       const T = await tpl(l.tenant_id);
       const mlink = await magicLink(env, l.tenant_id, l.id);
       const vars = { clinica: tn.name||'', nombre: l.name||'', link: mlink, tel:(tn.whatsapp||'') };
-      const r = await sendSMS(env, l.phone, fill(T.birthday, vars), tn.name||'AURA', l.tenant_id);
+      const r = await dispatchAuraChannel(env,{tenantId:l.tenant_id,eventKey:'birthday_greeting',entityId:l.id+':'+yr,phone:l.phone,consentCategory:'marketing',smsText:fill(T.birthday,vars),smsSender:tn.name||'AURA',whatsappValues:[l.name||'',tn.name||'',mlink]});
       if (r.ok) { await env.aura_db.prepare('UPDATE leads SET bday_year_sent=? WHERE id=?').bind(yr, l.id).run(); sent++; }
       } catch(err){ console.error('automations bday error', l && l.id, err); }
     }
@@ -6000,7 +5983,7 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
       const bookLink = mlink + (mlink.includes('?')?'&':'?') + 'book=1';
       const vars = { clinica: tn.name||'', nombre: (l.name||'').split(' ')[0]||'', link: bookLink, tel:(tn.whatsapp||''), proximo_dia: proxR };
       const msgTpl = l.recall_msg || T.recall_sale;
-      const r = await sendSMS(env, l.phone, fill(msgTpl, vars), tn.name||'AURA', l.tenant_id);
+      const r = await dispatchAuraChannel(env,{tenantId:l.tenant_id,eventKey:'recall_sale',entityId:l.id+':'+String(l.recall_date),phone:l.phone,consentCategory:'marketing',smsText:fill(msgTpl,vars),smsSender:tn.name||'AURA',whatsappValues:[l.name||'',tn.name||'',bookLink,proxR]});
       if (r.ok) { await env.aura_db.prepare('UPDATE leads SET recall_sms_sent=1 WHERE id=?').bind(l.id).run(); sent++; }
       } catch(err){ console.error('automations recall error', l && l.id, err); }
     }
@@ -6025,7 +6008,7 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
             if (nm.includes('labio')) careMsg = tn.name + ': ' + firstName + ', tus labios pueden estar algo hinchados las primeras 48h, es normal. Evita el calor extremo y no te los toques. Si tienes dudas: ' + mlink;
             else if (nm.includes('botox')) careMsg = tn.name + ': ' + firstName + ', no te tumbes las próximas 4h y evita masajear la zona. El resultado final se ve a los 7-10 días. Cualquier duda: ' + mlink;
             else if (nm.includes('peel') || nm.includes('hidrat')) careMsg = tn.name + ': ' + firstName + ', usa protector solar SPF50 los próximos días y evita maquillaje las primeras 24h. Tu piel te lo agradecerá. Dudas: ' + mlink;
-            const r = await sendSMS(env, v.lead_phone, careMsg, tn.name || 'AURA', v.tenant_id);
+            const r = await dispatchAuraChannel(env,{tenantId:v.tenant_id,eventKey:'postcare_24h',entityId:v.id,phone:v.lead_phone,consentCategory:'service',smsText:careMsg,smsSender:tn.name||'AURA',whatsappValues:[firstName,tn.name||'',mlink,v.name||'']});
             if (r.ok) { await env.aura_db.prepare("UPDATE treatments_log SET postcare_24h=1 WHERE id=?").bind(v.id).run(); sent++; }
           }
           // POST-CARE 3d: solicitud de reseña (solo si la clínica tiene google_review_url y no se envió ya en close-visit)
@@ -6035,7 +6018,7 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
               const alreadySent: any = await env.aura_db.prepare("SELECT COUNT(*) c FROM messages WHERE tenant_id=? AND lead_id=? AND content LIKE '%reseña%' AND created_at > ?").bind(v.tenant_id, v.lead_id, Date.now() - 7*86400000).first();
               if ((alreadySent?.c || 0) === 0) {
                 const revMsg = tn.name + ': ' + firstName + ', ¿contenta con el resultado? Tu opinión nos ayuda muchísimo. ¿Nos dejas una reseña? Solo 20 segundos: ' + tn.google_review_url;
-                const r = await sendSMS(env, v.lead_phone, revMsg, tn.name || 'AURA', v.tenant_id);
+                const r = await dispatchAuraChannel(env,{tenantId:v.tenant_id,eventKey:'review_request',entityId:v.id,phone:v.lead_phone,consentCategory:'reviews',smsText:revMsg,smsSender:tn.name||'AURA',whatsappValues:[firstName,tn.name||'',tn.google_review_url]});
                 if (r.ok) { await env.aura_db.prepare("UPDATE treatments_log SET postcare_review=1 WHERE id=?").bind(v.id).run(); sent++; }
               } else {
                 await env.aura_db.prepare("UPDATE treatments_log SET postcare_review=1 WHERE id=?").bind(v.id).run();
@@ -6047,7 +6030,7 @@ async function runAutomations(env: Env): Promise<{ ok: boolean; sent: number }> 
           // POST-CARE 7d: recordatorio de revisión / seguimiento
           if (!v.postcare_7d && hoursAfter >= 160 && hoursAfter <= 240 && within) {
             const followMsg = tn.name + ': ' + firstName + ', ¿cómo va tu evolución? A los 7 días ya se ve el resultado real. Si necesitas una revisión gratuita, reserva aquí: ' + mlink;
-            const r = await sendSMS(env, v.lead_phone, followMsg, tn.name || 'AURA', v.tenant_id);
+            const r = await dispatchAuraChannel(env,{tenantId:v.tenant_id,eventKey:'appointment_followup',entityId:v.id,phone:v.lead_phone,consentCategory:'service',smsText:followMsg,smsSender:tn.name||'AURA',whatsappValues:[firstName,tn.name||'',mlink,v.name||'']});
             if (r.ok) { await env.aura_db.prepare("UPDATE treatments_log SET postcare_7d=1 WHERE id=?").bind(v.id).run(); sent++; }
           }
         } catch (err) { console.error('postcare error', v && v.id, err); }
