@@ -4366,7 +4366,7 @@ export default {
         const b:any=await req.json(),tenantId=String(b.tenant_id||''),eventKey=String(b.event_key||'appointment_reminder_24h'),category=String(b.category||'service');
         if(!tenantId||!['service','marketing','reviews'].includes(category))return json({ok:false,error:'invalid_preview'},400);
         const guard=await requireTenant(env,req,url,tenantId);if(guard)return json({error:'forbidden',reason:guard},403);
-        const decision=await decideAuraChannel(env,{tenantId,phone:String(b.phone||''),eventKey,consentCategory:category as 'service'|'marketing'|'reviews'});
+        const decision=await decideAuraChannel(env,{tenantId,phone:String(b.phone||''),eventKey,consentCategory:category as 'service'|'marketing'|'reviews',sinceAt:Number(b.since_at)||undefined});
         return json({ok:true,channel:decision.channel,reason:decision.reason,mode:decision.mode,sms_fallback:decision.smsFallback});
       }
 
