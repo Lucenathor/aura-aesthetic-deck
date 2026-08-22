@@ -69,6 +69,12 @@ Después de la actualización solicitada por el usuario, el token sigue activo y
 
 La política visible sigue estando limitada al espacio de recursos de cuenta (`com.cloudflare.api.account… => *`), no a una zona. Para gestionar `auracrm.co` desde DNS y para purgar caché debe usarse un token compatible con recursos de zona, creado en **My Profile → API Tokens** y limitado a **Zone Resources → Include → Specific zone → auracrm.co**, con `Zone → DNS → Edit`, `Zone → Zone → Read` y `Zone → Cache Purge`.[2] [3]
 
+## Tercera verificación
+
+La tercera comprobación confirma el mismo diagnóstico. Wrangler continúa identificando la credencial como **Account API Token** y todos los recursos centrales de AURA responden correctamente: Worker, Pages, D1, R2 y KV devolvieron HTTP 200. En cambio, `Zone DNS Read` devolvió HTTP 403, la creación de un TXT temporal devolvió HTTP 403 y `Cache Purge` devolvió HTTP 401. El TXT no llegó a crearse, por lo que no dejó ningún recurso pendiente de limpiar.
+
+Para que cambie este resultado debe actualizarse la credencial que llega como `CLOUDFLARE_API_TOKEN`, no solo ampliar los permisos del token de cuenta actual. La solución es conectar un token de zona compatible —o usar una variable separada como `CLOUDFLARE_ZONE_API_TOKEN`— con los tres permisos de zona indicados arriba.
+
 ## Referencias
 
 [1]: https://developers.cloudflare.com/fundamentals/api/reference/permissions/ "Cloudflare — API token permissions"

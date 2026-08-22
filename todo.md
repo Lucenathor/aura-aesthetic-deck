@@ -137,3 +137,4 @@
 - [x] Documentar qué operaciones permite la clave, qué no permite y si es adecuada para gestionar AURA de extremo a extremo.
 - [x] Corregir `deploy.sh` para que valide la respuesta de purga de caché y nunca muestre éxito ante HTTP 401/403.
 - [x] Revalidar los permisos Cloudflare después de la ampliación indicada por el usuario, incluyendo DNS y purga de caché.
+- [x] Realizar una tercera verificación de los permisos Cloudflare actualizados, con prueba reversible de DNS y purga de caché.
