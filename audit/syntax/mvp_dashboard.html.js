@@ -552,8 +552,8 @@ async function loadRecovered(){
     const main=document.getElementById('recMain'); if(main)main.textContent=eur(d.total||0);
     const sub=document.getElementById('recSub'); if(sub)sub.textContent=_recPeriod==='year'?'este año':'este mes';
     const bd=document.getElementById('recBreakdown');
-    if(bd){ const icon={noshow:'🔁',recall:'💜',reactivation:'♻️',funnel:'🧲'};
-      bd.innerHTML=(d.breakdown||[]).map(b=>'<div style="background:rgba(255,255,255,.12);border-radius:10px;padding:.55rem .7rem"><div style="font-size:.72rem;color:rgba(255,255,255,.78)">'+(icon[b.key]||'')+' '+b.label+'</div><div style="font-weight:700;font-size:1.05rem;margin-top:.15rem">'+eur(b.value)+(b.n?' <span style="font-size:.7rem;font-weight:400;color:rgba(255,255,255,.65)">· '+b.n+'</span>':'')+'</div></div>').join(''); }
+    if(bd){
+      bd.innerHTML=(d.breakdown||[]).map(b=>'<div style="background:rgba(255,255,255,.12);border-radius:10px;padding:.55rem .7rem"><div style="font-size:.72rem;color:rgba(255,255,255,.78)">'+b.label+'</div><div style="font-weight:700;font-size:1.05rem;margin-top:.15rem">'+eur(b.value)+(b.n?' <span style="font-size:.7rem;font-weight:400;color:rgba(255,255,255,.65)">· '+b.n+'</span>':'')+'</div></div>').join(''); }
     const msg=document.getElementById('recMsg');
     if(msg){ if((d.total||0)>0){ msg.textContent='AURA ha recuperado y generado '+eur(d.total)+' que probablemente se habrían perdido sin seguimiento automático.'; } else { msg.textContent='Cuando AURA recupere no-shows, reactive leads o cierre recalls, verás aquí el dinero generado.'; } }
   }catch(e){}
