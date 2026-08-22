@@ -544,7 +544,9 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
   .settings-nav{position:relative;top:0;width:100%;min-width:0;flex-direction:row;overflow-x:auto;gap:.3rem;padding:.5rem;margin-bottom:.8rem;border-radius:12px}
   .settings-nav-item{white-space:nowrap;padding:.5rem .7rem;font-size:.8rem}
   .settings-nav-item .sn-icon{font-size:.85rem;width:18px}
+  .settings-nav-mobile-hint{display:block;margin:-.45rem .25rem .65rem;color:var(--muted);font-size:.7rem;text-align:right}
 }
+.settings-nav-mobile-hint{display:none}
 /* ═══ MEJORAS AGENDA PRO: tooltip, animaciones, hover en huecos ═══ */
 .agenda-slot-bg:hover { background: rgba(168,89,66,0.06); cursor: pointer; }
 .agenda-slot-bg:hover::after { content: '+ Nueva cita'; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: .65rem; color: var(--terra); opacity: .7; pointer-events: none; font-weight: 600; }
@@ -903,6 +905,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
           <div class="settings-nav-item" data-stab="llamadas"><span class="sn-icon">📞</span>Llamadas</div>
           <div class="settings-nav-item" data-stab="datos"><span class="sn-icon">📁</span>Importar datos</div>
         </nav>
+        <div class="settings-nav-mobile-hint" aria-hidden="true">Desliza para ver más ajustes →</div>
         <div class="settings-content" id="settingsContent">
       <!-- HORARIO -->
       <div class="settings-panel active" data-spanel="horario">

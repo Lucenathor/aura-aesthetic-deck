@@ -32,3 +32,9 @@ En producción, al elegir Solo WhatsApp se desactiva el respaldo SMS y el panel 
 Al asociar una plantilla a Cumpleaños, Recall o reactivaciones de los días 3, 7 o 21, la categoría se ajusta a Marketing y se informa de que necesita consentimiento y aprobación de Meta. Al asociarla a confirmación, recordatorio, cuidado, firma o reseña, se ajusta a Utilidad. La consola del panel no registró errores durante la comprobación.
 
 La cuadrícula usa columnas adaptativas con un mínimo de 220 píxeles y las acciones admiten salto de línea; por ello se conserva una sola columna utilizable en pantallas estrechas. La sesión de navegación automatizada no puede reutilizarse en el navegador headless móvil, que mostró la pantalla de acceso; la adaptación del selector se validó mediante su estructura responsive y la sesión real de escritorio.
+
+## Verificación responsive autenticada
+
+La segunda comprobación se realizó con una sesión real de AURA en 375 × 812 y 768 × 1024. No se detectaron desbordamientos del panel, el buscador y la navegación principal se mantienen accesibles, y los controles de ajustes se reordenan a una columna o a dos columnas según el ancho disponible.
+
+En móvil, la navegación secundaria de Ajustes se desplaza horizontalmente; funciona, pero se detectó una oportunidad de orientación: hacer visible que existen más secciones a la derecha para que Comunicaciones no quede implícitamente escondida tras el borde de pantalla.
