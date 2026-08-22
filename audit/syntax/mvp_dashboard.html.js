@@ -489,7 +489,11 @@ async function loadPortalClients(){
     body.innerHTML=cs.map(c=>'<tr style="border-top:1px solid var(--line)"><td style="padding:.6rem .4rem;font-weight:600">'+(c.name||'Cliente')+'</td><td style="padding:.6rem .4rem;color:var(--muted)">'+(c.phone||'')+'</td><td style="padding:.6rem .4rem;font-weight:700;color:var(--terra-d)">'+(c.points||0)+' pts</td><td style="padding:.6rem .4rem">'+(c.orders||0)+'</td><td style="padding:.6rem .4rem">'+eur(c.spent||0)+'</td></tr>').join('');
   }catch(e){ body.innerHTML='<tr><td colspan="5" style="padding:1rem;color:#c0392b">No se pudo cargar.</td></tr>'; }
 }
-document.querySelectorAll('.nav-item').forEach(n=>{ n.onclick=()=>goSection(n.dataset.v); });
+document.querySelectorAll('.nav-item').forEach(n=>{
+  n.setAttribute('role','button'); n.tabIndex=0;
+  n.onclick=()=>goSection(n.dataset.v);
+  n.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();goSection(n.dataset.v);} };
+});
 // Controles del calendario interactivo
 document.addEventListener('click',(e)=>{
   const v=e.target.closest('.agv'); if(v){ calView=v.dataset.v; document.querySelectorAll('.agv').forEach(b=>b.classList.toggle('on',b===v)); renderAgendaCal(); return; }
@@ -6169,18 +6173,27 @@ if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded
 (function(){
   const nav=document.getElementById('settingsNav');
   if(!nav)return;
+  nav.querySelectorAll('.settings-nav-item').forEach(item=>{item.setAttribute('role','tab');item.tabIndex=item.classList.contains('active')?0:-1;});
   nav.addEventListener('click',function(e){
     const item=e.target.closest('.settings-nav-item');
     if(!item)return;
     const tab=item.dataset.stab;
     if(!tab)return;
     // Desactivar todos
-    nav.querySelectorAll('.settings-nav-item').forEach(n=>n.classList.remove('active'));
+    nav.querySelectorAll('.settings-nav-item').forEach(n=>{n.classList.remove('active');n.tabIndex=-1;n.setAttribute('aria-selected','false');});
     document.querySelectorAll('.settings-panel').forEach(p=>p.classList.remove('active'));
     // Activar el seleccionado
-    item.classList.add('active');
+    item.classList.add('active');item.tabIndex=0;item.setAttribute('aria-selected','true');
     const panel=document.querySelector('.settings-panel[data-spanel="'+tab+'"]');
     if(panel){panel.classList.add('active');if(tab==='setter')loadSetterBrain();panel.scrollIntoView({behavior:'smooth',block:'start'});}
+  });
+  nav.addEventListener('keydown',function(e){
+    const item=e.target.closest('.settings-nav-item');if(!item)return;
+    if(e.key==='Enter'||e.key===' '){e.preventDefault();item.click();return;}
+    if(!['ArrowRight','ArrowDown','ArrowLeft','ArrowUp','Home','End'].includes(e.key))return;
+    e.preventDefault();const items=[...nav.querySelectorAll('.settings-nav-item')].filter(x=>x.offsetParent!==null);let i=items.indexOf(item);
+    if(e.key==='Home')i=0;else if(e.key==='End')i=items.length-1;else i=(i+((e.key==='ArrowRight'||e.key==='ArrowDown')?1:-1)+items.length)%items.length;
+    items[i].focus();
   });
 })();
 // ===== PLAYGROUND DEL SETTER BRAIN =====

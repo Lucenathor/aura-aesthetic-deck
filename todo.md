@@ -119,3 +119,7 @@
 - [x] Rediseñar la pantalla Inicio con agenda diaria, métricas, embudo, tareas y actividad de WhatsApp usando datos reales del tenant.
 - [x] Adaptar Agenda y Ajustes → Comunicaciones al sistema Pearl Aurora manteniendo todos sus flujos actuales.
 - [x] Validar las tres pantallas piloto en escritorio, tablet y móvil antes de extender el sistema al resto del CRM.
+- [ ] Intensificar la aurora ambiental con esquinas azul-violeta y coral-rosa mezcladas en un único campo gradual continuo.
+- [ ] Refinar contraste, transparencias, sombras y profundidad para acercar el panel real al mockup Pearl Aurora aprobado.
+- [ ] Añadir microinteracciones premium en botones, navegación, tarjetas y controles respetando teclado y reducción de movimiento.
+- [ ] Comparar visualmente la segunda pasada con el concepto en escritorio, tablet y móvil antes de cerrar el despliegue.
