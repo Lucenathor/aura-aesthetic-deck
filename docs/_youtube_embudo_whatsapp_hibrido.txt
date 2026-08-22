@@ -1,0 +1,80 @@
+Starting video analysis...
+Submitting video analysis task...
+Task submitted (ID: video-analysis-d646ba8f-5271-40d6-ad42-dccbcd831f6f)
+[8s] Status: Analyzing video content with AI...
+[33s] Still processing, please wait...
+[1m3s] Still processing, please wait...
+[1m10s] Status: Analysis completed
+[1m10s] Analysis completed!
+Full analysis result saved to: /home/ubuntu/video_OQ9eSPNs1-0_analysis_20260822_073731.md
+Note: This tool performs AI-based visual and audio analysis, not verbatim transcription. For detailed speech transcription, use `manus-speech-to-text` instead.
+Analysis result:
+
+Basado en el análisis exhaustivo del video proporcionado, aquí tienes el desglose detallado del diseño del embudo de WhatsApp, estructurado según tus requerimientos:
+
+### A) Recorrido exacto del lead y disparadores
+
+El sistema se divide en tres flujos de trabajo (workflows) interconectados a través de la plataforma Make:
+
+**Flujo 1: Captación y Seguimiento (Outreach)**
+*   **Disparador:** Un usuario completa un formulario en *Facebook Lead Ads*.
+*   **Paso 1:** El sistema (vía Notifier Systems) envía inmediatamente un mensaje de plantilla de WhatsApp dando la bienvenida al lead.
+*   **Paso 2:** Se programa un primer mensaje de seguimiento. Si el lead no responde en 24 horas, se envía automáticamente.
+*   **Paso 3:** Se programa un segundo mensaje de seguimiento. Si el lead sigue sin responder tras 72 horas (3 días), se envía este último recordatorio.
+*   **Paso 4:** Simultáneamente, se crea un "Deal" (Trato) con toda la información del lead en el CRM (Pipedrive).
+
+**Flujo 2: Cualificación con IA y Reserva**
+*   **Disparador:** El lead responde al mensaje de WhatsApp (detectado vía Webhook de Notifier Systems).
+*   **Paso 1:** Esto activa un "Make AI Agent" (Agente de IA) configurado como "Scheduler" (Programador).
+*   **Paso 2:** La IA hace preguntas de cualificación una por una.
+*   **Paso 3:** Si el lead califica, la IA utiliza herramientas integradas para consultar la disponibilidad en Google Calendar y crear el evento.
+*   **Paso 4:** La IA actualiza el contacto añadiendo la etiqueta "Booked call" (Llamada reservada).
+*   **Paso 5:** El sistema cancela automáticamente los mensajes de seguimiento del Flujo 1, ya sea porque el lead respondió o porque se le asignó la etiqueta "Booked call".
+
+**Flujo 3: Recordatorios y Confirmación de Citas**
+*   **Disparador:** Se añade un nuevo evento a Google Calendar.
+*   **Paso 1:** Una herramienta de IA ("Make AI Toolkit") extrae el nombre y el número de teléfono de la descripción del evento.
+*   **Paso 2:** Se envía un mensaje de confirmación inmediato con el enlace de la reunión.
+*   **Paso 3:** Se envía un recordatorio exactamente 1 hora antes de la reunión.
+*   **Paso 4:** Se envía un último recordatorio con el enlace 1 minuto antes de la reunión.
+*   **Paso 5:** Se envía un mensaje de seguimiento (check-in) 1 día después de la reunión para saber si el lead tiene más preguntas.
+
+### B) Reglas sobre uso de mensajes, tiempos y transferencia a humano
+
+*   **Uso de Plantillas:** Para iniciar conversaciones o enviar seguimientos programados, se utilizan plantillas preaprobadas por Meta (con variables dinámicas como el nombre del lead).
+*   **Reglas de la IA (Prompts):** La IA tiene instrucciones estrictas de hacer preguntas de cualificación específicas y *solo* avanzar a la reserva si se cumplen ciertas condiciones (ej. disponibilidad para empezar en menos de 30 días, más de 3 años de experiencia, licencia de conducir válida).
+*   **Gestión del Contexto:** Para que la IA no pierda el hilo, se utiliza el número de teléfono como "Thread ID" (Identificador de hilo) y se le inyecta un párrafo con el contexto de los últimos 20 mensajes intercambiados.
+*   **Transferencia a Humano (Handoff):** En el panel de Notifier Systems, existe un interruptor (toggle) para cambiar entre "Human Agent" (Agente Humano) y "AI Assistant" (Asistente de IA). Si un humano toma el control, la IA se desactiva para esa conversación específica, evitando que ambos respondan al mismo tiempo. Toda la conversación se refleja bidireccionalmente en Pipedrive CRM.
+
+### C) Métricas, afirmaciones cuantitativas y límites
+
+*   **Afirmación de valor:** El creador afirma que este sistema puede *"save hiring another employee"* (ahorrar la contratación de otro empleado).
+*   **Tiempos de seguimiento:** +24 horas para el primer seguimiento; +72 horas para el segundo seguimiento.
+*   **Tiempos de recordatorio de cita:** -1 hora antes; -1 minuto antes; +1 día (24 horas) después de la cita.
+*   **Límites de la IA:** La IA evalúa métricas estrictas dictadas en su prompt: el lead debe querer empezar en *"30 days or less"* (30 días o menos) y tener *"3+ years of experience"* (más de 3 años de experiencia).
+*   **Límite de contexto:** El sistema alimenta a la IA con un máximo de *"last 20 messages"* (los últimos 20 mensajes) para darle contexto.
+*   **Límite técnico:** El "Thread ID" (basado en el número de teléfono) debe tener un máximo de 256 caracteres.
+
+### D) Qué ideas son aplicables a una clínica estética que usa chat web, SMS y WhatsApp
+
+1.  **Cualificación automatizada (Triage):** La clínica puede usar el Agente de IA para hacer preguntas filtro antes de agendar (ej. "¿Es tu primera vez en la clínica?", "¿Qué tratamiento te interesa?", "¿Tienes alguna alergia?"). Solo si el paciente califica para ciertos tratamientos, se le muestra el calendario.
+2.  **Reducción de ausencias (No-shows):** El flujo de recordatorios es altamente replicable. Enviar un SMS o WhatsApp 24 horas antes, y un recordatorio 1 hora antes con indicaciones (ej. "recuerda venir sin maquillaje"), reducirá drásticamente las citas perdidas.
+3.  **Seguimiento post-tratamiento (Check-in):** El mensaje programado para "1 día después" es ideal para clínicas. Se puede automatizar un mensaje que pregunte: "¿Cómo te sientes hoy tras tu tratamiento? ¿Tienes alguna molestia?".
+4.  **Handoff Médico/Recepcionista:** El interruptor de IA a Humano es vital. Si un paciente hace una pregunta médica compleja en el chat web o WhatsApp, el bot debe detenerse y permitir que un especialista responda desde el CRM.
+
+### E) Riesgos de spam, consentimiento, duplicación de mensajes o pérdida de atribución
+
+*   **Riesgo de Spam y Consentimiento:** El sistema dispara un mensaje de WhatsApp inmediatamente después de llenar un formulario en Facebook. Si en el formulario de Facebook no se incluyó una casilla clara de *opt-in* (consentimiento explícito para recibir WhatsApps), los usuarios podrían reportar el número como Spam, lo que llevaría al bloqueo de la cuenta de WhatsApp Business por parte de Meta.
+*   **Duplicación de mensajes:** El sistema cancela los seguimientos basándose en la regla *"If person did not reply anything"* (Si la persona no respondió nada) o si se añade la etiqueta "Booked call". Si hay un fallo en la API o un retraso en la sincronización de etiquetas, un lead que ya está hablando con la IA o un humano podría recibir de repente un mensaje automatizado de "¿Sigues interesado?", arruinando la experiencia.
+*   **Pérdida de atribución (Contexto):** El sistema usa el número de teléfono exacto extraído de Facebook o Google Calendar como "Thread ID". Si el lead llena el formulario con un número, pero luego contacta a la clínica desde otro número, la IA lo tratará como un usuario completamente nuevo, perdiendo todo el historial y la atribución de la campaña de marketing.
+
+### Citas textuales extraídas del video (Evidencia)
+
+1. *"In this video I'm going to show you three workflows that will help you save time, automate your business and potentially even save hiring another employee."* (00:01)
+2. *"We're gonna send a WhatsApp message automatically to every Facebook lead that we have."* (00:11)
+3. *"We are scheduling a follow-up message to the same lead in case they do not reply."* (02:34)
+4. *"If a lead did not reply after 24 hours, then we're going to send them a follow-up message."* (03:13)
+5. *"You are an AI lead qualifier and scheduling assistant that helps leads book an introductory call with the user."* (04:56)
+6. *"The context of the conversation is basically a combination of the last 20 messages exchanged on WhatsApp with the lead and the bot or the person."* (06:22)
+7. *"You can switch the conversation to human agent and an agent could reply, or if you want the AI to take over, you put it back to AI assistant..."* (06:40)
+8. *"We are going to schedule a message one minute before the meeting so that they get a reminder to join the call."* (10:05)

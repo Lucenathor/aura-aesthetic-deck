@@ -1,0 +1,20 @@
+flowchart LR
+    A[1. PREPARACIÓN<br/>Embudo · agenda · chat web · SMS<br/>La clínica ya puede captar]:::start --> B[2. EN VERIFICACIÓN<br/>Se completa WABA/número<br/>Chat web + SMS siguen activos]:::tenant
+    B --> C[3. NÚMERO CONECTADO<br/>SIN PLANTILLAS<br/>WhatsApp solo si el paciente inicia]:::tenant
+    C --> D[4. ACTIVO + PLANTILLAS<br/>WhatsApp es canal conversacional<br/>SMS queda como respaldo]:::active
+    D -. control de calidad .-> E[5. RESTRINGIDO / INCIDENTE<br/>Pausar WhatsApp proactivo<br/>Volver a chat web + SMS]:::alert
+    E -. calidad recuperada .-> D
+
+    F[Puerta obligatoria antes de cada envío:<br/>Estado del tenant + consentimiento + ventana/plantilla + última interacción]:::rule
+    A -. consulta .-> F
+    B -. consulta .-> F
+    C -. consulta .-> F
+    D -. consulta .-> F
+    E -. consulta .-> F
+
+    classDef start fill:#2D1B0E,color:#fff,stroke:#2D1B0E,stroke-width:2px;
+    classDef tenant fill:#EDE7E1,color:#2D1B0E,stroke:#8D6E63,stroke-width:2px;
+    classDef active fill:#E8F5EF,color:#123A2A,stroke:#25D366,stroke-width:2px;
+    classDef alert fill:#FCE6E2,color:#8A1F14,stroke:#C74B3C,stroke-width:2px;
+    classDef rule fill:#fff,color:#2D1B0E,stroke:#5B8C7A,stroke-width:2px;
+

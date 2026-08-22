@@ -433,7 +433,7 @@ function trackFunnelEvent(event, extra){
 // Track pageview on load
 setTimeout(()=>{ trackFunnelEvent('pageview'); },500);
 function genRef(){ const s='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r=''; for(let i=0;i<5;i++)r+=s[Math.floor(Math.random()*s.length)]; return 'AURA-'+r; }
-const state={ name:'', phone:'', a:{}, lead_id:null, ref:genRef() };
+const state={ name:'', phone:'', contactConsent:false, a:{}, lead_id:null, ref:genRef() };
 
 /* ============ LINK MÁGICO: reanudar conversación guardada ============ */
 (async function resumeIfMagic(){
@@ -514,13 +514,14 @@ function renderQ(){
       <p class="qhelp">${Q.help}</p>
       <div class="qfield"><label>Tu nombre</label><input class="qinput" id="fName" placeholder="Marta" autocomplete="given-name"/></div>
       <div class="qfield"><label>Tu móvil</label><input class="qinput" id="fPhone" type="tel" inputmode="tel" placeholder="600 00 00 00" autocomplete="tel"/></div>
+      <label style="display:flex;align-items:flex-start;gap:.55rem;margin:.75rem 0;font-size:.72rem;line-height:1.45;color:#6b625d;cursor:pointer"><input id="fContactConsent" type="checkbox" style="margin-top:.15rem;accent-color:#A85942;flex:0 0 auto"/><span>Acepto que ${CFG.name} me contacte por WhatsApp o SMS para atender mi solicitud y gestionar mi cita. <a href="/legal/privacidad" target="_blank" rel="noopener" style="color:#A85942;text-decoration:underline">Privacidad</a></span></label>
       <button class="qsubmit" id="fSubmit" onclick="submitData()">Continuar
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
       <div class="recip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7S9 2 6 4s2 3 6 3M12 7s3-5 6-3-2 3-6 3"/></svg> Verás cómo quedarían tus labios + cuánto costaría (te gustará 😏)</div>
       <p class="priv"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Datos cifrados · 100% confidencial · sin spam</p>`;
-    const n=document.getElementById('fName'),p=document.getElementById('fPhone'),s=document.getElementById('fSubmit');
-    function chk(){ s.classList.toggle('ready', n.value.trim().length>1 && p.value.replace(/\D/g,'').length>=9); }
-    n.oninput=chk; p.oninput=chk;
+    const n=document.getElementById('fName'),p=document.getElementById('fPhone'),c=document.getElementById('fContactConsent'),s=document.getElementById('fSubmit');
+    function chk(){ s.classList.toggle('ready', n.value.trim().length>1 && p.value.replace(/\D/g,'').length>=9 && c.checked); }
+    n.oninput=chk; p.oninput=chk; c.onchange=chk;
     return;
   }
   body.innerHTML=`
@@ -542,6 +543,8 @@ function pick(k,val,el){
 function submitData(){
   state.name=document.getElementById('fName').value.trim();
   state.phone=document.getElementById('fPhone').value.trim().replace(/\s/g,'');
+  state.contactConsent=!!document.getElementById('fContactConsent').checked;
+  if(!state.contactConsent)return;
   persistLead();
   // Meta Pixel: Lead event con Advanced Matching
   pixelTrack('Lead', {value: CFG.price, currency: 'EUR', content_name: CFG.treatment});
@@ -703,7 +706,7 @@ async function persistLead(){
     if(score>=70) temperature='hot';
     else if(score>=45) temperature='warm';
     const r=await fetch(WORKER+'/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({tenant_id:TENANT_ID,name:state.name,phone:state.phone,treatment:CFG.treatment,motivo,plazo,objecion,quiz_score:score,temperature,source:'embudo_'+TREATMENT_ID,ref:state.ref})});
+      body:JSON.stringify({tenant_id:TENANT_ID,name:state.name,phone:state.phone,treatment:CFG.treatment,motivo,plazo,objecion,quiz_score:score,temperature,source:'embudo_'+TREATMENT_ID,ref:state.ref,contact_consent:state.contactConsent,contact_consent_proof:'embudo:'+TREATMENT_ID+':service_contact_v1'})});
     if(r.ok){ const d=await r.json(); state.lead_id=d.lead_id||d.id||null; }
   }catch(e){}
 }

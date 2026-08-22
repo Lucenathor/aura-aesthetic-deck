@@ -1,0 +1,329 @@
+=== EMBUDO PUBLICO ===
+38:.view.hero.on,.view.quiz.on,.view.res.on,.view.chat.on{display:flex !important;flex-direction:column}
+52:  .quiz,.res,.chat{min-height:100%}
+141:.quiz{min-height:100dvh;display:flex;flex-direction:column;padding:calc(var(--st) + 18px) 22px calc(var(--sb) + 22px)}
+234:.chat{height:100dvh;max-height:100dvh;background:var(--wa-bg);display:flex;flex-direction:column;padding-top:var(--st);overflow:hidden}
+235:.chat-h{background:var(--wa-panel);padding:.6rem .8rem;display:flex;align-items:center;gap:.7rem;position:sticky;top:0;z-index:10}
+236:.chat-h .av{width:40px;height:40px;border-radius:50%;background:url('/assets/clinic-logo.webp') center/cover,linear-gradient(135deg,var(--terra),var(--champ));flex:none}
+237:.chat-h .nm{flex:1;min-width:0}
+238:.chat-h .nm b{color:var(--wa-text);font-size:.92rem;display:block}
+239:.chat-h .nm small{color:#8696a0;font-size:.72rem}
+240:.chat-h .nm .on{color:#3ddc97}
+241:.chat-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:1rem .8rem;display:flex;flex-direction:column;gap:.45rem;background-image:linear-gradient(rgba(11,20,26,.96),rgba(11,20,26,.96))}
+260:.chat-foot{padding:.6rem .7rem calc(var(--sb) + .6rem);background:var(--wa-panel);display:flex;gap:.5rem;align-items:center}
+261:.chat-foot input{flex:1;background:var(--wa-input);border:0;border-radius:20px;padding:.7rem 1rem;color:var(--wa-text);font-size:.92rem;outline:none}
+262:.chat-foot input::placeholder{color:#8696a0}
+268:.chat-foot .send{width:42px;height:42px;border-radius:50%;background:var(--wa-me);display:grid;place-items:center;color:#fff;flex:none}
+331:        <p class="ba-cap">Aumento de labios técnica glow · resultado natural, <span class="hl">1 sesión<svg class="hl-line" viewBox="0 0 120 18" preserveAspectRatio="none"><path d="M3 11 C 25 16, 55 4, 88 9 C 102 11, 112 13, 117 8"/></svg></span></p>
+355:  <section class="view quiz" id="vQuiz">
+357:      <button class="qback" onclick="quizBack()">‹</button>
+389:  <section class="view chat" id="vChat">
+390:    <div class="chat-h">
+394:    <div class="chat-body" id="cBody"></div>
+395:    <div class="chat-foot">
+411:const WORKER='https://aura-chat-worker.adrian-7b9.workers.dev';
+431:  try{ fetch(WORKER+'/api/funnel-event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:TENANT_ID,treatment:TREATMENT_ID,event:event,lead_id:state.lead_id||null,ref:state.ref,...(extra||{})})}); }catch(e){}
+436:const state={ name:'', phone:'', a:{}, lead_id:null, ref:genRef() };
+440:  const qs=new URLSearchParams(location.search); const lead=qs.get('lead'); const k=qs.get('k');
+441:  if(!lead||!k) return;
+444:    const r=await fetch(WORKER+'/api/resume?lead='+encodeURIComponent(lead)+'&k='+encodeURIComponent(k));
+447:    state.lead_id=lead; if(d.lead){ state.name=d.lead.name||''; state.phone=d.lead.phone||''; }
+450:    try{ const ar=await fetch(WORKER+'/api/appt-status?lead='+encodeURIComponent(lead)+'&k='+encodeURIComponent(k)); const ad=await ar.json(); if(ad.ok&&ad.appointment&&ad.appointment.status==='booked'){ state._appt=ad.appointment; state._apptKey=k; } }catch(e){}
+451:    // esperar a que existan las funciones del embudo y saltar directo al chat (poll robusto)
+498:function startQuiz(){ applyQuizContent(); qi=0; renderQ(); trackFunnelEvent('quiz_start'); }
+500:window.addEventListener('message',function(ev){ try{ const d=ev.data||{}; if(d.aura==='goto'){ if(d.screen==='hero')go('vHero'); else if(d.screen==='quiz'){go('vQuiz');startQuiz();} else if(d.screen==='result')go('vResult'); else if(d.screen==='chat')go('vChat'); } }catch(e){} });
+505:function quizBack(){ if(qi===0){ go('vHero'); return;} qi--; renderQ(); }
+544:  state.phone=document.getElementById('fPhone').value.trim().replace(/\s/g,'');
+548:  if(window.fbq){ try{ fbq('init', window._auraPixelId, {ph: state.phone.replace(/[^0-9]/g,'')}); }catch(e){} }
+549:  // Track lead event
+550:  trackFunnelEvent('lead');
+568:    return `<div class="nrt"><div class="nrt-clinic" style="background-image:url('/assets/clinica-quiz.webp')"><span class="nrt-clinic-tag">Velázquez 84 · Madrid</span></div><p class="nrt-big">Estamos en <b>Velázquez 84</b>, Madrid</p><div class="nrt-sub">Aquí es donde te atendería la doctora</div></div>`;
+579:    return `<div class="nrt"><div class="nrt-doc"><div class="nrt-doc-pic" style="background-image:url('/assets/doctora-quiz.webp')"></div></div><p class="nrt-big">${txt}</p><div class="nrt-sub">— Dra. Elvira, tu médico estético</div></div>`;
+585:  // Actualizar el lead con las respuestas completas del quiz
+663:    // CONTENIDO editable (textos/quiz/imágenes) — solo contenido, nunca estructura
+670:      if(c.lead_magnet) setTxt('[data-c="lead_magnet"]', c.lead_magnet);
+673:      // preguntas del quiz editables: c.q1..c.q5 = {pregunta, opciones:[]}
+687:    // Mapear respuestas del quiz a campos del backend
+693:    let score=30; // base por completar el quiz
+705:    const r=await fetch(WORKER+'/api/leads',{method:'POST',headers:{'Content-Type':'application/json'},
+706:      body:JSON.stringify({tenant_id:TENANT_ID,name:state.name,phone:state.phone,treatment:CFG.treatment,motivo,plazo,objecion,quiz_score:score,temperature,source:'embudo_'+TREATMENT_ID,ref:state.ref})});
+707:    if(r.ok){ const d=await r.json(); state.lead_id=d.lead_id||d.id||null; }
+711:  if(!state.lead_id) return;
+728:    await fetch(WORKER+'/api/lead-quiz-update',{method:'POST',headers:{'Content-Type':'application/json'},
+729:      body:JSON.stringify({lead_id:state.lead_id,motivo,plazo,objecion,quiz_score:score,temperature})});
+734:    body:JSON.stringify({tenant_id:TENANT_ID,lead_id:state.lead_id,role,content,channel:'chat_web'})}); }catch(e){}
+748:let chatStarted=false;
+750:  if(chatStarted) return; chatStarted=true;
+763:      if(m.channel==='sms') return;
+804:  try{ await fetch(WORKER+'/api/appt-confirm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lead:state.lead_id,k:state._apptKey,action})}); }catch(e){}
+811:  const f=document.querySelector('.chat-foot');
+825:  // marcar que conversó en el chat (prioridad de llamada punto B)
+826:  if(!state._chatted){ state._chatted=true; try{ if(state.lead_id) fetch(WORKER+'/api/lead-chatted',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lead_id:state.lead_id})}); }catch(e){} }
+829:    const r=await fetch(WORKER+'/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+830:      body:JSON.stringify({messages:SETTER_HISTORY,tenant_id:TENANT_ID,lead_id:state.lead_id,context:{name:state.name,treatment:CFG.treatment,goal:state.a?.motivo||'',plazo:state.a?.plazo||'',objecion:state.a?.objecion||'',lead_id:state.lead_id,conversation_id:SETTER_CONVERSATION_ID,mode:window.DEMO_SALES?'sales_demo':'patient'},brain_state:state.setter_brain||{}})});
+868:    addThem('genial, te he reservado la consultoría el '+slot.toLowerCase()+'. nuestro equipo te llamará para enseñarte aura con los números de tu clínica. te llega un sms de confirmación',true);
+869:    try{ await fetch(WORKER+'/api/appointments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:'focus-ventas',lead_id:state.lead_id,treatment:'Consultoría AURA · '+(window.DEMO_CLINIC_NAME||''),date_iso:iso||undefined,duration_min:60,slot,ref:state.ref})}); }catch(e){}
+872:  addThem('hecho, te he reservado el '+slot.toLowerCase()+(esRecall?' para tu revisión':'')+'. te acaba de llegar un sms de confirmación',true);
+876:  try{ await fetch(WORKER+'/api/appointments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:TENANT_ID,lead_id:state.lead_id,treatment:(esRecall?'Revisión / retoque':CFG.treatment),date_iso:iso||undefined,slot,ref:state.ref})}); }catch(e){}
+879:  try{ fetch(WORKER+'/api/lead-event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tenant_id:TENANT_ID,lead_id:state.lead_id,ref:state.ref,event:'whatsapp_opened'})}); }catch(e){}
+=== WORKER SMS/LEADS/FUNNEL ===
+5: * - /api/funnels/:tenantId   GET funnels of a tenant
+7: * - /api/leads               POST/GET leads
+9: * - /api/appointments        POST/GET citas
+71:    followup_policy TEXT DEFAULT 'value_first',
+77:    lead_id TEXT,
+87:  await env.aura_db.exec('CREATE INDEX IF NOT EXISTS idx_setter_brain_sessions ON setter_brain_sessions (tenant_id, lead_id, updated_at)').catch(()=>{});
+271:async function signLead(env: Env, leadId: string){
+274:  const sig=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(leadId));
+277:async function verifyLead(env: Env, leadId: string, token: string){
+278:  try{ const expected=await signLead(env,leadId); return expected===token; }catch(e){ return false; }
+281:async function signConsent(env: Env, consentId: string, leadId: string){
+284:  const sig=await crypto.subtle.sign('HMAC',key,new TextEncoder().encode('consent:'+consentId+':'+leadId));
+287:async function verifyConsent(env: Env, consentId: string, leadId: string, token: string){
+288:  try{ if(!token) return false; const expected=await signConsent(env,consentId,leadId); // comparacion en tiempo constante
+365:async function magicLink(env: Env, tenantId: string, leadId: string){
+366:  const tok=await signLead(env,leadId);
+367:  return 'https://auracrm.co/c/'+tenantId+'?lead='+encodeURIComponent(leadId)+'&k='+tok;
+370:// ─── SMS (LabsMobile) ───────────────────────────────────────────────
+371:// Envía un SMS. number en formato internacional sin + (ej 34600000000). sender opcional (máx 11 chars alfanuméricos).
+372:async function sendSMS(env: Env, number: string, message: string, sender?: string, tenantId?: string): Promise<{ ok: boolean; detail?: any; credits?: number }> {
+373:  if (!env.LABSMOBILE_USER || !env.LABSMOBILE_TOKEN) return { ok: false, detail: 'sms no configurado' };
+378:    const t: any = await env.aura_db.prepare('SELECT sms_credits FROM tenants WHERE id=?').bind(tenantId).first();
+379:    const credits = t?.sms_credits ?? 0;
+380:    if (credits <= 0) return { ok: false, detail: 'sin_saldo_sms', credits: 0 };
+397:      await env.aura_db.prepare('UPDATE tenants SET sms_credits = MAX(0, COALESCE(sms_credits,0) - 1) WHERE id=?').bind(tenantId).run();
+579:let __leadFlowReady = false;
+581:  if (__leadFlowReady) return;
+585:    try { await env.aura_db.exec('ALTER TABLE leads ADD COLUMN ' + c); } catch(e) { /* ya existe */ }
+587:  __leadFlowReady = true;
+625:  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS wa_automation_runs (id TEXT PRIMARY KEY, rule_id TEXT, tenant_id TEXT, appointment_id TEXT, status TEXT, detail TEXT, created_at INTEGER, updated_at INTEGER, UNIQUE(rule_id,appointment_id))"); } catch(e){}
+633:  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS calls (id TEXT PRIMARY KEY, tenant_id TEXT, lead_id TEXT, agent TEXT, direction TEXT DEFAULT 'outbound', from_num TEXT, to_num TEXT, status TEXT, duration INTEGER DEFAULT 0, recording_url TEXT, transcript TEXT, summary TEXT, next_action TEXT, outcome TEXT, twilio_sid TEXT, created_at INTEGER, updated_at INTEGER)"); } catch(e){}
+634:  try { await env.aura_db.exec('CREATE INDEX IF NOT EXISTS idx_calls_lead ON calls (tenant_id, lead_id, created_at)'); } catch(e){}
+655:  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS patient_media (id TEXT PRIMARY KEY, tenant_id TEXT, lead_id TEXT, phone TEXT, url TEXT, mtype TEXT, caption TEXT, source TEXT, created_at INTEGER)"); } catch(e){}
+656:  try { await env.aura_db.exec("CREATE INDEX IF NOT EXISTS idx_pmedia ON patient_media (tenant_id, lead_id, created_at)"); } catch(e){}
+657:  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS patient_clinical (lead_id TEXT PRIMARY KEY, tenant_id TEXT, allergies TEXT, conditions TEXT, medications TEXT, skin_type TEXT, blood_type TEXT, notes TEXT, dob TEXT, updated_at INTEGER, updated_by TEXT)"); } catch(e){}
+658:  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS clinical_notes (id TEXT PRIMARY KEY, tenant_id TEXT, lead_id TEXT, visit_date TEXT, professional TEXT, treatment TEXT, areas TEXT, product TEXT, lot TEXT, units TEXT, note TEXT, photo_url TEXT, created_at INTEGER, created_by TEXT)"); } catch(e){}
+659:  try { await env.aura_db.exec("CREATE INDEX IF NOT EXISTS idx_cnotes ON clinical_notes (tenant_id, lead_id, visit_date)"); } catch(e){}
+673:  try { await env.aura_db.exec('ALTER TABLE funnels ADD COLUMN treatment_name TEXT'); } catch(e){}
+724:  const findLead = async (q:string)=>{ if(!q) return null; const qn=_norm(q); const qDigits=String(q).replace(/\D/g,''); const all:any = await env.aura_db.prepare('SELECT * FROM leads WHERE tenant_id=? ORDER BY created_at DESC').bind(tid).all(); const rows=(all.results||[]);
+747:      await env.aura_db.prepare('INSERT INTO leads (id,tenant_id,name,phone,treatment,status,source,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(lid,tid,plan.name||'Contacto',plan.phone||'',plan.treatment||'','new','copiloto',nw).run(); result={ ok:true, msg:'Contacto "'+(plan.name||'')+'" creado.' };
+748:    } else if (act==='crear_empleado') {
+749:      // Da de alta un empleado en el equipo (tabla professionals). El sueldo entra en el cálculo de beneficio real.
+759:        .bind(eid, tid, plan.name||'Empleado', colors[Math.floor(Math.random()*colors.length)], rol, salary, ssPct, comm, 1, canCo, nw).run();
+761:      result={ ok:true, msg:'Empleado "'+(plan.name||'Empleado')+'" dado de alta'+(salary>0?(' con sueldo de '+eur(salary)+' netos/mes.'):'.')+costeTotal+' Lo ves en Equipo.' };
+766:      const iso=dayToISO(plan.day); const aps:any=await env.aura_db.prepare("SELECT a.date_iso d, a.treatment, a.status, l.name FROM appointments a LEFT JOIN leads l ON l.id=a.lead_id WHERE a.tenant_id=? AND substr(a.date_iso,1,10)=? AND a.status!='cancelled' ORDER BY a.date_iso").bind(tid,iso).all(); const hhmm=(x)=>{ const m=String(x||'').match(/T(\d{2}:\d{2})/); return m?m[1]:''; }; const rows=(aps.results||[]); const etiqueta = plan.day==='manana'||plan.day==='ma\u00f1ana'?'ma\u00f1ana':(plan.day&&plan.day!=='hoy'?('el '+iso):'hoy'); result={ ok:true, msg: rows.length? ('Tienes '+rows.length+' citas '+etiqueta+': '+rows.map((r:any)=>(hhmm(r.d)+' '+(r.name||'')+(r.treatment?(' · '+r.treatment):'')).trim()).join('; ')) : ('No hay citas '+etiqueta+'.') };
+768:      if (plan.info==='sin_venir' && !plan.patient_query) { const ini=new Date(); ini.setDate(1); const all:any=await env.aura_db.prepare("SELECT name FROM leads WHERE tenant_id=? AND status IN ('client','attended') ORDER BY name").bind(tid).all(); result={ ok:true, msg:'Para ver quién no ha venido, míralo en Pacientes/Pipeline. Clientes registrados: '+((all.results||[]).length)+'.' }; }
+771:        else if (plan.info==='gasto') { const sp:any=await env.aura_db.prepare("SELECT COALESCE(SUM(amount),0) g, COUNT(*) c FROM treatments_log WHERE tenant_id=? AND lead_id=? AND pay_status='paid'").bind(tid,ld.id).first(); result={ ok:true, msg:(ld.name||'')+' se ha gastado '+eur(sp?sp.g:0)+' en '+((sp&&sp.c)||0)+' visitas.' }; }
+772:        else if (plan.info==='ultima_visita') { const lv:any=await env.aura_db.prepare("SELECT date_iso FROM appointments WHERE tenant_id=? AND lead_id=? AND status='attended' ORDER BY date_iso DESC LIMIT 1").bind(tid,ld.id).first(); result={ ok:true, msg:(ld.name||'')+(lv?(' vino por \u00faltima vez el '+lv.date_iso+'.'):' a\u00fan no tiene visitas registradas.') }; }
+792:      const leads:any=await env.aura_db.prepare("SELECT status, recover_state, chatted FROM leads WHERE tenant_id=?").bind(tid).all(); const L=(leads.results||[]);
+796:      const conf:any=await env.aura_db.prepare("SELECT COUNT(*) c FROM appointments WHERE tenant_id=? AND date_iso=? AND status='booked'").bind(tid,hoy).first();
+804:      if(!ld){ const lid='l_'+Math.random().toString(36).slice(2,12); await env.aura_db.prepare('INSERT INTO leads (id,tenant_id,name,phone,treatment,status,source,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(lid,tid,plan.patient_name||'Paciente',plan.phone||'',plan.treatment||'','booked','copiloto',nw).run(); ld={id:lid,name:plan.patient_name}; }
+806:      const hhmm=(plan.time||'10:00'); await env.aura_db.prepare('INSERT INTO appointments (id,tenant_id,lead_id,date_iso,treatment,status,created_at) VALUES (?,?,?,?,?,?,?)').bind(ap,tid,ld.id,iso+'T'+hhmm,plan.treatment||'','booked',nw).run();
+807:      await env.aura_db.prepare("UPDATE leads SET status='booked' WHERE id=?").bind(ld.id).run();
+811:      else { const iso=dayToISO(plan.date); await env.aura_db.prepare("UPDATE appointments SET status='cancelled' WHERE tenant_id=? AND lead_id=? AND substr(date_iso,1,10)=?").bind(tid,ld.id,iso).run(); result={ ok:true, msg:'Cita de '+(plan.patient_name||'')+' del '+iso+' anulada.' }; }
+878:- recupera a los que no reservan, no confirman o no vienen (sms automáticos por fases: 20min, 5h, día 3, 7, 21)
+944:    // Endpoints públicos de escritura: 30 req/min por IP (anti-spam de leads falsos)
+945:    const PUBLIC_WRITE_ENDPOINTS = ['/api/leads', '/api/lead-quiz-update', '/api/lead-chatted', '/api/lead-event', '/api/public-book', '/api/public-cancel', '/api/funnel-event'];
+971:          return json({ ok: true, lead_id: 'l_' + Math.random().toString(36).slice(2, 10) });
+993:        '/api/lead-stage','/api/lead-meta','/api/lead-update','/api/lead-search',
+997:        '/api/sms-templates','/api/team','/api/funnel-save','/api/funnel-edit','/api/funnel-delete',
+1003:        '/api/clinical-audit','/api/setter-brain-config','/api/setter-resources','/api/setter-funnel-brain','/api/setter-funnel-brain/transcribe','/api/setter-upload','/api/setter-upload-multipart/start','/api/setter-upload-multipart/part','/api/setter-upload-multipart/complete','/api/setter-upload-multipart/abort'
+1005:      // Protegidos SOLO en GET (listado del panel); su POST es público (el paciente crea lead / reserva cita).
+1006:      const TENANT_GUARDED_GET = new Set<string>(['/api/leads','/api/appointments','/api/calendar','/api/portal-clients']);
+1035:      if ((p === '/api/setter-brain-config' || p === '/api/setter-resources' || p === '/api/setter-upload' || p.startsWith('/api/setter-upload-multipart/') || p.startsWith('/api/setter-funnel-brain'))) {
+1042:          return json({ ok:true, config: config || { tenant_id:tenantId, tone:'cálido, claro y profesional', max_sentences:3, booking_mode:'when_ready', followup_policy:'value_first' } });
+1047:          await env.aura_db.prepare(`INSERT INTO setter_brain_config (tenant_id,assistant_name,tone,max_sentences,booking_mode,handoff_message,followup_policy,updated_at)
+1048:            VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id) DO UPDATE SET assistant_name=excluded.assistant_name,tone=excluded.tone,max_sentences=excluded.max_sentences,booking_mode=excluded.booking_mode,handoff_message=excluded.handoff_message,followup_policy=excluded.followup_policy,updated_at=excluded.updated_at`)
+1049:            .bind(b.tenant_id, b.assistant_name||'', b.tone||'cálido, claro y profesional', Math.min(6,Math.max(1,Number(b.max_sentences)||3)), b.booking_mode||'when_ready', b.handoff_message||'', b.followup_policy||'value_first', now).run();
+1070:        // ── Cerebro por embudo (setter_funnel_brain) ──
+1071:        if (p === '/api/setter-funnel-brain' && req.method === 'GET') {
+1075:            const row = await env.aura_db.prepare('SELECT * FROM setter_funnel_brain WHERE tenant=? AND treatment=?').bind(tid, treat).first();
+1078:          const all:any = await env.aura_db.prepare('SELECT * FROM setter_funnel_brain WHERE tenant=? ORDER BY treatment').bind(tid).all();
+1081:        if (p === '/api/setter-funnel-brain' && req.method === 'POST') {
+1086:          await env.aura_db.prepare(`INSERT INTO setter_funnel_brain (tenant,treatment,custom_prompt,knowledge_base,promo_text,promo_active,promo_city,assistant_name,tone,booking_mode,max_sentences,files_json,funnel_goal,qualification_rules,clinical_limits,updated_at)
+1088:            ON CONFLICT(tenant,treatment) DO UPDATE SET custom_prompt=excluded.custom_prompt,knowledge_base=excluded.knowledge_base,promo_text=excluded.promo_text,promo_active=excluded.promo_active,promo_city=excluded.promo_city,assistant_name=excluded.assistant_name,tone=excluded.tone,booking_mode=excluded.booking_mode,max_sentences=excluded.max_sentences,files_json=excluded.files_json,funnel_goal=excluded.funnel_goal,qualification_rules=excluded.qualification_rules,clinical_limits=excluded.clinical_limits,updated_at=excluded.updated_at`)
+1089:            .bind(tid, treat, b.custom_prompt||'', b.knowledge_base||'', b.promo_text||'', b.promo_active?1:0, b.promo_city||'', b.assistant_name||'', b.tone||'cálido y profesional', b.booking_mode||'when_ready', b.max_sentences||3, b.files_json||'[]', b.funnel_goal||'', b.qualification_rules||'', b.clinical_limits||'').run();
+1092:        if (p === '/api/setter-funnel-brain' && req.method === 'DELETE') {
+1094:          await env.aura_db.prepare('DELETE FROM setter_funnel_brain WHERE tenant=? AND treatment=?').bind(b.tenant_id||b.tenant, b.treatment).run();
+1189:        if (p === '/api/setter-funnel-brain/transcribe' && req.method === 'POST') {
+1220:          const leadId = url.searchParams.get('lead') || '';
+1223:          if (consentId && leadId && (await verifyConsent(env, consentId, leadId, ktok))) allowed = true;
+1331:        const funnels = await env.aura_db
+1332:          .prepare('SELECT * FROM funnels WHERE tenant_id=?')
+1335:        return json({ tenant: t, funnels: funnels.results });
+1377:      // Saldo de un lead (protegido vía guardia cuando lleva tenant del panel; el paciente usa loyalty-card)
+1379:        const lid = url.searchParams.get('lead');
+1380:        const bal:any = await env.aura_db.prepare('SELECT COALESCE(SUM(delta),0) as b FROM points_ledger WHERE lead_id=?').bind(lid).first();
+1383:      // Tarjeta pública del paciente (al escanear QR): saldo + config, identificado por lead
+1385:        const lid = url.searchParams.get('lead'); const tid = url.searchParams.get('tenant');
+1386:        const bal:any = await env.aura_db.prepare('SELECT COALESCE(SUM(delta),0) as b FROM points_ledger WHERE lead_id=?').bind(lid).first();
+1387:        const ld:any = await env.aura_db.prepare('SELECT name FROM leads WHERE id=?').bind(lid).first();
+1394:        const b:any = await req.json(); const lid=b.lead_id; const tid=b.tenant_id;
+1399:        const dup:any = await env.aura_db.prepare("SELECT id FROM points_ledger WHERE lead_id=? AND reason='checkin' AND substr(created_at,1,10)=?").bind(lid,today).first();
+1400:        if(dup) { const bal:any = await env.aura_db.prepare('SELECT COALESCE(SUM(delta),0) as b FROM points_ledger WHERE lead_id=?').bind(lid).first(); return json({ ok:true, already:true, points:Number(bal?.b)||0 }); }
+1402:        if(pts>0) await env.aura_db.prepare("INSERT INTO points_ledger (id,tenant_id,lead_id,delta,reason,created_at) VALUES (?,?,?,?,?,?)").bind('pt_'+uid(),tid,lid,pts,'checkin',new Date().toISOString()).run();
+1403:        const bal:any = await env.aura_db.prepare('SELECT COALESCE(SUM(delta),0) as b FROM points_ledger WHERE lead_id=?').bind(lid).first();
+1410:        const ld:any = await env.aura_db.prepare("SELECT id,name FROM leads WHERE tenant_id=? AND replace(replace(phone,' ',''),'+','') LIKE ? LIMIT 1").bind(tid,'%'+phone.slice(-9)).first();
+1412:          // crear lead nuevo (cliente que se da de alta en el programa) + puntos de bienvenida
+1415:          await env.aura_db.prepare("INSERT INTO leads (id,tenant_id,name,phone,temperature,status,source,created_at) VALUES (?,?,?,?,?,?,?,?)").bind(nid,tid,(b.name||'Cliente'),phone,'warm','client','programa-puntos',new Date().toISOString()).run();
+1417:          if(w>0) await env.aura_db.prepare("INSERT INTO points_ledger (id,tenant_id,lead_id,delta,reason,created_at) VALUES (?,?,?,?,?,?)").bind('pt_'+uid(),tid,nid,w,'bienvenida',new Date().toISOString()).run();
+1418:          return json({ ok:true, lead_id:nid, name:(b.name||'Cliente'), welcome:w });
+1420:        return json({ ok:true, lead_id:ld.id, name:ld.name });
+1441:      // Comprar/reservar un pack desde el portal (público, identificado por lead). Sin Stripe => queda 'reserved' y entra al CRM.
+1443:        const b:any = await req.json(); const tid=b.tenant_id; const lid=b.lead_id; const pid=b.pack_id;
+1448:        await env.aura_db.prepare("INSERT INTO pack_orders (id,tenant_id,lead_id,pack_id,pack_name,amount,status,method,created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(oid,tid,lid,pid,pk.name,pk.price,'reserved','portal',ts).run();
+1449:        // CRM: si es bono con sesiones, crear bono activo; subir temperatura del lead; marcar interes
+1451:          await env.aura_db.prepare("INSERT INTO bonos (id,tenant_id,lead_id,name,total_sessions,used_sessions,amount,status,created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind('b_'+uid(),tid,lid,pk.name,pk.sessions,0,pk.price,'active',ts).run();
+1453:        await env.aura_db.prepare("UPDATE leads SET temperature='hot', call_priority='urgent', notes=COALESCE(notes,'')||? WHERE id=?").bind('\n[Portal] Reservó '+pk.name+' ('+pk.price+'€) - pendiente de cobro en clínica', lid).run();
+1458:      // Mis citas (del lead) para el portal
+1459:      if (p === '/api/my-appointments' && req.method === 'GET') {
+1460:        const tid=url.searchParams.get('tenant'); const lid=url.searchParams.get('lead');
+1462:        const r = await env.aura_db.prepare("SELECT id,treatment,date_iso,status,duration_min FROM appointments WHERE tenant_id=? AND lead_id=? ORDER BY date_iso DESC LIMIT 20").bind(tid,lid).all();
+1463:        return json({ appointments: r.results||[] });
+1465:      // Mis bonos (del lead) para el portal
+1467:        const tid=url.searchParams.get('tenant'); const lid=url.searchParams.get('lead');
+1469:        const r = await env.aura_db.prepare("SELECT id,name,total_sessions,used_sessions,status FROM bonos WHERE tenant_id=? AND lead_id=? ORDER BY created_at DESC").bind(tid,lid).all();
+1472:      // Referir a una amiga desde el portal (crea lead nuevo + puntos al que refiere)
+1474:        const b:any = await req.json(); const tid=b.tenant_id; const lid=b.lead_id;
+1477:        const exist:any = await env.aura_db.prepare("SELECT id FROM leads WHERE tenant_id=? AND replace(replace(phone,' ',''),'+','') LIKE ? LIMIT 1").bind(tid,'%'+fphone.slice(-9)).first();
+1480:        await env.aura_db.prepare("INSERT INTO leads (id,tenant_id,name,phone,temperature,status,source,notes,created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(nid,tid,(fname||'Referida'),fphone,'warm','new','referido','Referida por un cliente del portal',ts).run();
+1483:        if(rp>0) await env.aura_db.prepare("INSERT INTO points_ledger (id,tenant_id,lead_id,delta,reason,created_at) VALUES (?,?,?,?,?,?)").bind('pt_'+uid(),tid,lid,rp,'referido',ts).run();
+1492:            COALESCE((SELECT SUM(delta) FROM points_ledger pl WHERE pl.lead_id=l.id),0) as points,
+1493:            COALESCE((SELECT COUNT(*) FROM pack_orders po WHERE po.lead_id=l.id),0) as orders,
+1494:            COALESCE((SELECT SUM(amount) FROM pack_orders po WHERE po.lead_id=l.id),0) as spent
+1495:          FROM leads l
+1496:          WHERE l.tenant_id=? AND (l.id IN (SELECT DISTINCT lead_id FROM points_ledger WHERE tenant_id=?) OR l.id IN (SELECT DISTINCT lead_id FROM pack_orders WHERE tenant_id=?))
+1504:        if(!b.lead_id||!b.tenant_id) return json({error:'missing'},400);
+1506:        if(d!==0) await env.aura_db.prepare("INSERT INTO points_ledger (id,tenant_id,lead_id,delta,reason,created_at) VALUES (?,?,?,?,?,?)").bind('pt_'+uid(),b.tenant_id,b.lead_id,d,(b.reason||'ajuste'),new Date().toISOString()).run();
+1507:        const bal:any = await env.aura_db.prepare('SELECT COALESCE(SUM(delta),0) as b FROM points_ledger WHERE lead_id=?').bind(b.lead_id).first();
+1536:        await env.aura_db.prepare(`INSERT INTO tenants (id,name,city,whatsapp,email,owner_name,advisor_name,brand_primary,brand_accent,status,plan,trial_ends_at,google_rating,google_reviews,treatments_done,sms_credits,logo_url,url) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+1541:          await env.aura_db.prepare(`INSERT INTO leads (id,tenant_id,name,phone,email,treatment,temperature,status,source,notes,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)`)
+1543:        } catch(e){ console.error('lead focus-ventas', e); }
+1544:        return json({ ok:true, slug, funnel_url:'/c/'+slug });
+1553:      if (p === '/api/funnel-save' && req.method === 'POST') {
+1557:        const existing: any = await env.aura_db.prepare('SELECT id FROM funnels WHERE tenant_id=? AND treatment=?').bind(tenant, treatment).first();
+1560:          await env.aura_db.prepare('INSERT INTO funnels (id, tenant_id, treatment, headline, subheadline, lead_magnet, price_from, treatment_name, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').bind(fid, tenant, treatment, b.headline||'', b.subheadline||'', b.lead_magnet||'', b.price_from||'', b.treatment_name||'', 'active').run();
+1565:        if (b.lead_magnet !== undefined) { sets.push('lead_magnet=?'); vals.push(b.lead_magnet); }
+1568:        if (sets.length) { vals.push(tenant, treatment); await env.aura_db.prepare(`UPDATE funnels SET ${sets.join(',')} WHERE tenant_id=? AND treatment=?`).bind(...vals).run(); }
+1579:      if (p === '/api/funnel-edit' && req.method === 'POST') {
+1582:        const f: any = await env.aura_db.prepare('SELECT * FROM funnels WHERE tenant_id=? AND treatment=?').bind(tenant, treatment).first();
+1584:        const current = { headline: f?.headline || '', subheadline: f?.subheadline || '', lead_magnet: f?.lead_magnet || '', price_from: f?.price_from || '', name: t?.name || '', brand_primary: t?.brand_primary || '', brand_accent: t?.brand_accent || '' };
+1585:        const sys = 'Eres un editor de embudos. Recibes la configuracion actual y una orden del cliente en espanol. Devuelve SOLO un JSON con los campos que cambian (headline, subheadline, lead_magnet, price_from, name, brand_primary, brand_accent). brand_primary y brand_accent son colores hex. No incluyas campos que no cambian. Devuelve JSON valido sin texto adicional.';
+1592:        ['headline','subheadline','lead_magnet','price_from'].forEach(k=>{ if(changes[k]!==undefined){ fs.push(k+'=?'); fv.push(changes[k]); } });
+1593:        if (fs.length){ fv.push(tenant, treatment); await env.aura_db.prepare(`UPDATE funnels SET ${fs.join(',')} WHERE tenant_id=? AND treatment=?`).bind(...fv).run(); }
+1601:      if (p === '/api/funnel-delete' && req.method === 'POST') {
+1604:        await env.aura_db.prepare('DELETE FROM funnels WHERE tenant_id=? AND treatment=?').bind(tenant, treatment).run();
+1626:          if (tc.lead_magnet) content.lead_magnet = tc.lead_magnet;
+1655:        const sys = 'Eres un editor de CONTENIDO de un embudo de clínica estética. SOLO puedes cambiar textos, no la estructura. Campos editables: hero_title, hero_sub, cta, lead_magnet, price, q1..q5 (cada una {pregunta, opciones[]}), chat_intro, advisor_name, clinic_name. Recibes el contenido actual (JSON) y una orden en español. Devuelve SOLO un JSON con los campos que cambian. JSON válido, sin texto extra.';
+1692:      if (p === '/api/leads' && req.method === 'POST') {
+1710:            `INSERT INTO leads (id,tenant_id,funnel_id,name,phone,email,treatment,motivo,plazo,objecion,quiz_score,temperature,status,source,ref)
+1716:            b.funnel_id || null,
+1731:        return json({ ok: true, lead_id: id, ref: b.ref || null });
+1734:      if (p === '/api/leads' && req.method === 'GET') {
+1739:            `SELECT * FROM leads WHERE tenant_id=? ORDER BY created_at DESC LIMIT 200`
+1743:        return json({ leads: r.results });
+1799:                const taken: any = await env.aura_db.prepare("SELECT COUNT(*) c FROM appointments WHERE tenant_id=? AND substr(date_iso,1,16)=? AND status NOT IN ('noshow','cancelled')").bind(tenant, iso).first();
+1822:        const taken: any = await env.aura_db.prepare("SELECT COUNT(*) c FROM appointments WHERE tenant_id=? AND substr(date_iso,1,16)=? AND status NOT IN ('noshow','cancelled')").bind(b.tenant_id, b.slot_iso.slice(0, 16)).first();
+1827:        // Crear o encontrar el lead
+1829:        let leadId = '';
+1830:        const existingLead: any = await env.aura_db.prepare("SELECT id FROM leads WHERE tenant_id=? AND phone LIKE '%'||? ORDER BY created_at DESC LIMIT 1").bind(b.tenant_id, phone.slice(-9)).first();
+1832:          leadId = existingLead.id;
+1833:          await env.aura_db.prepare("UPDATE leads SET name=?, status='booked', temperature='hot' WHERE id=?").bind(b.name, leadId).run();
+1835:          leadId = 'l_' + uid();
+1836:          await env.aura_db.prepare("INSERT INTO leads (id,tenant_id,name,phone,email,status,temperature,source,created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(leadId, b.tenant_id, b.name, phone, b.email || '', 'booked', 'hot', 'reserva-online', Date.now()).run();
+1840:        await env.aura_db.prepare("INSERT INTO appointments (id,tenant_id,lead_id,treatment,date_iso,duration_min,status) VALUES (?,?,?,?,?,?,?)").bind(apptId, b.tenant_id, leadId, b.treatment || 'Valoración', b.slot_iso, b.duration || 30, 'booked').run();
+1841:        // Enviar SMS de confirmación
+1846:            const mlink = await magicLink(env, b.tenant_id, leadId);
+1852:            await sendSMS(env, phone, msg, clinica, b.tenant_id);
+1862:              await env.aura_db.prepare('INSERT INTO consents_signed (id,tenant_id,lead_id,template_id,title,body,status,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(csId, b.tenant_id, leadId, null, match.title, match.body, 'pending', Date.now()).run();
+1863:              const csTok = await signConsent(env, csId, leadId);
+1864:              const signLink = 'https://auracrm.co/firmar?consent=' + csId + '&lead=' + encodeURIComponent(leadId) + '&k=' + csTok;
+1866:              await sendSMS(env, phone, (tn2?.name || 'AURA') + ': ' + b.name + ', firma tu consentimiento antes de la cita (1 min): ' + signLink, tn2?.name || 'AURA', b.tenant_id);
+1872:        return json({ ok: true, appointment_id: apptId, lead_id: leadId, cancel_policy: cancelPolicy });
+1890:        if (!b.appointment_id || !b.lead_id) return json({ error: 'missing' }, 400);
+1891:        // Verificar token del lead
+1892:        const okTok = await verifyLead(env, b.lead_id, b.k || '');
+1894:        const appt: any = await env.aura_db.prepare('SELECT * FROM appointments WHERE id=? AND lead_id=?').bind(b.appointment_id, b.lead_id).first();
+1904:        await env.aura_db.prepare("UPDATE appointments SET status='cancelled' WHERE id=?").bind(b.appointment_id).run();
+1905:        await env.aura_db.prepare("UPDATE leads SET status='cancelled' WHERE id=?").bind(b.lead_id).run();
+1915:        const appt:any = await env.aura_db.prepare("SELECT a.*, l.name as lead_name, t.name as clinic_name FROM appointments a LEFT JOIN leads l ON a.lead_id=l.id LEFT JOIN tenants t ON a.tenant_id=t.id WHERE a.id=?").bind(apptId).first();
+1917:        await env.aura_db.prepare("UPDATE appointments SET status='confirmed', confirmed=1 WHERE id=?").bind(apptId).run();
+1920:        const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cita confirmada</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:linear-gradient(135deg,#f8f6f3,#fff);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem}.card{background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.08);max-width:400px;width:100%;padding:2rem;text-align:center}.check{width:80px;height:80px;background:#e8f5e9;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.2rem;font-size:2.5rem}h1{font-size:1.4rem;color:#1b5e20;margin-bottom:.5rem}p{color:#555;font-size:.9rem;line-height:1.5;margin-bottom:.8rem}.detail{background:#f8f6f3;border-radius:12px;padding:1rem;margin:1rem 0}.detail b{display:block;font-size:1rem;color:#333}.detail small{color:#888}</style></head><body><div class="card"><div class="check">✅</div><h1>Cita confirmada!</h1><p>Gracias, '+(appt.lead_name||'').split(' ')[0]+'. Te esperamos.</p><div class="detail"><b>'+(appt.treatment||'Tu cita')+'</b><small>'+dateStr+' a las '+timeStr+'</small><br><small>'+(appt.clinic_name||'')+'</small></div><p style="font-size:.8rem;color:#999;margin-top:1.5rem">Si necesitas cambiar la cita, contacta directamente con la clinica.</p></div></body></html>';
+2100:        // LISTAR clínicas con estado (pacientes, SMS, WhatsApp, plan)
+2102:          const ts:any = await env.aura_db.prepare('SELECT id,name,city,email,owner_name,status,plan,sms_credits,created_at FROM tenants ORDER BY created_at DESC').all();
+2105:            const pac:any = await env.aura_db.prepare('SELECT COUNT(*) c FROM leads WHERE tenant_id=?').bind(t.id).first();
+2122:          await env.aura_db.prepare('INSERT INTO tenants (id,name,city,address,whatsapp,email,owner_name,doctor_name,brand_primary,brand_accent,google_rating,google_reviews,status,plan,sms_credits,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')
+2184:          const patients = await cnt('SELECT COUNT(*) c FROM leads WHERE tenant_id=?');
+2217:        // RECARGAR SMS a una clínica
+2218:        if (p === '/api/admin-add-sms' && req.method === 'POST') {
+2221:          await env.aura_db.prepare('UPDATE tenants SET sms_credits = COALESCE(sms_credits,0) + ? WHERE id=?').bind(amount, id).run();
+2222:          const t:any = await env.aura_db.prepare('SELECT sms_credits FROM tenants WHERE id=?').bind(id).first();
+2223:          return json({ ok:true, sms_credits: t?t.sms_credits:null });
+2324:          const [slotsResult, reelsResult, revenueResult, leadsResult] = await Promise.all([
+2328:            env.aura_db.prepare("SELECT tenant_id,COUNT(*) leads FROM leads WHERE substr(created_at,1,7)=? GROUP BY tenant_id").bind(month).all().catch(()=>({results:[]} as any))
+2332:          const revenue = by((revenueResult as any).results); const leads = by((leadsResult as any).results);
+2336:            revenue: Number(revenue[c.id]?.revenue||0), leads: Number(leads[c.id]?.leads||0)
+2339:            clinics: acc.clinics+1, scheduled: acc.scheduled+c.scheduled, reels: acc.reels+c.reels, views: acc.views+c.views, revenue: acc.revenue+c.revenue, leads: acc.leads+c.leads
+2340:          }),{clinics:0,scheduled:0,reels:0,views:0,revenue:0,leads:0});
+2415:          // 5. Comunicaciones (WhatsApp + SMS)
+2427:          const funnelCount = await cnt("SELECT COUNT(*) c FROM funnels WHERE tenant_id=? AND status='active'");
+2428:          const funnelDone = funnelCount >= 1;
+2440:          const patientCount = await cnt('SELECT COUNT(*) c FROM leads WHERE tenant_id=?');
+2452:            { id:'comms',        title:'Comunicaciones',              desc:'WhatsApp conectado y plantillas SMS',                          done: commsDone,        est_min: 12, details: { waConnected }, nav:'settings-comunicaciones' },
+2454:            { id:'funnels',      title:'Embudos de captación',        desc:'Al menos 1 embudo activo con slug y Meta Pixel',               done: funnelDone,       est_min: 12, details: { funnelCount }, nav:'embudos' },
+2522:            if ((await cnt2("SELECT COUNT(*) c FROM funnels WHERE tenant_id=? AND status='active'")) >= 1) done++;
+2526:            const imported = (await cnt2('SELECT COUNT(*) c FROM leads WHERE tenant_id=?')) >= 1;
+2587:      // SMS TEMPLATES: defaults por defecto
+2588:      const DEFAULT_SMS = {
+2604:      if (p === '/api/sms-templates' && req.method === 'GET') {
+2606:        const row: any = await env.aura_db.prepare('SELECT templates FROM sms_templates WHERE tenant_id=?').bind(tenant).first();
+2608:        return json({ templates: Object.assign({}, DEFAULT_SMS, tpl) });
+2610:      if (p === '/api/sms-templates' && req.method === 'POST') {
+2612:        await env.aura_db.prepare('INSERT INTO sms_templates (tenant_id,templates,updated_at) VALUES (?,?,?) ON CONFLICT(tenant_id) DO UPDATE SET templates=excluded.templates,updated_at=excluded.updated_at').bind(b.tenant_id, JSON.stringify(b.templates||{}), Date.now()).run();
+2615:      // SMS TEMPLATES: generar con IA adaptadas a la clínica
+2616:      if (p === '/api/sms-generate' && req.method === 'POST') {
+2619:        const sys='Eres copywriter experto en SMS para clínicas estéticas en España. Genera SMS disruptivos, breves (<160 car), que empiecen con el nombre de la clínica, con beneficio claro y un link {link}. Usa variables {clinica} {nombre} {link} {fecha} {hora} {direccion} {tel} {proximo_dia}. La variable {proximo_dia} resuelve al próximo día abierto de la clínica (ej: el lunes); úsala en reactivation y recall_sale para empujar la reserva sin decir que está cerrado. Devuelve SOLO JSON con claves: result_no_chat, chat_no_book, reminder_24h, reminder_2h, no_show, reactivation.';
+2623:        const merged=Object.assign({},DEFAULT_SMS,gen);
+2624:        await env.aura_db.prepare('INSERT INTO sms_templates (tenant_id,templates,updated_at) VALUES (?,?,?) ON CONFLICT(tenant_id) DO UPDATE SET templates=excluded.templates,updated_at=excluded.updated_at').bind(b.tenant_id, JSON.stringify(merged), Date.now()).run();
+2629:      if (p === '/api/lead-quiz-update' && req.method === 'POST') {
+2631:        if (!b.lead_id) return json({ error: 'missing lead_id' }, 400);
+2633:          "UPDATE leads SET motivo=?, plazo=?, objecion=?, quiz_score=?, temperature=? WHERE id=?"
+2634:        ).bind(b.motivo||null, b.plazo||null, b.objecion||null, b.quiz_score||0, b.temperature||'cold', b.lead_id).run();
+2637:      if (p === '/api/lead-chatted' && req.method === 'POST') {
+2639:        await env.aura_db.prepare("UPDATE leads SET chatted=1 WHERE id=?").bind(b.lead_id).run();
+2642:      // SMS: envío de prueba / genérico
+2643:      if (p === '/api/send-sms' && req.method === 'POST') {
+2645:        const res = await sendSMS(env, b.number, b.message, b.sender, b.tenant_id);
+2648:      // SMS: consultar saldo de la clínica
+2649:      if (p === '/api/sms-credits' && req.method === 'GET') {
+2651:        const t: any = await env.aura_db.prepare('SELECT sms_credits FROM tenants WHERE id=?').bind(tenant).first();
+2652:        return json({ credits: t?.sms_credits ?? 0 });
+2654:      // SMS: crear sesión de Stripe Checkout para comprar 1000 SMS / 75€
+2655:      if (p === '/api/sms-checkout' && req.method === 'POST') {
+2660:        await env.aura_db.prepare('INSERT INTO sms_purchases (id,tenant_id,qty,price_eur,status,created_at) VALUES (?,?,?,?,?,?)').bind(purchaseId, b.tenant_id, 1000, 75, 'pending', Date.now()).run();
+2663:        form.set('success_url', origin + '/dashboard?t=' + b.tenant_id + '&sms=ok');
+2666:        form.set('line_items[0][price_data][product_data][name]', 'AURA · 1.000 SMS');
+2681:      // Stripe webhook: al confirmar pago, recargar SMS
+2689:            await env.aura_db.prepare('UPDATE tenants SET sms_credits = COALESCE(sms_credits,0) + 1000 WHERE id=?').bind(tenantId).run();
+2690:            if (purchaseId) await env.aura_db.prepare("UPDATE sms_purchases SET status='paid' WHERE id=?").bind(purchaseId).run();
+2696:      // Métricas de embudo real (por funnel o agregado)
+2720:          const newP: any = await env.aura_db.prepare("SELECT COUNT(*) c FROM leads WHERE tenant_id=? AND substr(created_at,1,7)=?").bind(tid, ym).first();
+2721:          const totalP: any = await env.aura_db.prepare("SELECT COUNT(*) c FROM leads WHERE tenant_id=?").bind(tid).first();
+2727:        // 3. Tasa de conversión últimos 6 meses (leads → booked/attended)
+2734:            const total: any = await env.aura_db.prepare("SELECT COUNT(*) c FROM leads WHERE tenant_id=? AND substr(created_at,1,7)=?").bind(tid, ym).first();
+2735:            const booked: any = await env.aura_db.prepare("SELECT COUNT(*) c FROM leads WHERE tenant_id=? AND substr(created_at,1,7)=? AND status IN ('booked','attended','client')").bind(tid, ym).first();
+2893:      if (p === '/api/funnel-metrics' && req.method === 'GET') {
+2895:        const funnel = url.searchParams.get('funnel'); // opcional
+2897:        let q = 'SELECT * FROM leads WHERE tenant_id=?';
+2899:        if (funnel && funnel !== 'all') { q += ' AND treatment=?'; binds.push(funnel); }
+2901:        const leads: any[] = r.results || [];
+2902:        const entered = leads.length;
+2903:        const quizDone = leads.filter(l => l.objecion || l.plazo || (l.quiz_score||0) > 0).length;
+2904:        const chatted = leads.filter(l => l.last_message_at).length;
+2905:        const booked = leads.filter(l => l.status === 'booked' || l.status === 'attended' || l.status === 'client').length;
+2906:        const attended = leads.filter(l => l.status === 'attended' || l.status === 'client').length;
+2907:        // lista de funnels (treatments) presentes para el selector
+2908:        const funnels = Array.from(new Set(leads.map(l => l.treatment).filter(Boolean)));
+2909:        return json({ metrics: { entered, quizDone, chatted, booked, attended }, funnels });
+2931:      // Pipeline: cambiar etapa del lead
+2932:      if (p === '/api/lead-stage' && req.method === 'POST') {

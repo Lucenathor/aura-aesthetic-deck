@@ -97,3 +97,12 @@
 - [x] Probar el módulo de WhatsApp 360dialog por seguridad, aislamiento entre clínicas, experiencia responsive y eventos de API antes de activarlo con un número real.
 - [ ] Completar las automatizaciones de WhatsApp de confirmación, seguimiento post-cita y solicitud de reseña cuando cada clínica disponga de sus plantillas Meta aprobadas y sus consentimientos configurados.
 - [ ] Probar el circuito físico completo con un número real: onboarding Meta, envío, respuesta, medio, plantilla y estado de entrega.
+- [x] Diseñar el embudo híbrido de AURA con chat web, SMS y WhatsApp, definiendo el canal, mensaje y objetivo en cada estado del lead y de aprobación de cada clínica.
+- [ ] Implementar una configuración de canal por tenant para que AURA opere desde el día uno con chat web y SMS, y active WhatsApp automáticamente cuando el número sea aprobado.
+- [x] Crear un organigrama verificable del embudo híbrido de AURA y validar sus reglas con fuentes actuales de CRM, mensajería y automatización conversacional.
+- [x] Comparar y decidir la arquitectura definitiva del embudo: captación siempre dentro de AURA con WhatsApp posterior, frente a captación variable que deriva a WhatsApp según cada tenant.
+- [ ] Crear la política de canal por tenant con modo Automático recomendado, Solo WhatsApp y Solo SMS, sin permitir envíos simultáneos.
+- [ ] Añadir controles simples en Ajustes → Comunicaciones para elegir modo, permitir respaldo SMS y pausar automatizaciones.
+- [ ] Construir un selector central determinista que compruebe estado de 360dialog, consentimiento, plantilla/ventana, actividad web, respuesta humana, reserva y baja.
+- [ ] Integrar el selector en recuperación de leads, confirmaciones y recordatorios con idempotencia y cancelación de mensajes pendientes.
+- [ ] Probar por tenant los modos Automático, Solo WhatsApp y Solo SMS, incluidos fallos de entrega y aislamiento entre clínicas.

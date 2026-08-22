@@ -1,0 +1,36 @@
+flowchart LR
+    A([1. TRÁFICO<br/>Meta · Instagram · SEO · QR]):::start --> B[2. ASISTENTE WEB AURA<br/>Quiz · cualificación · recursos]:::web
+    B --> C[3. LEAD ÚNICO EN CRM<br/>Teléfono normalizado · UTM/ref<br/>Consentimiento por canal]:::core
+    C --> D{¿El lead sigue<br/>en el chat web?}:::decision
+    D -- Sí --> E[Continuar en chat web<br/>Setter Brain o recepción]:::web
+    D -- No --> F{¿WhatsApp de esta clínica<br/>está activo y permitido?}:::decision
+    F -- Sí --> G[4A. WHATSAPP OFICIAL<br/>Plantilla o conversación<br/>Recursos · objeciones · agenda]:::wa
+    F -- No / pendiente / incidente --> H[4B. SMS<br/>Enlace mágico al punto exacto<br/>del chat o agenda]:::sms
+    E --> I{¿Reserva?}:::decision
+    G --> I
+    H --> I
+    I -- No --> J[Una sola secuencia de recuperación<br/>20 min → 5 h → día 3<br/>Se cancela al responder]:::neutral
+    J --> F
+    I -- Sí --> K[5. CITA EN AURA<br/>Agenda · lead · atribución<br/>mismo historial]:::core
+    K --> L{Canal para confirmar<br/>y recordar}:::decision
+    L -- WhatsApp disponible --> M[WhatsApp Utility<br/>confirmar · cambiar · recordar]:::wa
+    L -- WhatsApp no disponible --> N[SMS transaccional<br/>confirmar · cambiar · recordar]:::sms
+    M --> O[6. VISITA Y RECEPCIÓN<br/>Atendida · cobro · siguiente paso]:::core
+    N --> O
+    O --> P[7. POST-CITA<br/>Check-in · reseña · revisión<br/>solo con consentimiento]:::post
+
+    R1[REGLA 1: un lead y un historial]:::rule
+    R2[REGLA 2: un solo canal automático pendiente]:::rule
+    R3[REGLA 3: reservar/responder/baja cancela lo demás]:::rule
+    R4[REGLA 4: IA hace triage, no diagnóstico clínico]:::rule
+    R1 ~~~ R2 ~~~ R3 ~~~ R4
+
+    classDef start fill:#2D1B0E,color:#fff,stroke:#2D1B0E,stroke-width:2px;
+    classDef web fill:#FDF8F4,color:#2D1B0E,stroke:#A85942,stroke-width:2px;
+    classDef core fill:#F2E0D8,color:#5A281C,stroke:#A85942,stroke-width:2px;
+    classDef wa fill:#E8F5EF,color:#123A2A,stroke:#25D366,stroke-width:2px;
+    classDef sms fill:#FFF2D7,color:#5F4215,stroke:#D7A84B,stroke-width:2px;
+    classDef post fill:#EDF0EA,color:#314332,stroke:#7E9A70,stroke-width:2px;
+    classDef neutral fill:#F4F0ED,color:#55463D,stroke:#BBAEA7,stroke-width:1px;
+    classDef decision fill:#fff,color:#2D1B0E,stroke:#A85942,stroke-width:2px;
+    classDef rule fill:#fff,color:#2D1B0E,stroke:#5B8C7A,stroke-width:2px;

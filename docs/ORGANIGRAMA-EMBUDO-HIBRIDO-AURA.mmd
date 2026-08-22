@@ -1,0 +1,72 @@
+flowchart TB
+    %% AURA · ORGANIGRAMA OPERATIVO
+    A([Tráfico: Meta Ads · Instagram · SEO · QR]):::start --> B[Landing personalizada por tratamiento]:::web
+    B --> C[Asistente de valoración AURA<br/>Chat web + quiz]:::web
+    C --> D{¿Completó quiz<br/>y dejó contacto?}:::decision
+    D -- No --> E[Retargeting web/Meta<br/>sin mensaje personal]:::neutral
+    D -- Sí --> F[Crear/actualizar lead único<br/>teléfono E.164 · UTM/ref · consentimiento]:::core
+    F --> G{¿Sigue activo<br/>en chat web?}:::decision
+    G -- Sí --> H[Setter Brain: triage · recursos · agenda<br/>o handoff a recepción]:::web
+    G -- No --> O{Orquestador AURA:<br/>¿WhatsApp activo + opt-in<br/>+ plantilla/ventana válida?}:::core
+    H --> I{¿Reserva creada?}:::decision
+    O -- Sí --> P[WhatsApp oficial:<br/>plantilla o conversación de servicio]:::wa
+    O -- No --> Q[SMS: enlace mágico<br/>al punto exacto del chat/agenda]:::sms
+    P --> R{¿Responde o reserva?}:::decision
+    Q --> R
+    R -- Responde --> H
+    R -- Reserva --> I
+    R -- No responde --> S[Cancelar secuencia automática<br/>y crear tarea humana solo si lead caliente]:::neutral
+
+    I -- No --> T[Una única secuencia de recuperación<br/>20 min → 5 h → día 3]:::core
+    T --> O
+    I -- Sí --> U[Reserva confirmada en CRM<br/>mismo lead · mismo journey_id]:::core
+    U --> V{Canal disponible<br/>para recordatorio?}:::decision
+    V -- WhatsApp activo y utilidad aprobada --> W[WhatsApp Utility:<br/>confirmar · cambiar · recordar]:::wa
+    V -- Sin WhatsApp / fallo entrega --> X[SMS transaccional:<br/>confirmar · enlace de cambio]:::sms
+    W --> Y{¿Confirma / cambia?}:::decision
+    X --> Y
+    Y -- Confirma --> Z[Cita atendida → recepción<br/>tratamiento · cobro · siguiente acción]:::core
+    Y -- Cambia/cancela --> AA[Reabrir huecos y reprogramar<br/>sin duplicar mensajes]:::neutral
+    Y -- Sin respuesta --> AB[Tarea a recepción:<br/>llamada solo para prioridad alta]:::neutral
+    Z --> AC{Consentimiento de post-cita?}:::decision
+    AC -- Sí → WhatsApp activo --> AD[WhatsApp: check-in · reseña · revisión<br/>reactivación segmentada]:::wa
+    AC -- SMS permitido / WhatsApp no activo --> AE[SMS con enlace seguro<br/>a reseña o próxima revisión]:::sms
+
+    subgraph TENANT[Estado del tenant · puerta de canal]
+      TS1[Preparación<br/>Embudo + agenda + chat + SMS]:::tenant
+      TS2[WhatsApp en verificación<br/>Chat web + SMS continúan]:::tenant
+      TS3[Número conectado<br/>sin plantillas aprobadas<br/>WhatsApp solo reactivo]:::tenant
+      TS4[Activo + plantillas + calidad correcta<br/>WhatsApp prioritario]:::tenant
+      TS5[Calidad restringida / incidente<br/>Pausa WhatsApp → Chat + SMS]:::alert
+      TS1 --> TS2 --> TS3 --> TS4
+      TS4 -. vigilancia de calidad .-> TS5
+      TS5 -. recuperación .-> TS4
+    end
+
+    O -. consulta estado/consentimiento .-> TENANT
+    V -. consulta estado/consentimiento .-> TENANT
+
+    subgraph REGLAS[Reglas no negociables]
+      R1[Un lead · un historial · teléfono normalizado]:::rule
+      R2[Un solo canal automático pendiente por evento]:::rule
+      R3[Respuesta, reserva, baja o handoff<br/>cancelan las secuencias restantes]:::rule
+      R4[IA no diagnostica ni cierra presupuestos clínicos]:::rule
+      R5[WhatsApp: opt-in + plantilla/ventana correcta]:::rule
+    end
+
+    F -. aplica .-> R1
+    O -. aplica .-> R2
+    R -. aplica .-> R3
+    H -. aplica .-> R4
+    P -. aplica .-> R5
+
+    classDef start fill:#2D1B0E,color:#ffffff,stroke:#2D1B0E,stroke-width:2px;
+    classDef web fill:#FDF8F4,color:#2D1B0E,stroke:#A85942,stroke-width:2px;
+    classDef wa fill:#E8F5EF,color:#123A2A,stroke:#25D366,stroke-width:2px;
+    classDef sms fill:#FFF2D7,color:#5F4215,stroke:#D7A84B,stroke-width:2px;
+    classDef core fill:#F2E0D8,color:#5A281C,stroke:#A85942,stroke-width:2px;
+    classDef decision fill:#ffffff,color:#2D1B0E,stroke:#A85942,stroke-width:2px;
+    classDef neutral fill:#F4F0ED,color:#55463D,stroke:#BBAEA7,stroke-width:1px;
+    classDef tenant fill:#EDE7E1,color:#2D1B0E,stroke:#8D6E63,stroke-width:2px;
+    classDef alert fill:#FCE6E2,color:#8A1F14,stroke:#C74B3C,stroke-width:2px;
+    classDef rule fill:#ffffff,color:#2D1B0E,stroke:#5B8C7A,stroke-width:2px;

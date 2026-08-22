@@ -1,0 +1,8 @@
+372:async function sendSMS(env: Env, number: string, message: string, sender?: string, tenantId?: string): Promise<{ ok: boolean; detail?: any; credits?: number }> {
+592:  try { await env.aura_db.exec("CREATE TABLE IF NOT EXISTS wa_config (tenant_id TEXT PRIMARY KEY, instance TEXT, updated_at INTEGER)"); } catch(e){}
+4161:      if (p === '/api/wa-send-360' && req.method === 'POST') {
+4349:      if (p === '/api/wa-send-template' && req.method === 'POST') {
+4368:      if (p === '/api/wa-consents' && req.method === 'GET') {
+4375:      if (p === '/api/wa-consents' && req.method === 'POST') {
+4383:      if (p === '/api/wa-automations' && req.method === 'GET') { await ensureWaSchema(env); const tenantId=url.searchParams.get('tenant')||''; const guard=await requireTenant(env,req,url,tenantId); if(guard)return json({error:'forbidden',reason:guard},403); const rows:any=await env.aura_db.prepare('SELECT * FROM wa_automation_rules WHERE tenant_id=? ORDER BY event_key').bind(tenantId).all(); return json({rules:rows.results||[]}); }
+4384:      if (p === '/api/wa-automations' && req.method === 'POST') {
