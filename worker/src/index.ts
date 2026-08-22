@@ -4340,8 +4340,8 @@ export default {
         const b:any=await req.json(),tenantId=String(b.tenant_id||''),mode=String(b.mode||'auto');
         if(!tenantId||!['auto','whatsapp','sms'].includes(mode))return json({ok:false,error:'invalid_policy'},400);
         const guard=await requireTenant(env,req,url,tenantId);if(guard)return json({error:'forbidden',reason:guard},403);
-        const role=await getSessionRole(env,req,url);
-        if(!['owner','superadmin'].includes(String(role||'')))return json({ok:false,error:'owner_required'},403);
+        const account=await resolveCopilotTenant(env,req,url,tenantId);
+        if(account.error||!['owner','superadmin'].includes(String(account.role||'')))return json({ok:false,error:'owner_required'},403);
         const smsFallback=b.sms_fallback!==false?1:0,paused=b.automations_paused?1:0,now=Date.now();
         await env.aura_db.prepare("INSERT INTO wa_config (tenant_id,provider,connected,channel_mode,sms_fallback,automations_paused,updated_at) VALUES (?,'360dialog',0,?,?,?,?) ON CONFLICT(tenant_id) DO UPDATE SET channel_mode=excluded.channel_mode,sms_fallback=excluded.sms_fallback,automations_paused=excluded.automations_paused,updated_at=excluded.updated_at").bind(tenantId,mode,smsFallback,paused,now).run();
         return json({ok:true,mode,sms_fallback:!!smsFallback,automations_paused:!!paused});
