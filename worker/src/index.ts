@@ -734,7 +734,7 @@ async function dispatchAuraChannel(env: Env, input: { tenantId:string; eventKey:
   await ensureWaSchema(env);
   const existing:any=await env.aura_db.prepare('SELECT * FROM channel_dispatches WHERE tenant_id=? AND event_key=? AND entity_id=?').bind(tenantId,eventKey,entityId).first();
   if(existing && String(existing.status)==='sent') return { ok:true, duplicate:true, channel:existing.selected_channel||'none', reason:existing.reason||'already_processed' };
-  if(existing && existing.status==='processing' && now-Number(existing.updated_at||0)<5*60*1000) return { ok:false, duplicate:true, channel:existing.selected_channel||'none', reason:'already_processing' };
+  if(existing && existing.status==='processing') return { ok:false, duplicate:true, channel:existing.selected_channel||'none', reason:'already_processing' };
   const id=existing?.id||('chd_'+uid());
   if(existing) await env.aura_db.prepare("UPDATE channel_dispatches SET status='processing',attempts=COALESCE(attempts,0)+1,updated_at=? WHERE id=?").bind(now,id).run();
   else await env.aura_db.prepare("INSERT INTO channel_dispatches (id,tenant_id,event_key,entity_id,phone,status,attempts,created_at,updated_at) VALUES (?,?,?,?,?,'processing',1,?,?)").bind(id,tenantId,eventKey,entityId,phone,now,now).run();

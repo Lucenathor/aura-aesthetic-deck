@@ -1022,7 +1022,7 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
       </div>
       <div class="card" id="smsPrevCard">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
-          <div><h3 style="margin:0">Así lo recibe tu paciente</h3><p class="sub" style="margin:.2rem 0 0">Previsualización del recorrido de SMS, fase por fase.</p></div>
+          <div><h3 style="margin:0">Respaldo SMS del paciente</h3><p class="sub" style="margin:.2rem 0 0">Así continúa AURA cuando WhatsApp no está disponible o la clínica elige Solo SMS.</p></div>
           <button class="btn prim" id="smsPlayBtn" onclick="playSmsPrev()">▶ Reproducir</button>
         </div>
         <div class="sms-stage">
@@ -1035,8 +1035,8 @@ td{padding:.85rem .5rem;border-bottom:1px solid var(--line);font-size:.9rem}
         </div>
       </div>
       <div class="card" id="smsTplCard">
-        <h3>Mensajes automáticos (SMS)</h3>
-        <p class="sub">Estos SMS se envían solos a tus pacientes en cada momento. Edita el texto o genéralos con IA para tu clínica. Variables: {clinica} {nombre} {link} {fecha} {hora} {direccion} {tel}.</p>
+        <h3>Textos del respaldo SMS</h3>
+        <p class="sub">AURA utiliza estos textos únicamente cuando el selector decide SMS. No se envían además de WhatsApp. Edítalos o genéralos con IA. Variables: {clinica} {nombre} {link} {fecha} {hora} {direccion} {tel}.</p>
         <div style="display:flex;gap:.5rem;margin:.4rem 0 .8rem;flex-wrap:wrap"><button class="btn prim" onclick="genSms()">Generar con IA para mi clínica</button><button class="btn" onclick="saveSmsTpl()">Guardar textos</button><span id="smsTplMsg" style="font-size:.82rem;color:#1f8c69;align-self:center"></span></div>
         <div id="smsTplList"></div>
       </div>
@@ -4033,12 +4033,13 @@ function renderChannelPolicyHelp(){
   else box.innerHTML='<b>Automático · recomendado.</b> AURA prioriza WhatsApp cuando puede enviarlo correctamente. '+(fallback&&fallback.checked?'Si no puede, utiliza un único SMS de respaldo.':'Si no puede, no envía otro canal y registra el motivo.')+' Nunca manda los dos mensajes a la vez.';
 }
 function channelEventLabel(k){return({lead_recovery_fast:'Recuperación inmediata',lead_recovery_5h:'Recuperación a las 5 h',lead_recovery_d3:'Reactivación día 3',lead_recovery_d7:'Reactivación día 7',lead_recovery_d21:'Último seguimiento',appointment_reminder_24h:'Recordatorio 24 h',appointment_reminder_2h:'Recordatorio 2 h',appointment_confirmation:'Confirmación de cita'})[k]||String(k||'Seguimiento').replace(/_/g,' ');}
+function channelReasonLabel(r){return({whatsapp_ready:'WhatsApp disponible y autorizado',tenant_sms_only:'Configurado en Solo SMS',sms_fallback_whatsapp_not_connected:'WhatsApp aún no está conectado',sms_fallback_missing_whatsapp_consent:'Sin permiso válido para WhatsApp',sms_fallback_missing_whatsapp_rule:'Falta vincular una plantilla',sms_fallback_template_not_approved:'Plantilla pendiente de aprobación',sms_fallback_whatsapp_send_failed:'WhatsApp falló; se usó el respaldo',whatsapp_not_connected:'WhatsApp no está conectado',missing_whatsapp_consent:'Falta consentimiento de WhatsApp',missing_whatsapp_rule:'Falta una plantilla para este evento',template_not_approved:'Plantilla pendiente de Meta',automations_paused:'Automatizaciones pausadas',patient_replied:'El paciente ya respondió',human_intervened:'Recepción tomó la conversación',missing_marketing_consent:'Sin consentimiento de marketing',missing_reviews_consent:'Sin consentimiento para reseñas',no_available_channel:'No hay un canal disponible',invalid_phone:'Teléfono no válido'})[r]||String(r||'').replace(/_/g,' ');}
 async function loadChannelPolicy(){
   const status=document.getElementById('channelPolicyStatus');if(!status)return;
   try{const r=await fetch(WORKER+'/api/channel-policy?tenant='+encodeURIComponent(T),{headers:{'Authorization':'Bearer '+(localStorage.getItem('aura_token')||'')}}),d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'error');
     const mode=document.getElementById('channelPolicyMode'),fallback=document.getElementById('channelSmsFallback'),paused=document.getElementById('channelAutomationsPaused');if(mode)mode.value=d.mode||'auto';if(fallback)fallback.checked=d.sms_fallback!==false;if(paused)paused.checked=!!d.automations_paused;
     const labels={auto:'Automático',whatsapp:'Solo WhatsApp',sms:'Solo SMS'};status.textContent=d.automations_paused?'Pausado':(labels[d.mode]||'Automático');status.style.background=d.automations_paused?'#fef2f2':'#ecfdf5';status.style.color=d.automations_paused?'#b91c1c':'#065f46';renderChannelPolicyHelp();
-    const recent=document.getElementById('channelPolicyRecent'),rows=d.recent||[];if(recent){recent.innerHTML=rows.length?'<div class="sub" style="font-size:.72rem;margin-bottom:.35rem">Últimas decisiones automáticas</div><div style="display:flex;flex-direction:column;gap:.3rem">'+rows.slice(0,5).map(x=>'<div style="display:flex;justify-content:space-between;gap:.7rem;align-items:center;padding:.4rem .55rem;border:1px solid var(--line);border-radius:8px;font-size:.75rem"><span><b>'+escapeHtml(channelEventLabel(x.event_key))+'</b><br><span class="sub" style="font-size:.68rem">'+escapeHtml(x.reason||'')+'</span></span><span style="white-space:nowrap;font-weight:700;color:'+(x.selected_channel==='whatsapp'?'#15803d':x.selected_channel==='sms'?'#a85942':'#6b7280')+'">'+(x.selected_channel==='whatsapp'?'WhatsApp':x.selected_channel==='sms'?'SMS':'No enviado')+'</span></div>').join('')+'</div>':'';}
+    const recent=document.getElementById('channelPolicyRecent'),rows=d.recent||[];if(recent){recent.innerHTML=rows.length?'<div class="sub" style="font-size:.72rem;margin-bottom:.35rem">Últimas decisiones automáticas</div><div style="display:flex;flex-direction:column;gap:.3rem">'+rows.slice(0,5).map(x=>'<div style="display:flex;justify-content:space-between;gap:.7rem;align-items:center;padding:.4rem .55rem;border:1px solid var(--line);border-radius:8px;font-size:.75rem"><span><b>'+escapeHtml(channelEventLabel(x.event_key))+'</b><br><span class="sub" style="font-size:.68rem">'+escapeHtml(channelReasonLabel(x.reason))+'</span></span><span style="white-space:nowrap;font-weight:700;color:'+(x.selected_channel==='whatsapp'?'#15803d':x.selected_channel==='sms'?'#a85942':'#6b7280')+'">'+(x.selected_channel==='whatsapp'?'WhatsApp':x.selected_channel==='sms'?'SMS':'No enviado')+'</span></div>').join('')+'</div>':'';}
   }catch(e){status.textContent='No disponible';status.style.background='#fef2f2';status.style.color='#b91c1c';}
 }
 async function saveChannelPolicy(){
